@@ -1,11 +1,11 @@
-//! Tests for the NEW `src/iran_smart_anti_filter_v2.rs` module.
-//!
-//! This module is a new capability added during the migration — there is
-//! no Python original to parity-test against. The tests below exercise the
-//! public API surface and document the expected behavior. The library
-//! crate's internal `#[cfg(test)] mod tests` block also covers the same
-//! surface; this file mirrors the convention used by every other ported
-//! module so the test-runner inventory stays uniform.
+// Tests for the NEW `src/iran_smart_anti_filter_v2.rs` module.
+//
+// This module is a new capability added during the migration — there is
+// no Python original to parity-test against. The tests below exercise the
+// public API surface and document the expected behavior. The library
+// crate's internal `#[cfg(test)] mod tests` block also covers the same
+// surface; this file mirrors the convention used by every other ported
+// module so the test-runner inventory stays uniform.
 
 use chrono::{NaiveDate, TimeZone, Utc};
 
@@ -60,9 +60,27 @@ fn preferred_ports_omit_80_in_ultra_stealth() {
 fn boost_high_success_rate() {
     let bridges = vec![("1.2.3.4:443".to_string(), "snowflake".to_string(), 50.0)];
     let ooni = vec![
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "snowflake".into(), irst_hour: 22, day_offset: 0, success: true },
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "snowflake".into(), irst_hour: 22, day_offset: -1, success: true },
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "snowflake".into(), irst_hour: 22, day_offset: -2, success: true },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "snowflake".into(),
+            irst_hour: 22,
+            day_offset: 0,
+            success: true,
+        },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "snowflake".into(),
+            irst_hour: 22,
+            day_offset: -1,
+            success: true,
+        },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "snowflake".into(),
+            irst_hour: 22,
+            day_offset: -2,
+            success: true,
+        },
     ];
     let recs = boost_bridges_by_irst_history(&bridges, &ooni, 22, 7);
     assert!(recs[0].boost > 0.0);
@@ -72,9 +90,27 @@ fn boost_high_success_rate() {
 fn penalty_low_success_rate() {
     let bridges = vec![("1.2.3.4:443".to_string(), "vanilla".to_string(), 50.0)];
     let ooni = vec![
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "vanilla".into(), irst_hour: 22, day_offset: 0, success: false },
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "vanilla".into(), irst_hour: 22, day_offset: -1, success: false },
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "vanilla".into(), irst_hour: 22, day_offset: -2, success: false },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "vanilla".into(),
+            irst_hour: 22,
+            day_offset: 0,
+            success: false,
+        },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "vanilla".into(),
+            irst_hour: 22,
+            day_offset: -1,
+            success: false,
+        },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "vanilla".into(),
+            irst_hour: 22,
+            day_offset: -2,
+            success: false,
+        },
     ];
     let recs = boost_bridges_by_irst_history(&bridges, &ooni, 22, 7);
     assert!(recs[0].boost < 0.0);
@@ -97,9 +133,27 @@ fn routing_recommendation_returns_valid_json() {
         ("5.6.7.8:443".to_string(), "webtunnel".to_string(), 55.0),
     ];
     let ooni = vec![
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "snowflake".into(), irst_hour: 22, day_offset: 0, success: true },
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "snowflake".into(), irst_hour: 22, day_offset: -1, success: true },
-        OoniIstRecord { bridge_host: "1.2.3.4:443".into(), transport: "snowflake".into(), irst_hour: 22, day_offset: -2, success: true },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "snowflake".into(),
+            irst_hour: 22,
+            day_offset: 0,
+            success: true,
+        },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "snowflake".into(),
+            irst_hour: 22,
+            day_offset: -1,
+            success: true,
+        },
+        OoniIstRecord {
+            bridge_host: "1.2.3.4:443".into(),
+            transport: "snowflake".into(),
+            irst_hour: 22,
+            day_offset: -2,
+            success: true,
+        },
     ];
     let rec = routing_recommendation(now, &IrstTierConfig::default(), &bridges, &ooni, &[], 7, 10);
     assert_eq!(rec["tier"], "ultra_stealth");

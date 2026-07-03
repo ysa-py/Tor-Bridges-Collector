@@ -194,14 +194,14 @@ m.main()
     let py_report = tmp.join("data").join("anti_ai_dpi_report.json");
     let py_export = tmp.join("export").join("anti_ai_dpi_bridges.txt");
 
-    let py_text = std::fs::read_to_string(&py_report).unwrap();
+    let py_text = std::fs::read_to_string(py_report).unwrap();
     let rs_text = std::fs::read_to_string(&rs_report).unwrap();
 
     let py_json: Value = serde_json::from_str(&py_text).unwrap();
     let rs_json: Value = serde_json::from_str(&rs_text).unwrap();
     assert_json_eq(py_json, rs_json, "run_pipeline byte-identical report");
 
-    let py_export_text = std::fs::read_to_string(&py_export).unwrap_or_default();
+    let py_export_text = std::fs::read_to_string(py_export).unwrap_or_default();
     let rs_export_text = std::fs::read_to_string(&rs_export).unwrap_or_default();
     assert_eq!(py_export_text, rs_export_text, "export file mismatch");
 }

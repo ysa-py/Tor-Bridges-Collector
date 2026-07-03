@@ -1,13 +1,13 @@
-//! Parity tests for `src/circuit_breaker_11slot.rs` vs
-//! `circuit_breaker_11slot.py`.
-//!
-//! Two test groups:
-//! 1. State-machine logic — uses an injectable clock to exercise the
-//!    blacklist / circuit-open / backoff / recovery cycle deterministically.
-//! 2. Python subprocess parity — invokes the Python `CircuitBreaker11Slot`
-//!    directly via `std::process::Command` on fixed scenarios (mocking
-//!    `time.time()` and forcing `cb._registry = None`/`cb._telemetry = None`
-//!    so the comparison is deterministic) and asserts identical JSON output.
+// Parity tests for `src/circuit_breaker_11slot.rs` vs
+// `circuit_breaker_11slot.py`.
+//
+// Two test groups:
+// 1. State-machine logic — uses an injectable clock to exercise the
+//    blacklist / circuit-open / backoff / recovery cycle deterministically.
+// 2. Python subprocess parity — invokes the Python `CircuitBreaker11Slot`
+//    directly via `std::process::Command` on fixed scenarios (mocking
+//    `time.time()` and forcing `cb._registry = None`/`cb._telemetry = None`
+//    so the comparison is deterministic) and asserts identical JSON output.
 
 use std::path::PathBuf;
 use std::process::Command;

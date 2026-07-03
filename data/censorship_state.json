@@ -1,33 +1,33 @@
 {
-  "level": 3,
-  "confidence": 0.838,
-  "international_ok": true,
-  "nin_active": false,
+  "level": 5,
+  "confidence": 0.8,
+  "international_ok": false,
+  "nin_active": true,
   "tor_direct_ok": true,
   "isp_tier": "unknown",
-  "detected_at": "2026-06-28T11:35:17.570013+00:00",
+  "detected_at": "2026-07-02T19:05:37.962066+00:00",
   "probe_summary": {
-    "dns_intl": "4/4",
-    "cdn_https": "3/4",
-    "tor_da": "1/4",
-    "obfs4_port": "0/3",
-    "nin_domestic": "1/3",
-    "ooni_https": "1/3"
+    "dns_intl": "0/4",
+    "cdn_https": "4/4",
+    "tor_da": "3/4",
+    "obfs4_port": "3/3",
+    "nin_domestic": "3/3",
+    "ooni_https": "3/3"
   },
   "recommendations": {
-    "label": "Elevated — Tor Blocked",
-    "description": "Direct Tor and most VPNs blocked. Need PT.",
+    "label": "NIN Active — Internet Cut",
+    "description": "شبکه ملی فعال. International cut. CDN-fronted only.",
     "best_transports": [
-      "obfs4",
-      "webtunnel",
-      "meek_lite"
+      "snowflake",
+      "webtunnel-cdn"
     ],
     "avoid": [
       "vanilla",
-      "direct"
+      "obfs4",
+      "meek_lite-non-cdn"
     ],
-    "pack_file": "export/iran_pack.txt",
-    "urgency": "medium"
+    "pack_file": "export/iran_cut_pack.txt",
+    "urgency": "critical"
   },
-  "best_pack": "export/iran_pack.txt"
+  "best_pack": "export/iran_cut_pack.txt"
 }

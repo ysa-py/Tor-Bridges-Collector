@@ -232,6 +232,27 @@ impl IranScorer {
         total.clamp(0, 100)
     }
 
+    /// Mirror of `top_for_iran(history, n=50, min_score=0)`. Returns the
+    /// top-`n` records sorted descending by `score`; ties preserve the
+    /// order they appear in `history` (Python's `sorted(..., reverse=True)`
+    /// is stable, and `Vec::sort_by_key` is documented stable too, so no
+    /// extra index tie-break is needed).
+    pub fn top_for_iran(&self, history: &[Value], n: usize, min_score: i64) -> Vec<Value> {
+        let mut candidates: Vec<(Value, i64)> = history
+            .iter()
+            .filter_map(|v| {
+                let score = v.get("score").and_then(Value::as_i64).unwrap_or(0);
+                if score >= min_score {
+                    Some((v.clone(), score))
+                } else {
+                    None
+                }
+            })
+            .collect();
+        candidates.sort_by_key(|item| std::cmp::Reverse(item.1));
+        candidates.into_iter().take(n).map(|(v, _)| v).collect()
+    }
+
     /// Mirror of `iran_cut_pack(history)`. Returns bridges most likely
     /// to work during Iranian internet cut (NIN active).
     pub fn iran_cut_pack(&self, history: &[Value]) -> Vec<Value> {

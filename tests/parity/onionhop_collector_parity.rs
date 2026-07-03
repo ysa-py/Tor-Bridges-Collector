@@ -1,30 +1,30 @@
-//! Parity tests for `src/onionhop_collector.rs` vs `onionhop_collector.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `onionhop_collector` and calls the matching function on the same input.
-//! The Rust port is invoked on the identical input and the JSON outputs
-//! are compared for equality (parsed [`Value`] comparison so object key
-//! ordering is irrelevant).
-//!
-//! Coverage:
-//! * `is_valid` over empty, short, marker, IPv4, IPv6, and URL branches.
-//! * `strip_prefix` over `Bridge `-prefixed and bare lines.
-//! * `transport_token` over lowercased first tokens.
-//! * `detect_transport` over all six transport branches.
-//! * `detect_ip_version` over IPv6 bracket and IPv4 plain.
-//! * `is_fronted` over each `FRONTED_TOKENS` entry and a non-fronted line.
-//! * `extract_front_host` over `url=`, `fronts=`, `front=`, and missing.
-//! * `extract_endpoint` over all four pattern alternatives and the no-match
-//!   fallback.
-//! * `parse_iso_safe` over missing, invalid, sentinel, and valid input.
-//! * `entry_last_seen` over dict, string, and other types.
-//! * `load_history` over missing file, legacy string, and dict entries.
-//! * `cleanup_history` over retention boundary cases.
-//! * `record_bridge` over insert and update branches.
-//! * `fetch_bridgedb` / `fetch_delta` over mock HTTP responses (no real
-//!   network).
-//! * `test_many_with_probes` over the cap-and-filter logic with a mock
-//!   reachability probe.
+// Parity tests for `src/onionhop_collector.rs` vs `onionhop_collector.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `onionhop_collector` and calls the matching function on the same input.
+// The Rust port is invoked on the identical input and the JSON outputs
+// are compared for equality (parsed [`Value`] comparison so object key
+// ordering is irrelevant).
+//
+// Coverage:
+// * `is_valid` over empty, short, marker, IPv4, IPv6, and URL branches.
+// * `strip_prefix` over `Bridge `-prefixed and bare lines.
+// * `transport_token` over lowercased first tokens.
+// * `detect_transport` over all six transport branches.
+// * `detect_ip_version` over IPv6 bracket and IPv4 plain.
+// * `is_fronted` over each `FRONTED_TOKENS` entry and a non-fronted line.
+// * `extract_front_host` over `url=`, `fronts=`, `front=`, and missing.
+// * `extract_endpoint` over all four pattern alternatives and the no-match
+//   fallback.
+// * `parse_iso_safe` over missing, invalid, sentinel, and valid input.
+// * `entry_last_seen` over dict, string, and other types.
+// * `load_history` over missing file, legacy string, and dict entries.
+// * `cleanup_history` over retention boundary cases.
+// * `record_bridge` over insert and update branches.
+// * `fetch_bridgedb` / `fetch_delta` over mock HTTP responses (no real
+//   network).
+// * `test_many_with_probes` over the cap-and-filter logic with a mock
+//   reachability probe.
 
 use std::collections::BTreeMap;
 use std::fs;

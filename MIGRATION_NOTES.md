@@ -434,3 +434,130 @@ ReachabilityProbe paths, and the missing-file edge cases.
   which writes to stderr by default. The timestamp format is preserved;
   the output stream differs (stdout vs stderr) and the message prefix is
   `[onionhop] [stamp] msg` in both.
+
+## core/iran_bridge_prioritizer.py — Phase 6 core package
+
+`core/iran_bridge_prioritizer.py` now has a Rust replacement in
+`src/iran_bridge_prioritizer.rs`. The parity suite in
+`tests/parity/iran_bridge_prioritizer_parity.rs` invokes the original
+Python module (via a JSON payload passed over argv, with `config.*`
+attributes patched per-test) for 38 scenarios covering `score_bridge`'s
+port/transport/recency/reachability signals, every `_context_multiplier`
+config flag, weight clamping, and `prioritize_bridges`'s sort/tie-break/
+annotate behavior, and asserts byte-identical JSON output.
+
+### Flagged behavior not ported 1:1
+
+- **`_extract_transport`'s multi-match fallback**: when a raw bridge
+  line's lowercased text contains 2+ supported-transport names as
+  separate whole words, the Python original's fallback iterates the
+  `_SUPPORTED_TRANSPORTS` `set` literal, whose order depends on
+  `PYTHONHASHSEED` (not pinned anywhere in this repository; empirically
+  confirmed non-deterministic across 5 separate `python3` process runs
+  of the same set literal). The Rust port iterates
+  `SUPPORTED_TRANSPORTS` in the fixed order the Python source lists them
+  in (`snowflake, webtunnel, obfs4, meek_lite, vanilla`) as a
+  deterministic substitute. Parity tests only assert exact matches for
+  the (far more common) at-most-one-match case, which Python itself
+  resolves deterministically.
+
+## core/nin_selector.py — Phase 6 core package
+
+`core/nin_selector.py` now has a Rust replacement in
+`src/nin_selector.rs`. The parity suite in
+`tests/parity/nin_selector_parity.rs` invokes the original Python module
+for 34 scenarios covering `is_nin_eligible`'s every branch,
+`rescore_for_nin`'s multiplier/clamp/sort behavior, and `build_nin_pack`'s
+full 3-file I/O pipeline (dedup across two input paths, empty-input
+short circuit), and asserts byte-identical JSON output.
+
+### Flagged behavior not ported 1:1
+
+- **Fallible score coercion (deliberate `Result`, not a silent default)**:
+  `is_nin_eligible`/`rescore_for_nin` read `composite_score`/`score` via
+  `float(record.get("composite_score", record.get("score", default)))`
+  with no `or default` guard — an explicit JSON `null` under
+  `composite_score` propagates into an uncaught Python `TypeError`. The
+  Rust port surfaces this as `Result<_, NinSelectorError>` rather than
+  silently defaulting (contrast with `ml_predictor.rs`'s
+  `python_float_or`, which *does* silently default — that Python
+  original has an `or default` guard this one lacks). No writer in this
+  codebase was found to emit `composite_score: null`, but the JSON files
+  this module reads are a plausible target for hand-editing, so this
+  isn't a provable-unreachable guarantee the way `config.py`'s load-time
+  coercion is.
+- **Regex `$`-anchor fix**: Python's `re` `$` (without `MULTILINE`)
+  matches at end-of-string *or* immediately before exactly one trailing
+  `\n`; Rust's `regex` crate `$` matches only at the absolute end by
+  default (empirically confirmed divergent on `"cdn.fastly.net\n"`).
+  Every `NIN_SAFE_DOMAIN_PATTERNS` entry ends in `$`. Fixed in
+  `domain_is_cdn_safe` by stripping at most one trailing `\n` before
+  matching, rather than left as an unfixed edge case.
+- **`build_nin_pack`'s `generated_at`/`# Generated:` timestamp**: the
+  Python original calls `datetime.now(UTC)` twice, independently, for
+  these two fields — they can differ by microseconds even within one
+  Python run. `build_nin_pack_with_paths` takes one `now` parameter and
+  uses it for both, which is a strict improvement (pack file and summary
+  always mutually consistent) rather than a capability loss, since
+  neither Python call has a single reproducible "correct" value to begin
+  with. Parity tests compare every other field for exact equality and
+  exclude these two from the comparison rather than asserting a
+  byte-exact match against a non-reproducible wall-clock read.
+
+## core/formatter.py — Phase 6 core package
+
+`core/formatter.py` now has a Rust replacement in `src/formatter.rs`
+(plus a small addition, `top_for_iran`, to the previously-ported
+`scorer.rs`). The parity suite in `tests/parity/formatter_parity.rs`
+invokes the original Python module for 8 scenarios covering the full
+`export_all` + `update_readme` pipeline end-to-end (all 10 output files),
+an empty-history short circuit, and a dedicated test that deliberately
+demonstrates the ordering divergence noted below rather than avoiding
+it, and asserts byte-identical output (JSON fields and text-file bodies)
+modulo documented wall-clock-dependent exclusions.
+
+New Cargo dependency: `zip = "=0.6.6"` (mirrors Python's stdlib
+`zipfile`; no stdlib equivalent exists in Rust).
+
+### Flagged behavior not ported 1:1
+
+- **`score_reasons`/`recommended_priority` always emitted as Python
+  defaults**: `_export_json_api` reads these two fields from each
+  history record, but `history.rs`'s `BridgeRecord` doesn't model
+  either one. Traced every write path into `core/history.py`'s
+  persisted `self._db` (`add_bridge`, `update_test`, `update_score` —
+  the only three) and confirmed none of them ever sets either field, so
+  `v.get("score_reasons", [])`/`v.get("recommended_priority")` evaluate
+  to their Python defaults (`[]`/`None`) for every record the current
+  system can actually produce. This port emits those same defaults
+  unconditionally — not an approximation, the actual value for every
+  real input. Separately (and out of scope to fix here): `BridgeRecord`'s
+  fixed-field shape would also silently drop these fields from a
+  hand-edited `history.json`, a pre-existing property of `history.rs`
+  from a prior session.
+- **`history.rs`'s `BTreeMap` vs. Python's insertion-ordered `dict`**:
+  `HistoryManager` stores records in a `BTreeMap` (key-sorted iteration);
+  Python's `dict` preserves insertion order. Invisible when every record
+  has a distinct sort key; becomes a different tie-break order when 2+
+  records tie on every field a stable sort orders by — confirmed in
+  `_export_json_api`'s per-transport grouping and `iran_cut_pack`'s
+  fixed-bucket scoring (independent of the record's own `.score` field,
+  so distinct `.score` values alone don't avoid this). Root cause is
+  `history.rs`'s storage-type choice from a prior session, not
+  introduced by `formatter.rs`; fixing it (e.g. giving `HistoryManager`
+  an insertion-order-preserving structure) is a separate, deliberate
+  decision out of scope for this module. `formatter_parity.rs`'s
+  `tie_break_order_documented_divergence` test demonstrates the exact
+  condition that triggers it.
+- **ZIP archive entry order**: `_build_zip` iterates `os.listdir()`,
+  whose order is OS/filesystem-dependent and unspecified even in Python
+  itself. Following the same fix already applied to
+  `iran_anti_siam.rs::load_bridges_txt`, `build_zip` sorts directory
+  entries by filename for deterministic Rust output. Parity tests
+  compare the *set* of archive entries, not their order.
+- **`_save_line`'s unused `transport` parameter**: confirmed by full
+  read that Python's `_save_line(raw, transport)` never references
+  `transport` in its body. The Rust `save_line(raw)` drops the
+  parameter — not a capability loss, since it provably had zero effect
+  on any output in the original either.
+

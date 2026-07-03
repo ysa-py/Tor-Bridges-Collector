@@ -1,22 +1,22 @@
-//! Parity tests for `src/bridge_scoring.rs` vs `sources/bridge_scoring.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `sources.bridge_scoring` and calls the matching function on the same
-//! input. The Rust port is invoked on the identical input and the JSON
-//! outputs are compared for equality (parsed [`Value`] comparison so object
-//! key ordering is irrelevant).
-//!
-//! Coverage:
-//! * `score_bridge` over the high-DPI / calm-DPI branches, every transport
-//!   bonus, RIPE reachability/tested combinations, PT-status positive and
-//!   negative, probe pass/fail, latency bands, freshness bands, high-risk
-//!   and Iran-preferred ports, scheduler-result merging, and the invalid
-//!   telemetry short-circuit.
-//! * `recommended_priority` over the 80/55 threshold boundaries.
-//! * `load_telemetry` / `load_scheduler_results` over happy path, missing
-//!   file, malformed JSON, and non-object root.
-//! * `coerce_port` / `find_endpoint_port` (via `score_bridge` port branches)
-//!   over the documented edge cases.
+// Parity tests for `src/bridge_scoring.rs` vs `sources/bridge_scoring.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `sources.bridge_scoring` and calls the matching function on the same
+// input. The Rust port is invoked on the identical input and the JSON
+// outputs are compared for equality (parsed [`Value`] comparison so object
+// key ordering is irrelevant).
+//
+// Coverage:
+// * `score_bridge` over the high-DPI / calm-DPI branches, every transport
+//   bonus, RIPE reachability/tested combinations, PT-status positive and
+//   negative, probe pass/fail, latency bands, freshness bands, high-risk
+//   and Iran-preferred ports, scheduler-result merging, and the invalid
+//   telemetry short-circuit.
+// * `recommended_priority` over the 80/55 threshold boundaries.
+// * `load_telemetry` / `load_scheduler_results` over happy path, missing
+//   file, malformed JSON, and non-object root.
+// * `coerce_port` / `find_endpoint_port` (via `score_bridge` port branches)
+//   over the documented edge cases.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -119,9 +119,13 @@ fn rust_score_bridge(
     telemetry: Option<&Value>,
     scheduler_results: Option<&Value>,
 ) -> Value {
-    let (score, reasons) =
-        score_bridge(record, telemetry, Some(parse_utc(NOW_ISO)), scheduler_results)
-            .expect("rust score_bridge succeeds");
+    let (score, reasons) = score_bridge(
+        record,
+        telemetry,
+        Some(parse_utc(NOW_ISO)),
+        scheduler_results,
+    )
+    .expect("rust score_bridge succeeds");
     json!({"score": score, "reasons": reasons})
 }
 
@@ -129,7 +133,12 @@ fn rust_score_bridge(
 // score_bridge parity (Python subprocess on every case)
 // ─────────────────────────────────────────────────────────────────────────────
 
-fn assert_score_bridge_parity(label: &str, record: Value, telemetry: Value, scheduler: Option<Value>) {
+fn assert_score_bridge_parity(
+    label: &str,
+    record: Value,
+    telemetry: Value,
+    scheduler: Option<Value>,
+) {
     let py_cmd = json!({
         "op": "score_bridge",
         "record": record,
@@ -157,7 +166,8 @@ fn parity_score_bridge_high_dpi_webtunnel_full_record() {
         "RIPETested": true,
         "pt_status": "ok",
     });
-    let telemetry = json!({"counters": {"dpi_total": 4, "dpi_camouflaged": 3, "self_heal_total": 1}});
+    let telemetry =
+        json!({"counters": {"dpi_total": 4, "dpi_camouflaged": 3, "self_heal_total": 1}});
     assert_score_bridge_parity("high_dpi_webtunnel", record, telemetry, None);
 }
 
@@ -176,7 +186,8 @@ fn parity_score_bridge_high_dpi_obfs4_failed_probe() {
         "RIPETested": true,
         "pt_status": "failed",
     });
-    let telemetry = json!({"counters": {"dpi_total": 4, "dpi_camouflaged": 3, "self_heal_total": 1}});
+    let telemetry =
+        json!({"counters": {"dpi_total": 4, "dpi_camouflaged": 3, "self_heal_total": 1}});
     assert_score_bridge_parity("high_dpi_obfs4_failed", record, telemetry, None);
 }
 
@@ -235,12 +246,7 @@ fn parity_score_bridge_scheduler_merge_overrides_record_fields() {
         ]
     });
     let telemetry = json!({"counters": {}});
-    assert_score_bridge_parity(
-        "scheduler_merge",
-        record,
-        telemetry,
-        Some(scheduler),
-    );
+    assert_score_bridge_parity("scheduler_merge", record, telemetry, Some(scheduler));
 }
 
 #[test]
@@ -358,7 +364,11 @@ fn parity_recommended_priority_threshold_boundaries() {
     for score in [0.0_f64, 1.0, 54.99, 55.0, 79.99, 80.0, 100.0] {
         let py = python_bridge_scoring(&json!({"op": "recommended_priority", "score": score}));
         let rs = recommended_priority(score);
-        assert_eq!(py["priority"].as_str().unwrap(), rs, "priority mismatch at {score}");
+        assert_eq!(
+            py["priority"].as_str().unwrap(),
+            rs,
+            "priority mismatch at {score}"
+        );
     }
 }
 
@@ -462,13 +472,8 @@ fn parity_load_scheduler_results_non_object_root_returns_empty_object() {
 fn rust_score_bridge_invalid_counter_returns_typed_error() {
     let record = json!({"transport": "snowflake", "last_seen": NOW_ISO});
     let telemetry = json!({"counters": {"dpi_total": "abc"}});
-    let err = score_bridge(
-        &record,
-        Some(&telemetry),
-        Some(parse_utc(NOW_ISO)),
-        None,
-    )
-    .expect_err("non-numeric counter must surface typed error");
+    let err = score_bridge(&record, Some(&telemetry), Some(parse_utc(NOW_ISO)), None)
+        .expect_err("non-numeric counter must surface typed error");
     assert!(matches!(
         err,
         BridgeScoringError::InvalidCounterValue { ref field, .. } if field == "dpi_total"

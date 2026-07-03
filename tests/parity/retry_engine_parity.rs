@@ -1,16 +1,37 @@
-//! Parity tests for `src/retry_engine.rs` vs `gateway/retry_engine.py`.
-//!
-//! The Python `RetryEngine.decide()` uses non-deterministic jitter in
-//! `_compute_backoff`, so we inject a deterministic backoff function on
-//! both sides (Python via monkeypatching, Rust via the `with_backoff`
-//! constructor) and compare the resulting `RetryDecision` field-by-field.
+// Parity tests for `src/retry_engine.rs` vs `gateway/retry_engine.py`.
+//
+// The Python `RetryEngine.decide()` uses non-deterministic jitter in
+// `_compute_backoff`, so we inject a deterministic backoff function on
+// both sides (Python via monkeypatching, Rust via the `with_backoff`
+// constructor) and compare the resulting `RetryDecision` field-by-field.
 
 use std::process::Command;
 
 use serde_json::{json, Value};
-use torshield_ir_ultra::retry_engine::{
-    default_backoff, RetryAction, RetryConfig, RetryEngine,
-};
+use torshield_ir_ultra::retry_engine::{default_backoff, RetryAction, RetryConfig, RetryEngine};
+
+/// Normalize numeric JSON values so `0` and `0.0` compare equal.
+/// Python's `json.dumps` emits `0` for ints and `0.0` for floats; serde_json
+/// preserves the distinction. We collapse both to f64 for parity comparison.
+fn normalize_numbers(value: Value) -> Value {
+    match value {
+        Value::Number(n) => {
+            let f = n
+                .as_f64()
+                .unwrap_or_else(|| panic!("JSON number not f64-convertible: {n:?}"));
+            json!(f)
+        }
+        Value::Array(arr) => Value::Array(arr.into_iter().map(normalize_numbers).collect()),
+        Value::Object(obj) => {
+            let mapped: serde_json::Map<String, Value> = obj
+                .into_iter()
+                .map(|(k, v)| (k, normalize_numbers(v)))
+                .collect();
+            Value::Object(mapped)
+        }
+        other => other,
+    }
+}
 
 fn python_executable() -> std::path::PathBuf {
     if let Ok(path) = std::env::var("PYTHON") {
@@ -81,8 +102,12 @@ print(json.dumps(out, sort_keys=True, separators=(",", ":")))
         "python helper failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    serde_json::from_slice(&output.stdout)
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", String::from_utf8_lossy(&output.stdout)))
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            String::from_utf8_lossy(&output.stdout)
+        )
+    })
 }
 
 fn rust_decide(
@@ -94,21 +119,23 @@ fn rust_decide(
     delay_override: f64,
 ) -> Value {
     let engine = RetryEngine::with_backoff(RetryConfig::default(), move |_| delay_override);
-    engine.decide(error_code, attempt, provider, slot, model).to_json()
+    engine
+        .decide(error_code, attempt, provider, slot, model)
+        .to_json()
 }
 
 #[test]
 fn parity_http_400_rotates_model() {
     let py = python_decide(400, 0, "cloudflare", 1, "llama-3", 0.0);
     let rs = rust_decide(400, 0, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
 fn parity_http_429_retry_same_with_backoff() {
     let py = python_decide(429, 0, "cloudflare", 1, "llama-3", 2.5);
     let rs = rust_decide(429, 0, "cloudflare", 1, "llama-3", 2.5);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
@@ -116,47 +143,47 @@ fn parity_http_429_max_retries_rotate_slot() {
     // Python default max_attempts_429 = 5 → attempt=5 triggers rotate
     let py = python_decide(429, 5, "cloudflare", 1, "llama-3", 0.0);
     let rs = rust_decide(429, 5, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
 fn parity_http_503_retry_same_then_rotate() {
     let py0 = python_decide(503, 0, "cloudflare", 1, "llama-3", 1.5);
     let rs0 = rust_decide(503, 0, "cloudflare", 1, "llama-3", 1.5);
-    assert_eq!(py0, rs0);
+    assert_eq!(normalize_numbers(py0), normalize_numbers(rs0));
 
     // Python default max_attempts_5xx = 3 → attempt=3 triggers rotate
     let py3 = python_decide(503, 3, "cloudflare", 1, "llama-3", 0.0);
     let rs3 = rust_decide(503, 3, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py3, rs3);
+    assert_eq!(normalize_numbers(py3), normalize_numbers(rs3));
 }
 
 #[test]
 fn parity_http_401_rotates_slot() {
     let py = python_decide(401, 0, "cloudflare", 1, "llama-3", 0.0);
     let rs = rust_decide(401, 0, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
 fn parity_http_403_rotates_slot() {
     let py = python_decide(403, 0, "cloudflare", 1, "llama-3", 0.0);
     let rs = rust_decide(403, 0, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
 fn parity_timeout_rotates_immediately() {
     let py = python_decide(0, 0, "cloudflare", 1, "llama-3", 0.0);
     let rs = rust_decide(0, 0, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
 fn parity_unknown_code_rotates_slot() {
     let py = python_decide(418, 0, "cloudflare", 1, "llama-3", 0.0);
     let rs = rust_decide(418, 0, "cloudflare", 1, "llama-3", 0.0);
-    assert_eq!(py, rs);
+    assert_eq!(normalize_numbers(py), normalize_numbers(rs));
 }
 
 #[test]
@@ -185,8 +212,17 @@ fn decision_json_shape_includes_all_python_dataclass_fields() {
     let engine = RetryEngine::new(RetryConfig::default());
     let json = engine.decide(429, 0, "", 0, "").to_json();
     let obj = json.as_object().expect("decision must serialize to object");
-    for key in ["action", "delay_secs", "reason", "attempt_number", "max_attempts"] {
-        assert!(obj.contains_key(key), "missing field {key} in decision JSON");
+    for key in [
+        "action",
+        "delay_secs",
+        "reason",
+        "attempt_number",
+        "max_attempts",
+    ] {
+        assert!(
+            obj.contains_key(key),
+            "missing field {key} in decision JSON"
+        );
     }
     // Smoke-check a specific value to ensure the JSON isn't all-null.
     assert_eq!(json["action"], json!("retry_same"));

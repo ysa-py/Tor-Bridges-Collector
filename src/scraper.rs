@@ -682,9 +682,10 @@ pub fn moat_headers() -> Vec<(String, String)> {
 /// returns `[(line, transport)]` for each valid line. Non-list values and
 /// non-string elements are skipped.
 pub fn parse_moat_response(data: &Value) -> Result<Vec<(String, String)>, ScraperError> {
-    let bridges_section = match data.get("bridges") {
+    let empty_map_holder = Map::new();
+    let bridges_section: &Map<String, Value> = match data.get("bridges") {
         Some(Value::Object(map)) => map,
-        Some(Value::Null) | None => &Map::new() as &Map<String, Value>,
+        Some(Value::Null) | None => &empty_map_holder,
         Some(other) => {
             return Err(ScraperError::MoatNotObject {
                 actual: type_name_of_value(other),

@@ -1,16 +1,14 @@
-//! Parity tests for `src/dt_utils.rs` vs `core/dt_utils.py`.
-//!
-//! Each test invokes a fresh Python interpreter on `core/dt_utils.py`,
-//! captures the resulting ISO-8601 string, and asserts byte-identical
-//! output from the Rust port. Covers every branch documented in the
-//! Phase 0 contract: aware offsets, naive timestamps, malformed input,
-//! None values, custom fallbacks, and the `Z` suffix normalization.
+// Parity tests for `src/dt_utils.rs` vs `core/dt_utils.py`.
+//
+// Each test invokes a fresh Python interpreter on `core/dt_utils.py`,
+// captures the resulting ISO-8601 string, and asserts byte-identical
+// output from the Rust port. Covers every branch documented in the
+// Phase 0 contract: aware offsets, naive timestamps, malformed input,
+// None values, custom fallbacks, and the `Z` suffix normalization.
 
 use std::process::Command;
 
-use torshield_ir_ultra::dt_utils::{
-    coerce_utc_dt, parse_dt, DEFAULT_FALLBACK,
-};
+use torshield_ir_ultra::dt_utils::{coerce_utc_dt, parse_dt, DEFAULT_FALLBACK};
 
 fn python_executable() -> &'static str {
     if let Ok(path) = std::env::var("PYTHON") {
@@ -66,9 +64,8 @@ fn parity_parse_dt_naive_string() {
 
 #[test]
 fn parity_parse_dt_malformed_returns_epoch() {
-    let py = run_python(
-        "from core.dt_utils import parse_dt; print(parse_dt('not-a-date').isoformat())",
-    );
+    let py =
+        run_python("from core.dt_utils import parse_dt; print(parse_dt('not-a-date').isoformat())");
     let rs = parse_dt("not-a-date").to_rfc3339();
     assert_eq!(py, rs);
 }

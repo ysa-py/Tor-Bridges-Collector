@@ -298,7 +298,7 @@ m.main()
     let py_report_actual = tmp.join("data").join("ech_report.json");
     let py_export_actual = tmp.join("export").join("ech_top_bridges.txt");
 
-    let py_text = std::fs::read_to_string(&py_report_actual).unwrap();
+    let py_text = std::fs::read_to_string(py_report_actual).unwrap();
     let rs_text = std::fs::read_to_string(&rs_report).unwrap();
 
     let py_json: Value = serde_json::from_str(&py_text).unwrap();
@@ -307,7 +307,7 @@ m.main()
 
     // Export file: both should exist (or both not exist). If exists, content
     // must match modulo trailing newline.
-    let py_export_text = std::fs::read_to_string(&py_export_actual).unwrap_or_default();
+    let py_export_text = std::fs::read_to_string(py_export_actual).unwrap_or_default();
     let rs_export_text = std::fs::read_to_string(&rs_export).unwrap_or_default();
     assert_eq!(py_export_text, rs_export_text, "export file mismatch");
 }

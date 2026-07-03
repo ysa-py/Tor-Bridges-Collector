@@ -1,27 +1,27 @@
-//! Parity tests for `src/adaptive_transport.rs` vs `adaptive_transport.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `adaptive_transport` and calls the matching function on the same input.
-//! The Rust port is invoked on the identical input and the JSON outputs are
-//! compared for equality (parsed [`Value`] comparison so object key ordering
-//! is irrelevant). Timestamp fields (`updated_at`, `generated_at`, `ts`) are
-//! stripped from both sides before comparison because the Python original
-//! calls `datetime.now(UTC)` internally and cannot be injected.
-//!
-//! Coverage:
-//! * `collect_transport_stats` over working/blocked/unknown/missing-transport
-//!   branches.
-//! * `compute_weights` over insufficient-samples, zero-total, and
-//!   normal-normalization branches.
-//! * `weights_to_scores` over clamp-to-max, clamp-to-min, default-weight, and
-//!   banker's-rounding branches.
-//! * `save_weights` writes the payload + history file (timestamp-stripped
-//!   parity).
-//! * `save_best_transports` writes the ranked payload (timestamp-stripped
-//!   parity).
-//! * `main` end-to-end with bridge records and with empty records.
-//! * `select_transport_for_nin_cut` over all 4 tiers, sort, and dedup
-//!   (timestamp-stripped parity, run from a temp CWD).
+// Parity tests for `src/adaptive_transport.rs` vs `adaptive_transport.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `adaptive_transport` and calls the matching function on the same input.
+// The Rust port is invoked on the identical input and the JSON outputs are
+// compared for equality (parsed [`Value`] comparison so object key ordering
+// is irrelevant). Timestamp fields (`updated_at`, `generated_at`, `ts`) are
+// stripped from both sides before comparison because the Python original
+// calls `datetime.now(UTC)` internally and cannot be injected.
+//
+// Coverage:
+// * `collect_transport_stats` over working/blocked/unknown/missing-transport
+//   branches.
+// * `compute_weights` over insufficient-samples, zero-total, and
+//   normal-normalization branches.
+// * `weights_to_scores` over clamp-to-max, clamp-to-min, default-weight, and
+//   banker's-rounding branches.
+// * `save_weights` writes the payload + history file (timestamp-stripped
+//   parity).
+// * `save_best_transports` writes the ranked payload (timestamp-stripped
+//   parity).
+// * `main` end-to-end with bridge records and with empty records.
+// * `select_transport_for_nin_cut` over all 4 tiers, sort, and dedup
+//   (timestamp-stripped parity, run from a temp CWD).
 
 use std::collections::BTreeMap;
 use std::fs;

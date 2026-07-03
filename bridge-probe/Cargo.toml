@@ -24,10 +24,10 @@ serde_json         = "1"
 # Fix B (workflow):   upgrade toolchain from '1.78' to 'stable'.
 # Both fixes applied simultaneously for belt-and-suspenders safety.
 # ────────────────────────────────────────────────────────────────────────────
-clap               = { version = ">=4.5.0, <4.6", features = ["derive"] }
+clap               = { version = "=4.5.4", features = ["derive"] }
 # Hard pin clap_lex as well — prevents indirect resolution to 1.1.0
 # even if another transitive dependency requests it.
-clap_lex           = ">=0.7.0, <1.0"
+clap_lex           = "=0.7.4"
 #
 tracing            = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }

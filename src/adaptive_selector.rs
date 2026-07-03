@@ -552,6 +552,14 @@ fn load_by_line(path: &Path, list_field: &str, key_field: &str) -> BTreeMap<Stri
 }
 
 #[cfg(test)]
+// env::set_var/remove_var became unsafe fn in Rust 1.82 (process-wide
+// mutation can race with other threads reading the environment via libc).
+// These tests correctly wrap the calls in unsafe blocks with SAFETY comments
+// for that (the toolchain CI actually builds with). On older toolchains —
+// e.g. the 1.75.0 fallback used in sandboxes where rustup is network-blocked
+// — the wrapper is a no-op lint false-positive rather than a real problem,
+// so it's allowed here rather than stripped, to stay correct on both.
+#[allow(unused_unsafe)]
 mod tests {
     use super::*;
 

@@ -1,21 +1,21 @@
-//! Parity tests for `src/adaptive_selector.rs` vs `adaptive_selector.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `adaptive_selector` and calls the matching method on the same input. The
-//! Rust port is invoked on the identical input and the JSON outputs are
-//! compared for equality (parsed [`Value`] comparison so object key ordering
-//! is irrelevant).
-//!
-//! Coverage:
-//! * `score` over the empty-data, snowflake-tcp-boost, iran-likely-working,
-//!   iran-asn-blocked, CDN-good, domain-front-degraded, ooni-factor override,
-//!   ripe-tested/reachable, pt-status positive/negative, failure-penalty
-//!   (open/half_open circuit), transport preference, and invalid-ooni-factor
-//!   branches.
-//! * `select` over disabled, enabled-empty, enabled-filter, and enabled-sort
-//!   branches.
-//! * `AdaptiveConfig.from_env` over default and overridden environments.
-//! * `is_cdn_good` over the CDN-org and flag-based branches.
+// Parity tests for `src/adaptive_selector.rs` vs `adaptive_selector.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `adaptive_selector` and calls the matching method on the same input. The
+// Rust port is invoked on the identical input and the JSON outputs are
+// compared for equality (parsed [`Value`] comparison so object key ordering
+// is irrelevant).
+//
+// Coverage:
+// * `score` over the empty-data, snowflake-tcp-boost, iran-likely-working,
+//   iran-asn-blocked, CDN-good, domain-front-degraded, ooni-factor override,
+//   ripe-tested/reachable, pt-status positive/negative, failure-penalty
+//   (open/half_open circuit), transport preference, and invalid-ooni-factor
+//   branches.
+// * `select` over disabled, enabled-empty, enabled-filter, and enabled-sort
+//   branches.
+// * `AdaptiveConfig.from_env` over default and overridden environments.
+// * `is_cdn_good` over the CDN-org and flag-based branches.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;

@@ -1,19 +1,19 @@
-//! Smoke / parity tests for `src/telemetry_watcher.rs`.
-//!
-//! These tests exercise the public API surface of the Rust port of
-//! `telemetry_watcher.py`. The Python original does not expose the pure
-//! datetime helpers (`irst_offset`, `min_datetime_utc`, `parse_ts`,
-//! `try_parse_ts`) as standalone functions — those are Rust-side extracts
-//! used internally. The parity contract here therefore covers the
-//! state-recording API (`log_dpi_event`, `log_slot_failure`, `log_self_heal`)
-//! and `generate_daily_report`, which are the public surface shared with
-//! the Python module.
+// Smoke / parity tests for `src/telemetry_watcher.rs`.
+//
+// These tests exercise the public API surface of the Rust port of
+// `telemetry_watcher.py`. The Python original does not expose the pure
+// datetime helpers (`irst_offset`, `min_datetime_utc`, `parse_ts`,
+// `try_parse_ts`) as standalone functions — those are Rust-side extracts
+// used internally. The parity contract here therefore covers the
+// state-recording API (`log_dpi_event`, `log_slot_failure`, `log_self_heal`)
+// and `generate_daily_report`, which are the public surface shared with
+// the Python module.
 
 use serde_json::json;
 
 use torshield_ir_ultra::telemetry_watcher::{
-    generate_daily_report, get_telemetry, log_dpi_event, log_self_heal, log_slot_failure,
-    try_parse_ts, irst_offset, min_datetime_utc, parse_ts,
+    generate_daily_report, get_telemetry, irst_offset, log_dpi_event, log_self_heal,
+    log_slot_failure, min_datetime_utc, parse_ts, try_parse_ts,
 };
 
 #[test]

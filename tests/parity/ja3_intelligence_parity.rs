@@ -1,23 +1,23 @@
-//! Parity tests for `src/ja3_intelligence.rs` vs `ja3_intelligence.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `ja3_intelligence` and calls the matching function on the same input.
-//! The Rust port is invoked on the identical input and the JSON outputs
-//! are compared for equality (parsed [`Value`] comparison so object key
-//! ordering is irrelevant).
-//!
-//! Coverage:
-//! * `JA3Intel.lookup` over known, unknown, and case-insensitive hashes.
-//! * `JA3Intel.score` over database, safe-hash, and unknown branches.
-//! * `JA3Intel.is_critical` over critical+confirmed, high+confirmed, and
-//!   unknown branches.
-//! * `JA3Intel.transport_default_risk` over known and unknown transports.
-//! * `JA3Intel.port_risk` over high-risk and normal ports.
-//! * `JA3Intel.all_critical_hashes`.
-//! * `JA3Intel.summary`.
-//! * `rotate_ja3_fingerprints` over empty baseline, blocked hashes,
-//!   invalid JSON baseline, and missing baseline file (with mock `datetime`
-//!   and `random.randint` for deterministic output).
+// Parity tests for `src/ja3_intelligence.rs` vs `ja3_intelligence.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `ja3_intelligence` and calls the matching function on the same input.
+// The Rust port is invoked on the identical input and the JSON outputs
+// are compared for equality (parsed [`Value`] comparison so object key
+// ordering is irrelevant).
+//
+// Coverage:
+// * `JA3Intel.lookup` over known, unknown, and case-insensitive hashes.
+// * `JA3Intel.score` over database, safe-hash, and unknown branches.
+// * `JA3Intel.is_critical` over critical+confirmed, high+confirmed, and
+//   unknown branches.
+// * `JA3Intel.transport_default_risk` over known and unknown transports.
+// * `JA3Intel.port_risk` over high-risk and normal ports.
+// * `JA3Intel.all_critical_hashes`.
+// * `JA3Intel.summary`.
+// * `rotate_ja3_fingerprints` over empty baseline, blocked hashes,
+//   invalid JSON baseline, and missing baseline file (with mock `datetime`
+//   and `random.randint` for deterministic output).
 
 use std::fs;
 use std::path::PathBuf;

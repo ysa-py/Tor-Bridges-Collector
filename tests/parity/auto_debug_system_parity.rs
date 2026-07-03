@@ -1,18 +1,16 @@
-//! Smoke / parity tests for `src/auto_debug_system.rs`.
-//!
-//! The Python original (`auto_debug_system.py`, 826 lines) runs live system
-//! diagnostics (Python syntax checks via `ast.parse`, YAML workflow linting,
-//! AI gateway health probes, etc.) which are not safe to invoke from a
-//! parity test in CI without significant environmental setup. These tests
-//! therefore exercise the pure decision logic (`generate_recommendations`)
-//! and verify the public API surface compiles and runs without panicking
-//! on minimal inputs.
+// Smoke / parity tests for `src/auto_debug_system.rs`.
+//
+// The Python original (`auto_debug_system.py`, 826 lines) runs live system
+// diagnostics (Python syntax checks via `ast.parse`, YAML workflow linting,
+// AI gateway health probes, etc.) which are not safe to invoke from a
+// parity test in CI without significant environmental setup. These tests
+// therefore exercise the pure decision logic (`generate_recommendations`)
+// and verify the public API surface compiles and runs without panicking
+// on minimal inputs.
 
 use serde_json::json;
 
-use torshield_ir_ultra::auto_debug_system::{
-    generate_recommendations, AutoDebugSystem,
-};
+use torshield_ir_ultra::auto_debug_system::{generate_recommendations, AutoDebugSystem};
 
 #[test]
 fn generate_recommendations_empty_input_returns_vec_without_panic() {
@@ -31,7 +29,10 @@ fn generate_recommendations_ai_gateway_error_yields_recommendation() {
         "severity": "critical"
     })];
     let recs = generate_recommendations(&errors, &[]);
-    assert!(!recs.is_empty(), "ai_gateway error must yield at least one recommendation");
+    assert!(
+        !recs.is_empty(),
+        "ai_gateway error must yield at least one recommendation"
+    );
     // The recommendation should mention AI Gateway, slot, rotation, or
     // fallback engines. Match the Python original's actual phrasing.
     let rec_str = serde_json::to_string(&recs).unwrap_or_default();

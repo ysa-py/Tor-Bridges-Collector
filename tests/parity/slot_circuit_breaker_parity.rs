@@ -1,12 +1,12 @@
-//! Parity tests for `src/slot_circuit_breaker.rs` vs
-//! `circuit_breaker/slot_circuit_breaker.py`.
-//!
-//! Two test groups:
-//! 1. State-machine logic — uses an injectable clock to exercise the
-//!    CLOSED → OPEN → HALF_OPEN → CLOSED/OPEN cycle deterministically.
-//! 2. Python subprocess parity — invokes the Python `SlotCircuitBreaker`
-//!    directly via `std::process::Command` on fixed scenarios and asserts
-//!    identical JSON output (state strings, booleans, status dict).
+// Parity tests for `src/slot_circuit_breaker.rs` vs
+// `circuit_breaker/slot_circuit_breaker.py`.
+//
+// Two test groups:
+// 1. State-machine logic — uses an injectable clock to exercise the
+//    CLOSED → OPEN → HALF_OPEN → CLOSED/OPEN cycle deterministically.
+// 2. Python subprocess parity — invokes the Python `SlotCircuitBreaker`
+//    directly via `std::process::Command` on fixed scenarios and asserts
+//    identical JSON output (state strings, booleans, status dict).
 
 use std::collections::BTreeSet;
 use std::path::PathBuf;

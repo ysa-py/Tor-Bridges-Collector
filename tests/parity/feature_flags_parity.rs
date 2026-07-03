@@ -1,19 +1,23 @@
-//! Parity tests for `src/feature_flags.rs` vs `config/feature_flags.py`.
-//!
-//! Each test invokes a fresh Python interpreter on `config/feature_flags.py`,
-//! captures the JSON output of `get_all_config()`, and asserts byte-identical
-//! output from the Rust port under the same environment.
+// Parity tests for `src/feature_flags.rs` vs `config/feature_flags.py`.
+//
+// Each test invokes a fresh Python interpreter on `config/feature_flags.py`,
+// captures the JSON output of `get_all_config()`, and asserts byte-identical
+// output from the Rust port under the same environment.
 
 use std::{collections::BTreeMap, process::Command};
 
 use serde_json::Value;
-use torshield_ir_ultra::feature_flags::{FeatureFlags, EnvMap};
+use torshield_ir_ultra::feature_flags::{EnvMap, FeatureFlags};
 
 fn python_executable() -> PathBuf {
     if let Ok(path) = std::env::var("PYTHON") {
         return PathBuf::from(path);
     }
-    for candidate in ["/root/.pyenv/shims/python", "/usr/local/bin/python", "/usr/bin/python3"] {
+    for candidate in [
+        "/root/.pyenv/shims/python",
+        "/usr/local/bin/python",
+        "/usr/bin/python3",
+    ] {
         let path = PathBuf::from(candidate);
         if path.exists() {
             return path;
@@ -32,13 +36,18 @@ print(json.dumps(get_all_config(), sort_keys=True, separators=(",", ":")))
 "#;
     let repo_root = env!("CARGO_MANIFEST_DIR");
     let mut command = Command::new(python_executable());
-    command.current_dir(repo_root).env_clear().env("PYTHONPATH", repo_root);
+    command
+        .current_dir(repo_root)
+        .env_clear()
+        .env("PYTHONPATH", repo_root);
     for (key, value) in env {
         command.env(key, value);
     }
-    let output = command.arg("-c").arg(script).output().unwrap_or_else(|err| {
-        panic!("python feature_flags parity helper must execute: {err}")
-    });
+    let output = command
+        .arg("-c")
+        .arg(script)
+        .output()
+        .unwrap_or_else(|err| panic!("python feature_flags parity helper must execute: {err}"));
     assert!(
         output.status.success(),
         "python helper failed: {}",
@@ -89,7 +98,10 @@ fn parity_overridden_flags_and_params() {
         ("IRST_HIGH_CENSORSHIP_END", "2"),
         ("IRST_ULTRA_STEALTH_START", "21"),
         ("IRST_ULTRA_STEALTH_END", "23"),
-        ("PROVIDER_FALLBACK_ORDER", "cerebras,portkey,cloudflare_ai_gateway"),
+        (
+            "PROVIDER_FALLBACK_ORDER",
+            "cerebras,portkey,cloudflare_ai_gateway",
+        ),
         ("LOG_DIR", "custom_logs"),
         ("LOG_MAX_MB", "25"),
     ]);

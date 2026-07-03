@@ -1,17 +1,17 @@
-//! Parity tests for `src/nin_internet_cut_classifier.rs` vs
-//! `nin_internet_cut_classifier.py`.
-//!
-//! Two test groups:
-//! 1. Pure-function parity — invokes the Python `_parse_bridge` and
-//!    `_classify` helpers directly via `std::process::Command` on fixed
-//!    inputs and asserts identical JSON output.
-//! 2. End-to-end pipeline parity — runs both the Python `main()` and the
-//!    Rust [`NINInternetCutClassifier::run`] on the same temp-directory
-//!    bridge sources with a mocked clock and compares the output files and
-//!    report JSON byte-for-byte.
-//!
-//! Pure-Rust branch tests cover every documented branch of `classify` plus
-//! the empty-input and threshold-boundary edge cases.
+// Parity tests for `src/nin_internet_cut_classifier.rs` vs
+// `nin_internet_cut_classifier.py`.
+//
+// Two test groups:
+// 1. Pure-function parity — invokes the Python `_parse_bridge` and
+//    `_classify` helpers directly via `std::process::Command` on fixed
+//    inputs and asserts identical JSON output.
+// 2. End-to-end pipeline parity — runs both the Python `main()` and the
+//    Rust [`NINInternetCutClassifier::run`] on the same temp-directory
+//    bridge sources with a mocked clock and compares the output files and
+//    report JSON byte-for-byte.
+//
+// Pure-Rust branch tests cover every documented branch of `classify` plus
+// the empty-input and threshold-boundary edge cases.
 
 use std::fs;
 use std::path::{Path, PathBuf};

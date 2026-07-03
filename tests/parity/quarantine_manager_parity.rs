@@ -1,11 +1,11 @@
-//! Parity tests for `src/quarantine_manager.rs` vs `quarantine_manager.py`.
-//!
-//! Two test groups:
-//! 1. `rolling_zscore` — invokes the Python implementation directly via
-//!    `std::process::Command` on fixed inputs and asserts byte-identical f64
-//!    output (compared via `f64::to_bits()`).
-//! 2. `QuarantineManager` decision logic — uses a temp directory for state
-//!    and log files, exercising the quarantine/release state machine.
+// Parity tests for `src/quarantine_manager.rs` vs `quarantine_manager.py`.
+//
+// Two test groups:
+// 1. `rolling_zscore` — invokes the Python implementation directly via
+//    `std::process::Command` on fixed inputs and asserts byte-identical f64
+//    output (compared via `f64::to_bits()`).
+// 2. `QuarantineManager` decision logic — uses a temp directory for state
+//    and log files, exercising the quarantine/release state machine.
 
 use std::{
     fs,

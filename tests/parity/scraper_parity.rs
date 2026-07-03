@@ -1,31 +1,31 @@
-//! Parity tests for `src/scraper.rs` vs `scraper.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `scraper` and calls the matching function on the same input. The Rust
-//! port is invoked on the identical input and the JSON outputs are
-//! compared for equality (parsed [`Value`] comparison so object key
-//! ordering is irrelevant).
-//!
-//! Coverage:
-//! * `normalize_for_history` / `normalize_for_file` over vanilla-prefix and
-//!   non-vanilla branches.
-//! * `is_valid_line` over empty, short, marker, IPv4, IPv6, and URL branches.
-//! * `parse_bridgelines_html` over div-bridgelines, pre/code fallback, and
-//!   empty input.
-//! * `parse_moat_response` over valid, missing `bridges`, non-object root,
-//!   and non-list values.
-//! * `get_static` over the four built-in bridge lines.
-//! * `_infer_transport` / `_infer_ip_version` over each transport and
-//!   IPv4/IPv6.
-//! * `load_history` over missing file, legacy string entries, and dict
-//!   entries.
-//! * `save_history` round-trips through `load_history`.
-//! * `update_history` over new entries and `last_seen` updates.
-//! * `prune_history` over retention boundary cases.
-//! * `write_sorted` over preserve_order and sort branches.
-//! * `classify_zip_folder` over tested / fresh / archive branches.
-//! * `fetch_torproject` / `fetch_moat` over mock HTTP responses (no real
-//!   network).
+// Parity tests for `src/scraper.rs` vs `scraper.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `scraper` and calls the matching function on the same input. The Rust
+// port is invoked on the identical input and the JSON outputs are
+// compared for equality (parsed [`Value`] comparison so object key
+// ordering is irrelevant).
+//
+// Coverage:
+// * `normalize_for_history` / `normalize_for_file` over vanilla-prefix and
+//   non-vanilla branches.
+// * `is_valid_line` over empty, short, marker, IPv4, IPv6, and URL branches.
+// * `parse_bridgelines_html` over div-bridgelines, pre/code fallback, and
+//   empty input.
+// * `parse_moat_response` over valid, missing `bridges`, non-object root,
+//   and non-list values.
+// * `get_static` over the four built-in bridge lines.
+// * `_infer_transport` / `_infer_ip_version` over each transport and
+//   IPv4/IPv6.
+// * `load_history` over missing file, legacy string entries, and dict
+//   entries.
+// * `save_history` round-trips through `load_history`.
+// * `update_history` over new entries and `last_seen` updates.
+// * `prune_history` over retention boundary cases.
+// * `write_sorted` over preserve_order and sort branches.
+// * `classify_zip_folder` over tested / fresh / archive branches.
+// * `fetch_torproject` / `fetch_moat` over mock HTTP responses (no real
+//   network).
 
 use std::collections::BTreeMap;
 use std::fs;

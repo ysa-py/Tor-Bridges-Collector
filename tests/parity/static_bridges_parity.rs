@@ -1,10 +1,10 @@
-//! Parity tests for `src/static_bridges.rs` vs `sources/static_bridges.py`.
-//!
-//! Verifies that the four hardcoded bridge lists are byte-identical to the
-//! Python source and that `get_all()` returns the documented 12-tuple order
-//! (snowflake×4, meek_lite×3, obfs4×5). At least one test invokes the
-//! Python `sources.static_bridges.get_all()` via subprocess and asserts the
-//! Rust output matches exactly.
+// Parity tests for `src/static_bridges.rs` vs `sources/static_bridges.py`.
+//
+// Verifies that the four hardcoded bridge lists are byte-identical to the
+// Python source and that `get_all()` returns the documented 12-tuple order
+// (snowflake×4, meek_lite×3, obfs4×5). At least one test invokes the
+// Python `sources.static_bridges.get_all()` via subprocess and asserts the
+// Rust output matches exactly.
 
 use std::path::PathBuf;
 use std::process::Command;

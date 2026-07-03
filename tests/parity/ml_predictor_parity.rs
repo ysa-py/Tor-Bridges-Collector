@@ -1,24 +1,24 @@
-//! Parity tests for `src/ml_predictor.rs` vs `ml_predictor.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `ml_predictor` and calls the matching function on the same input.
-//! The Rust port is invoked on the identical input and the JSON outputs
-//! are compared for equality (parsed [`Value`] comparison so object key
-//! ordering is irrelevant).
-//!
-//! Coverage:
-//! * `_port_risk` over all branches (443, 80, 8080/8443, 9001/9030/9050,
-//!   other).
-//! * `_cdn_present` over CDN-present, CDN-absent, and case-insensitive.
-//! * `_days_since` over old (clamped to 365), future (clamped to 0),
-//!   invalid (30.0), naive timestamp, date-only.
-//! * `extract_features` over full record, empty record, edge cases.
-//! * `load_labeled_data` over both files, one file, dedup, labeling.
-//! * `train` over insufficient-data path (parity) and sufficient-data path
-//!   (deviation: Rust returns `"sklearn_required"`).
-//! * `predict_blocking_prob` with `None` model (returns 0.5).
-//! * `apply_predictions_to_results` over missing file, normal case, with
-//!   injectable `now` for deterministic `ml_applied_at`.
+// Parity tests for `src/ml_predictor.rs` vs `ml_predictor.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `ml_predictor` and calls the matching function on the same input.
+// The Rust port is invoked on the identical input and the JSON outputs
+// are compared for equality (parsed [`Value`] comparison so object key
+// ordering is irrelevant).
+//
+// Coverage:
+// * `_port_risk` over all branches (443, 80, 8080/8443, 9001/9030/9050,
+//   other).
+// * `_cdn_present` over CDN-present, CDN-absent, and case-insensitive.
+// * `_days_since` over old (clamped to 365), future (clamped to 0),
+//   invalid (30.0), naive timestamp, date-only.
+// * `extract_features` over full record, empty record, edge cases.
+// * `load_labeled_data` over both files, one file, dedup, labeling.
+// * `train` over insufficient-data path (parity) and sufficient-data path
+//   (deviation: Rust returns `"sklearn_required"`).
+// * `predict_blocking_prob` with `None` model (returns 0.5).
+// * `apply_predictions_to_results` over missing file, normal case, with
+//   injectable `now` for deterministic `ml_applied_at`.
 
 use std::fs;
 use std::path::PathBuf;

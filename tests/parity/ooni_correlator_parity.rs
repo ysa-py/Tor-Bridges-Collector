@@ -1,34 +1,32 @@
-#![allow(clippy::field_reassign_with_default)]
-
-//! Parity tests for `src/ooni_correlator.rs` vs `ooni_correlator.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `ooni_correlator` and calls the matching function on the same input. The
-//! Rust port is invoked on the identical input and the JSON outputs are
-//! compared for equality (parsed [`Value`] comparison so object key ordering
-//! is irrelevant; markdown output is compared byte-for-byte after stripping
-//! the timestamp).
-//!
-//! Coverage:
-//! * `ooni_factor` over empty, all-clean, any-anomaly, any-confirmed, mixed
-//!   branches.
-//! * `ripe_factor` over not-tested/tested × reachable/unreachable/null
-//!   branches.
-//! * `compute_composite` over all 18 (tcp × ooni × ripe) combinations.
-//! * `build_daily_history` over multi-host, multi-day, duplicate-day, and
-//!   empty-`test_start_time` branches.
-//! * `load_iran_results` over missing-file and valid-file branches.
-//! * `load_scheduler_results` over missing, empty-results, non-list-results,
-//!   and valid-entries branches.
-//! * `write_latest_results` over empty and populated records with a fixed
-//!   `now` (compares parsed JSON minus `generated_at`).
-//! * `write_markdown_report` over empty and populated records with a fixed
-//!   `now` (compares raw markdown text byte-for-byte).
-//! * `correlate` end-to-end with mocked `_ooni_query` and a temp
-//!   `QuarantineManager` (compares enriched records as parsed JSON).
-//! * `run_pipeline` quality-gate decision (pass/fail boundary cases).
-//! * Rust-only edge cases for `ooni_query` HTTP error / non-200 / invalid
-//!   JSON branches and `fetch_iran_measurements` with a mock HTTP client.
+// Parity tests for `src/ooni_correlator.rs` vs `ooni_correlator.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `ooni_correlator` and calls the matching function on the same input. The
+// Rust port is invoked on the identical input and the JSON outputs are
+// compared for equality (parsed [`Value`] comparison so object key ordering
+// is irrelevant; markdown output is compared byte-for-byte after stripping
+// the timestamp).
+//
+// Coverage:
+// * `ooni_factor` over empty, all-clean, any-anomaly, any-confirmed, mixed
+//   branches.
+// * `ripe_factor` over not-tested/tested × reachable/unreachable/null
+//   branches.
+// * `compute_composite` over all 18 (tcp × ooni × ripe) combinations.
+// * `build_daily_history` over multi-host, multi-day, duplicate-day, and
+//   empty-`test_start_time` branches.
+// * `load_iran_results` over missing-file and valid-file branches.
+// * `load_scheduler_results` over missing, empty-results, non-list-results,
+//   and valid-entries branches.
+// * `write_latest_results` over empty and populated records with a fixed
+//   `now` (compares parsed JSON minus `generated_at`).
+// * `write_markdown_report` over empty and populated records with a fixed
+//   `now` (compares raw markdown text byte-for-byte).
+// * `correlate` end-to-end with mocked `_ooni_query` and a temp
+//   `QuarantineManager` (compares enriched records as parsed JSON).
+// * `run_pipeline` quality-gate decision (pass/fail boundary cases).
+// * Rust-only edge cases for `ooni_query` HTTP error / non-200 / invalid
+//   JSON branches and `fetch_iran_measurements` with a mock HTTP client.
 
 use std::collections::BTreeMap;
 use std::fs;

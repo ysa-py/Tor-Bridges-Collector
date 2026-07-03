@@ -2,7 +2,7 @@
 name = "torshield-ir-ultra"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.78"
+rust-version = "1.75"
 publish = false
 
 [workspace]
@@ -11,7 +11,7 @@ members = [".", "bridge-probe"]
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.78"
+rust-version = "1.75"
 
 [workspace.dependencies]
 reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json"] }
@@ -66,6 +66,12 @@ scraper = { workspace = true }
 # (and the parity tests, which substitute a mock client) does not pay the cost
 # of compiling it. The pinned version + feature set matches `[workspace.dependencies]`.
 reqwest = { workspace = true, optional = true }
+# `zip` is used by `formatter.rs` to mirror Python's stdlib `zipfile` module
+# for building the Telegram-distribution `tor_bridges.zip` archive. No
+# stdlib equivalent exists in Rust, so this is a new, minimal-feature
+# dependency (only the "deflate" compression method is used, matching
+# Python's `zipfile.ZIP_DEFLATED`).
+zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
 
 [features]
 default = []

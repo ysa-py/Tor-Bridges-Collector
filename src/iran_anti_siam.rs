@@ -226,12 +226,15 @@ fn load_bridges_json_inner(path: &Path) -> Result<Vec<String>, IranAntiSiamError
 /// lines are stripped and blank/comment (`#`) lines are dropped. The combined
 /// list is deduped preserving first-occurrence order.
 pub fn load_bridges_txt(bridge_dir: &Path) -> Vec<String> {
-    let entries = match std::fs::read_dir(bridge_dir) {
+    let read = match std::fs::read_dir(bridge_dir) {
         Ok(e) => e,
         Err(_) => return Vec::new(),
     };
+    // Python glob sorts results alphabetically; sort here to match.
+    let mut entries: Vec<_> = read.flatten().collect();
+    entries.sort_by_key(|e| e.file_name());
     let mut lines: Vec<String> = Vec::new();
-    for entry in entries.flatten() {
+    for entry in entries {
         let path = entry.path();
         // Match `bridge_dir.glob("*.txt")`.
         let name = match path.file_name().and_then(|n| n.to_str()) {

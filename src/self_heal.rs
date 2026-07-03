@@ -685,18 +685,44 @@ pub fn unified_diff_with_context(
 
 /// Split a string into lines with `keepends=True` (matching Python's
 /// `str.splitlines(keepends=True)`).
+///
+/// Python's `splitlines()` recognizes a wider boundary set than just `\n`:
+/// `\n`, `\v` (0x0B), `\f` (0x0C), `\r`, `\x1c`, `\x1d`, `\x1e`, `\x85` (NEL),
+/// `\u2028` (LINE SEPARATOR), and `\u2029` (PARAGRAPH SEPARATOR) — empirically
+/// confirmed against CPython 3.12. The single exception is `\r\n`, which
+/// Python treats as ONE boundary (not two separate splits); every other
+/// boundary character, including a lone `\r` or `\n`, is independent (e.g.
+/// `"a\r\rb"` splits as `["a\r", "\r", "b"]`, not merged).
+fn is_line_boundary(c: char) -> bool {
+    matches!(
+        c,
+        '\n' | '\u{0B}'
+            | '\u{0C}'
+            | '\r'
+            | '\u{1C}'
+            | '\u{1D}'
+            | '\u{1E}'
+            | '\u{85}'
+            | '\u{2028}'
+            | '\u{2029}'
+    )
+}
+
 pub fn splitlines_keepends(s: &str) -> Vec<String> {
     let mut out = Vec::new();
     let mut current = String::new();
-    for c in s.chars() {
+    let mut chars = s.chars().peekable();
+    while let Some(c) = chars.next() {
         current.push(c);
-        if c == '\n' {
+        if c == '\r' {
+            // `\r\n` is a single boundary in Python — consume the paired
+            // `\n` before closing this line, if present.
+            if chars.peek() == Some(&'\n') {
+                current.push(chars.next().expect("peeked Some"));
+            }
             out.push(std::mem::take(&mut current));
-        } else if c == '\r' {
-            // Handle \r\n and lone \r as line boundaries (matching Python).
+        } else if is_line_boundary(c) {
             out.push(std::mem::take(&mut current));
-        } else {
-            // continue accumulating
         }
     }
     if !current.is_empty() {
@@ -1685,7 +1711,7 @@ impl SelfHeal {
 pub fn list_yaml_files(repo_root: &Path) -> Vec<PathBuf> {
     let workflows_dir = repo_root.join(".github").join("workflows");
     let mut out = Vec::new();
-    if let Ok(entries) = fs::read_dir(&workflows_dir) {
+    if let Ok(entries) = fs::read_dir(workflows_dir) {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("yml") {
@@ -1726,10 +1752,32 @@ mod tests {
 
     #[test]
     fn splitlines_keepends_matches_python() {
+        // Ground truth captured from CPython 3.12:
+        // "x".splitlines(keepends=True) for each case below.
         assert_eq!(splitlines_keepends("a\nb\n"), vec!["a\n", "b\n"]);
         assert_eq!(splitlines_keepends("a\nb"), vec!["a\n", "b"]);
         assert_eq!(splitlines_keepends(""), Vec::<String>::new());
         assert_eq!(splitlines_keepends("a"), vec!["a"]);
+        // `\r\n` must be ONE boundary, not two separate splits.
+        assert_eq!(
+            splitlines_keepends("a\r\nb\nc\rd"),
+            vec!["a\r\n", "b\n", "c\r", "d"]
+        );
+        assert_eq!(splitlines_keepends("a\r\n"), vec!["a\r\n"]);
+        // A lone `\n` immediately followed by a lone `\r` is NOT merged —
+        // only `\r` followed by `\n` merges.
+        assert_eq!(splitlines_keepends("a\n\rb"), vec!["a\n", "\r", "b"]);
+        assert_eq!(
+            splitlines_keepends("one\ntwo\r\nthree\rfour"),
+            vec!["one\n", "two\r\n", "three\r", "four"]
+        );
+        // Other Python line-boundary characters: \v, \f, \x1c-\x1e, NEL, LS, PS.
+        assert_eq!(
+            splitlines_keepends("a\u{0B}b\u{0C}c"),
+            vec!["a\u{0B}", "b\u{0C}", "c"]
+        );
+        assert_eq!(splitlines_keepends("a\u{85}b"), vec!["a\u{85}", "b"]);
+        assert_eq!(splitlines_keepends("a\u{2028}b"), vec!["a\u{2028}", "b"]);
     }
 
     #[test]
@@ -1977,7 +2025,7 @@ mod tests {
         let dir = std::env::temp_dir();
         let large_path = dir.join("_self_heal_test_large.py");
         let large_content = "x".repeat(MAX_FILE_SIZE + 100);
-        fs::write(&large_path, &large_content).unwrap();
+        fs::write(&large_path, large_content).unwrap();
         let error = SyntaxErrorEntry {
             file: large_path.to_string_lossy().to_string(),
             error: "SyntaxError line 1: oops".to_string(),
@@ -2027,7 +2075,7 @@ mod tests {
         let patches_dir = dir.join("patches");
         let diff = "--- a/test.py\n+++ b/test.py\n@@ -1 +1 @@\n-old\n+new\nAuthorization: Bearer secret-token\n";
         let path = save_patch_diff("test.py", diff, &patches_dir, Utc::now()).unwrap();
-        let content = fs::read_to_string(&path).unwrap();
+        let content = fs::read_to_string(path).unwrap();
         assert!(!content.contains("secret-token"));
         assert!(content.contains("Bearer ***"));
         assert!(content.contains("-old"));

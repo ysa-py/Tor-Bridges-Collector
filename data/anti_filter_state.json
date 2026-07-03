@@ -1,22 +1,26 @@
 {
-  "level": 3,
-  "label": "Elevated — Tor Blocked",
-  "confidence": 0.838,
-  "detected_at": "2026-06-28T11:35:17.570630+00:00",
+  "level": 5,
+  "label": "NIN Active — Internet Cut",
+  "confidence": 0.8,
+  "detected_at": "2026-07-02T19:05:37.962795+00:00",
   "isp_tier": "unknown",
-  "nin_active": false,
+  "nin_active": true,
   "dpi_systems_active": [
     "sni_inspector",
     "traffic_classifier",
-    "cert_validator"
+    "cert_validator",
+    "ml_analyzer",
+    "ja3_fingerprinter",
+    "entropy_analyzer",
+    "bgp_hijacker",
+    "dns_poisoner"
   ],
   "recommended_transports": [
     "webtunnel",
-    "snowflake",
-    "obfs4_443",
+    "vless_reality",
     "meek_lite"
   ],
-  "recommended_pack": "export/iran_pack.txt",
+  "recommended_pack": "export/iran_cut_pack.txt",
   "urgency": "high",
   "auto_switch_enabled": true
 }

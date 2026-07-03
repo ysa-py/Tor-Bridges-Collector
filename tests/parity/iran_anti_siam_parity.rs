@@ -1,20 +1,20 @@
-//! Parity tests for `src/iran_anti_siam.rs` vs `iran_anti_siam.py`.
-//!
-//! Each test dispatches a JSON command to a Python helper that imports
-//! `iran_anti_siam` (and `core.iran_dpi_shaper` for the mocked `score_all`)
-//! and returns the same JSON output the Rust port produces.
-//!
-//! Coverage:
-//! * `load_bridges_json` over array-of-strings, dict-with-bridges, missing,
-//!   malformed, and non-object-root inputs.
-//! * `load_bridges_txt` over multi-file dirs with comments, dedup, and
-//!   `iran_blocked*` skipping.
-//! * `load_ja3_map` over present, missing-key, missing-file, and malformed
-//!   inputs.
-//! * `load_bridges` over the test-json → iran-results → txt fallback chain.
-//! * `build_md_report` over empty, single-tier, and multi-transport inputs.
-//! * `run_pipeline` (mocked `score_all`) over empty bridges and a full
-//!   multi-tier bridge set, comparing every output file byte-for-byte.
+// Parity tests for `src/iran_anti_siam.rs` vs `iran_anti_siam.py`.
+//
+// Each test dispatches a JSON command to a Python helper that imports
+// `iran_anti_siam` (and `core.iran_dpi_shaper` for the mocked `score_all`)
+// and returns the same JSON output the Rust port produces.
+//
+// Coverage:
+// * `load_bridges_json` over array-of-strings, dict-with-bridges, missing,
+//   malformed, and non-object-root inputs.
+// * `load_bridges_txt` over multi-file dirs with comments, dedup, and
+//   `iran_blocked*` skipping.
+// * `load_ja3_map` over present, missing-key, missing-file, and malformed
+//   inputs.
+// * `load_bridges` over the test-json → iran-results → txt fallback chain.
+// * `build_md_report` over empty, single-tier, and multi-transport inputs.
+// * `run_pipeline` (mocked `score_all`) over empty bridges and a full
+//   multi-tier bridge set, comparing every output file byte-for-byte.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -263,7 +263,11 @@ fn assert_load_bridges_json_parity(name: &str, content: Option<&str>) {
 
     let py = python_iran_anti_siam(&json!({"op": "load_bridges_json", "path": py_path}));
     let rs = load_bridges_json(&rust_path);
-    assert_eq!(py["lines"], json!(rs), "load_bridges_json parity failed for {name}");
+    assert_eq!(
+        py["lines"],
+        json!(rs),
+        "load_bridges_json parity failed for {name}"
+    );
 
     let _ = fs::remove_dir_all(&py_dir);
     let _ = fs::remove_dir_all(&rust_dir);
@@ -329,7 +333,10 @@ fn parity_load_bridges_txt_skips_blocked_comments_and_dedupes() {
     py_sorted.sort();
     let mut rs_sorted = rs.clone();
     rs_sorted.sort();
-    assert_eq!(py_sorted, rs_sorted, "load_bridges_txt parity failed (set comparison)");
+    assert_eq!(
+        py_sorted, rs_sorted,
+        "load_bridges_txt parity failed (set comparison)"
+    );
 
     let _ = fs::remove_dir_all(&py_dir);
     let _ = fs::remove_dir_all(&rust_dir);
@@ -494,7 +501,12 @@ fn parity_build_md_report_empty_results() {
 
 #[test]
 fn parity_build_md_report_single_tier_single_transport() {
-    let results_py = vec![mock_result_json(0.97, "PHANTOM", "snowflake", "snowflake x")];
+    let results_py = vec![mock_result_json(
+        0.97,
+        "PHANTOM",
+        "snowflake",
+        "snowflake x",
+    )];
     let results_rs = vec![mock_result(0.97, "PHANTOM", "snowflake", "snowflake x")];
     let tier_counts = json!({"PHANTOM": 1});
     let transport_counts = json!({"snowflake": 1});
@@ -601,17 +613,19 @@ fn mock_results_full() -> Vec<SiamResult> {
 fn mock_results_full_json() -> Vec<Value> {
     mock_results_full()
         .iter()
-        .map(|r| json!({
-            "bridge_line": r.bridge_line,
-            "transport": r.transport,
-            "port": r.port,
-            "iran_siam_score": r.iran_siam_score,
-            "bypass_tier": r.bypass_tier,
-            "layers_bypassed": r.layers_bypassed,
-            "evasion_flags": r.evasion_flags,
-            "layer_scores": r.layer_scores,
-            "recommendation": r.recommendation,
-        }))
+        .map(|r| {
+            json!({
+                "bridge_line": r.bridge_line,
+                "transport": r.transport,
+                "port": r.port,
+                "iran_siam_score": r.iran_siam_score,
+                "bypass_tier": r.bypass_tier,
+                "layers_bypassed": r.layers_bypassed,
+                "evasion_flags": r.evasion_flags,
+                "layer_scores": r.layer_scores,
+                "recommendation": r.recommendation,
+            })
+        })
         .collect()
 }
 
@@ -644,7 +658,9 @@ fn parity_run_pipeline_empty_bridges_writes_empty_report() {
     )
     .expect("rust run_pipeline empty succeeds");
 
-    let py_report = py["outputs"]["data/iran_siam_report.json"].as_str().unwrap();
+    let py_report = py["outputs"]["data/iran_siam_report.json"]
+        .as_str()
+        .unwrap();
     let rust_report = fs::read_to_string(data_dir.join("iran_siam_report.json")).unwrap();
     let py_v: Value = serde_json::from_str(py_report).unwrap();
     let rs_v: Value = serde_json::from_str(&rust_report).unwrap();
@@ -692,7 +708,9 @@ fn parity_run_pipeline_full_multi_tier_compares_all_outputs() {
     .expect("rust run_pipeline full succeeds");
 
     // Compare JSON report (parsed — key order may differ).
-    let py_report = py["outputs"]["data/iran_siam_report.json"].as_str().unwrap();
+    let py_report = py["outputs"]["data/iran_siam_report.json"]
+        .as_str()
+        .unwrap();
     let rust_report = fs::read_to_string(data_dir.join("iran_siam_report.json")).unwrap();
     let py_v: Value = serde_json::from_str(py_report).unwrap();
     let rs_v: Value = serde_json::from_str(&rust_report).unwrap();
@@ -716,7 +734,9 @@ fn parity_run_pipeline_full_multi_tier_compares_all_outputs() {
     }
 
     // Compare markdown report (exact string).
-    let py_md = py["outputs"]["docs/iran-siam-analysis.md"].as_str().unwrap();
+    let py_md = py["outputs"]["docs/iran-siam-analysis.md"]
+        .as_str()
+        .unwrap();
     let rust_md = fs::read_to_string(docs_dir.join("iran-siam-analysis.md")).unwrap();
     assert_eq!(py_md, rust_md, "markdown report mismatch");
 

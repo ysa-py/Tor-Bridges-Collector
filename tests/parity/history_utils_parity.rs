@@ -1,15 +1,15 @@
-//! Parity tests for `src/history_utils.rs` vs `sources/history_utils.py`.
-//!
-//! Each test invokes a fresh Python interpreter on `sources/history_utils.py`
-//! (via `core.dt_utils`) and asserts byte-identical JSON output from the
-//! Rust port. Covers every branch documented in the task spec:
-//! - `parse_history_dt` on aware/naive/None/malformed input
-//! - `normalize_history_timestamps` on str entries, dict entries with
-//!   `first_seen`/`last_seen`, and mixed dicts
-//! - `history_entry_timestamp` on str, dict-with-both (prefer_last_seen
-//!   true/false), dict-with-only-one, and None
-//! - `cleanup_history` with an INJECTABLE clock (mocked `utc_now`) so
-//!   cutoff behavior is deterministic
+// Parity tests for `src/history_utils.rs` vs `sources/history_utils.py`.
+//
+// Each test invokes a fresh Python interpreter on `sources/history_utils.py`
+// (via `core.dt_utils`) and asserts byte-identical JSON output from the
+// Rust port. Covers every branch documented in the task spec:
+// - `parse_history_dt` on aware/naive/None/malformed input
+// - `normalize_history_timestamps` on str entries, dict entries with
+//   `first_seen`/`last_seen`, and mixed dicts
+// - `history_entry_timestamp` on str, dict-with-both (prefer_last_seen
+//   true/false), dict-with-only-one, and None
+// - `cleanup_history` with an INJECTABLE clock (mocked `utc_now`) so
+//   cutoff behavior is deterministic
 
 use std::path::PathBuf;
 use std::process::Command;

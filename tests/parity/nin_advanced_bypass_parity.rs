@@ -1,9 +1,9 @@
-//! Parity tests for `src/nin_advanced_bypass.rs` vs `nin_advanced_bypass.py`.
-//!
-//! Each test invokes a fresh Python interpreter on the same input and
-//! asserts byte-identical JSON output from the Rust port. The TCP probe is
-//! mocked on both sides (Python: socket.create_connection is patched;
-//! Rust: an `AlwaysUnreachable`/`AlwaysReachable` TcpProbe is injected).
+// Parity tests for `src/nin_advanced_bypass.rs` vs `nin_advanced_bypass.py`.
+//
+// Each test invokes a fresh Python interpreter on the same input and
+// asserts byte-identical JSON output from the Rust port. The TCP probe is
+// mocked on both sides (Python: socket.create_connection is patched;
+// Rust: an `AlwaysUnreachable`/`AlwaysReachable` TcpProbe is injected).
 
 use std::process::Command;
 
@@ -80,8 +80,12 @@ print(json.dumps(out, sort_keys=True, separators=(",", ":")))
         "python helper failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
-    serde_json::from_slice(&output.stdout)
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", String::from_utf8_lossy(&output.stdout)))
+    serde_json::from_slice(&output.stdout).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            String::from_utf8_lossy(&output.stdout)
+        )
+    })
 }
 
 #[test]
@@ -94,7 +98,7 @@ fn parity_detect_transport_all_branches() {
         ("webtunnel 192.0.2.4:443 url=https://y", "webtunnel"),
         ("obfs4 1.2.3.4:443 cert=abc iat-mode=2", "obfs4"),
         ("meek_lite 192.0.2.5:80 url=https://y front=z", "webtunnel"), // url=https wins
-        ("meek_lite 192.0.2.5:80 front=z", "meek_lite"), // no url=https
+        ("meek_lite 192.0.2.5:80 front=z", "meek_lite"),               // no url=https
         ("vanilla 1.2.3.4:9001", "vanilla"),
     ] {
         assert_eq!(detect_transport(line), expected, "line: {line}");
@@ -104,8 +108,16 @@ fn parity_detect_transport_all_branches() {
 #[test]
 fn parity_extract_endpoint_branches() {
     let cases = [
-        ("webtunnel x url=https://example.com:8443/path", Some("example.com"), Some(8443)),
-        ("webtunnel x url=https://example.com/path", Some("example.com"), Some(443)),
+        (
+            "webtunnel x url=https://example.com:8443/path",
+            Some("example.com"),
+            Some(8443),
+        ),
+        (
+            "webtunnel x url=https://example.com/path",
+            Some("example.com"),
+            Some(443),
+        ),
         ("obfs4 1.2.3.4:443 cert=abc", Some("1.2.3.4"), Some(443)),
         ("just a plain string", None, None),
     ];
