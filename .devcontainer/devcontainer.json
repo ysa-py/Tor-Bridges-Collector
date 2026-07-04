@@ -1,0 +1,12 @@
+{
+  "name": "Autonomous Claude Workspace",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu",
+  "postCreateCommand": "curl -fsSL https://claude.ai/install.sh | bash && claude update",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code"
+      ]
+    }
+  }
+}
