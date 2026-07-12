@@ -21,6 +21,7 @@ use regex::Regex;
 use serde_json::Value;
 
 use crate::dt_utils::{coerce_utc_dt, DEFAULT_FALLBACK};
+use crate::ja3_intelligence::JA3Intel;
 use crate::tester::{detect_transport, extract_endpoint};
 
 /// Default transport scores. Mirrors `_DEFAULT_TRANSPORT_SCORES`.
@@ -50,8 +51,21 @@ pub fn iran_port_scores() -> BTreeMap<u16, i64> {
 
 const PORT_SCORE_DEFAULT_LOW: i64 = 8;
 const PORT_SCORE_DEFAULT_HIGH: i64 = 4;
-#[allow(dead_code)]
-const JA3_MAX_PENALTY: i64 = 15;
+const JA3_MAX_PENALTY: f64 = 15.0;
+
+/// Replicate Python 3's `round()` (round-half-to-even / banker's rounding)
+/// for non-negative values, then coerce to int like `int(round(x))`.
+/// Rust's `f64::round()` rounds half away from zero, which diverges from
+/// Python on exact `.5` products (e.g. `round(4.5) == 4` in Python).
+fn py_round_half_even_to_int(x: f64) -> i64 {
+    let floor = x.floor();
+    let frac = x - floor;
+    // Round up on frac > 0.5, or on an exact 0.5 tie when floor is odd
+    // (round-half-to-even). Otherwise keep the floor.
+    let round_up = frac > 0.5 || (frac == 0.5 && (floor as i64) % 2 != 0);
+    let rounded = if round_up { floor + 1.0 } else { floor };
+    rounded as i64
+}
 
 /// CDN survival patterns. Mirrors `_CDN_SURVIVAL_PATTERNS`.
 /// Case-insensitive regex match against the bridge line.
@@ -78,6 +92,7 @@ pub fn cdn_survival_patterns() -> Vec<Regex> {
 pub struct IranScorer {
     transport_scores: BTreeMap<String, i64>,
     cdn_patterns: Vec<Regex>,
+    ja3: JA3Intel,
     now: DateTime<Utc>,
 }
 
@@ -91,6 +106,10 @@ impl IranScorer {
         Self {
             transport_scores,
             cdn_patterns: cdn_survival_patterns(),
+            // Python lazily builds `JA3Intel()` on first `_ja3_penalty` call;
+            // building it eagerly here is behavior-equivalent (the database is
+            // static) and keeps `ja3_penalty` a pure, panic-free lookup.
+            ja3: JA3Intel::new(),
             now,
         }
     }
@@ -193,11 +212,43 @@ impl IranScorer {
         0
     }
 
-    /// Mirror of `_ja3_penalty(record)`. Simplified — returns 0 because
-    /// the full JA3Intel database integration requires runtime state from
-    /// the `ja3_intelligence` module. See MIGRATION_NOTES.md.
-    pub fn ja3_penalty(&self, _record: &Value) -> i64 {
-        0
+    /// Mirror of `_ja3_penalty(record)`. Computes the JA3 fingerprint DPI
+    /// penalty (0–15 pts deducted) using the ported `ja3_intelligence`
+    /// risk tables. When a real JA3 hash is present it is looked up in the
+    /// fingerprint database; otherwise the transport-default risk is
+    /// combined with a port-based proxy risk. Python wraps the whole body
+    /// in `try/except → 0`; the ported logic is total (never panics), so
+    /// no fallback branch is reachable.
+    pub fn ja3_penalty(&self, record: &Value) -> i64 {
+        // transport = record.get("transport", detect_transport(record.get("raw", "")))
+        let raw = record.get("raw").and_then(Value::as_str).unwrap_or("");
+        let transport = record
+            .get("transport")
+            .and_then(Value::as_str)
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| detect_transport(raw).to_string());
+
+        // port = record.get("port") or 0  (coerced to int; 0 on failure)
+        let port: i64 = match record.get("port") {
+            Some(Value::Number(n)) => n
+                .as_i64()
+                .or_else(|| n.as_f64().map(|f| f as i64))
+                .unwrap_or(0),
+            Some(Value::String(s)) => s.parse::<i64>().unwrap_or(0),
+            _ => 0,
+        };
+
+        let ja3_hash = record.get("ja3_hash").and_then(Value::as_str).unwrap_or("");
+
+        let risk_score = if !ja3_hash.is_empty() {
+            self.ja3.score(ja3_hash)
+        } else {
+            self.ja3
+                .transport_default_risk(&transport)
+                .max(self.ja3.port_risk(port))
+        };
+
+        py_round_half_even_to_int(risk_score * JA3_MAX_PENALTY)
     }
 
     /// Mirror of `score(record)`. Computes a 0-100 Iran effectiveness

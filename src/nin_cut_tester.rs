@@ -175,14 +175,11 @@ pub fn parse_bridge_line(line: &str) -> Option<ParsedBridge> {
     } else {
         // Try IPv6 [addr]:port
         let ipv6_re = Regex::new(r"\[([0-9a-fA-F:]+)\]:(\d{2,5})").unwrap();
-        if let Some(caps) = ipv6_re.captures(&rest) {
-            (
-                caps.get(1).unwrap().as_str().to_string(),
-                caps.get(2).unwrap().as_str().to_string(),
-            )
-        } else {
-            return None;
-        }
+        let caps = ipv6_re.captures(&rest)?;
+        (
+            caps.get(1).unwrap().as_str().to_string(),
+            caps.get(2).unwrap().as_str().to_string(),
+        )
     };
 
     let port: u16 = port_str.parse().ok()?;

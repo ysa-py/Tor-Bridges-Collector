@@ -358,7 +358,7 @@ fn reachability_score(record: &Map<String, Value>) -> f64 {
                 _ => None,
             };
             if let Some(score) = as_number {
-                return score.max(0.0).min(1.0);
+                return score.clamp(0.0, 1.0);
             }
         }
     }
@@ -468,7 +468,7 @@ pub fn score_bridge(
         + s_reachability * w_reachability_raw.max(0.0))
         / total_weight;
     let score = raw_score * context_multiplier(cfg, now);
-    let clamped_score = python_round4(score.max(0.0).min(1.0));
+    let clamped_score = python_round4(score.clamp(0.0, 1.0));
 
     let mut annotated = record.clone();
     annotated.insert(

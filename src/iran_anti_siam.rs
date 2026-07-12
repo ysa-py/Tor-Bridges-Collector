@@ -19,9 +19,17 @@
 //!   empty/missing.
 //! * `build_md_report` — render the Farsi/English SIAM analysis markdown.
 //! * `run_pipeline` — orchestrate the full `main()` flow with injectable
-//!   paths, clock, and `score_all` callback (the Python original imports
-//!   `score_all` from `core.iran_dpi_shaper`, which is out of scope for this
-//!   port and is therefore injected as a closure).
+//!   paths, clock, and a `score_all`-shaped callback. The Python original
+//!   imports `score_all` from `core.iran_dpi_shaper`, which wasn't ported
+//!   yet when this module was first written, so it was injected as a
+//!   closure rather than a hard dependency. `core/iran_dpi_shaper.py` is
+//!   now ported (`src/iran_dpi_shaper.rs`, Session 9) —
+//!   [`real_score_all`] wires to it directly for any real (non-test)
+//!   caller. `run_pipeline` stays generic over the callback rather than
+//!   hardcoding `real_score_all` internally, since existing tests
+//!   deliberately use fixed/mock results to validate pipeline mechanics
+//!   independent of scoring correctness — see [`real_score_all`]'s own
+//!   doc comment.
 //!
 //! Scope guardrail: the Python module only consumes already-public bridge
 //! lines and JA3 rotation metadata and forwards them to the passive scoring
@@ -665,6 +673,63 @@ where
     })
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Real (non-mock) `score_all` — wires to `iran_dpi_shaper` (Session 9)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Converts [`crate::iran_dpi_shaper::SiamEvasionScore`] to this module's own
+/// [`SiamResult`]. Same fields; different concrete types (`u16`/[`BypassTier`
+/// enum](crate::iran_dpi_shaper::BypassTier)/`u8` there vs. this struct's
+/// `i64`/`String`/`i64`, matching what this module already declared before
+/// `iran_dpi_shaper.rs` existed to produce real values for it).
+fn from_dpi_shaper_score(score: crate::iran_dpi_shaper::SiamEvasionScore) -> SiamResult {
+    SiamResult {
+        bridge_line: score.bridge_line,
+        transport: score.transport,
+        port: score.port.map(i64::from),
+        iran_siam_score: score.iran_siam_score,
+        bypass_tier: score.bypass_tier.as_str().to_string(),
+        layers_bypassed: i64::from(score.layers_bypassed),
+        evasion_flags: score.evasion_flags,
+        layer_scores: score
+            .layer_scores
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect(),
+        recommendation: score.recommendation,
+    }
+}
+
+/// Real `score_all` for [`run_pipeline`], wiring to
+/// `crate::iran_dpi_shaper::score_all` now that it's ported (Session 9) —
+/// the Python original's own `from core.iran_dpi_shaper import score_all`,
+/// which this port's own doc comment already flagged as "out of scope for
+/// this port" before that module existed here.
+///
+/// Use this in any real (non-test) caller — e.g. a future `main.rs`, once
+/// `main.py` is ported. Existing tests intentionally keep passing their own
+/// fixed/mock closures to `run_pipeline` instead of this function: they
+/// validate pipeline mechanics (report structure, tier/transport
+/// summaries, file writing) in isolation from scoring correctness, which
+/// `iran_dpi_shaper_parity.rs` already covers thoroughly on its own.
+/// Conflating the two would make a pipeline-mechanics test failure and a
+/// scoring-logic regression indistinguishable from their symptoms alone.
+pub fn real_score_all(bridge_lines: &[String], ja3_map: &Value) -> Vec<SiamResult> {
+    let lines: Vec<&str> = bridge_lines.iter().map(String::as_str).collect();
+    let ja3_pairs: Vec<(&str, &str)> = ja3_map
+        .as_object()
+        .map(|obj| {
+            obj.iter()
+                .filter_map(|(k, v)| v.as_str().map(|hash| (k.as_str(), hash)))
+                .collect()
+        })
+        .unwrap_or_default();
+    crate::iran_dpi_shaper::score_all(&lines, &ja3_pairs)
+        .into_iter()
+        .map(from_dpi_shaper_score)
+        .collect()
+}
+
 fn create_dir_all(path: &Path) -> Result<(), IranAntiSiamError> {
     std::fs::create_dir_all(path).map_err(|source| IranAntiSiamError::Io {
         path: path.display().to_string(),
@@ -1053,5 +1118,88 @@ mod tests {
 
         let r_null_port = SiamResult { port: None, ..r };
         assert_eq!(r_null_port.to_dict()["port"], Value::Null);
+    }
+
+    /// Validates the new `real_score_all` wiring specifically — not a
+    /// Python differential (the scoring logic itself is already covered
+    /// thoroughly, differentially, in `iran_dpi_shaper_parity.rs`; this
+    /// is about whether `from_dpi_shaper_score`'s type conversion and
+    /// `real_score_all`'s JA3-map adaptation are correct). Runs the real
+    /// pipeline end to end with real scoring, no mocked results, and
+    /// checks the output against what `iran_dpi_shaper::score_siam_evasion`
+    /// independently computes for the same lines.
+    #[test]
+    fn run_pipeline_with_real_score_all_matches_iran_dpi_shaper_directly() {
+        let dir = std::env::temp_dir().join(format!(
+            "iran_anti_siam_real_scorer_test_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let bridge_dir = dir.join("bridge");
+        let data_dir = dir.join("data");
+        let export_dir = dir.join("export");
+        let docs_dir = dir.join("docs");
+        std::fs::create_dir_all(&bridge_dir).unwrap();
+
+        let snowflake_line = "snowflake 192.0.2.3:1 FP url=https://x.fastly.net/";
+        let vanilla_line = "192.168.0.1:9001 ABC123FINGERPRINT";
+        write(
+            &bridge_dir.join("bridge_list_for_testing.json"),
+            &json!([snowflake_line, vanilla_line]).to_string(),
+        );
+        let ja3_path = dir.join("ja3.json");
+        write(&ja3_path, r#"{"bridge_ja3_map":{}}"#);
+
+        let out = run_pipeline(
+            &bridge_dir,
+            &data_dir,
+            &export_dir,
+            &docs_dir,
+            &ja3_path,
+            now(),
+            crate::iran_anti_siam::real_score_all,
+        )
+        .expect("real-scorer pipeline run must succeed");
+
+        assert_eq!(out.total_scored, 2);
+
+        let snowflake_result = out
+            .results
+            .iter()
+            .find(|r| r.bridge_line == snowflake_line)
+            .expect("snowflake result must be present");
+        let expected_snowflake = crate::iran_dpi_shaper::score_siam_evasion(snowflake_line, None);
+        assert_eq!(
+            snowflake_result.iran_siam_score,
+            expected_snowflake.iran_siam_score
+        );
+        assert_eq!(
+            snowflake_result.bypass_tier,
+            expected_snowflake.bypass_tier.as_str()
+        );
+        assert_eq!(*out.tier_summary.get("PHANTOM").unwrap_or(&0), 1);
+
+        let vanilla_result = out
+            .results
+            .iter()
+            .find(|r| r.bridge_line == vanilla_line)
+            .expect("vanilla result must be present");
+        let expected_vanilla = crate::iran_dpi_shaper::score_siam_evasion(vanilla_line, None);
+        assert_eq!(
+            vanilla_result.iran_siam_score,
+            expected_vanilla.iran_siam_score
+        );
+        assert_eq!(
+            vanilla_result.bypass_tier,
+            expected_vanilla.bypass_tier.as_str()
+        );
+
+        // Real scoring, not mocked: confirms this isn't a fixed/stub
+        // result by checking the two lines actually landed in different
+        // tiers, exactly as real SIAM scoring would produce.
+        assert_ne!(snowflake_result.bypass_tier, vanilla_result.bypass_tier);
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

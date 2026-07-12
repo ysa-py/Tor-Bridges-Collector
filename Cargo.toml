@@ -14,7 +14,42 @@ edition = "2021"
 rust-version = "1.75"
 
 [workspace.dependencies]
-reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json"] }
+# SESSION 10 CORRECTION (2026-07-12): the environment claims in the comment
+# below ("rustup's distribution domain is outside this environment's egress
+# allowlist", "only rustc 1.75.0 is offered via apt on Ubuntu 24.04") do NOT
+# hold in the current sandbox. This host is Debian trixie; `rustup` installs
+# cleanly and provides rustc 1.97.0 (apt additionally offers 1.85). Those
+# notes described a different sandbox instance. The MSRV pin (1.75) and the
+# dependency/idna pins below are deliberately left UNCHANGED — the MSRV
+# rationale for the pins is orthogonal to which compiler happens to be
+# installable — but the egress/toolchain-availability claims are superseded.
+#
+# `blocking` is required by `scraper.rs`'s `ReqwestHttpFetch` and
+# `endpoint_validator.rs`'s synchronous HTTP probing (mirrors Python's
+# `urllib.request`, used with no async runtime in the original) — was
+# missing here even though scraper.rs already depends on
+# `reqwest::blocking`; this is the first time `--features network` has
+# actually been built in this sandbox, which is how this surfaced.
+# NOTE on transitive pins this reqwest dependency requires (all recorded
+# in Cargo.lock, not directly here, since none of these are direct
+# dependencies — documented here per the same principle):
+# `idna_adapter` is pinned to `1.2.0` (`cargo tree -i idna_adapter` to
+# confirm). This still selects the ICU4X backend stream (full
+# UTS46/Unicode correctness) — NOT the lower-fidelity `1.1.x`
+# (unicode-rs) or `1.0.x` (stub, no real IDNA processing) streams — but
+# resolves against the older icu4x 1.5.x generation rather than current
+# 2.x, because 2.x's MSRV (1.81-1.86 depending on the specific crate)
+# exceeds this project's pinned rustc 1.75.0, and no rustc upgrade path
+# is available in this build environment (only rustc 1.75.0 is offered
+# via `apt` on Ubuntu 24.04; `rustup`'s distribution domain is outside
+# this environment's network egress allowlist — confirmed, not assumed).
+# `hyper-rustls` is similarly pinned to `0.27.2` for the same MSRV
+# reason. Three regression tests in `tests/idna_icu4x_regression.rs`
+# verify the older icu4x generation still handles non-ASCII IDN,
+# Punycode, and homograph domains correctly — see that file and
+# `MIGRATION_NOTES.md` for the full writeup. TODO: re-pin all of these
+# forward once this environment's rustc can move to 1.86+.
+reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json", "blocking"] }
 tokio = { version = "=1.45.1", features = ["macros", "rt-multi-thread", "time", "fs"] }
 quinn = "=0.11.8"
 scraper = "=0.23.1"
@@ -46,6 +81,12 @@ chrono = { version = "=0.4.41", default-features = false, features = ["std", "cl
 serde_json = "=1.0.150"
 chrono = { version = "=0.4.41", default-features = false, features = ["std", "clock"] }
 thiserror = { workspace = true }
+# `tokio` is required for `censorship_monitor.rs`'s concurrent TCP
+# reachability probing (mirrors Python's `asyncio.gather`/`asyncio.
+# open_connection`). Already a workspace dependency (via `reqwest`,
+# `quinn`, and `bridge-probe`'s own direct use), so listing it here for
+# the main crate does not increase the build graph.
+tokio = { workspace = true, features = ["net"] }
 # `regex` is required to faithfully reproduce the Python `re.search`/`re.compile`
 # patterns used by `scraper.py` and `onionhop_collector.py` for input validation,
 # endpoint extraction, and IP-version detection. It is already a transitive
@@ -76,6 +117,12 @@ zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
 [features]
 default = []
 network = ["dep:reqwest"]
+# Session 9 (directive §4): adaptive anti-filtering / anti-DPI warfare layer.
+# NON-DEFAULT by mandate — with this off, `iran_detector` behaves byte-
+# identically to the legacy Python module. Pure std + serde_json logic; the
+# real HTTPS/443 TLS probe (`smart::probe_https_443`) is additionally gated
+# behind `network`, so `smart-detection` alone adds no new dependency.
+smart-detection = []
 iran = []
 slow = []
 tor = []

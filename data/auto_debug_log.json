@@ -1,6 +1,6 @@
 [
   {
-    "duration_seconds": 0.03,
+    "duration_seconds": 0.02,
     "fixes": [],
     "recommendations": [
       "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
@@ -80,7 +80,7 @@
       "total_checks": 9,
       "warnings": 2
     },
-    "timestamp": "2026-06-28T11:27:32.079860+00:00"
+    "timestamp": "2026-07-07T04:38:15.999123+00:00"
   },
   {
     "duration_seconds": 0.03,
@@ -163,7 +163,1169 @@
       "total_checks": 9,
       "warnings": 2
     },
-    "timestamp": "2026-06-28T11:27:51.207769+00:00"
+    "timestamp": "2026-07-08T06:36:30.402390+00:00"
+  },
+  {
+    "duration_seconds": 0.02,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-08T06:38:04.386339+00:00"
+  },
+  {
+    "duration_seconds": 0.01,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-08T06:46:14.072069+00:00"
+  },
+  {
+    "duration_seconds": 0.01,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-08T06:47:09.116898+00:00"
+  },
+  {
+    "duration_seconds": 0.03,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-08T06:57:40.046131+00:00"
+  },
+  {
+    "duration_seconds": 0.02,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-08T20:33:56.275426+00:00"
+  },
+  {
+    "duration_seconds": 0.03,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-09T01:37:22.475120+00:00"
+  },
+  {
+    "duration_seconds": 2.01,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-09T01:57:21.350509+00:00"
+  },
+  {
+    "duration_seconds": 0.03,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-09T09:50:33.357033+00:00"
+  },
+  {
+    "duration_seconds": 0.02,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-09T09:51:27.730507+00:00"
+  },
+  {
+    "duration_seconds": 0.02,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-09T19:13:12.347908+00:00"
+  },
+  {
+    "duration_seconds": 0.57,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-10T09:07:19.934217+00:00"
+  },
+  {
+    "duration_seconds": 0.01,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-10T09:09:23.660371+00:00"
+  },
+  {
+    "duration_seconds": 0.15,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-11T12:39:43.616449+00:00"
+  },
+  {
+    "duration_seconds": 0.02,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 179 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "message": "All 13 critical files present",
+        "status": "ok"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 3,
+      "fixed": 0,
+      "ok": 4,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-07-11T12:41:25.143544+00:00"
   },
   {
     "duration_seconds": 0.04,
@@ -175,7 +1337,7 @@
     "results": [
       {
         "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
+        "message": "All 180 Python files have valid syntax",
         "status": "ok"
       },
       {
@@ -246,10 +1408,10 @@
       "total_checks": 9,
       "warnings": 2
     },
-    "timestamp": "2026-06-28T11:32:25.222377+00:00"
+    "timestamp": "2026-07-11T23:42:14.834122+00:00"
   },
   {
-    "duration_seconds": 0.03,
+    "duration_seconds": 0.06,
     "fixes": [],
     "recommendations": [
       "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
@@ -258,7 +1420,7 @@
     "results": [
       {
         "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
+        "message": "All 180 Python files have valid syntax",
         "status": "ok"
       },
       {
@@ -329,10 +1491,10 @@
       "total_checks": 9,
       "warnings": 2
     },
-    "timestamp": "2026-06-28T11:34:10.327641+00:00"
+    "timestamp": "2026-07-11T23:45:27.696030+00:00"
   },
   {
-    "duration_seconds": 0.02,
+    "duration_seconds": 0.06,
     "fixes": [],
     "recommendations": [
       "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
@@ -341,7 +1503,7 @@
     "results": [
       {
         "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
+        "message": "All 180 Python files have valid syntax",
         "status": "ok"
       },
       {
@@ -412,10 +1574,10 @@
       "total_checks": 9,
       "warnings": 2
     },
-    "timestamp": "2026-06-30T01:46:59.155349+00:00"
+    "timestamp": "2026-07-11T23:52:17.171796+00:00"
   },
   {
-    "duration_seconds": 0.02,
+    "duration_seconds": 0.05,
     "fixes": [],
     "recommendations": [
       "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
@@ -424,7 +1586,7 @@
     "results": [
       {
         "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
+        "message": "All 180 Python files have valid syntax",
         "status": "ok"
       },
       {
@@ -495,1168 +1657,6 @@
       "total_checks": 9,
       "warnings": 2
     },
-    "timestamp": "2026-06-30T01:48:18.224773+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T01:49:28.327435+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T01:50:39.162424+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T01:51:47.105284+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T02:09:49.777218+00:00"
-  },
-  {
-    "duration_seconds": 3.35,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T06:44:22.288003+00:00"
-  },
-  {
-    "duration_seconds": 0.01,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T07:02:00.861246+00:00"
-  },
-  {
-    "duration_seconds": 0.01,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T07:03:12.767135+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-06-30T11:52:38.748667+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-01T04:40:50.980027+00:00"
-  },
-  {
-    "duration_seconds": 0.55,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-01T09:55:34.096603+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-01T09:59:32.815661+00:00"
-  },
-  {
-    "duration_seconds": 0.01,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-01T10:06:56.576312+00:00"
-  },
-  {
-    "duration_seconds": 0.25,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-02T07:32:45.540988+00:00"
-  },
-  {
-    "duration_seconds": 5.55,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-02T19:02:28.797343+00:00"
+    "timestamp": "2026-07-12T00:17:16.999216+00:00"
   }
 ]

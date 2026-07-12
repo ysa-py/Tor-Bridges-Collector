@@ -372,10 +372,17 @@ impl HistoryManager {
 
     /// Internal helper: ISO timestamp for the current `self.now`.
     fn now_iso(&self) -> String {
-        // Match Python's `datetime.now(UTC).isoformat()` format which uses
-        // microseconds when present and `+00:00` suffix.
-        self.now
-            .to_rfc3339_opts(chrono::SecondsFormat::Micros, true)
+        // Match Python's `datetime.now(UTC).isoformat()` exactly: a literal
+        // `+00:00` offset (NOT `Z`), and the fractional-seconds part present
+        // only when microseconds are nonzero (then 6 digits). `chrono`'s
+        // `to_rfc3339_opts(Micros, true)` previously used here diverged on
+        // both counts (`...000000Z`), breaking byte-for-byte parity of every
+        // persisted timestamp (first_seen / last_seen / test_time / updated).
+        if self.now.timestamp_subsec_micros() == 0 {
+            self.now.format("%Y-%m-%dT%H:%M:%S+00:00").to_string()
+        } else {
+            self.now.format("%Y-%m-%dT%H:%M:%S%.6f+00:00").to_string()
+        }
     }
 }
 

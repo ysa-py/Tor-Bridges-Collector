@@ -15,7 +15,7 @@ fn python_executable() -> &'static str {
         // Leak once: tests are short-lived and the env var is stable for the run.
         Box::leak(path.into_boxed_str())
     } else {
-        "python"
+        "python3"
     }
 }
 
@@ -25,6 +25,9 @@ fn run_python(script: &str) -> String {
         .current_dir(repo_root)
         .env_clear()
         .env("PYTHONPATH", repo_root)
+        // Preserve PATH so the interpreter can be located after env_clear();
+        // without this the clean-env isolation makes `python3` unresolvable.
+        .env("PATH", std::env::var("PATH").unwrap_or_default())
         .arg("-c")
         .arg(script)
         .output()
