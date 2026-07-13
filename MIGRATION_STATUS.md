@@ -1,6 +1,16 @@
 # Python-to-Rust Migration Status Report
 
-**Last updated:** 2026-07-08 (Session 9: `core/iran_detector.py` → Rust port)
+**Last updated:** 2026-07-12 (Session 11: Batch 3 verification — final oracle-backed differential parity)
+
+> **Reconciliation note (Session 11, doc-sync pass):** the per-session bodies
+> below Session 9 were previously stale — the executive summary, the "Final
+> report" section, and the "Modules not yet ported" header disagreed with each
+> other (`49` vs `41` ported; `89` vs `90` pending). They have been reconciled
+> to the empirical ground truth of the current tree: **49 Rust modules ported
+> (48 Python-backed + 1 Rust-native `iran_quantum_dpi_shield_v2`), ~67 Python
+> source modules still source-of-truth** (excluding `__init__.py`, test files,
+> and the deliberately-retained `core/_iran_detector_legacy.py` oracle). See
+> `CHANGELOG.md` Sessions 10–11 for the authoritative session-by-session log.
 
 This document is the single source of truth for the Python→Rust migration
 of the TorShield-IR Ultra VIP Edition codebase. It tracks, for every
@@ -15,12 +25,12 @@ behavior that was flagged as unverifiable rather than guessed.
 | Metric | Value |
 | --- | --- |
 | Python files in Phase 0 inventory | 131 (non-test, non-script) |
-| Python files with verified Rust replacement | **49** (+4 this session: `core/iran_detector.py`, `core/iran_dpi_shaper.py`, `ai_anti_dpi_iran.py`, `dpi_evasion_advanced.py`; `ai_dpi_mutator.py` reviewed and explicitly declined — see below) |
+| Ported Rust modules (`src/*.rs`, excl. `lib.rs`) | **49** — 48 Python-backed + 1 Rust-native (`iran_quantum_dpi_shield_v2`, no Python original) |
+| Python source modules still source-of-truth (pending) | **~67** (excludes `__init__.py`, test files, and the retained `core/_iran_detector_legacy.py` differential oracle; see "Modules not yet ported") |
 | Python files deleted | 0 (per migration rule: delete only when all importers also ported — see below) |
-| Rust source modules (`src/*.rs`) | 49 (+4 this session) |
-| Rust parity-test files, single source of truth per module | **39 / 39** (+4 this session) |
+| Rust parity-test files (`tests/parity/*.rs`) | **49** — every oracle-backed lib module now has a differential parity test (closed Session 11, Batch 3) |
 | Rust unit tests (internal `#[cfg(test)]`) | 49 modules |
-| Total Rust tests passing (default, no `network` feature) | **1269 / 1269** (+94 this session across five ported/wired modules — see the per-module sections below for the exact breakdown of each) |
+| Total Rust tests passing (default, no `network` feature) | **1303 / 1303** (0 failed) — per `CHANGELOG.md` Session 11; the Batch-3 subset was independently re-verified in the Session-11 doc-sync pass (see "Session 11 verification" below) |
 | Total Rust tests passing (`--features network`) | This session's 94 new/changed tests confirmed passing individually under `--features network` (each module's own `--test`/`--lib` run) and `cargo clippy --workspace --all-targets --features network -- -D warnings` confirmed clean on the final code, six times (once per round of changes). A full `cargo test --workspace --features network` run was **not** completed this session — it hit this sandbox's disk-space ceiling (see practical note #9 below) partway through and was not re-attempted after `cargo clean`, since a second full rebuild-from-clean under that configuration was judged very likely to hit the same wall. Not fabricated as passing; genuinely not re-run. |
 | Python tests passing (`pytest tests/`) | Not re-run this session — no Python source was modified, so nothing here could have changed. Last confirmed: 499 + 132 subtests (Session 8). |
 | `cargo clippy --workspace --all-targets -- -D warnings` (default) | clean |
@@ -31,6 +41,33 @@ behavior that was flagged as unverifiable rather than guessed.
 verification step (the full-workspace test run under `--features
 network`) was not completed, for the disk-space reason stated above —
 flagged here rather than papered over.**
+
+---
+
+## Session 11 verification (doc-sync pass, 2026-07-12)
+
+Independent re-execution of the final batch (Session 11 / Batch 3) against the
+live Python oracles, plus the default-feature lint/format gates. **Toolchain in
+this sandbox: `rustc`/`cargo` 1.96.1, `clippy` 0.1.96, `python` 3.11.15**
+(Sessions 10–11 recorded 1.97.0; both exceed the pinned MSRV 1.75 and no lint
+divergence surfaced — the delta is an environment difference, not a project
+change).
+
+| Surface | Command | Result |
+| --- | --- | --- |
+| `history` differential parity | `cargo test --test history_parity` | ✅ **4 / 4 pass** |
+| `iran_nin_bypass` differential parity | `cargo test --test iran_nin_bypass_parity` | ✅ **2 / 2 pass** |
+| `nin_cut_tester` differential parity | `cargo test --test nin_cut_tester_parity` | ✅ **3 / 3 pass** |
+| `self_heal` differential parity | `cargo test --test self_heal_parity` | ✅ **3 / 3 pass** |
+| `iran_quantum_dpi_shield_v2` (Rust-native, no oracle) | `cargo test --lib iran_quantum_dpi_shield_v2` | ✅ **24 / 24 unit tests pass** |
+| **Batch-3 total** | — | ✅ **12 / 12 differential parity + 24 / 24 native unit = 36 / 36 pass, 0 failed** |
+| Lint (default) | `cargo clippy --all-targets -- -D warnings` | ✅ clean (exit 0) |
+| Format | `cargo fmt --check` | ✅ clean (exit 0) |
+
+With this batch, **every oracle-backed lib module now has a differential parity
+test**. The four Python oracles (`core/history.py`, `iran_nin_bypass.py`,
+`nin_cut_tester.py`, `self_heal.py`) import cleanly in this environment and are
+retained (Gate 4 not executed — the parity suite invokes them at test time).
 
 ---
 
@@ -1728,7 +1765,7 @@ infrastructure will be FLAGGED here, not ported.
 
 ## What was NOT done (and why)
 
-### Modules not yet ported (89 Python files)
+### Modules not yet ported (~67 Python source modules)
 
 The following categories of Python files remain unported. They are listed
 in priority order so the next migration session can pick up where this
@@ -1767,14 +1804,14 @@ be ported last, after every module it imports has been parity-verified.
 The following behavioral differences between the Python original and the
 Rust port are documented in `MIGRATION_NOTES.md` (append-only file):
 
-1. **JA3 penalty simplified** — `src/scorer.rs` returns 0 for
-   `ja3_penalty()`. Originally disclosed (prior session) as blocked on
-   "the full JA3Intel database integration requiring runtime state from
-   the `ja3_intelligence` module" — **that claim is now known to be
-   stale**: `src/ja3_intelligence.rs` already exists with everything
-   needed. See item 10 below for the corrected scope, the measured
-   real-world size of this gap, and why it's still not fixed as of this
-   writing.
+1. **JA3 penalty — RESOLVED (Session 10, 2026-07-12).** Formerly
+   `src/scorer.rs::ja3_penalty()` was a stub returning `0`, diverging from
+   Python's `_ja3_penalty` for every record. This is now **closed**:
+   `ja3_penalty` is wired to the already-ported `ja3_intelligence::JA3Intel`
+   (`transport_default_risk`/`port_risk`/`score`) and reproduces Python's
+   `int(round(...))` round-half-to-even semantics. `IranScorer::score()` is
+   now byte-for-byte with the Python oracle. See `CHANGELOG.md` Session 10 and
+   the (now-historical) item 10 below. No longer an open divergence.
 
 2. **`core/tester.py` network probes** — The async TCP/SSL probe functions
    (`probe_vanilla`, `probe_obfs4`, `probe_webtunnel`, `test_bridge`) are
@@ -1837,8 +1874,10 @@ Rust port are documented in `MIGRATION_NOTES.md` (append-only file):
    (`SecondsFormat::Micros`) or confirm none of their parity tests
    actually assert timestamp precision.
 
-10. **JA3 penalty gap is bigger and more fixable than item 1 originally
-    disclosed (measured Session 6)** — wiring `core/smart_iran_scorer.py`'s
+10. **[RESOLVED Session 10 — retained for history]** **JA3 penalty gap is
+    bigger and more fixable than item 1 originally disclosed (measured
+    Session 6)** — this analysis is now closed out; the fix landed in
+    Session 10 (see item 1 above and `CHANGELOG.md`). Original text: wiring `core/smart_iran_scorer.py`'s
     port up to the real `scorer.rs` and comparing against live Python
     showed `ja3_penalty()` returning `0` unconditionally isn't a rare
     edge case: for the realistic case of a bridge record with no
@@ -1865,11 +1904,11 @@ Rust port are documented in `MIGRATION_NOTES.md` (append-only file):
 
 | Requirement | Status |
 | --- | --- |
-| Parity-first: every ported function has a golden-output test running the Python original | ✅ 39 parity-test files, 1269 total tests pass (default). `--features network`: this session's additions confirmed individually plus a clean workspace-wide `clippy`; full-suite total not currently known-good — see "next session" list, item 2 |
+| Parity-first: every ported function has a golden-output test running the Python original | ✅ 49 parity-test files, **1303 total tests pass (default), 0 failed** (Session 11). Every oracle-backed lib module now has a differential parity test. `--features network` full-suite total not currently known-good — see "next session" list, item 2 |
 | Zero `unwrap()`/`expect()` on I/O, network, or parse paths | ✅ All Rust modules use `Result<T, E>` with `thiserror`-based typed errors |
 | Every external call has an explicit timeout | ✅ All HTTP/TCP calls accept a timeout parameter |
 | Shared state uses `Arc<Mutex<_>>` correctly | ✅ Tests run both single- and multi-threaded |
-| `cargo test --workspace` passes clean | ✅ 1269/1269 pass (re-verified Session 9; this row had been left at a stale Session 7 figure through Session 8 — corrected here) |
+| `cargo test --workspace` passes clean | ✅ 1303/1303 pass, 0 failed (Session 11, default features) |
 | `cargo clippy --workspace --all-targets -- -D warnings` passes clean | ✅ re-verified Session 9, both default and `--features network` |
 | `cargo fmt --check` passes clean | ✅ re-verified Session 9 |
 | CI workflows updated to call Rust binary for ported modules | ✅ All 9 GitHub + 1 GitLab + 1 CircleCI configs updated |
@@ -1880,13 +1919,14 @@ Rust port are documented in `MIGRATION_NOTES.md` (append-only file):
 
 ## Final report — definition of done
 
-The migration is **NOT yet complete**. 41 of 131 Python files have
-verified Rust replacements (+3 this session: `core/iran_bridge_prioritizer.py`,
-`core/nin_selector.py`, `core/formatter.py` — see Session 4 notes
-above). The remaining 90 files (mostly Phase 5 DPI/evasion modules
-pending scope-guardrail review, Phase 6 formal packages, and Phase 7
-reporting) are still source-of-truth in Python, fully intact and
-undeleted.
+The migration is **NOT yet complete**. As of Session 11, **49 Rust modules
+are ported** (48 Python-backed + 1 Rust-native `iran_quantum_dpi_shield_v2`),
+each oracle-backed one carrying a differential parity test. The remaining
+**~67 Python source modules** (excluding `__init__.py`, test files, and the
+retained `core/_iran_detector_legacy.py` oracle) — dominated by the
+`torshield_ai_gateway/*` subpackage (~30), the root-level Phase 5 DPI/evasion
+modules pending scope-guardrail review (12), and Phase 7 reporting incl.
+`main.py` — are still source-of-truth in Python, fully intact and undeleted.
 
 Per the migration rule: **`requirements.txt` and `pyproject.toml` will
 be emptied/removed only when this table shows 100% parity-verified across
@@ -1915,8 +1955,10 @@ byte-identical against live Python. The pre-existing flagged
 differences from Session 1 (documented in `MIGRATION_NOTES.md`) remain
 unchanged:
 
-1. `scorer.rs::ja3_penalty()` returns 0 (full JA3Intel DB integration
-   requires runtime state).
+1. ~~`scorer.rs::ja3_penalty()` returns 0 (full JA3Intel DB integration
+   requires runtime state).~~ **RESOLVED (Session 10):** `ja3_penalty` is
+   wired to `ja3_intelligence::JA3Intel`; `IranScorer::score()` is
+   byte-for-byte with Python. No longer a divergence.
 2. `core/tester.py` async TCP/SSL probes (`probe_vanilla`, `probe_obfs4`,
    `probe_webtunnel`, `test_bridge`) are NOT ported — covered by the
    existing `bridge-probe` binary in the workspace.
