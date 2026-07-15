@@ -1,0 +1,73 @@
+# ══════════════════════════════════════════════════════════════════════════
+# ⚠ DORMANT — NOT THE ACTIVE CI SYSTEM (REMEDIATION 2026-06-21)
+# CircleCI (.circleci/config.yml) is the current, primary CI/CD platform.
+# This GitLab CI configuration is fully wired and complete — it was set
+# aside specifically because GitLab's free shared runners require a bank
+# card, not because anything here is broken. Kept as an intentional
+# fallback in case that constraint changes (e.g. self-hosted runner
+# available, or GitLab relaxes the requirement). See .circleci/README.md
+# for the active setup, and docs/SECRETS_MANIFEST.md for the full
+# cross-platform secret list needed if this is ever reactivated.
+# ══════════════════════════════════════════════════════════════════════════
+#
+# TorShield-IR — GitLab CI/CD root configuration
+# Converted from .github/workflows/* (GitHub Actions). The original GitHub
+# workflow files are intentionally left untouched; this runs alongside them.
+#
+# Secrets: NEVER hardcoded. Define the required values under
+#   Settings -> CI/CD -> Variables  (mark them Masked/Protected).
+#   See https://docs.gitlab.com/ci/secrets/ for managed-secret options.
+# ════════════════════════════════════════════════════════════════════════════
+
+stages:
+  - quality       # py_compile, yaml lint, mypy/ruff, pytest+coverage
+  - build         # Rust (bridge-probe) + Go (iran_tester, probe_scheduler)
+  - scrape        # full scrape + Iran reachability + all advanced engines
+  - rerank        # AI re-ranking of bridges
+  - healthcheck   # AI gateway provider health (scheduled / manual only)
+  - package       # bundle everything into a final tar.gz artifact
+  - self-heal     # runs only on failure (auto-diagnose)
+
+# Pipeline-wide defaults. Pulls in the modular job definitions so each former
+# GitHub workflow lives in its own readable file under .gitlab/ci/.
+include:
+  - local: .gitlab/ci/torshield-ir.yml
+  - local: .gitlab/ci/ai-gateway-health-check.yml
+  - local: .gitlab/ci/ai-self-healing.yml
+  # Ultra VIP additive jobs: sync-to-gitlab, zero-error-gate, package-final
+  # (produces ultra-main-vip-zero-error.tar.gz), self-heal-vip, telemetry-dashboard.
+  # Nothing existing is removed — purely additive per RULE-0-A.
+  - local: .gitlab/ci/ultra-vip.yml
+
+variables:
+  # pip cache location so cache:paths can persist downloaded wheels
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  # Mirrors NODE_NO_WARNINGS from the GitHub workflows
+  NODE_NO_WARNINGS: "1"
+  # Full clone (GitHub used fetch-depth: 0) so git history is available
+  GIT_DEPTH: "0"
+
+# ── Reusable templates (hidden jobs) ────────────────────────────────────────
+# .python-base centralises the Python image + dependency install so every
+# Python job stays consistent (mirrors actions/setup-python + pip install).
+.python-base:
+  image: python:3.12-slim
+  cache:
+    # key:files invalidates the cache only when requirements.txt changes
+    key:
+      files:
+        - requirements.txt
+    paths:
+      - .cache/pip
+  before_script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+
+# .rules-scheduled-or-manual reproduces GitHub's schedule + workflow_dispatch:
+# the pipeline runs on schedule (cron set in CI/CD -> Schedules), on manual web
+# runs, and on pushes. Referenced via !reference in individual jobs.
+.rules-scheduled-or-manual:
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'

@@ -1,0 +1,89 @@
+{
+  "name": "schedule-hourly-health",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "f78a027d-c639-412b-8647-f41a6ed79abf",
+      "name": "Schedule - hourly",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && bash scripts/circleci_env_bootstrap.sh"
+      },
+      "id": "f7210e54-c7a5-40f9-bc90-a5660d8e41c6",
+      "name": "env-bootstrap",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail && python scripts/ai_gateway_health_check.py 2>&1 | tee logs/gateway_health.log || true"
+      },
+      "id": "f7bcae47-cc7c-41b6-90d1-63c53286a7ab",
+      "name": "ai-gateway-health",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ],
+      "notes": "Set node timeout to 20 min."
+    }
+  ],
+  "connections": {
+    "Schedule - hourly": {
+      "main": [
+        [
+          {
+            "node": "env-bootstrap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "env-bootstrap": {
+      "main": [
+        [
+          {
+            "node": "ai-gateway-health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "torshield-ir-n8n"
+  },
+  "id": "4aafc3a8-914a-48fb-b61a-b645f6d68506",
+  "tags": [
+    "torshield-ir",
+    "ci-cd"
+  ]
+}

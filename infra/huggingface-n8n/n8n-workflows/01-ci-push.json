@@ -1,0 +1,541 @@
+{
+  "name": "ci-push",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ci-push",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "65c55e3b-ddd8-4c25-9adf-727984ebc561",
+      "name": "Webhook - GitHub Push",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        200,
+        300
+      ],
+      "webhookId": "c5892bf4-7501-483b-b7f9-1f04427f30e4"
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && bash scripts/circleci_env_bootstrap.sh"
+      },
+      "id": "23852501-434e-4362-9c85-e02916f3fdf8",
+      "name": "env-bootstrap",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail\nPASS=0; FAIL=0\nwhile IFS= read -r -d '' f; do\n  if python -m py_compile \"$f\" 2>/dev/null; then PASS=$((PASS + 1))\n  else echo \"  FAIL: $f\"; python -m py_compile \"$f\" 2>&1 || true; FAIL=$((FAIL + 1)); fi\ndone < <(find . -name '*.py' -not -path './.venv/*' -not -path './build/*' -print0)\necho \"Pass: $PASS  Fail: $FAIL\"\n[ \"$FAIL\" -eq 0 ] || exit 1"
+      },
+      "id": "aacdbc48-4fcb-4956-9bcd-9b3a5ca62a8d",
+      "name": "quality-gate - syntax (py_compile)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && python -c \"import yaml,sys,glob; [yaml.safe_load(open(f)) for f in glob.glob('**/*.yml', recursive=True) if '.venv/' not in f]\""
+      },
+      "id": "c2e0f963-ad72-4c75-8e39-91586279534e",
+      "name": "quality-gate - yaml lint",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && ruff check . --exclude .venv --exclude build || true"
+      },
+      "id": "42538fd3-0866-4771-9b12-8511205d09a4",
+      "name": "quality-gate - ruff",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && mypy . --ignore-missing-imports --no-error-summary || true"
+      },
+      "id": "fcb9a9c0-e973-4a48-94a4-d41647ec5ca0",
+      "name": "quality-gate - mypy",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && pytest --cov=. --cov-report=xml:reports/coverage.xml --cov-report=html:reports/coverage_html --junitxml=reports/junit.xml -ra -q || true"
+      },
+      "id": "27609a76-3066-4e7a-9d40-2301da26c828",
+      "name": "quality-gate - pytest",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && go vet ./... || true"
+      },
+      "id": "6e98dec5-911d-4b38-a134-987d38b54d9c",
+      "name": "go-quality-gate - vet",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && out=$(gofmt -l . 2>/dev/null | grep -v '^vendor/' || true)\nif [ -n \"$out\" ]; then echo \"$out\"; exit 1; fi"
+      },
+      "id": "8f7d74ee-126b-473a-aa89-bd5f4cdc7ddf",
+      "name": "go-quality-gate - gofmt",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && go test -short -count=1 ./... 2>&1 | tee reports/go-test.log || true"
+      },
+      "id": "bd9fe052-98f2-46d9-ab48-f7fbb0a12738",
+      "name": "go-quality-gate - test",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir/bridge-probe && cargo build --release && cp target/release/bridge-probe ../bridge-probe-bin"
+      },
+      "id": "7021514f-c165-4c47-9d58-3896afa4399a",
+      "name": "build-rust",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir/bridge-probe && cargo test --release || true"
+      },
+      "id": "b2873f0c-879b-4583-9de8-02948b8612ef",
+      "name": "build-rust - test",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags '-s -w' -o iran_tester ./cmd/iran_tester/\nCGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags '-s -w' -o probe_scheduler ./cmd/probe_scheduler/"
+      },
+      "id": "2375fd36-eaaa-45cb-a11a-b2996c55899c",
+      "name": "build-go",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "feb95bca-a455-4f80-8d95-22d1ca231a0c",
+              "leftValue": "={{$json.body.ref}}",
+              "rightValue": "refs/heads/main",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "a5c447f7-446a-47f3-95ea-924e2363f27b",
+              "leftValue": "={{$json.body.ref}}",
+              "rightValue": "refs/heads/master",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        }
+      },
+      "id": "489766e8-60dd-489e-9895-4cc86ce3125e",
+      "name": "IF - branch is main or master",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail && python main.py --mode full 2>&1 | tee logs/scrape.log"
+      },
+      "id": "080c90df-9378-4d90-a726-877a201857b5",
+      "name": "scrape - main pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3000,
+        300
+      ],
+      "notes": "Set node timeout to 45 min (matches CircleCI no_output_timeout: 45m)."
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && python ooni_correlator.py 2>&1 | tee logs/ooni_correlator.log || true"
+      },
+      "id": "3992645b-d151-44ab-aec1-372b9b632665",
+      "name": "scrape - ooni correlator",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && python ai_anti_dpi_iran.py 2>&1 | tee logs/ai_anti_dpi.log || true\npython ai_dpi_quantum_evasion.py 2>&1 | tee logs/ai_dpi_quantum.log || true"
+      },
+      "id": "27c89590-972d-47c4-86d7-aeee2f3e5593",
+      "name": "scrape - AI anti-DPI",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && python scripts/ai_bridge_reranker.py 2>&1 | tee logs/ai_rerank.log || true\npython scripts/ai_bridge_reranker_v2.py 2>&1 | tee logs/ai_rerank_v2.log || true"
+      },
+      "id": "91847619-1ac2-4118-b58d-9a25371d3ad5",
+      "name": "ai-rerank",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && bash scripts/circleci_packaging.sh"
+      },
+      "id": "483dc33d-5794-4623-8766-47e69983e914",
+      "name": "packaging",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        3800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.github.com/repos/{{$env.GH_OWNER}}/{{$env.GH_REPO}}/releases",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=token {{$env.GH_PAT}}"
+            },
+            {
+              "name": "Accept",
+              "value": "application/vnd.github+json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"tag_name\": \"build-{{$now.format('yyyyMMdd-HHmmss')}}\",\n  \"name\": \"TorShield-IR build {{$now.format('yyyy-MM-dd HH:mm')}}\",\n  \"body\": \"Automated packaging via n8n.\"\n}"
+      },
+      "id": "f8464bcd-f612-4fa8-ad6e-5fc7855408e0",
+      "name": "Upload release asset (GitHub)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        4000,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook - GitHub Push": {
+      "main": [
+        [
+          {
+            "node": "env-bootstrap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "env-bootstrap": {
+      "main": [
+        [
+          {
+            "node": "quality-gate - syntax (py_compile)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "quality-gate - syntax (py_compile)": {
+      "main": [
+        [
+          {
+            "node": "quality-gate - yaml lint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "quality-gate - yaml lint": {
+      "main": [
+        [
+          {
+            "node": "quality-gate - ruff",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "quality-gate - ruff": {
+      "main": [
+        [
+          {
+            "node": "quality-gate - mypy",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "quality-gate - mypy": {
+      "main": [
+        [
+          {
+            "node": "quality-gate - pytest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "quality-gate - pytest": {
+      "main": [
+        [
+          {
+            "node": "go-quality-gate - vet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "go-quality-gate - vet": {
+      "main": [
+        [
+          {
+            "node": "go-quality-gate - gofmt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "go-quality-gate - gofmt": {
+      "main": [
+        [
+          {
+            "node": "go-quality-gate - test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "go-quality-gate - test": {
+      "main": [
+        [
+          {
+            "node": "build-rust",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build-rust": {
+      "main": [
+        [
+          {
+            "node": "build-rust - test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build-rust - test": {
+      "main": [
+        [
+          {
+            "node": "build-go",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build-go": {
+      "main": [
+        [
+          {
+            "node": "IF - branch is main or master",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - branch is main or master": {
+      "main": [
+        [
+          {
+            "node": "scrape - main pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "scrape - main pipeline": {
+      "main": [
+        [
+          {
+            "node": "scrape - ooni correlator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scrape - ooni correlator": {
+      "main": [
+        [
+          {
+            "node": "scrape - AI anti-DPI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "scrape - AI anti-DPI": {
+      "main": [
+        [
+          {
+            "node": "ai-rerank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-rerank": {
+      "main": [
+        [
+          {
+            "node": "packaging",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "packaging": {
+      "main": [
+        [
+          {
+            "node": "Upload release asset (GitHub)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1",
+    "executionTimeout": 7200,
+    "saveExecutionProgress": true
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "torshield-ir-n8n"
+  },
+  "id": "399452b6-288b-44b5-9bef-63266f2c0a27",
+  "tags": [
+    "torshield-ir",
+    "ci-cd"
+  ]
+}

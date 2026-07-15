@@ -1,0 +1,140 @@
+[package]
+name = "torshield-ir-ultra"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+
+[workspace]
+resolver = "2"
+members = [".", "bridge-probe"]
+
+[workspace.package]
+edition = "2021"
+rust-version = "1.75"
+
+[workspace.dependencies]
+# SESSION 10 CORRECTION (2026-07-12): the environment claims in the comment
+# below ("rustup's distribution domain is outside this environment's egress
+# allowlist", "only rustc 1.75.0 is offered via apt on Ubuntu 24.04") do NOT
+# hold in the current sandbox. This host is Debian trixie; `rustup` installs
+# cleanly and provides rustc 1.97.0 (apt additionally offers 1.85). Those
+# notes described a different sandbox instance. The MSRV pin (1.75) and the
+# dependency/idna pins below are deliberately left UNCHANGED — the MSRV
+# rationale for the pins is orthogonal to which compiler happens to be
+# installable — but the egress/toolchain-availability claims are superseded.
+#
+# `blocking` is required by `scraper.rs`'s `ReqwestHttpFetch` and
+# `endpoint_validator.rs`'s synchronous HTTP probing (mirrors Python's
+# `urllib.request`, used with no async runtime in the original) — was
+# missing here even though scraper.rs already depends on
+# `reqwest::blocking`; this is the first time `--features network` has
+# actually been built in this sandbox, which is how this surfaced.
+# NOTE on transitive pins this reqwest dependency requires (all recorded
+# in Cargo.lock, not directly here, since none of these are direct
+# dependencies — documented here per the same principle):
+# `idna_adapter` is pinned to `1.2.0` (`cargo tree -i idna_adapter` to
+# confirm). This still selects the ICU4X backend stream (full
+# UTS46/Unicode correctness) — NOT the lower-fidelity `1.1.x`
+# (unicode-rs) or `1.0.x` (stub, no real IDNA processing) streams — but
+# resolves against the older icu4x 1.5.x generation rather than current
+# 2.x, because 2.x's MSRV (1.81-1.86 depending on the specific crate)
+# exceeds this project's pinned rustc 1.75.0, and no rustc upgrade path
+# is available in this build environment (only rustc 1.75.0 is offered
+# via `apt` on Ubuntu 24.04; `rustup`'s distribution domain is outside
+# this environment's network egress allowlist — confirmed, not assumed).
+# `hyper-rustls` is similarly pinned to `0.27.2` for the same MSRV
+# reason. Three regression tests in `tests/idna_icu4x_regression.rs`
+# verify the older icu4x generation still handles non-ASCII IDN,
+# Punycode, and homograph domains correctly — see that file and
+# `MIGRATION_NOTES.md` for the full writeup. TODO: re-pin all of these
+# forward once this environment's rustc can move to 1.86+.
+reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json", "blocking"] }
+tokio = { version = "=1.45.1", features = ["macros", "rt-multi-thread", "time", "fs"] }
+quinn = "=0.11.8"
+scraper = "=0.23.1"
+html5ever = "=0.29.1"
+linfa = "=0.7.1"
+ndarray = "=0.15.6"
+rustls = "=0.23.28"
+ring = "=0.17.14"
+pqcrypto-kyber = "=0.8.1"
+pqcrypto-mlkem = "=0.1.1"
+hickory-dns = "=0.25.2"
+etherparse = "=0.18.0"
+indicatif = "=0.17.11"
+console = "=0.15.11"
+owo-colors = "=4.2.2"
+serde_yaml = "=0.9.34+deprecated"
+backoff = "=0.4.0"
+tracing = "=0.1.41"
+tracing-subscriber = "=0.3.19"
+prometheus = "=0.13.4"
+printpdf = "=0.8.2"
+genpdf = "=0.2.0"
+thiserror = "=2.0.12"
+serde = { version = "=1.0.219", features = ["derive"] }
+serde_json = "=1.0.150"
+chrono = { version = "=0.4.41", default-features = false, features = ["std", "clock"] }
+
+[dependencies]
+serde_json = "=1.0.150"
+chrono = { version = "=0.4.41", default-features = false, features = ["std", "clock"] }
+thiserror = { workspace = true }
+# `tokio` is required for `censorship_monitor.rs`'s concurrent TCP
+# reachability probing (mirrors Python's `asyncio.gather`/`asyncio.
+# open_connection`). Already a workspace dependency (via `reqwest`,
+# `quinn`, and `bridge-probe`'s own direct use), so listing it here for
+# the main crate does not increase the build graph.
+tokio = { workspace = true, features = ["net"] }
+# `regex` is required to faithfully reproduce the Python `re.search`/`re.compile`
+# patterns used by `scraper.py` and `onionhop_collector.py` for input validation,
+# endpoint extraction, and IP-version detection. It is already a transitive
+# dependency in the workspace (via `bridge-probe`), so listing it here does not
+# increase the build graph.
+regex = "=1.11.1"
+# `tracing` is used by `scraper.rs` and `onionhop_collector.rs` as a no-op-by-
+# default logging facade, mirroring the Python `logging`/`_log` calls. It is
+# already a transitive dependency in the workspace, so listing it here does not
+# increase the build graph.
+tracing = { workspace = true }
+# `scraper` is the Rust HTML parser used by `sources_torproject.rs` to mirror
+# the Python `beautifulsoup4` `_parse_html()` function. The pinned version +
+# feature set matches `[workspace.dependencies]`.
+scraper = { workspace = true }
+# `reqwest` is the production HTTP client used by the `network` feature of the
+# scraper / onionhop_collector ports. It is optional so that the default build
+# (and the parity tests, which substitute a mock client) does not pay the cost
+# of compiling it. The pinned version + feature set matches `[workspace.dependencies]`.
+reqwest = { workspace = true, optional = true }
+# `zip` is used by `formatter.rs` to mirror Python's stdlib `zipfile` module
+# for building the Telegram-distribution `tor_bridges.zip` archive. No
+# stdlib equivalent exists in Rust, so this is a new, minimal-feature
+# dependency (only the "deflate" compression method is used, matching
+# Python's `zipfile.ZIP_DEFLATED`).
+zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
+
+[features]
+default = []
+network = ["dep:reqwest"]
+# Session 9 (directive §4): adaptive anti-filtering / anti-DPI warfare layer.
+# NON-DEFAULT by mandate — with this off, `iran_detector` behaves byte-
+# identically to the legacy Python module. Pure std + serde_json logic; the
+# real HTTPS/443 TLS probe (`smart::probe_https_443`) is additionally gated
+# behind `network`, so `smart-detection` alone adds no new dependency.
+smart-detection = []
+iran = []
+slow = []
+tor = []
+iran_bridge = []
+bridge = []
+dpi = []
+nin = []
+
+[profile.release]
+opt-level = 3
+strip = true
+lto = true
+codegen-units = 1
+panic = "abort"
+

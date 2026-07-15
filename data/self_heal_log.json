@@ -1,0 +1,673 @@
+[
+  {
+    "triggered_at": "2026-06-17T01:54:15.561678+00:00",
+    "triggered_by": "smoke_test",
+    "diagnoses_run": [
+      "DIAG-1",
+      "DIAG-2",
+      "DIAG-3",
+      "DIAG-4",
+      "DIAG-5",
+      "DIAG-6"
+    ],
+    "actions_taken": [
+      "DIAG-1: no CF slots configured — recommend populating CF_ACCOUNT_ID_*/CF_API_TOKEN_*",
+      "DIAG-2: no cache file — recommending rerun of scrape stage",
+      "DIAG-3: AntiDPIV4 engine loaded — escalate threat level to HIGH",
+      "DIAG-4: Rust binary missing — fallback to core.tester (Python)",
+      "DIAG-5: Go binaries present — no fallback needed",
+      "DIAG-6: quarantine list ready (0 entries) at data/quarantined_tests.json"
+    ],
+    "errors_found": [],
+    "fixes_applied": [
+      {
+        "diag": "DIAG-3",
+        "action": "v4_anti_dpi_loaded",
+        "v3_wrapped": true
+      },
+      {
+        "diag": "DIAG-4",
+        "action": "fallback_to_python_prober",
+        "module": "core.tester"
+      },
+      {
+        "diag": "DIAG-6",
+        "action": "quarantine_list_ready",
+        "currently_quarantined": 0,
+        "path": "data/quarantined_tests.json"
+      }
+    ],
+    "v1_invoked": true,
+    "v1_result": {
+      "triggered_at": 1781661255.5616825,
+      "trigger_reason": "manual_force",
+      "actions_taken": [
+        "revalidate_env",
+        "probe_endpoints",
+        "rebuild_model_registry",
+        "reset_circuit_breakers",
+        "log_diagnostic_snapshot"
+      ],
+      "slots_revalidated": 0,
+      "slots_recovered": 0,
+      "endpoints_probed": 0,
+      "endpoints_reachable": 0,
+      "models_discovered": 12,
+      "circuit_breakers_reset": 0,
+      "errors_found": [],
+      "diagnostic_snapshot": {
+        "heal_cycle": 1,
+        "trigger_reason": "manual_force",
+        "timestamp": "2026-06-17T01:54:15.955868+00:00",
+        "env_vars_status": {
+          "slot_1": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_2": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_3": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_4": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_5": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_6": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_7": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_8": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_9": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_10": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          },
+          "slot_11": {
+            "has_account_id": false,
+            "has_api_token": false,
+            "has_gateway_url": false,
+            "gateway_uses_compat": false,
+            "gateway_uses_workers_ai": false
+          }
+        },
+        "circuit_breaker_status": {
+          "total_slots": 11,
+          "configured_slots": 0,
+          "skipped_slots": 11,
+          "available_slots": 0,
+          "failure_threshold": 3,
+          "cooldown_secs": 60.0,
+          "slots": {
+            "1": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "2": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "3": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "4": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "5": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "6": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "7": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "8": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "9": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "10": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            },
+            "11": {
+              "configured": false,
+              "skipped": true,
+              "skip_reason": "missing credentials",
+              "state": "closed",
+              "consecutive_failures": 0,
+              "total_failures": 0,
+              "total_successes": 0,
+              "success_rate": 1.0,
+              "health_score": 0.049,
+              "avg_latency_ms": 200.0,
+              "last_failure_error": "",
+              "recovery_time": 0.0
+            }
+          }
+        },
+        "model_registry_status": {
+          "total_models": 12,
+          "available_models": 12,
+          "last_refresh": "2026-06-17T01:28:12.980721+00:00",
+          "refresh_count": 1,
+          "top_5_models": [
+            {
+              "model_id": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+              "source": "cf_workers_ai",
+              "display_name": "Llama 3.3 70B Instruct (Fast)",
+              "dpi_resistance_index": 0.85,
+              "response_latency": 0.9,
+              "context_window_utility": 0.75,
+              "fitness_score": 0.845,
+              "parameter_count": "70b",
+              "context_window": 8192,
+              "slot_index": 0,
+              "is_available": true
+            },
+            {
+              "model_id": "@cf/meta/llama-3.1-8b-instruct",
+              "source": "cf_workers_ai",
+              "display_name": "Llama 3.1 8B Instruct",
+              "dpi_resistance_index": 0.9,
+              "response_latency": 0.95,
+              "context_window_utility": 0.5,
+              "fitness_score": 0.835,
+              "parameter_count": "8b",
+              "context_window": 8192,
+              "slot_index": 0,
+              "is_available": true
+            },
+            {
+              "model_id": "@cf/mistralai/mistral-7b-instruct-v0.2-lora",
+              "source": "cf_workers_ai",
+              "display_name": "Mistral 7B Instruct v0.2 LoRA",
+              "dpi_resistance_index": 0.92,
+              "response_latency": 0.95,
+              "context_window_utility": 0.45,
+              "fitness_score": 0.835,
+              "parameter_count": "7b",
+              "context_window": 4096,
+              "slot_index": 0,
+              "is_available": true
+            },
+            {
+              "model_id": "@cf/meta/llama-3.3-70b-instruct",
+              "source": "cf_workers_ai",
+              "display_name": "Llama 3.3 70B Instruct",
+              "dpi_resistance_index": 0.85,
+              "response_latency": 0.8,
+              "context_window_utility": 0.8,
+              "fitness_score": 0.825,
+              "parameter_count": "70b",
+              "context_window": 8192,
+              "slot_index": 0,
+              "is_available": true
+            },
+            {
+              "model_id": "@cf/meta/llama-4-scout-17b-16e-instruct",
+              "source": "cf_workers_ai",
+              "display_name": "Llama 4 Scout 17B MoE",
+              "dpi_resistance_index": 0.8,
+              "response_latency": 0.85,
+              "context_window_utility": 0.7,
+              "fitness_score": 0.795,
+              "parameter_count": "17b-moe",
+              "context_window": 8192,
+              "slot_index": 0,
+              "is_available": true
+            }
+          ],
+          "static_baseline_count": 12,
+          "cache_age_hours": 0.4
+        }
+      },
+      "success": true
+    },
+    "success": true
+  },
+  {
+    "timestamp": "2026-06-23T20:03:49.222322+00:00",
+    "github_sha": "081b49fd85d033e591429b6f1070b64448be808b",
+    "errors_found": 0,
+    "errors": [],
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-23T23:57:12.007557+00:00",
+    "github_sha": "160e55cb92a3f351e50f35870f1d472ff4bf8daf",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T03:30:17.575102+00:00",
+    "github_sha": "c32e121de0c70701b09360909569668129f20e5b",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T07:41:02.674183+00:00",
+    "github_sha": "48ac6af9cb106619afe24982cbd2e317a3ae1b95",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T10:50:37.230103+00:00",
+    "github_sha": "7bcc35a37d708f03465758055814ba66090a205d",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T11:54:27.913789+00:00",
+    "github_sha": "3aaa6538213605bcf3d071931d89451004289cf0",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T13:23:15.130464+00:00",
+    "github_sha": "d1d677209e929d37c9330723e264f780b3336b93",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T16:22:56.413488+00:00",
+    "github_sha": "056f531b85898a6bed31cd2ce40780c6da19185f",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T18:52:49.426236+00:00",
+    "github_sha": "1672dd984234957d26cf2bbd334ce618a4a8e2fd",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T20:49:24.533850+00:00",
+    "github_sha": "236f539adeb627ce596c0b4a152a97df40b89cdb",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-24T22:18:16.450905+00:00",
+    "github_sha": "d7812731f9d79c045bae1c79ab5f29c696560014",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-25T00:13:19.705477+00:00",
+    "github_sha": "5078bb5a14afc2723fc640cf3a33a87f381dbf81",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-25T02:50:44.771006+00:00",
+    "github_sha": "3b9c50b6e5feecbd1ef8e606f0d4c61abc8271ee",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-25T05:06:06.997203+00:00",
+    "github_sha": "c6770a3479d8841721562647f15ee9c5af30a418",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-25T09:21:19.780644+00:00",
+    "github_sha": "3b27e23e15264a385fcff83a23dc2c68e76961a0",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-25T12:20:10.617180+00:00",
+    "github_sha": "59ef51fb449980e23cba132a195c776cc3af2244",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T11:04:45.932084+00:00",
+    "github_sha": "9a63a594786c7028bacd1890763918b18d177aa9",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T12:13:00.473975+00:00",
+    "github_sha": "85703a6e8b29a66abd7b25f72355abaf168d037d",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T15:24:57.303131+00:00",
+    "github_sha": "f2aa0a9037b54dd7a0e4266800b0e6eed49c187d",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T17:47:57.444911+00:00",
+    "github_sha": "b4a705252487335705fdf883a81cd291ab5c857f",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T19:47:02.491504+00:00",
+    "github_sha": "01c42292e68130664ec19e962eae246256323dfb",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T21:19:06.888671+00:00",
+    "github_sha": "0665e2aa548ce2f21f4410cc2166b642bf53dc00",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-26T23:06:50.000551+00:00",
+    "github_sha": "4046bfd046eacf9d8f39103fee0a239574ecab32",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-27T12:30:41.767251+00:00",
+    "github_sha": "3a31ecb0bdfee698eb3aad60d2041af3d6ce3c04",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-27T13:41:19.728050+00:00",
+    "github_sha": "31c6946cd2eac0211a4100aa4fa77e9698f1fe4c",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-27T15:16:08.843829+00:00",
+    "github_sha": "49e52df6bd5fcca3728e8fe08c51aabcc966bb12",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-27T17:10:00.294229+00:00",
+    "github_sha": "da4edd9741e6ebf18071462ad688f6287b5df2d7",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-27T19:20:08.559833+00:00",
+    "github_sha": "73f3b020fc1802a6e92ebb1446a8644e45a582fb",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  },
+  {
+    "timestamp": "2026-06-27T21:03:42.570633+00:00",
+    "github_sha": "922298a066a83c184b8c11c9d44dc85ed5f952df",
+    "errors_found": 0,
+    "errors": [],
+    "warnings": [],
+    "yaml_validation_skipped": false,
+    "patched_files": [],
+    "committed": false
+  }
+]

@@ -1,0 +1,161 @@
+{
+  "name": "schedule-ooni-12h",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */12 * * *"
+            }
+          ]
+        }
+      },
+      "id": "5543bddd-85d8-4050-931e-3bc886e24851",
+      "name": "Schedule - every 12h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && bash scripts/circleci_env_bootstrap.sh"
+      },
+      "id": "2ff3c1b0-950d-45f4-8bc5-c68f929855c2",
+      "name": "env-bootstrap",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail\npython scripts/circleci_ooni_poller.py --depth deep --out data/ooni_iran_snapshot.json \\\n    --dashboard data/dashboard.json --telemetry data/telemetry_state.json \\\n    2>&1 | tee logs/ooni_poll_deep.log"
+      },
+      "id": "a4d252a7-fcd6-4e21-938b-11df3ff916a1",
+      "name": "ooni-poll (deep)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir\nif git diff --quiet --exit-code data/; then echo \"No OONI changes — nothing to commit.\"; exit 0; fi\ngit add data/ooni_iran_snapshot.json data/dashboard.json data/telemetry_state.json data/censorship_state.json logs/ooni_poll_deep.log 2>/dev/null || true\ngit commit -m \"chore(ooni): deep poll - $(date -u +%FT%TZ)\"\ngit pull --rebase origin \"${GIT_BRANCH:-main}\" || true\ngit push origin \"${GIT_BRANCH:-main}\""
+      },
+      "id": "c626f121-8688-4922-9bb5-4318b789958b",
+      "name": "commit & push snapshot",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        800,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail && python scripts/ai_gateway_health_check.py 2>&1 | tee logs/gateway_health.log || true"
+      },
+      "id": "efe70576-b24a-4db1-b9dd-f8f0ab6c89d5",
+      "name": "ai-gateway-health",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        300
+      ],
+      "notes": "Set node timeout to 20 min (matches CircleCI no_output_timeout: 20m)."
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail\npython recovery/self_healing_engine_v2.py 2>&1 | tee logs/self_heal.log || true\nbash scripts/zero_error_engine_v5.sh 2>&1 | tee logs/zero_error.log || true"
+      },
+      "id": "533a648c-9fe3-486e-8c1c-c4b9cebfb21e",
+      "name": "self-heal",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Schedule - every 12h": {
+      "main": [
+        [
+          {
+            "node": "env-bootstrap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "env-bootstrap": {
+      "main": [
+        [
+          {
+            "node": "ooni-poll (deep)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ooni-poll (deep)": {
+      "main": [
+        [
+          {
+            "node": "commit & push snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "commit & push snapshot": {
+      "main": [
+        [
+          {
+            "node": "ai-gateway-health",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ai-gateway-health": {
+      "main": [
+        [
+          {
+            "node": "self-heal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "torshield-ir-n8n"
+  },
+  "id": "5bfac5ea-8ff4-471e-b5c0-8c99f491fb8c",
+  "tags": [
+    "torshield-ir",
+    "ci-cd"
+  ]
+}

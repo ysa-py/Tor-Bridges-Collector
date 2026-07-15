@@ -1,0 +1,51 @@
+[package]
+name = "torshield-ir-ultra"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.78"
+publish = false
+
+[package.metadata.migration]
+# Exact crate pins for the Python-to-Rust dependency coordination plan.
+# They remain metadata until each module is parity-ported; this avoids fetching
+# crates for unimplemented modules while still recording the approved version.
+reqwest = "=0.12.22"
+tokio = "=1.45.1"
+quinn = "=0.11.8"
+scraper = "=0.23.1"
+html5ever = "=0.29.1"
+linfa = "=0.7.1"
+ndarray = "=0.15.6"
+rustls = "=0.23.28"
+ring = "=0.17.14"
+pqcrypto-kyber = "=0.8.1"
+pqcrypto-mlkem = "=0.1.1"
+hickory-dns = "=0.25.2"
+etherparse = "=0.18.0"
+indicatif = "=0.17.11"
+console = "=0.15.11"
+owo-colors = "=4.2.2"
+serde_yaml = "=0.9.34+deprecated"
+backoff = "=0.4.0"
+tracing = "=0.1.41"
+tracing-subscriber = "=0.3.19"
+prometheus = "=0.13.4"
+printpdf = "=0.8.2"
+genpdf = "=0.2.0"
+thiserror = "=2.0.12"
+serde = "=1.0.228"
+serde_json = "=1.0.150"
+
+[dependencies]
+serde_json = "=1.0.150"
+
+[features]
+default = []
+network = []
+iran = []
+slow = []
+tor = []
+iran_bridge = []
+bridge = []
+dpi = []
+nin = []

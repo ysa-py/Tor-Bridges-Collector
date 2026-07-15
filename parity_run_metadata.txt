@@ -1,0 +1,12 @@
+# Superseded 2026-07-14 on Linux (rustc/cargo 1.97.0, Python 3.12.12).
+# Previous values (PYTEST_EXIT_CODE=1 / CARGO_TEST_EXIT_CODE=101) were from a
+# broken Windows MSVC environment (link.exe missing; pytest not installed) and
+# did NOT reflect the code. Real, reproducible results below.
+CARGO_FMT_EXIT_CODE=0
+CARGO_BUILD_ALL_TARGETS_EXIT_CODE=0
+CARGO_TEST_EXIT_CODE=0
+CARGO_TEST_DEFAULT_PASSED=1353
+CARGO_TEST_DEFAULT_PASSED_BASELINE=1303
+CARGO_TEST_NETWORK_EXIT_CODE=0
+CARGO_TEST_NETWORK_PASSED=1312
+CARGO_CLIPPY_ALL_FEATURES_DWARN_EXIT_CODE=0

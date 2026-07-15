@@ -1,0 +1,9 @@
+# Real results on Linux, rustc 1.97.0 (2026-07-14). Supersedes prior Windows failure log.
+$ cargo test --workspace
+AGGREGATE: 1303 passed; 0 failed (exit 0)
+$ cargo test --workspace --features network
+AGGREGATE: 1312 passed; 0 failed (exit 0)
+$ cargo clippy --workspace --all-targets --all-features -- -D warnings
+0 warnings, 0 errors (exit 0)
+$ cargo fmt --check
+0 diffs (exit 0)

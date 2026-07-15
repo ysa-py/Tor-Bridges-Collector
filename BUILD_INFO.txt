@@ -1,0 +1,16 @@
+TorShield-IR — Ultra VIP Zero-Error Quantum Edition
+Build time (UTC) : 20260619T124407Z
+Built on         : CircleCI
+Pipeline         : local
+Branch           : unknown
+Commit           : unknown
+Archive          : ultra-main-vip-zero-error-quantum-ultra.tar.gz
+
+Layout:
+  .circleci/                  CircleCI config + setup README (THIS pipeline)
+  .github/workflows/          GitHub Actions (preserved, untouched)
+  .gitlab-ci.yml + .gitlab/ci GitLab CI (preserved; includes fixed)
+  internal/ooni/client.go     OONI API client (api.ooni.io)
+  scripts/circleci_ooni_poller.py  Scheduled OONI snapshot writer
+  scripts/circleci_env_bootstrap.sh  Materialises .env from CircleCI Context
+  scripts/circleci_packaging.sh     This script

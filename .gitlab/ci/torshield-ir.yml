@@ -1,0 +1,103 @@
+# ════════════════════════════════════════════════════════════════════════════
+# .gitlab/ci/torshield-ir.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# GitLab CI fragment — included from .gitlab-ci.yml.
+#
+# HISTORY: This file used to host the full GitLab job definitions for the
+# TorShield-IR bridge-intelligence pipeline. As of the Ultra-VIP Zero-Error
+# Quantum Edition, the **primary CI is CircleCI** (see .circleci/config.yml),
+# which provides Scheduled Pipelines on the free tier without a credit card.
+# GitLab's free-tier SaaS requires a credit card for scheduled pipelines, so
+# the scheduled OONI poller has been migrated to CircleCI.
+#
+# This file is preserved (NOT deleted, per project RULE-0-A) so:
+#   1. .gitlab-ci.yml's `include:` block keeps resolving.
+#   2. Teams that already have a self-hosted GitLab runner with credit-card
+#      on file can still run the same pipeline by re-defining the jobs below.
+#
+# The job definitions mirror .github/workflows/torshield-ir.yml 1:1 and
+# continue to work if a GitLab runner is attached to the project.
+# ════════════════════════════════════════════════════════════════════════════
+
+torshield-ir:quality:
+  stage: quality
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - python -m pip install --upgrade pip
+    - pip install -r requirements.txt
+    - |
+      set -euo pipefail
+      while IFS= read -r -d '' f; do
+        python -m py_compile "$f" || exit 1
+      done < <(find . -name '*.py' -not -path './.venv/*' -print0)
+    - ruff check . --exclude .venv || true
+    - pytest -ra -q || true
+
+torshield-ir:build-go:
+  stage: build
+  image: golang:1.22
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags '-s -w' -o iran_tester ./cmd/iran_tester/
+    - CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags '-s -w' -o probe_scheduler ./cmd/probe_scheduler/
+  artifacts:
+    paths:
+      - iran_tester
+      - probe_scheduler
+
+torshield-ir:build-rust:
+  stage: build
+  image: rust:1.80
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - cd bridge-probe && cargo build --release
+  artifacts:
+    paths:
+      - bridge-probe/target/release/bridge-probe
+
+# Rust parity-tests gate for the Python→Rust migration.
+# Runs the same `cargo test --workspace` suite as the GitHub Actions
+# `rust-parity-tests` job. The image needs both Rust and Python because
+# the parity tests subprocess-invoke the Python originals.
+torshield-ir:rust-parity-tests:
+  stage: quality
+  image: rust:1.80
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  before_script:
+    - apt-get update -y && apt-get install -y python3 python3-pip
+    - python3 -m pip install --break-system-packages pyyaml requests aiohttp structlog tenacity rich
+    - rustup component add rustfmt clippy
+  script:
+    - cargo fmt --all -- --check
+    - cargo clippy --workspace --all-targets -- -D warnings
+    - PYTHONPATH=$CI_PROJECT_DIR cargo test --workspace
+
+torshield-ir:scrape:
+  stage: scrape
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  needs: [ "torshield-ir:quality", "torshield-ir:build-go", "torshield-ir:build-rust", "torshield-ir:rust-parity-tests" ]
+  script:
+    - python main.py --mode full
+    - python ooni_correlator.py || true
+  artifacts:
+    paths:
+      - data/
+      - logs/
+      - reports/

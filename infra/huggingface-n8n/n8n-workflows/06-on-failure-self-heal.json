@@ -1,0 +1,79 @@
+{
+  "name": "on-failure-self-heal",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "40b78a04-49b2-46c9-9d71-45b9243860d8",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        200,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && bash scripts/circleci_env_bootstrap.sh"
+      },
+      "id": "a872dd01-969c-47d7-becc-970dd0c7bc73",
+      "name": "env-bootstrap",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "command": "cd /home/user/torshield-ir && set -euo pipefail\npython recovery/self_healing_engine_v2.py 2>&1 | tee logs/self_heal.log || true\nbash scripts/zero_error_engine_v5.sh 2>&1 | tee logs/zero_error.log || true"
+      },
+      "id": "a233a4ae-e1a2-4c88-892b-670c3371b4bc",
+      "name": "self-heal",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        600,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "env-bootstrap",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "env-bootstrap": {
+      "main": [
+        [
+          {
+            "node": "self-heal",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "torshield-ir-n8n"
+  },
+  "id": "6dd76d58-3a08-4d58-a99a-b1f310eb1e4c",
+  "tags": [
+    "torshield-ir",
+    "ci-cd"
+  ]
+}

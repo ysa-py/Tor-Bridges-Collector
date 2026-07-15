@@ -1,0 +1,27 @@
+# ════════════════════════════════════════════════════════════════════════════
+# .gitlab/ci/ai-self-healing.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# GitLab CI fragment — included from .gitlab-ci.yml.
+# Mirrors .github/workflows/ai_self_healing.yml 1:1.
+#
+# The scheduled trigger for this job in GitLab requires a credit-card on file.
+# The active scheduled trigger now lives in CircleCI (see .circleci/config.yml
+# → workflow `schedule-oomi-12h` and `on-failure-self-heal`). This file is
+# preserved so GitLab users with self-hosted runners can still run it.
+# ════════════════════════════════════════════════════════════════════════════
+
+ai-self-healing:
+  stage: self-heal
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: on_failure
+  script:
+    - python recovery/self_healing_engine_v2.py || true
+    - bash scripts/zero_error_engine_v5.sh || true
+  artifacts:
+    when: always
+    paths:
+      - logs/
+      - reports/

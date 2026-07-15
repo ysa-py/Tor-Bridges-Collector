@@ -1,0 +1,78 @@
+#!/bin/bash
+# Pre-push hook: verify build quality before pushing to main
+# Run via: git config core.hooksPath .githooks
+#
+# REMEDIATION 2026-06-21: go_tester/ is a separate Go module. The root
+# go.work file (added in this remediation) puts the toolchain in workspace
+# mode, so `go build ./...` / `go vet ./...` below now also cover go_tester
+# automatically — no change needed to the commands themselves.
+
+set -e
+
+# Color codes for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+echo -e "${YELLOW}━━━ Pre-Push Verification Gate ━━━${NC}"
+
+# Get the current branch
+current_branch=$(git symbolic-ref --short HEAD 2>/dev/null || echo "unknown")
+
+# Get what's being pushed
+while read -r local_ref local_sha remote_ref remote_sha; do
+    # Skip deletions
+    if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+        continue
+    fi
+    
+    # Only apply strict checks to main branch
+    if [[ "$remote_ref" == "refs/heads/main" || "$remote_ref" == "refs/heads/master" ]]; then
+        echo -e "${YELLOW}ℹ Pushing to main branch — running quality gates...${NC}"
+        
+        # 1. Go build
+        echo -e "${YELLOW}→ go build ./...${NC}"
+        if ! go build ./... > /dev/null 2>&1; then
+            echo -e "${RED}✘ Build failed${NC}"
+            go build ./...
+            exit 1
+        fi
+        echo -e "${GREEN}✔ Build passed${NC}"
+        
+        # 2. Go vet
+        echo -e "${YELLOW}→ go vet ./...${NC}"
+        if ! go vet ./... > /dev/null 2>&1; then
+            echo -e "${RED}✘ Vet failed${NC}"
+            go vet ./...
+            exit 1
+        fi
+        echo -e "${GREEN}✔ Vet passed${NC}"
+        
+        # 3. Go fmt
+        echo -e "${YELLOW}→ gofmt -l internal/bridge/...${NC}"
+        if gofmt -l ./internal/bridge/ 2>/dev/null | grep -q .; then
+            echo -e "${RED}✘ Format check failed (bridge package)${NC}"
+            echo "Run: gofmt -w ./internal/bridge/"
+            exit 1
+        fi
+        echo -e "${GREEN}✔ Format check passed${NC}"
+        
+        # 4. Python syntax (if Python is available)
+        if command -v python3 &> /dev/null; then
+            echo -e "${YELLOW}→ Python syntax check${NC}"
+            if ! SKIP_NETWORK_TESTS=true python3 -m py_compile core/*.py 2>/dev/null; then
+                echo -e "${RED}✘ Python syntax check failed${NC}"
+                exit 1
+            fi
+            echo -e "${GREEN}✔ Python syntax check passed${NC}"
+        fi
+        
+        echo -e "${GREEN}━━━ All pre-push checks passed ━━━${NC}"
+        echo ""
+    else
+        echo -e "${YELLOW}ℹ Pushing to $remote_ref (not main) — skipping strict checks${NC}"
+    fi
+done
+
+exit 0

@@ -1,0 +1,341 @@
+{
+  "python": {
+    "language": "python",
+    "files_checked": [
+      "requirements.txt"
+    ],
+    "packages": [
+      {
+        "name": "requests",
+        "import_name": "requests",
+        "importable": true,
+        "installed_version": "2.34.2",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 5
+      },
+      {
+        "name": "beautifulsoup4",
+        "import_name": "bs4",
+        "importable": true,
+        "installed_version": "4.15.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 6
+      },
+      {
+        "name": "aiohttp",
+        "import_name": "aiohttp",
+        "importable": true,
+        "installed_version": "3.14.1",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 9
+      },
+      {
+        "name": "scikit-learn",
+        "import_name": "sklearn",
+        "importable": true,
+        "installed_version": "1.9.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 12
+      },
+      {
+        "name": "numpy",
+        "import_name": "numpy",
+        "importable": true,
+        "installed_version": "2.5.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 13
+      },
+      {
+        "name": "aioquic",
+        "import_name": "aioquic",
+        "importable": true,
+        "installed_version": "1.3.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 17
+      },
+      {
+        "name": "cryptography",
+        "import_name": "cryptography",
+        "importable": true,
+        "installed_version": "49.0.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 20
+      },
+      {
+        "name": "rich",
+        "import_name": "rich",
+        "importable": true,
+        "installed_version": "15.0.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 23
+      },
+      {
+        "name": "pyyaml",
+        "import_name": "yaml",
+        "importable": true,
+        "installed_version": "6.0.3",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 26
+      },
+      {
+        "name": "pytest",
+        "import_name": "pytest",
+        "importable": true,
+        "installed_version": "9.0.3",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 29
+      },
+      {
+        "name": "reportlab",
+        "import_name": "reportlab",
+        "importable": true,
+        "installed_version": "5.0.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 34
+      },
+      {
+        "name": "nest-asyncio",
+        "import_name": "nest_asyncio",
+        "importable": true,
+        "installed_version": "1.6.0",
+        "version_compatible": true,
+        "issues": [],
+        "source_file": "requirements.txt",
+        "source_line": 38
+      }
+    ],
+    "summary": {
+      "total": 12,
+      "importable": 12,
+      "not_importable": 0,
+      "version_mismatches": 0
+    }
+  },
+  "go": {
+    "language": "go",
+    "files_checked": [
+      "go.mod",
+      "go_tester/go.mod"
+    ],
+    "modules": [
+      {
+        "file": "go.mod",
+        "module_path": "github.com/ysa-py/MICAFP",
+        "go_version": "1.22",
+        "path_valid": true,
+        "dependencies": [],
+        "issues": []
+      },
+      {
+        "file": "go_tester/go.mod",
+        "module_path": "github.com/ysa-py/MICAFP-tor-bridge-tester",
+        "go_version": "1.21",
+        "path_valid": true,
+        "dependencies": [],
+        "issues": []
+      }
+    ],
+    "summary": {
+      "total": 2,
+      "valid_path": 2,
+      "invalid_path": 0,
+      "missing_dependencies": 0
+    }
+  },
+  "rust": {
+    "language": "rust",
+    "files_checked": [
+      "Cargo.toml",
+      "bridge-probe/Cargo.toml",
+      "rust/torshield-ir-ultra/Cargo.toml"
+    ],
+    "packages": [
+      {
+        "file": "Cargo.toml",
+        "package": {
+          "name": "torshield-ir-ultra",
+          "version": "1.0.0",
+          "edition": "2021",
+          "rust-version": "1.78",
+          "publish": "false"
+        },
+        "dependencies": [
+          {
+            "name": "serde_json",
+            "version": "=1.0.150",
+            "features": [],
+            "optional": false,
+            "issues": []
+          }
+        ],
+        "issues": []
+      },
+      {
+        "file": "bridge-probe/Cargo.toml",
+        "package": {
+          "name": "bridge-probe",
+          "version": "2.0.0",
+          "edition": "2021",
+          "description": "TorShield-IR pluggable-transport handshake prober — Iran-optimised",
+          "authors": "[\"TorShield-IR Contributors\"]"
+        },
+        "dependencies": [
+          {
+            "name": "tokio",
+            "version": "1",
+            "features": [
+              "full",
+              "process"
+            ],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "serde",
+            "version": "1",
+            "features": [
+              "derive"
+            ],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "serde_json",
+            "version": "1",
+            "features": [],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "clap",
+            "version": ">=4.5.0, <4.6",
+            "features": [
+              "derive"
+            ],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "clap_lex",
+            "version": ">=0.7.0, <1.0",
+            "features": [],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "tracing",
+            "version": "0.1",
+            "features": [],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "tracing-subscriber",
+            "version": "0.3",
+            "features": [
+              "env-filter",
+              "fmt"
+            ],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "anyhow",
+            "version": "1",
+            "features": [],
+            "optional": false,
+            "issues": []
+          },
+          {
+            "name": "regex",
+            "version": "1",
+            "features": [],
+            "optional": false,
+            "issues": []
+          }
+        ],
+        "issues": []
+      },
+      {
+        "file": "rust/torshield-ir-ultra/Cargo.toml",
+        "package": {
+          "name": "torshield-ir-ultra",
+          "version": "1.0.0",
+          "edition": "2021",
+          "rust-version": "1.78",
+          "publish": "false"
+        },
+        "dependencies": [
+          {
+            "name": "serde_json",
+            "version": "=1.0.150",
+            "features": [],
+            "optional": false,
+            "issues": []
+          }
+        ],
+        "issues": []
+      }
+    ],
+    "summary": {
+      "total": 11,
+      "with_version": 11,
+      "without_version": 0,
+      "issues": 0
+    }
+  },
+  "zig": {
+    "language": "zig",
+    "files_checked": [
+      "zig-scanner/build.zig"
+    ],
+    "packages": [
+      {
+        "file": "zig-scanner/build.zig",
+        "has_build_function": true,
+        "links_libc": true,
+        "dependencies": [],
+        "issues": []
+      }
+    ],
+    "summary": {
+      "total": 1,
+      "has_dependencies": 0,
+      "issues": 0
+    }
+  },
+  "overall_summary": {
+    "total_issues": 0,
+    "python_packages_total": 12,
+    "python_packages_importable": 12,
+    "python_packages_missing": 0,
+    "python_version_mismatches": 0,
+    "go_modules_valid": 2,
+    "go_modules_invalid": 0,
+    "rust_deps_with_version": 11,
+    "rust_deps_no_version": 0,
+    "zig_packages_checked": 1
+  }
+}

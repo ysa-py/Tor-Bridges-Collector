@@ -1,0 +1,38 @@
+# TorShield-IR Python requirements
+# Install: pip install -r requirements.txt
+
+# ── Core HTTP + HTML parsing ──────────────────────────────────────────────────
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+
+# ── Async HTTP (core/ pipeline) ───────────────────────────────────────────────
+aiohttp>=3.9.0
+
+# ── ML blocking predictor (FEATURE 1) ────────────────────────────────────────
+scikit-learn>=1.4.0
+numpy>=1.26.0
+
+# ── QUIC / Hysteria2 / next-gen protocol detection ───────────────────────────
+# aioquic is the reference QUIC library for Python probing
+aioquic>=1.0.0
+
+# ── TLS fingerprinting (JA3 computation + ESNI/ECH awareness) ────────────────
+cryptography>=42.0.0
+
+# ── Terminal output (optional rich logging) ──────────────────────────────────
+rich>=13.0.0
+
+# ── YAML parsing (workflow validation in tests) ──────────────────────────────
+PyYAML>=6.0.1
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+pytest>=8.0.0
+
+# ── PDF report generation (scripts/generate_final_report.py) ────────────────
+# REMEDIATION 2026-06-21: was imported unguarded with zero entry here —
+# guaranteed ModuleNotFoundError on first run in any clean CI checkout.
+reportlab>=4.0.0
+
+# ── Ultra VIP Edition — additive dependencies (Phase 5) ─────────────────────
+# nest-asyncio: supports asyncio.run inside already-running event loops (BUG-3 fix)
+nest-asyncio>=1.6.0

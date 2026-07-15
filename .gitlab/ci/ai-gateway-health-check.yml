@@ -1,0 +1,26 @@
+# ════════════════════════════════════════════════════════════════════════════
+# .gitlab/ci/ai-gateway-health-check.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# GitLab CI fragment — included from .gitlab-ci.yml.
+# Mirrors .github/workflows/ai_gateway_health_check.yml 1:1.
+#
+# The scheduled trigger for this job in GitLab requires a credit-card on file
+# (GitLab SaaS policy). The **active** scheduled trigger now lives in CircleCI
+# (see .circleci/config.yml → workflow `schedule-oomi-12h`). This file is
+# preserved so GitLab users with self-hosted runners can still run it.
+# ════════════════════════════════════════════════════════════════════════════
+
+ai-gateway-health-check:
+  stage: healthcheck
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - python scripts/ai_gateway_health_check.py || true
+  artifacts:
+    when: always
+    paths:
+      - logs/
+      - reports/

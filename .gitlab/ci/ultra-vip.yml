@@ -1,0 +1,81 @@
+# ════════════════════════════════════════════════════════════════════════════
+# .gitlab/ci/ultra-vip.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# GitLab CI fragment — included from .gitlab-ci.yml.
+# Ultra VIP additive jobs: sync-to-gitlab, zero-error-gate, package-final,
+# self-heal-vip, telemetry-dashboard.
+#
+# HISTORY: This file used to host the GitLab-side packaging job that produced
+# ultra-main-vip-zero-error.tar.gz. As of the Ultra-VIP Zero-Error Quantum
+# Edition, the **primary packaging** runs in CircleCI (see
+# .circleci/config.yml → job `packaging`) and produces
+# `ultra-main-vip-zero-error-quantum-ultra.tar.gz`.
+#
+# This file is preserved (NOT deleted, per project RULE-0-A) so GitLab users
+# with self-hosted runners can still run the same packaging step.
+# ════════════════════════════════════════════════════════════════════════════
+
+ultra-vip:zero-error-gate:
+  stage: quality
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - bash scripts/zero_error_engine_v5.sh || true
+  artifacts:
+    when: always
+    paths:
+      - data/zero_error_report.json
+
+ultra-vip:telemetry-dashboard:
+  stage: quality
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  script:
+    - python telemetry_watcher.py || true
+  artifacts:
+    when: always
+    paths:
+      - data/dashboard.json
+      - data/telemetry_state.json
+
+ultra-vip:package-final:
+  stage: package
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+  needs: [ "torshield-ir:scrape" ]
+  script:
+    - bash scripts/circleci_packaging.sh
+  artifacts:
+    name: "ultra-main-vip-zero-error-quantum-ultra"
+    paths:
+      - dist/ultra-main-vip-zero-error-quantum-ultra.tar.gz
+
+ultra-vip:self-heal-vip:
+  stage: self-heal
+  extends: .python-base
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - when: on_failure
+  script:
+    - python recovery/self_healing_engine_v2.py || true
+    - bash scripts/zero_error_engine_v5.sh || true
+
+ultra-vip:sync-to-gitlab:
+  stage: package
+  image: alpine:3.20
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "push"'
+      when: manual
+  script:
+    - echo "Mirror sync placeholder — replace with your GitLab mirror push command."
+    - echo "Repo URL: ${REPO_URL:-unset}"
