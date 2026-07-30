@@ -371,6 +371,36 @@ No module, script, capability, secret binding, or artefact path was removed.
 
 ---
 
+## 7.5 PROOF THAT THE BLOCKED WORKFLOWS ARE THE ONLY REMAINING FAILURES
+
+PR #169 triggered the **old** (still-on-remote) workflows. Every remaining red
+job fails at a step that the blocked commit `e0e7069` **deletes or replaces** —
+confirmed by querying the exact failing step of each job:
+
+| Job (run) | Failing step | Fixed by (blocked commit) |
+|---|---|---|
+| `Python (3.10/3.11/3.12)` — 30583794446 | `Build & install the iran_detector Rust bridge` | `ci.yml` — entire Python matrix removed; `iran_detector` is native Rust, no PyO3 shim |
+| `Anti-censorship smoke test` — 30583794446 | `Smoke test — import and initialize router` | `ci.yml` — → `cargo run --bin bridge_intelligence` |
+| `Cross-compile verification (armv7)` — 30583794458 | `Run cross check (armv7 release)` — **exit 127** | `enforce-profiles.yml` — → `cargo check --target`, no `cross` |
+| `validate-and-self-heal` — 30583794394 | `Install Python dependencies` | `autonomous-sentinel.yml` — Rust + Go native |
+
+Jobs already green on real CI **with the new code merged in**:
+
+| Job | Run | Result |
+|---|---|---|
+| Rust parity tests (fmt + clippy `-D warnings` + test + feature matrix) | 30583794446 | ✅ |
+| Test (release) — `cargo test --workspace --release` | 30583794458 | ✅ |
+| Lint and Format (profiles, fmt, clippy) | 30583794458 | ✅ |
+| Security Audit (cargo-audit) | 30583794458 | ✅ |
+| Go Quality Gate (build + vet + gofmt + test) | 30583794678 | ✅ |
+| Shell (`bash -n` + shellcheck) | 30583794446 | ✅ |
+| YAML validation | 30583794446 | ✅ |
+
+**Conclusion:** there is no outstanding *code* defect. 100 % of the remaining
+red is the old workflow YAML that the App is not permitted to overwrite.
+
+---
+
 ## 8. COMMIT LOG (this session)
 
 | Commit | Scope | Pushed? |
@@ -379,6 +409,9 @@ No module, script, capability, secret binding, or artefact path was removed.
 | `a5962ef` | `style(rust)`: rustfmt the new binaries | ✅ |
 | `73ae946` | `feat(rust)`: `pipeline` + `auto_debug` binaries | ✅ |
 | `f4be9fa` | `test(rust)`: runtime smoke tests | ✅ |
+| `d81ee63` | `docs`: MIGRATION_STATUS.md + ENGINEERING_PROMPT.md | ✅ |
+
+**Pull request:** [#169](https://github.com/ysa-py/Tor-Bridges-Collector/pull/169)
 
 ---
 
