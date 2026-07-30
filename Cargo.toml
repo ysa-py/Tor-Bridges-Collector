@@ -168,6 +168,13 @@ path = "tests/idna_icu4x_regression.rs"
 name = "rust_native_pipeline"
 path = "tests/rust_native_pipeline.rs"
 
+# Runtime smoke tests for the Rust-native pipeline binaries. `clippy` proves
+# they compile; these prove they actually run end-to-end without panicking,
+# which is what the CI workflows depend on post-migration.
+[[test]]
+name = "pipeline_binaries_smoke"
+path = "tests/pipeline_binaries_smoke.rs"
+
 [profile.release]
 opt-level = 3
 strip = true
