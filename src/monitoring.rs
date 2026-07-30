@@ -1,19 +1,6 @@
 //! Rust port of monitoring/*.py modules
 //! Structured logging, health checks, telemetry dashboard
 
-#![allow(
-    clippy::all,
-    clippy::correctness,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    clippy::pedantic,
-    unused_imports,
-    dead_code,
-    unused_variables,
-    unused_assignments,
-    unreachable_code
-)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -36,6 +23,7 @@ pub struct LogEntry {
 }
 
 impl StructuredLogger {
+    #[must_use]
     pub fn new(log_dir: &str) -> Self {
         Self {
             log_dir: log_dir.to_string(),
@@ -65,10 +53,12 @@ impl StructuredLogger {
         eprintln!("SILENT_FAILURE [{}]: {}", module, message);
     }
 
+    #[must_use]
     pub fn get_recent(&self, count: usize) -> Vec<&LogEntry> {
         self.buffer.iter().rev().take(count).collect()
     }
 
+    #[must_use]
     pub fn to_json(&self) -> Value {
         json!({
             "log_dir": self.log_dir,
@@ -96,6 +86,7 @@ pub enum HealthStatus {
 }
 
 impl HealthStatus {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Healthy => "healthy",
@@ -107,6 +98,7 @@ impl HealthStatus {
 }
 
 impl HealthCheck {
+    #[must_use]
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -124,9 +116,10 @@ impl HealthCheck {
     pub fn set_unhealthy(&mut self, reason: &str) {
         self.status = HealthStatus::Unhealthy;
         self.last_check = Some(Utc::now());
-        self.details.insert("reason".into(), json!(reason));
+        self.details.insert("reason".to_string(), json!(reason));
     }
 
+    #[must_use]
     pub fn to_json(&self) -> Value {
         json!({
             "name": self.name,
@@ -148,9 +141,8 @@ pub struct TelemetryDashboard {
     pub metrics: HashMap<String, f64>,
 }
 
-#[allow(clippy::new_without_default)]
-impl TelemetryDashboard {
-    pub fn new() -> Self {
+impl Default for TelemetryDashboard {
+    fn default() -> Self {
         Self {
             bridge_count: 0,
             working_bridges: 0,
@@ -160,6 +152,13 @@ impl TelemetryDashboard {
             metrics: HashMap::new(),
         }
     }
+}
+
+impl TelemetryDashboard {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
 
     pub fn update(&mut self, bridge_count: u64, working: u64, censor_level: u32) {
         self.bridge_count = bridge_count;
@@ -168,6 +167,7 @@ impl TelemetryDashboard {
         self.last_update = Some(Utc::now());
     }
 
+    #[must_use]
     pub fn to_json(&self) -> Value {
         json!({
             "bridge_count": self.bridge_count,
@@ -175,7 +175,9 @@ impl TelemetryDashboard {
             "censorship_level": self.censorship_level,
             "success_rate": if self.bridge_count > 0 {
                 self.working_bridges as f64 / self.bridge_count as f64
-            } else { 0.0 },
+            } else {
+                0.0
+            },
             "last_update": self.last_update.map(|t| t.to_rfc3339()),
             "metrics": self.metrics,
         })
@@ -219,10 +221,10 @@ mod tests {
     #[test]
     fn test_serialize_log_entry() {
         let entry = LogEntry {
-            timestamp: "2026-01-01T00:00:00Z".into(),
-            level: "INFO".into(),
-            module: "test".into(),
-            message: "test message".into(),
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+            level: "INFO".to_string(),
+            module: "test".to_string(),
+            message: "test message".to_string(),
             data: json!({"key": 1}),
         };
         let json_str = serde_json::to_string(&entry).unwrap();

@@ -1,18 +1,5 @@
 //! Rust port of recovery/*.py, reports/*.py, registry/*.py, health/*.py modules
 
-#![allow(
-    clippy::all,
-    clippy::correctness,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    clippy::pedantic,
-    unused_imports,
-    dead_code,
-    unused_variables,
-    unused_assignments,
-    unreachable_code
-)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -39,8 +26,8 @@ pub struct HealEvent {
     pub details: String,
 }
 
-impl SelfHealingEngine {
-    pub fn new() -> Self {
+impl Default for SelfHealingEngine {
+    fn default() -> Self {
         Self {
             failure_count: 0,
             max_retries: 3,
@@ -48,6 +35,13 @@ impl SelfHealingEngine {
             last_heal_time: None,
             heal_history: Vec::new(),
         }
+    }
+}
+
+impl SelfHealingEngine {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn record_failure(&mut self, component: &str) {
@@ -74,6 +68,7 @@ impl SelfHealingEngine {
         self.healing_active = false;
     }
 
+    #[must_use]
     pub fn get_status(&self) -> Value {
         json!({
             "failure_count": self.failure_count,
@@ -96,14 +91,20 @@ pub struct SelfHealingEngineV2 {
     pub patch_log: Vec<String>,
 }
 
-#[allow(clippy::new_without_default)]
-impl SelfHealingEngineV2 {
-    pub fn new() -> Self {
+impl Default for SelfHealingEngineV2 {
+    fn default() -> Self {
         Self {
             engine: SelfHealingEngine::new(),
             auto_fix_enabled: true,
             patch_log: Vec::new(),
         }
+    }
+}
+
+impl SelfHealingEngineV2 {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn apply_patch(&mut self, patch: &str) {
@@ -111,6 +112,7 @@ impl SelfHealingEngineV2 {
             .push(format!("{}: {}", Utc::now().to_rfc3339(), patch));
     }
 
+    #[must_use]
     pub fn get_patches(&self) -> &[String] {
         &self.patch_log
     }
@@ -134,6 +136,7 @@ pub struct ReportSection {
 }
 
 impl ReportGenerator {
+    #[must_use]
     pub fn new(title: &str) -> Self {
         Self {
             title: title.to_string(),
@@ -180,12 +183,18 @@ pub struct ModelRegistry {
     pub models: HashMap<String, ModelEntry>,
 }
 
-#[allow(clippy::new_without_default)]
-impl ModelRegistry {
-    pub fn new() -> Self {
+impl Default for ModelRegistry {
+    fn default() -> Self {
         Self {
             models: HashMap::new(),
         }
+    }
+}
+
+impl ModelRegistry {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn register(&mut self, name: &str, provider: &str, version: &str) {
@@ -201,6 +210,7 @@ impl ModelRegistry {
         );
     }
 
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&ModelEntry> {
         self.models.get(name)
     }
@@ -211,6 +221,7 @@ impl ModelRegistry {
         }
     }
 
+    #[must_use]
     pub fn list_enabled(&self) -> Vec<&ModelEntry> {
         self.models.values().filter(|m| m.enabled).collect()
     }
@@ -228,8 +239,8 @@ pub struct SlotHealth {
     pub failure_streak: u32,
 }
 
-#[allow(clippy::new_without_default)]
 impl SlotHealth {
+    #[must_use]
     pub fn new(slot_id: u32) -> Self {
         Self {
             slot_id,
@@ -263,10 +274,10 @@ mod tests {
         assert_eq!(engine.failure_count, 0);
         assert!(!engine.healing_active);
         engine.record_failure("bridge-scraper");
-        assert_eq!(engine.heal_history.len(), 0); // Not triggered yet (need 3)
+        assert_eq!(engine.heal_history.len(), 0);
         engine.record_failure("bridge-scraper");
         engine.record_failure("bridge-scraper");
-        assert_eq!(engine.heal_history.len(), 1); // Triggered!
+        assert_eq!(engine.heal_history.len(), 1);
         assert!(engine.healing_active);
     }
 
@@ -312,11 +323,11 @@ mod tests {
     #[test]
     fn test_heal_event_serialization() {
         let event = HealEvent {
-            timestamp: "2026-01-01T00:00:00Z".into(),
-            component: "test".into(),
-            action: "restart".into(),
+            timestamp: "2026-01-01T00:00:00Z".to_string(),
+            component: "test".to_string(),
+            action: "restart".to_string(),
             success: true,
-            details: "Restarted successfully".into(),
+            details: "Restarted successfully".to_string(),
         };
         let json_str = serde_json::to_string(&event).unwrap();
         assert!(json_str.contains("restart"));

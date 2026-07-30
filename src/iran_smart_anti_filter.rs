@@ -1,19 +1,6 @@
 //! Advanced Iran Smart Anti-Filter - Rust port of iran_smart_anti_filter.py
 //! Implements smart anti-filtering with IRST-aware routing and censorship detection.
 
-#![allow(
-    clippy::all,
-    clippy::correctness,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    clippy::pedantic,
-    unused_imports,
-    dead_code,
-    unused_variables,
-    unused_assignments,
-    unreachable_code
-)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;
@@ -30,6 +17,7 @@ pub enum CensorshipLevel {
 }
 
 impl CensorshipLevel {
+    #[must_use]
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::None => "none",
@@ -41,6 +29,7 @@ impl CensorshipLevel {
         }
     }
 
+    #[must_use]
     pub fn from_level(level: u32) -> Self {
         match level {
             0 => Self::None,
@@ -54,7 +43,6 @@ impl CensorshipLevel {
 }
 
 /// Iran smart anti-filter configuration
-#[derive(Debug, Clone)]
 pub struct IranSmartAntiFilter {
     pub censorship_level: CensorshipLevel,
     pub dpi_intensity: f64,
@@ -71,11 +59,11 @@ impl Default for IranSmartAntiFilter {
             dpi_intensity: 0.0,
             blocked_transports: Vec::new(),
             preferred_transports: vec![
-                "webtunnel".into(),
-                "snowflake".into(),
-                "meek_lite".into(),
-                "obfs4".into(),
-                "vanilla".into(),
+                "webtunnel".to_string(),
+                "snowflake".to_string(),
+                "meek_lite".to_string(),
+                "obfs4".to_string(),
+                "vanilla".to_string(),
             ],
             irst_hour: 0,
             timestamp: Utc::now(),
@@ -84,11 +72,13 @@ impl Default for IranSmartAntiFilter {
 }
 
 impl IranSmartAntiFilter {
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Detect censorship state based on OONI-style metrics
+    #[must_use]
     pub fn detect_censorship(
         anomaly_count: u32,
         confirmed_count: u32,
@@ -113,12 +103,13 @@ impl IranSmartAntiFilter {
         CensorshipLevel::None
     }
 
-    /// Get preferred transports for current censorship level
+    #[must_use]
     pub fn preferred_transports(&self) -> &[String] {
         &self.preferred_transports
     }
 
     /// Generate status report as JSON
+    #[must_use]
     pub fn get_status(&self) -> Value {
         json!({
             "censorship_level": self.censorship_level.as_str(),

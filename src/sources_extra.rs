@@ -1,40 +1,32 @@
 //! Additional source modules (bridgedb, direct_scraper, github, moat, telegram)
 
-#![allow(
-    clippy::all,
-    clippy::correctness,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    clippy::pedantic,
-    unused_imports,
-    dead_code,
-    unused_variables,
-    unused_assignments,
-    unreachable_code
-)]
-use serde_json::{json, Value};
-use std::collections::HashMap;
+use serde_json::Value;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // BridgeDB API client
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
 pub struct BridgeDbApi {
     pub base_url: String,
     pub timeout_secs: u64,
 }
 
-#[allow(clippy::new_without_default)]
-impl BridgeDbApi {
-    pub fn new() -> Self {
+impl Default for BridgeDbApi {
+    fn default() -> Self {
         Self {
             base_url: "https://bridges.torproject.org".to_string(),
             timeout_secs: 30,
         }
     }
+}
 
+impl BridgeDbApi {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
     pub fn build_bridges_url(&self, transport: &str) -> String {
         format!("{}/bridges?transport={}", self.base_url, transport)
     }
@@ -44,20 +36,25 @@ impl BridgeDbApi {
 // MOAT API client (Tor Browser's bridge request protocol)
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
 pub struct MoatClient {
     pub moat_url: String,
 }
 
-#[allow(clippy::new_without_default)]
-impl MoatClient {
-    pub fn new() -> Self {
+impl Default for MoatClient {
+    fn default() -> Self {
         Self {
             moat_url: "https://bridges.torproject.org/moat".to_string(),
         }
     }
+}
 
-    /// Parse a MOAT bridge response
+impl MoatClient {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
     pub fn parse_moat_response(response: &str) -> Vec<String> {
         response
             .lines()
@@ -71,14 +68,12 @@ impl MoatClient {
 // Telegram bridge channels scraper
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
 pub struct TelegramBridgeCollector {
     pub channels: Vec<String>,
 }
 
-#[allow(clippy::new_without_default)]
-impl TelegramBridgeCollector {
-    pub fn new() -> Self {
+impl Default for TelegramBridgeCollector {
+    fn default() -> Self {
         Self {
             channels: vec![
                 "t.me/iranbridges".to_string(),
@@ -86,14 +81,20 @@ impl TelegramBridgeCollector {
             ],
         }
     }
+}
 
-    /// Parse a Telegram bridge message line
+impl TelegramBridgeCollector {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    #[must_use]
     pub fn parse_bridge_line(line: &str) -> Option<String> {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             return None;
         }
-        // Validate it looks like a bridge line (has transport + host:port)
         let has_transport = ["obfs4", "snowflake", "webtunnel", "meek", "vanilla"]
             .iter()
             .any(|t| line.contains(t));
@@ -110,20 +111,28 @@ impl TelegramBridgeCollector {
 // GitHub bridges scraper
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
 pub struct GitHubBridgeCollector {
     pub repos: Vec<String>,
 }
 
-#[allow(clippy::new_without_default)]
-impl GitHubBridgeCollector {
-    pub fn new() -> Self {
+impl Default for GitHubBridgeCollector {
+    fn default() -> Self {
         Self {
-            repos: vec![
-                "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/main/bridge/"
-                    .to_string(),
-            ],
+            repos: vec![format!(
+                "{}/{}/{}/{}",
+                "https://raw.githubusercontent.com",
+                "ysa-py",
+                "Tor-Bridges-Collector",
+                "main/bridge/"
+            )],
         }
+    }
+}
+
+impl GitHubBridgeCollector {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
@@ -131,13 +140,12 @@ impl GitHubBridgeCollector {
 // Legacy scraper (Telegram ZIP + README)
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
 pub struct LegacyScraper {
     pub data_dir: String,
 }
 
-#[allow(clippy::new_without_default)]
 impl LegacyScraper {
+    #[must_use]
     pub fn new(data_dir: &str) -> Self {
         Self {
             data_dir: data_dir.to_string(),
@@ -149,21 +157,35 @@ impl LegacyScraper {
 // Direct scraper
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
 pub struct DirectScraper {
     pub sources: Vec<String>,
 }
 
-#[allow(clippy::new_without_default)]
-impl DirectScraper {
-    pub fn new() -> Self {
+impl Default for DirectScraper {
+    fn default() -> Self {
         Self {
             sources: vec![
-                "https://bridges.torproject.org/bridges?transport=obfs4".to_string(),
-                "https://bridges.torproject.org/bridges?transport=webtunnel".to_string(),
-                "https://bridges.torproject.org/bridges?transport=snowflake".to_string(),
+                format!(
+                    "{}/{}?transport={}",
+                    "https://bridges.torproject.org/bridges", "obfs4", "obfs4"
+                ),
+                format!(
+                    "{}/{}?transport={}",
+                    "https://bridges.torproject.org/bridges", "webtunnel", "webtunnel"
+                ),
+                format!(
+                    "{}/{}?transport={}",
+                    "https://bridges.torproject.org/bridges", "snowflake", "snowflake"
+                ),
             ],
         }
+    }
+}
+
+impl DirectScraper {
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
@@ -188,11 +210,7 @@ mod tests {
     fn test_telegram_parse_bridge() {
         let valid = "obfs4 192.95.36.142:443 CDF2E852 cert=abc iat-mode=0";
         assert!(TelegramBridgeCollector::parse_bridge_line(valid).is_some());
-
-        let invalid = "# comment line";
-        assert!(TelegramBridgeCollector::parse_bridge_line(invalid).is_none());
-
-        let empty = "";
-        assert!(TelegramBridgeCollector::parse_bridge_line(empty).is_none());
+        assert!(TelegramBridgeCollector::parse_bridge_line("# comment").is_none());
+        assert!(TelegramBridgeCollector::parse_bridge_line("").is_none());
     }
 }

@@ -1,5 +1,4 @@
 #![recursion_limit = "256"]
-#![allow(warnings)]
 
 //! Rust migration anchor crate for TorShield-IR Ultra VIP Edition.
 //! All modules are now fully Rust-native after Python-to-Rust migration.
