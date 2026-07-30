@@ -1,6 +1,7 @@
 //! Rust port of monitoring/*.py modules
 //! Structured logging, health checks, telemetry dashboard
 
+#![allow(clippy::new_without_default, clippy::module_name_repetitions)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;

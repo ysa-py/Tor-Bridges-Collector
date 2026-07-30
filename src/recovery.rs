@@ -1,5 +1,6 @@
 //! Rust port of recovery/*.py, reports/*.py, registry/*.py, health/*.py modules
 
+#![allow(clippy::new_without_default)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;
