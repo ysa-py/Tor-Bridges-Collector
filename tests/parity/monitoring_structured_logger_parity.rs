@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Live-Python differential parity test for `monitoring/structured_logger.py`
 // vs the Rust port `src/monitoring_structured_logger.rs`.
 //

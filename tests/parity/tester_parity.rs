@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Differential parity tests for `src/tester.rs` vs `core/tester.py`.
 //
 // Covers the pure bridge-line parsing functions `detect_transport`,

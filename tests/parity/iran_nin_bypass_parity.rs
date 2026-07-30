@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Differential parity tests for `src/iran_nin_bypass.rs` vs
 // `iran_nin_bypass.py`.
 //

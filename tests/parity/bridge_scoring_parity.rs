@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/bridge_scoring.rs` vs `sources/bridge_scoring.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

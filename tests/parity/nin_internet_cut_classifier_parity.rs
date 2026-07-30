@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/nin_internet_cut_classifier.rs` vs
 // `nin_internet_cut_classifier.py`.
 //

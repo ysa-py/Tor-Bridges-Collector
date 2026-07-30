@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/iran_dpi_shaper.rs` vs `core/iran_dpi_shaper.py`.
 //
 // Everything in this module is a pure function over a bridge-line string

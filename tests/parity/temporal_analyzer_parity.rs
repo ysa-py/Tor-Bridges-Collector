@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Differential parity tests for `src/temporal_analyzer.rs` vs
 // `core/temporal_analyzer.py`.
 //

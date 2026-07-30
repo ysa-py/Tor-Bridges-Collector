@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/ml_predictor.rs` vs `ml_predictor.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity test: `ech_fingerprint_evasion.py` vs `ech_fingerprint_evasion.rs`.
 //
 // Runs both the Python original and the Rust port on the same fixed input

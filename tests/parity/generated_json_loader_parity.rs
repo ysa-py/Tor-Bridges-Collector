@@ -1,4 +1,3 @@
-#![allow(warnings)]
 use std::{fs, path::Path, process::Command};
 
 use serde_json::{json, Value};

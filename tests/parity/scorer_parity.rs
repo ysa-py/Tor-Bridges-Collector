@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Differential parity tests for `src/scorer.rs` vs `core/scorer.py`.
 //
 // Covers the deterministic scoring dimensions and the full `score()`

@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/iran_bridge_prioritizer.rs` vs
 // `core/iran_bridge_prioritizer.py`.
 //

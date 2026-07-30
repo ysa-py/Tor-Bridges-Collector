@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Live-Python differential parity test for
 // `autonomous/anti_censorship/obfuscator.py` vs the Rust port
 // `src/autonomous_anti_censorship_obfuscator.rs`.

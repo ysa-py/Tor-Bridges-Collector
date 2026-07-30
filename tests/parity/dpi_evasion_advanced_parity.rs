@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/dpi_evasion_advanced.rs` vs `dpi_evasion_advanced.py`.
 //
 // Pure functions, no network I/O — straightforward differential testing

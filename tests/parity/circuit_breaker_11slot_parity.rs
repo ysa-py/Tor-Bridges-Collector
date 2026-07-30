@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/circuit_breaker_11slot.rs` vs
 // `circuit_breaker_11slot.py`.
 //

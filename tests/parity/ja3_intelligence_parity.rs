@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/ja3_intelligence.rs` vs `ja3_intelligence.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

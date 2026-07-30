@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Live-Python differential parity test for
 // `torshield_ai_gateway/circuit_breaker.py` vs the Rust port
 // `src/torshield_ai_gateway/circuit_breaker.rs`.

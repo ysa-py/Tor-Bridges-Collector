@@ -1,4 +1,3 @@
-#![allow(warnings)]
 use std::{collections::BTreeMap, path::PathBuf, process::Command};
 
 use serde_json::{json, Value};

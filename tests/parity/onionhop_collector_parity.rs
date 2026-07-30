@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/onionhop_collector.rs` vs `onionhop_collector.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

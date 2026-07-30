@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Differential parity tests for `src/history.rs` vs `core/history.py`.
 //
 // Covers `_normalize_key` (the dedup canonicalization) and the query/

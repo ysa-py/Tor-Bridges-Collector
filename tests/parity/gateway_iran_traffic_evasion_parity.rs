@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Live-Python differential parity test for
 // `torshield_ai_gateway/iran_traffic_evasion.py`.
 //

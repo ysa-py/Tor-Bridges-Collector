@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity test: `sources/torproject.py` vs `sources_torproject.rs`.
 //
 // Runs both the Python original and the Rust port on the same fixed input

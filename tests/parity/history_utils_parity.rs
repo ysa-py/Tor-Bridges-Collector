@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/history_utils.rs` vs `sources/history_utils.py`.
 //
 // Each test invokes a fresh Python interpreter on `sources/history_utils.py`

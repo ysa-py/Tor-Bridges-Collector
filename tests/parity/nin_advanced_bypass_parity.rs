@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/nin_advanced_bypass.rs` vs `nin_advanced_bypass.py`.
 //
 // Each test invokes a fresh Python interpreter on the same input and

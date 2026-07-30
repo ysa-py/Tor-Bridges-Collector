@@ -1,4 +1,3 @@
-#![allow(warnings)]
 // Parity tests for `src/iran_anti_siam.rs` vs `iran_anti_siam.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports
