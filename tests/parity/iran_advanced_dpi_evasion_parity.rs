@@ -1,8 +1,7 @@
-//! Parity test for `iran_advanced_dpi_evasion` Rust module.
-//!
-//! This module has no Python original — it's a NEW capability added during
-//! the migration. Tests verify correctness and internal consistency rather
-//! than binary parity with a Python oracle.
+// Rust-native contract tests for `iran_advanced_dpi_evasion`.
+//
+// This module is a native capability added during the migration. Tests verify
+// correctness and internal consistency without an external runtime oracle.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -70,7 +69,7 @@ fn generate_evasion_strategy_includes_explanation() {
 #[test]
 fn anti_censorship_report_has_configuration() {
     let now = chrono::Utc::now();
-    let report = generate_anti_censorship_report(&now, &[], 0, 12, 5);
+    let report = generate_anti_censorship_report(now, &[], 0, 12, 5);
     assert!(report.get("configuration").is_some());
     let config = report["configuration"].as_object().unwrap();
     assert!(config.contains_key("available_tls_profiles"));

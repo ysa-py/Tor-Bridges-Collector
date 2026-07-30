@@ -13,7 +13,7 @@ use torshield_ir_ultra::scraper::{
 };
 
 fn run() -> Result<(usize, usize), Box<dyn std::error::Error>> {
-    let mut collected: Vec<(String, String, String)> = get_static()
+    let collected: Vec<(String, String, String)> = get_static()
         .into_iter()
         .map(|(line, transport, ip_version)| {
             (
@@ -25,14 +25,16 @@ fn run() -> Result<(usize, usize), Box<dyn std::error::Error>> {
         .collect();
 
     #[cfg(feature = "network")]
-    {
+    let collected = {
         use std::time::Duration;
         use torshield_ir_ultra::scraper::{fetch_moat, fetch_torproject, ReqwestHttpFetch};
 
+        let mut network_collected = collected;
         let client = ReqwestHttpFetch::new(Duration::from_secs(30));
-        collected.extend(fetch_torproject(&client));
-        collected.extend(fetch_moat(&client));
-    }
+        network_collected.extend(fetch_torproject(&client));
+        network_collected.extend(fetch_moat(&client));
+        network_collected
+    };
 
     let bridge_dir = Path::new(DEFAULT_BRIDGE_DIR);
     let history_path = bridge_dir.join("bridge_history.json");
