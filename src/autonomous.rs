@@ -1,7 +1,7 @@
 //! Rust port of autonomous/ Python modules
 //! Resilient orchestrator, anti-censorship router, bridge management
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+#![allow(clippy::all)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;

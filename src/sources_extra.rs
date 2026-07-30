@@ -1,6 +1,6 @@
 //! Additional source modules (bridgedb, direct_scraper, github, moat, telegram)
 
-#![allow(clippy::all, clippy::pedantic, clippy::nursery)]
+#![allow(clippy::all)]
 use serde_json::{json, Value};
 use std::collections::HashMap;
 
