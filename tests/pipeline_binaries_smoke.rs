@@ -99,8 +99,8 @@ fn pipeline_lists_every_stage() {
     let listed: Vec<&str> = stdout.lines().filter(|l| !l.trim().is_empty()).collect();
     assert_eq!(
         listed.len(),
-        19,
-        "expected 19 stages, got {}: {listed:?}",
+        20,
+        "expected 20 stages, got {}: {listed:?}",
         listed.len()
     );
     for expected in [
@@ -123,6 +123,7 @@ fn pipeline_lists_every_stage() {
         "ct",
         "nin-classify",
         "siam",
+        "rotation",
     ] {
         assert!(listed.contains(&expected), "stage {expected} not listed");
     }
@@ -167,7 +168,7 @@ fn pipeline_runs_all_stages_without_failure() {
     let report: serde_json::Value = serde_json::from_str(&body).expect("report is valid JSON");
 
     let stages = report["stages"].as_array().expect("stages array");
-    assert_eq!(stages.len(), 19, "every stage must be recorded");
+    assert_eq!(stages.len(), 20, "every stage must be recorded");
 
     // No stage may report `failed`; `ok` and `skipped` are both acceptable
     // because some stages legitimately self-skip on absent optional inputs.

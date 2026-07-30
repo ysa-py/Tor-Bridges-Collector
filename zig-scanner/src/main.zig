@@ -193,7 +193,8 @@ fn parseInputFile(allocator: std.mem.Allocator, path: []const u8) ![]WorkQueue.B
 }
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    // Zig 0.14+ renamed GeneralPurposeAllocator to DebugAllocator.
+    var gpa = std.heap.DebugAllocator(.{}){};
     defer _ = gpa.deinit();
     const allocator = gpa.allocator();
     g_allocator = allocator;
