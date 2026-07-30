@@ -746,3 +746,28 @@ git push origin arena/019fb50e-tor-bridges-collector`.
 **Local state remains correct and ready:** `validate_workflows.py` = 0 violations,
 all 8 workflow files in `5977a63`, full multi-language audit clean (§12.2). The
 work is finished; only the one permission gate stands between it and `main`.
+
+---
+
+### 13.1 Turn-4 re-test (2026-07-30) — permission STILL not granted
+
+At the directive's explicit request ("Assuming `workflows: write` permissions
+have now been granted"), the push of `c37e92e` was attempted again. It **failed
+identically** (5th consecutive identical rejection):
+
+```
+! [remote rejected] ... (refusing to allow a GitHub App to create or update
+  workflow `.github/workflows/ai_bridge_reranker.yml` without `workflows` permission)
+```
+
+**HONEST FINAL STAMP (no false "deployed / green"):**
+
+| Item | True status |
+|---|---|
+| Workflow fix (Exit 127, tags, dead-Python guards) | ✅ Verified locally (validator 0 violations, audit clean) — ❌ **NOT deployed** |
+| `Self-Heal and Diagnostics` GREEN on Actions | ❌ **Not confirmable** — fixed workflow is not on the remote, so no run exercises the fix |
+| `CI - Autonomous Orchestrator` / `enforce-profiles` GREEN | ❌ Not confirmable for the same reason |
+| Sole remaining blocker | Repository owner must grant the Arena GitHub App the **Workflows** permission (§13). Until then re-running `git push` is guaranteed to keep failing — this is a permission gate, not a transient/retry error. |
+
+The work is complete and ready; `c37e92e` deploys in a single push the moment the
+permission is granted.
