@@ -29,11 +29,11 @@ Write-Output "[auto-fix.ps1] Starting auto-fix run ($ISSUE_ID)"
 # 1) cargo fmt check
 Write-Output "[auto-fix.ps1] Running cargo fmt --all -- --check"
 try {
-  & cargo fmt --all -- --check 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-check.log')
+  & cargo @('fmt', '--all', '--', '--check') 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-check.log')
   Write-Output "[auto-fix.ps1] No formatting issues"
 } catch {
   Write-Output "[auto-fix.ps1] Formatting issues found. Applying cargo fmt --all"
-  & cargo fmt --all 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-apply.log')
+  & cargo @('fmt', '--all') 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-apply.log')
   git add -A
   $CHANGES_MADE = $true
 }
@@ -83,7 +83,7 @@ if (-not $CHANGES_MADE) {
 # 3) Run validation: clippy and tests
 Write-Output "[auto-fix.ps1] Running cargo clippy --workspace --all-targets -- -D warnings"
 try {
-  & cargo clippy --workspace --all-targets -- -D warnings 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-clippy-postfix.log')
+  & cargo @('clippy', '--workspace', '--all-targets', '--', '-D', 'warnings') 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-clippy-postfix.log')
 } catch {
   Write-Output "[auto-fix.ps1] clippy failed after fixes — rolling back"
   & git reset --hard $ORIG_HEAD
