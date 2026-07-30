@@ -210,6 +210,7 @@ pub struct AutoDebugSystem {
 
 struct Inner {
     state: Mutex<AutoDebugState>,
+    log_io: Arc<Mutex<()>>,
     log_path: PathBuf,
     project_root: PathBuf,
     clock: Clock,
@@ -243,6 +244,7 @@ impl AutoDebugSystem {
         Self {
             inner: Arc::new(Inner {
                 state: Mutex::new(AutoDebugState::default()),
+                log_io: Arc::new(Mutex::new(())),
                 log_path: log_path.to_path_buf(),
                 project_root: project_root.to_path_buf(),
                 clock,
@@ -280,6 +282,7 @@ impl AutoDebugSystem {
                     .expect("auto-debug state mutex poisoned")
                     .clone_for_split(),
             ),
+            log_io: Arc::clone(&old_inner.log_io),
             log_path: old_inner.log_path.clone(),
             project_root: old_inner.project_root.clone(),
             clock: Arc::clone(&old_inner.clock),
@@ -922,6 +925,15 @@ impl AutoDebugSystem {
     /// Appends the report to a JSON history list, keeping the last
     /// `LOG_HISTORY_RETENTION` (= 20) entries.
     pub fn save_log(&self, report: &Value) -> Result<(), AutoDebugError> {
+        // Reading, appending, and replacing the JSON document is one critical
+        // section. All clones (including clone-on-write hook variants) share
+        // this lock, preventing concurrent writers from exposing a partial
+        // document or dropping an entry.
+        let _log_guard = self
+            .inner
+            .log_io
+            .lock()
+            .expect("auto-debug log I/O mutex poisoned");
         let mut history: Vec<Value> = Vec::new();
         if self.inner.log_path.exists() {
             let text = fs::read_to_string(&self.inner.log_path).map_err(|source| {
@@ -1376,16 +1388,12 @@ mod tests {
         for h in handles {
             h.join().expect("worker thread");
         }
-        // After 4 concurrent full diagnoses, the log file should exist and
-        // contain at least one entry. The exact count is not part of the
-        // Python parity contract — concurrent writes may interleave in
-        // ways that lose entries (Python has the same race). The parity
-        // guarantee is that the file exists and is valid JSON.
+        // Shared log I/O locking guarantees all concurrent reports are kept
+        // and that readers never observe a partially-written JSON document.
         let text = fs::read_to_string(dir.join("log.json")).unwrap();
         let arr: Value = serde_json::from_str(&text).unwrap();
         let len = arr.as_array().unwrap().len();
-        assert!(len >= 1, "expected at least 1 log entry, got {len}");
-        assert!(len <= 4, "expected at most 4 log entries, got {len}");
+        assert_eq!(len, 4, "all concurrent reports must be retained");
         let _ = fs::remove_dir_all(&dir);
     }
 }
