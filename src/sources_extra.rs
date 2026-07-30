@@ -1,7 +1,5 @@
 //! Additional source modules (bridgedb, direct_scraper, github, moat, telegram)
 
-use serde_json::Value;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // BridgeDB API client
 // ─────────────────────────────────────────────────────────────────────────────

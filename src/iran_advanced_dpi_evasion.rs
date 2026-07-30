@@ -323,11 +323,11 @@ pub struct EvasionStrategy {
 /// where `hour` is the current wall-clock hour (0-23). This ensures
 /// the same browser profile isn't reused at the same hour every day
 /// while still being deterministic for testing.
-pub fn select_tls_profile(
-    profiles: &[BrowserTlsProfile],
+pub fn select_tls_profile<'a>(
+    profiles: &'a [BrowserTlsProfile],
     hour: u32,
     previous_ja3_seen: &BTreeSet<String>,
-) -> Option<&BrowserTlsProfile> {
+) -> Option<&'a BrowserTlsProfile> {
     if profiles.is_empty() {
         return None;
     }
@@ -386,7 +386,7 @@ pub fn select_fragmentation_size(censorship_level: u32) -> u16 {
 pub fn select_padding_size(
     morph_protocol: &MorphProtocol,
     censorship_level: u32,
-    seed: u64,
+    _seed: u64,
 ) -> u16 {
     let base_padding = morph_protocol.padding_min;
     let extra = match censorship_level {
