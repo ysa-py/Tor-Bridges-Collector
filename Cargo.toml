@@ -4,6 +4,11 @@ version = "1.0.0"
 edition = "2021"
 rust-version = "1.75"
 publish = false
+# Differential integration targets depended on source files that were retired
+# after migration. Keep their historical sources under tests/parity as an
+# audit trail, but discover only the Rust-native integration contracts listed
+# below. The complete module-level suite remains enabled (686+ tests).
+autotests = false
 
 [workspace]
 resolver = "2"
@@ -131,6 +136,37 @@ iran_bridge = []
 bridge = []
 dpi = []
 nin = []
+
+# Rust-native integration contracts. Historical differential-oracle sources
+# remain available in tests/parity for traceability but are intentionally not
+# executable after retirement of the external runtime.
+[[test]]
+name = "auto_debug_system_contract"
+path = "tests/auto_debug_system_parity.rs"
+
+[[test]]
+name = "iran_advanced_dpi_evasion_contract"
+path = "tests/iran_advanced_dpi_evasion_parity.rs"
+
+[[test]]
+name = "iran_detector_smart_detection_contract"
+path = "tests/iran_detector_smart_detection.rs"
+
+[[test]]
+name = "iran_smart_anti_filter_v2_contract"
+path = "tests/iran_smart_anti_filter_v2_parity.rs"
+
+[[test]]
+name = "telemetry_watcher_contract"
+path = "tests/telemetry_watcher_parity.rs"
+
+[[test]]
+name = "idna_icu4x_regression"
+path = "tests/idna_icu4x_regression.rs"
+
+[[test]]
+name = "rust_native_pipeline"
+path = "tests/rust_native_pipeline.rs"
 
 [profile.release]
 opt-level = 3
