@@ -145,8 +145,14 @@ class TestIranSmartAntiFilterV2Profile(unittest.TestCase):
         self.assertLess(data["packet_padding_bytes"][0], data["packet_padding_bytes"][1])
 
 
+@unittest.skip(
+    "ai_anti_dpi_iran.py was retired after its Rust port (src/ai_anti_dpi_iran.rs) "
+    "reached full differential parity; this class is kept for historical "
+    "traceability rather than deleted outright. Equivalent coverage now lives "
+    "in tests/parity/ai_anti_dpi_iran_parity.rs (21/21 passing)."
+)
 class TestIranAntiDPI(unittest.TestCase):
-    """Test the IranAntiDPI engine."""
+    """Test the IranAntiDPI engine. RETIRED: see class skip reason above."""
 
     def _get_class(self):
         from ai_anti_dpi_iran import IranAntiDPI

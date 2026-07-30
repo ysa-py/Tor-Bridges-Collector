@@ -5,7 +5,7 @@ on:
     workflows: ["Zero-Error Enterprise CI"]
     types: [completed]
   schedule:
-    - cron: '0 */6 * * *' # every 6 hours
+    - cron: '0 */6 * * *'  # every 6 hours
   push:
     branches: ["main", "master"]
 

@@ -18,11 +18,10 @@ pub fn run_python_json(script: &str, payload: &Value) -> Value {
 
 pub fn run_python_script(script: &str, payload: &Value) -> PythonResult {
     let payload_json = serde_json::to_string(payload).expect("payload must serialize");
-    let result = match run_python_script_inner(script, &payload_json) {
+    match run_python_script_inner(script, &payload_json) {
         Ok(r) => r,
         Err(err) => panic!("python helper must execute: {err}"),
-    };
-    result
+    }
 }
 
 fn run_python_script_inner(script: &str, payload_json: &str) -> Result<PythonResult, String> {

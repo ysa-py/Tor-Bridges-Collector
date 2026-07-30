@@ -1,8 +1,38 @@
 # Python-to-Rust Migration Status Report
 
-**Last updated:** 2026-07-14 (Zero-Error Native Rust migration completed)
+**Last updated:** 2026-07-30 (Sandbox verification + error-remediation pass — see new session entry below)
 
-## COMPLETED: NATIVE RUST MIGRATION
+## Session — Sandbox verification & remediation pass (2026-07-30)
+
+**Scope:** Apig uploaded `Tor-Bridges-Collector_tar.gz` and asked for a full, real (not simulated) build/test pass across every language in the workspace (Python, Rust, Shell, Go, Dockerfile, Zig, PowerShell, YAML), with all discovered errors fixed and nothing deleted. This entry records exactly what was run, what failed, what was fixed, and — just as important — what could **not** be verified in this sandbox, so nothing here is overstated.
+
+**Toolchain used (sandbox-installed via `apt`, not the project's pinned toolchain):** `rustc`/`cargo` 1.75.0, `golang-go` 1.22.2, `shellcheck` 0.9.0, Python 3.12.3. The project's own docs record 1.96–1.97 as the toolchain used in prior sessions; 1.75.0 is what Ubuntu 24.04's repos offer and is also the crate-pinned MSRV (`rust-version = "1.75"` in `Cargo.toml`), so this is a valid — if older — verification, not a mismatch that should raise concern on its own.
+
+| Surface | Command | Before | After |
+| --- | --- | --- | --- |
+| Rust build (default features) | `cargo check --workspace --all-targets` | clean | clean (no change needed) |
+| Rust build (all features) | `cargo check --workspace --all-targets --all-features` | clean | clean (no change needed) |
+| Rust tests (default features) | `cargo test --workspace` | **6 failed** (`iran_detector_parity`: `ModuleNotFoundError: nest_asyncio` in the Python oracle helper) | **0 failed** — fixed by installing `requirements.txt` (`pip install -r requirements.txt --break-system-packages`), a missing-dependency issue, not a code defect |
+| Rust tests (all features) | `cargo test --workspace --all-features --lib` (integration-test binaries skipped — see disk-space note) | n/a | **634/634 passing, 0 failed** |
+| Rust lint (default) | `cargo clippy --workspace --all-targets -- -D warnings` | **2 real errors**: `needless_borrows_for_generic_args` in `tests/parity/gateway_iran_traffic_evasion_parity.rs:77` and `tests/utils/python_helper_mock.rs` (`let_and_return`) | clean |
+| Rust lint (all features) | `cargo clippy --workspace --all-targets --all-features -- -D warnings` | **1 real error**: `needless_borrows_for_generic_args` in `src/iran_detector.rs:883` (`client.get(&url)` inside the Session‑9 `smart-detection`/`network`-gated `probe_https_443`) | clean |
+| Rust format | `cargo fmt --check` | clean | clean (no change needed) |
+| Python tests | `python3 -m pytest tests/ -q` | **11 failed**: 10 from two orphaned test references to `ai_anti_dpi_iran.py` (deleted in a prior session after its Rust port reached full parity — the tests were never updated), 1 from a lost executable bit on `scripts/check_shell_entrypoints.sh` | **0 failed** — 489 passed, 10 intentionally skipped (see below) |
+| Go build | `go build ./...` (workspace: root + `go_tester`, via `go.work`) | clean | clean (no change needed) |
+| Go vet | `go vet ./...` | clean | clean (no change needed) |
+| Go tests | `go test ./...` | clean | clean (no change needed) |
+| Shell lint | `shellcheck -S error` on all 19 `.sh` files | clean at error severity (one info-level SC2148 "missing shebang" note on `configs/env_template.sh`, which is a `source`-only `.env` template by design, not a bug) | unchanged |
+| Shell permissions | `find . -name "*.sh"` executable bit | **19/19 scripts had lost their executable bit** (an artifact of how the tarball was packed) | all 19 restored with `chmod +x` |
+| Zig | — | **not compiled** — the Zig toolchain isn't installable in this sandbox (`ziglang.org` and the GitHub release asset host are both outside the sandbox's allowed egress list; `apt` has no `zig` package). `zig-scanner/src/main.zig` and `build.zig` were read and manually reviewed; no obvious errors, but one construct (`for (...) |t| {...} else {}` around line ~165 of `main.zig`) should be double-checked against the actual Zig compiler in a real dev environment before being trusted — it was **not** verified to compile. |
+| PowerShell | — | **not run** — no PowerShell runtime available in this sandbox. `scripts/self_heal.ps1` and `scripts/auto_fix.ps1` were read manually; syntax looks conventional, but this is **not** the same as a real `pwsh -File ... -WhatIf`/parse check and should not be treated as equivalent to one. |
+| YAML | — | not separately linted this session (`.yamllint` config exists in repo root; not run — flagged rather than skipped silently) |
+| Git / push | — | **This extracted archive has no `.git` directory at all** (`git status` → "not a git repository"), so there is nothing to commit or push to from this sandbox, and no remote/credentials are configured here regardless. Any commit/push has to happen in Apig's own working copy, not this sandbox. |
+
+**Root causes, not just symptoms:** every fix above was either (a) a missing sandbox dependency (`nest_asyncio` and friends — environment, not code), (b) a genuine clippy lint the toolchain caught (small, mechanical, semantics-preserving), (c) a lost Unix permission bit from archiving, or (d) two Python test files that were never updated after a previous session's Python→Rust deletion of `ai_anti_dpi_iran.py`. Nothing was deleted to make this pass — the two orphaned test references were marked `@unittest.skip(...)` with an explanation pointing to the Rust parity suite that now covers that behavior, per Apig's explicit instruction not to remove anything.
+
+**What this session did NOT do:** it did not touch the Session‑9 `iran_detector.rs` anti-DPI warfare-layer implementation itself (interference classification / adaptive routing / probe jitter) — that code compiled and its tests passed as-is, so no changes were needed there. It did not run `cargo audit`, mutation testing (`cargo-mutants`), fuzz testing (`proptest`), or cross-platform (Windows/macOS) validation — those require tooling/environments not available in this sandbox and are called out here rather than claimed as done.
+
+
 
 The `ai_anti_dpi_iran.py` oracle has been fully replaced with a native Rust helper implementation.
 The parity test harness now uses `tests/utils/python_helper_mock.rs` to preserve original behavior without requiring Python.

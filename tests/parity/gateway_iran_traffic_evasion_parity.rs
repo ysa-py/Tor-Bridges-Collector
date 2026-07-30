@@ -74,7 +74,7 @@ fn parity_none_passthrough() {
     let base_json = serde_json::to_string(&base).unwrap();
     let py = oracle(APPLY_SCRIPT, &[&base_json, "none"]);
     let rust = e.apply_evasion(&base, "none", "cf");
-    assert_eq!(py["headers"], serde_json::to_value(&rust).unwrap());
+    assert_eq!(py["headers"], serde_json::to_value(rust).unwrap());
 }
 
 #[test]

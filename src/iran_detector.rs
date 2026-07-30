@@ -880,7 +880,7 @@ pub mod smart {
             Err(_) => return ProbeOutcome::TlsHandshakeFail,
         };
         let url = format!("https://{host}/");
-        match client.get(&url).send() {
+        match client.get(url).send() {
             Ok(_) => ProbeOutcome::Ok,
             Err(e) if e.is_timeout() => ProbeOutcome::Timeout,
             Err(e) if e.is_connect() => ProbeOutcome::TlsHandshakeFail,
