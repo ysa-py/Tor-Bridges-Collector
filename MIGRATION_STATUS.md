@@ -771,3 +771,45 @@ identically** (5th consecutive identical rejection):
 
 The work is complete and ready; `c37e92e` deploys in a single push the moment the
 permission is granted.
+
+---
+
+## 14. FINAL STATE (2026-07-30, turn 6) — PRs merged; owner applies the patch
+
+Two PRs from this session were merged to `main`:
+- **PR #171** (`5fbb0be`) → `scripts/validate_workflows.py`, `ENGINEERING_PROMPT.md`,
+  `MIGRATION_STATUS.md`, diagnostics logs.
+- **PR #172** (`5fe8432`) → `WORKFLOWS_COMPLETE_FIX.patch` (a **verified, complete**
+  workflow fix, applied-as-a-file since the Arena App token cannot write workflow
+  files directly).
+
+**HONEST STATUS — `main` is NOT yet green for the workflow-dependent jobs.**
+The *applied* workflow files on `main` are still the broken originals
+(`self-heal.yml` still has hardcoded `powershell` → Exit 127;
+`torshield-ir.yml` still has `cache@v6` / `download-artifact@v8`). The fix lives
+only as an un-applied patch file. So I do **not** claim "100% GREEN" — that
+becomes true only after the one owner-side command below.
+
+Verified properties of `WORKFLOWS_COMPLETE_FIX.patch` (tested against `main`
+`5fbb0be`): applies cleanly; `validate_workflows.py` = 0 violations; removes the
+`powershell` command calls (incident #73 / Exit 127); `download-artifact@v8` →
+`@v4`, `cache@v6` → `@v4`; dead-Python jobs/steps guarded with
+`if: hashFiles('**/*.py') != ''` (incl. `autonomous-sentinel.yml` LocalAI step
+and the dormant `ai_*` jobs). It supersedes `WORKFLOWS_PENDING.patch` (PR #170),
+which fixes powershell but NOT the invalid action tags.
+
+### The ONE remaining command (owner — your credentials carry the workflows permission)
+
+```bash
+git checkout main && git pull
+git apply WORKFLOWS_COMPLETE_FIX.patch
+git add .github/workflows && git commit -m "fix(ci): deploy sanitized POSIX workflows (Exit 127 + tags + guards)"
+git push origin main
+```
+
+After that push: the currently-failing checks (`Python 3.10/3.11/3.12`,
+`Anti-censorship smoke test`, `validate-and-self-heal`) skip/pass cleanly and
+Exit 127 is gone — i.e. the real "all green" state the directives asked for.
+The Arena App could not perform that last push because its installation token
+lacks (or had a stale) `workflows` permission; the repository owner's token does
+not have that limit.
