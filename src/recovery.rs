@@ -17,7 +17,7 @@ pub struct SelfHealingEngine {
     pub heal_history: Vec<HealEvent>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HealEvent {
     pub timestamp: String,
     pub component: String,
@@ -178,17 +178,9 @@ pub struct ModelEntry {
     pub score: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelRegistry {
     pub models: HashMap<String, ModelEntry>,
-}
-
-impl Default for ModelRegistry {
-    fn default() -> Self {
-        Self {
-            models: HashMap::new(),
-        }
-    }
 }
 
 impl ModelRegistry {
@@ -331,5 +323,7 @@ mod tests {
         };
         let json_str = serde_json::to_string(&event).unwrap();
         assert!(json_str.contains("restart"));
+        let decoded: HealEvent = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(decoded, event);
     }
 }

@@ -3,7 +3,6 @@
 
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
-use std::collections::HashMap;
 
 /// Iran DPI censorship state levels
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

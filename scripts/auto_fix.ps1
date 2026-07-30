@@ -3,6 +3,9 @@ param()
 # PowerShell auto-fix for mechanical issues (Windows-friendly)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if (Test-Path variable:PSNativeCommandUseErrorActionPreference) {
+  $PSNativeCommandUseErrorActionPreference = $true
+}
 
 Push-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent)
 Set-Location ..
@@ -26,36 +29,40 @@ Write-Output "[auto-fix.ps1] Starting auto-fix run ($ISSUE_ID)"
 # 1) cargo fmt check
 Write-Output "[auto-fix.ps1] Running cargo fmt --all -- --check"
 try {
-  & cargo fmt --all -- --check 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-check.log')
+  & cargo @('fmt', '--all', '--', '--check') 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-check.log')
   Write-Output "[auto-fix.ps1] No formatting issues"
 } catch {
   Write-Output "[auto-fix.ps1] Formatting issues found. Applying cargo fmt --all"
-  & cargo fmt --all 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-apply.log')
+  & cargo @('fmt', '--all') 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt-apply.log')
   git add -A
   $CHANGES_MADE = $true
 }
 
 # 2) cargo fix (compiler suggestions), try enabling --clippy if supported
-$fixCmd = @('cargo','fix','--workspace','--allow-dirty','--allow-staged')
+$fixArgs = @('fix', '--workspace', '--allow-dirty', '--allow-staged')
 # Check support for --clippy
 $supportsClippy = $false
 try {
   $help = & cargo fix --help 2>&1
   if ($help -match '--clippy') { $supportsClippy = $true }
 } catch {
-  # ignore
+  # An older Cargo without this option is supported.
 }
-if ($supportsClippy) { $fixCmd += '--clippy'; Write-Output "[auto-fix.ps1] cargo fix supports --clippy; enabling clippy fixes" }
+if ($supportsClippy) {
+  $fixArgs += '--clippy'
+  Write-Output '[auto-fix.ps1] cargo fix supports --clippy; enabling clippy fixes'
+}
 
 # Capture pre-change status
 $preStatus = git status --porcelain
 
-# Run cargo fix
-Write-Output "[auto-fix.ps1] Running cargo fix: $($fixCmd -join ' ')"
+# Run cargo fix. The invocation operator receives the command and argument
+# array separately; invoking one array as a command is not portable.
+Write-Output "[auto-fix.ps1] Running cargo $($fixArgs -join ' ')"
 try {
-  & $fixCmd 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fix.log')
+  & cargo @fixArgs 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fix.log')
 } catch {
-  Write-Output "[auto-fix.ps1] cargo fix exited with non-zero (may still have applied changes). Continuing to check changes."
+  Write-Output '[auto-fix.ps1] cargo fix exited with non-zero (it may still have applied changes). Continuing to inspect the tree.'
 }
 
 $postStatus = git status --porcelain
@@ -76,7 +83,7 @@ if (-not $CHANGES_MADE) {
 # 3) Run validation: clippy and tests
 Write-Output "[auto-fix.ps1] Running cargo clippy --workspace --all-targets -- -D warnings"
 try {
-  & cargo clippy --workspace --all-targets -- -D warnings 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-clippy-postfix.log')
+  & cargo @('clippy', '--workspace', '--all-targets', '--', '-D', 'warnings') 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-clippy-postfix.log')
 } catch {
   Write-Output "[auto-fix.ps1] clippy failed after fixes — rolling back"
   & git reset --hard $ORIG_HEAD

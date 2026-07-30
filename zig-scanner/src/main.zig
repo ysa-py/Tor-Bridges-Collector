@@ -74,13 +74,10 @@ fn probeOne(addr_str: []const u8, port: u16) struct { reachable: bool, latency_m
 
     if (poll_result == 0) return .{ .reachable = false, .latency_ms = 0 };
 
-    // Check SO_ERROR
-    var err_val: i32 = undefined;
-    var err_len: posix.socklen_t = @sizeOf(i32);
-    posix.getsockopt(sock, posix.SOL.SOCKET, posix.SO.ERROR, @as(*anyopaque, @ptrCast(&err_val))[0..@sizeOf(i32)], &err_len) catch
+    // A writable poll event can also represent a failed asynchronous connect.
+    // Read SO_ERROR through Zig's portable helper before reporting success.
+    posix.getsockoptError(sock) catch
         return .{ .reachable = false, .latency_ms = 0 };
-
-    if (err_val != 0) return .{ .reachable = false, .latency_ms = 0 };
 
     const latency: u64 = @intCast(time.milliTimestamp() - start);
     return .{ .reachable = true, .latency_ms = latency };
@@ -208,9 +205,9 @@ pub fn main() !void {
 
     std.log.info("TorShield-IR Zig Scanner v1.0 — loading bridges from {s}", .{input_path});
 
-    var bridges = parseInputFile(allocator, input_path) catch |err| {
+    const bridges = parseInputFile(allocator, input_path) catch |err| blk: {
         std.log.warn("Could not parse input file {s}: {} — writing empty output.", .{ input_path, err });
-        bridges = try allocator.alloc(WorkQueue.Bridge, 0);
+        break :blk try allocator.alloc(WorkQueue.Bridge, 0);
     };
     defer allocator.free(bridges);
 
@@ -232,7 +229,7 @@ pub fn main() !void {
 
     const thread_count = @min(bridges.len, MAX_THREADS);
     if (thread_count > 0) {
-        var threads = try allocator.alloc(Thread, thread_count);
+        const threads = try allocator.alloc(Thread, thread_count);
         defer allocator.free(threads);
         for (threads) |*t| {
             t.* = try Thread.spawn(.{}, workerThread, .{&queue});
@@ -262,7 +259,9 @@ pub fn main() !void {
 
     const reachable_count = blk: {
         var c: usize = 0;
-        for (g_results.items) |r| if (r.reachable) { c += 1; };
+        for (g_results.items) |r| if (r.reachable) {
+            c += 1;
+        };
         break :blk c;
     };
 

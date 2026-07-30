@@ -304,17 +304,9 @@ impl CtMonitor {
 // Elite Registry
 // ─────────────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct EliteRegistry {
     pub entries: HashMap<String, Value>,
-}
-
-impl Default for EliteRegistry {
-    fn default() -> Self {
-        Self {
-            entries: HashMap::new(),
-        }
-    }
 }
 
 impl EliteRegistry {

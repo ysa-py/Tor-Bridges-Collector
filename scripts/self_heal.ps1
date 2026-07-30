@@ -2,93 +2,109 @@ param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if (Test-Path variable:PSNativeCommandUseErrorActionPreference) {
+  $PSNativeCommandUseErrorActionPreference = $true
+}
 
 $TS = (Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssZ')
 $DIAG_DIR = Join-Path -Path 'diagnostics' -ChildPath $TS
 New-Item -ItemType Directory -Path $DIAG_DIR -Force | Out-Null
 $EXIT_CODE = 0
+$VCOUNT = 0
+
+function Invoke-LoggedNative {
+  param(
+    [Parameter(Mandatory = $true)][string]$Command,
+    [Parameter(Mandatory = $true)][string[]]$Arguments,
+    [Parameter(Mandatory = $true)][string]$LogPath
+  )
+
+  $savedPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    & $Command @Arguments 2>&1 | Tee-Object -FilePath $LogPath | Out-Host
+    $code = $LASTEXITCODE
+    if ($null -eq $code) { $code = 0 }
+    return [int]$code
+  }
+  finally {
+    $ErrorActionPreference = $savedPreference
+  }
+}
 
 Write-Output "[self-heal] Starting validation run at $TS"
 
-# 1) cargo fmt check
-Write-Output "[self-heal] Running cargo fmt --all -- --check"
-try {
-  & cargo fmt --all -- --check 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fmt.log')
-  Write-Output "[self-heal] cargo fmt OK"
-} catch {
-  Write-Output "[self-heal] cargo fmt reported issues"
+$fmtCode = Invoke-LoggedNative -Command 'cargo' -Arguments @('fmt', '--all', '--', '--check') -LogPath (Join-Path $DIAG_DIR 'cargo-fmt.log')
+if ($fmtCode -ne 0) {
+  Write-Output "[self-heal] cargo fmt reported issues (exit $fmtCode)"
   $EXIT_CODE = 1
+} else {
+  Write-Output '[self-heal] cargo fmt OK'
 }
 
-# 2) cargo clippy (treat warnings as errors)
-Write-Output "[self-heal] Running cargo clippy (warnings as errors)"
-try {
-  & cargo clippy --workspace --all-targets -- -D warnings 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-clippy.log')
-  Write-Output "[self-heal] cargo clippy OK"
-} catch {
-  Write-Output "[self-heal] cargo clippy reported warnings/errors"
+$clippyCode = Invoke-LoggedNative -Command 'cargo' -Arguments @('clippy', '--workspace', '--all-targets', '--', '-D', 'warnings') -LogPath (Join-Path $DIAG_DIR 'cargo-clippy.log')
+if ($clippyCode -ne 0) {
+  Write-Output "[self-heal] cargo clippy reported issues (exit $clippyCode)"
   $EXIT_CODE = 1
+} else {
+  Write-Output '[self-heal] cargo clippy OK'
 }
 
-# 3) cargo audit — produce JSON report and human-readable logs
-Write-Output "[self-heal] Running cargo audit to produce JSON report"
-try {
-  & cargo audit --json > (Join-Path $DIAG_DIR 'audit-report.json') 2> (Join-Path $DIAG_DIR 'cargo-audit-stderr.log')
-} catch {
-  # allow non-zero
-}
-try {
-  & cargo audit 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-audit-stdout.log')
-} catch {
-  # allow non-zero
-  Write-Output "[self-heal] cargo audit returned non-zero"
-  $EXIT_CODE = 1
-}
-
-# Deterministic parsing using jq if available
-$VCOUNT = 0
-if (Test-Path (Join-Path $DIAG_DIR 'audit-report.json')) {
+if ($null -ne (Get-Command cargo-audit -ErrorAction SilentlyContinue)) {
+  $auditJsonPath = Join-Path $DIAG_DIR 'audit-report.json'
+  $savedPreference = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
   try {
-    $jq = Get-Command jq -ErrorAction SilentlyContinue
-    if ($null -ne $jq) {
-      $expr = '(.vulnerabilities.count // .vulnerabilities.found // (.vulnerabilities.list | length) // 0) as $c | ($c // 0)'
-      $VCOUNT = (& jq -r $expr (Join-Path $DIAG_DIR 'audit-report.json')) 2>$null
-    } else {
-      Write-Output "[self-heal] jq not found; skipping JSON parsing"
-    }
-  } catch {
-    Write-Output "[self-heal] Error parsing audit JSON: $_"
+    & cargo audit --json 1> $auditJsonPath 2> (Join-Path $DIAG_DIR 'cargo-audit-stderr.log')
+    $null = $LASTEXITCODE
   }
-  if ([int]$VCOUNT -gt 0) { $EXIT_CODE = 1 }
+  finally {
+    $ErrorActionPreference = $savedPreference
+  }
+
+  $auditCode = Invoke-LoggedNative -Command 'cargo' -Arguments @('audit') -LogPath (Join-Path $DIAG_DIR 'cargo-audit-stdout.log')
+  if (Test-Path $auditJsonPath) {
+    try {
+      $audit = Get-Content -Raw -Path $auditJsonPath | ConvertFrom-Json
+      if ($null -ne $audit.vulnerabilities.count) {
+        $VCOUNT = [int]$audit.vulnerabilities.count
+      } elseif ($null -ne $audit.vulnerabilities.found) {
+        $VCOUNT = [int]$audit.vulnerabilities.found
+      } elseif ($null -ne $audit.vulnerabilities.list) {
+        $VCOUNT = @($audit.vulnerabilities.list).Count
+      }
+    } catch {
+      Write-Output "[self-heal] Could not parse audit JSON: $_"
+      $EXIT_CODE = 1
+    }
+  }
+  if ($auditCode -ne 0 -or $VCOUNT -gt 0) {
+    Write-Output "[self-heal] cargo audit reported $VCOUNT vulnerabilities (exit $auditCode)"
+    $EXIT_CODE = 1
+  }
 } else {
-  Write-Output "[self-heal] No audit-report.json produced"
+  Write-Output '[self-heal] cargo-audit is not installed; audit is covered by the dedicated security job'
 }
 
-# 4) Run release tests (capture output)
-Write-Output "[self-heal] Running cargo test --workspace --release (this may take time)"
-$testLog = Join-Path $DIAG_DIR 'test-output.log'
-try {
-  & cmd /c "cargo test --workspace --release 2>&1 | tee $testLog"; $tcode = $LASTEXITCODE
-} catch {
-  $tcode = 1
-}
-if ($tcode -ne 0) {
-  Write-Output "[self-heal] Tests failed with exit code $tcode"
+$testCode = Invoke-LoggedNative -Command 'cargo' -Arguments @('test', '--workspace', '--release') -LogPath (Join-Path $DIAG_DIR 'test-output.log')
+if ($testCode -ne 0) {
+  Write-Output "[self-heal] Tests failed with exit code $testCode"
   $EXIT_CODE = 1
 } else {
-  Write-Output "[self-heal] Tests passed"
+  Write-Output '[self-heal] Tests passed'
 }
 
-# Finalize
+$index = @{
+  timestamp = $TS
+  vulnerabilities = $VCOUNT
+  exit_code = $EXIT_CODE
+}
+$index | ConvertTo-Json | Out-File -FilePath (Join-Path $DIAG_DIR 'index.json') -Encoding utf8
+
 if ($EXIT_CODE -ne 0) {
   Write-Output "[self-heal] Validation detected issues. Diagnostics saved to $DIAG_DIR"
-  # Create a lightweight index for diagnostics
-  try {
-    $index = @{ timestamp = $TS; vulnerabilities = ([int]$VCOUNT) }
-    $index | ConvertTo-Json | Out-File -FilePath (Join-Path $DIAG_DIR 'index.json') -Encoding utf8
-  } catch { }
   exit 1
 }
 
-Write-Output "[self-heal] All checks passed. No diagnostics generated."
+Write-Output '[self-heal] All checks passed.'
 exit 0

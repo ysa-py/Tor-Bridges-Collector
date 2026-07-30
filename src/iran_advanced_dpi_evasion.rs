@@ -323,11 +323,11 @@ pub struct EvasionStrategy {
 /// where `hour` is the current wall-clock hour (0-23). This ensures
 /// the same browser profile isn't reused at the same hour every day
 /// while still being deterministic for testing.
-pub fn select_tls_profile(
-    profiles: &[BrowserTlsProfile],
+pub fn select_tls_profile<'a>(
+    profiles: &'a [BrowserTlsProfile],
     hour: u32,
     previous_ja3_seen: &BTreeSet<String>,
-) -> Option<&BrowserTlsProfile> {
+) -> Option<&'a BrowserTlsProfile> {
     if profiles.is_empty() {
         return None;
     }
@@ -386,7 +386,7 @@ pub fn select_fragmentation_size(censorship_level: u32) -> u16 {
 pub fn select_padding_size(
     morph_protocol: &MorphProtocol,
     censorship_level: u32,
-    seed: u64,
+    _seed: u64,
 ) -> u16 {
     let base_padding = morph_protocol.padding_min;
     let extra = match censorship_level {
@@ -436,7 +436,7 @@ pub fn select_active_routes(
                 .unwrap_or(true)
         })
         .collect();
-    active.sort_by(|a, b| a.priority.cmp(&b.priority));
+    active.sort_by_key(|route| route.priority);
     active
 }
 
@@ -478,6 +478,7 @@ pub fn prefer_quic(censorship_level: u32, quic_previously_blocked: bool) -> bool
 ///
 /// This is the main entry point that composes all evasion techniques
 /// into a single recommendation.
+#[allow(clippy::too_many_arguments)] // Public policy API keeps each independent signal explicit.
 pub fn generate_evasion_strategy(
     bridge_line: &str,
     transport: &str,
@@ -834,9 +835,7 @@ mod tests {
         assert_eq!(strategy.fragmentation_size, 512); // level 3
         assert!(strategy.use_ech);
         assert!(!strategy.use_grease);
-        assert!(!strategy.quic_preferred); // level 3 ≥ 2 but no block → wait, prefer_quic(3, false) = true
-                                           // Actually level 3 >= 2 and not blocked → quic_preferred should be true
-                                           // Let's check
+        assert!(strategy.quic_preferred); // level 3 prefers QUIC when it has not been blocked
     }
 
     #[test]
