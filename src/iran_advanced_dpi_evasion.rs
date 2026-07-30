@@ -835,9 +835,7 @@ mod tests {
         assert_eq!(strategy.fragmentation_size, 512); // level 3
         assert!(strategy.use_ech);
         assert!(!strategy.use_grease);
-        assert!(!strategy.quic_preferred); // level 3 ≥ 2 but no block → wait, prefer_quic(3, false) = true
-                                           // Actually level 3 >= 2 and not blocked → quic_preferred should be true
-                                           // Let's check
+        assert!(strategy.quic_preferred); // level 3 prefers QUIC when it has not been blocked
     }
 
     #[test]
