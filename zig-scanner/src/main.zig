@@ -208,9 +208,9 @@ pub fn main() !void {
 
     std.log.info("TorShield-IR Zig Scanner v1.0 — loading bridges from {s}", .{input_path});
 
-    var bridges = parseInputFile(allocator, input_path) catch |err| {
+    const bridges = parseInputFile(allocator, input_path) catch |err| blk: {
         std.log.warn("Could not parse input file {s}: {} — writing empty output.", .{ input_path, err });
-        bridges = try allocator.alloc(WorkQueue.Bridge, 0);
+        break :blk try allocator.alloc(WorkQueue.Bridge, 0);
     };
     defer allocator.free(bridges);
 
