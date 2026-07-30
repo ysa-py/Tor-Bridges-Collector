@@ -3,6 +3,9 @@ param()
 # PowerShell auto-fix for mechanical issues (Windows-friendly)
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+if (Test-Path variable:PSNativeCommandUseErrorActionPreference) {
+  $PSNativeCommandUseErrorActionPreference = $true
+}
 
 Push-Location -Path (Split-Path -Path $MyInvocation.MyCommand.Path -Parent)
 Set-Location ..
@@ -36,26 +39,30 @@ try {
 }
 
 # 2) cargo fix (compiler suggestions), try enabling --clippy if supported
-$fixCmd = @('cargo','fix','--workspace','--allow-dirty','--allow-staged')
+$fixArgs = @('fix', '--workspace', '--allow-dirty', '--allow-staged')
 # Check support for --clippy
 $supportsClippy = $false
 try {
   $help = & cargo fix --help 2>&1
   if ($help -match '--clippy') { $supportsClippy = $true }
 } catch {
-  # ignore
+  # An older Cargo without this option is supported.
 }
-if ($supportsClippy) { $fixCmd += '--clippy'; Write-Output "[auto-fix.ps1] cargo fix supports --clippy; enabling clippy fixes" }
+if ($supportsClippy) {
+  $fixArgs += '--clippy'
+  Write-Output '[auto-fix.ps1] cargo fix supports --clippy; enabling clippy fixes'
+}
 
 # Capture pre-change status
 $preStatus = git status --porcelain
 
-# Run cargo fix
-Write-Output "[auto-fix.ps1] Running cargo fix: $($fixCmd -join ' ')"
+# Run cargo fix. The invocation operator receives the command and argument
+# array separately; invoking one array as a command is not portable.
+Write-Output "[auto-fix.ps1] Running cargo $($fixArgs -join ' ')"
 try {
-  & $fixCmd 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fix.log')
+  & cargo @fixArgs 2>&1 | Tee-Object -FilePath (Join-Path $DIAG_DIR 'cargo-fix.log')
 } catch {
-  Write-Output "[auto-fix.ps1] cargo fix exited with non-zero (may still have applied changes). Continuing to check changes."
+  Write-Output '[auto-fix.ps1] cargo fix exited with non-zero (it may still have applied changes). Continuing to inspect the tree.'
 }
 
 $postStatus = git status --porcelain
