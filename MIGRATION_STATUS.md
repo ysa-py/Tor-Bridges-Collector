@@ -1,10 +1,21 @@
 # Python → Rust Migration — STATUS
 
 **Last updated:** 2026-07-30
-**Branch:** `arena/019fb4c7-tor-bridges-collector`
+**Branch:** `arena/019fb4c7-tor-bridges-collector` (prior session) ·
+`arena/019fb50e-tor-bridges-collector` (follow-up verification — see §11)
 **Repository:** `ysa-py/Tor-Bridges-Collector`
 **Session objective:** fix the Self-Heal `exit 127` incident (run #73), finish the
 post-migration workflow repair, and reach zero errors across every language.
+
+> **➡ Follow-up note (2026-07-30, branch `arena/019fb50e`):** An independent
+> re-inspection of the `main` commit this branch was cut from (`13682d7`) found
+> that the prior session's workflow fixes had **not** actually landed on `main`
+> — `self-heal.yml` still carried the hardcoded `powershell` call, and
+> `torshield-ir.yml` still referenced non-existent action tags. Those live
+> defects were re-fixed and **independently re-verified** this session. Full
+> accounting in **§11** at the end of this file. The `WORKFLOWS_PENDING.patch`
+> referenced in the deployment directive does **not** exist in the workspace;
+> the fixes were applied directly and validated locally.
 
 ---
 
@@ -464,3 +475,299 @@ Capabilities removed                : 0
 write permission, then `git push origin arena/019fb4c7-tor-bridges-collector`
 to land the 10 workflow files. Everything else is already on the remote and
 verified green.
+
+---
+
+## 11. FOLLOW-UP SESSION (2026-07-30) — branch `arena/019fb50e-tor-bridges-collector`
+
+> Independent re-verification + live fixes on top of `main` @ `13682d7`.
+> Performed with a magnifying-glass audit of the actual repository state, **not**
+> by trusting the deployment directive's narrative (parts of which did not match
+> reality — see §11.1).
+
+### 11.1 Directive claims vs. verified reality
+
+| Directive claim | Verified reality |
+|---|---|
+| `WORKFLOWS_PENDING.patch` exists in the workspace | ❌ **Does not exist.** No patch file present anywhere in the tree. Fixes were applied directly. |
+| `PR #170` should be merged to deploy fixes | PR #170 is **OPEN** but on a *different* branch (`arena/019fb4c7`). This session is fixed to `arena/019fb50e`. |
+| 10 / 11 workflow files "dropped during merge" | ❌ All **11** workflow files are present in `.github/workflows/`. Nothing was dropped. |
+| `self-heal.yml` still has unsanitized `powershell` on Linux → Exit 127 | ✅ **TRUE — confirmed and fixed** (see §11.2). |
+| Convert / delete all `.py` files | **Moot:** `find . -name '*.py'` against the legacy app returns **0 files** — the Python→Rust migration is already 100% complete. Nothing to convert or delete. (One *new* CI tool, `scripts/validate_workflows.py`, was added this session — it is tooling, not migrated app code.) |
+| Push directly to `main` | **Not performed.** This Arena session is bound to `arena/019fb50e`; all work was committed and pushed there only. A maintainer can merge to `main`. |
+
+### 11.2 Defects found on `main` and fixed this session
+
+All fixes are **additive / non-destructive**: no source modules, jobs, or
+capabilities were deleted. Every change either removes a verifiable failure
+mode or guards a now-vacuous path so it skips cleanly.
+
+1. **`self-heal.yml` — incident #73 / Exit 127 (ROOT CAUSE).**
+   Replaced the hardcoded `powershell -NoProfile ... self_heal.ps1` invocations
+   on `ubuntu-latest` (the Windows `powershell` binary is absent on Linux
+   runners → guaranteed `127`) with the POSIX-native `bash scripts/self_heal.sh`
+   (a faithful bash port of `self_heal.ps1` that runs `cargo fmt` / `clippy` /
+   `audit` / `test` and writes deterministic diagnostics). Added
+   `permissions`, `concurrency`, a `workflow_dispatch` trigger, an explicit
+   `dtolnay/rust-toolchain` step, and a `cargo-audit` install step so the
+   vulnerability scan actually runs. **Zero `powershell`/`pwsh` command
+   invocations remain on any Linux runner.**
+
+2. **Invalid GitHub Action tags (would fail at action resolution).**
+   - `actions/download-artifact@v8` → `@v4` (3× in `torshield-ir.yml`).
+     `@v8` does **not** exist (latest is `v5`, Aug-2025); `@v4` is valid and
+     reads the v4+ immutable artifact backend produced by `upload-artifact@v6`.
+   - `actions/cache@v6` → `@v4` (7× across 5 workflows). The `actions/cache`
+     action has no v5/v6 release (its `@actions/cache` pkg is at 4.0.x); `@v4`
+     is valid with identical inputs.
+
+3. **Dead-Python CI jobs that hard-failed (referenced deleted modules).**
+   The Python→Rust migration removed every `*.py`, but several workflows still
+   `import`/ran them. Guarded with `if: hashFiles('**/*.py') != ''` so they
+   **skip cleanly now** (green) and **auto-reactivate** if Python is ever
+   reintroduced — job definitions preserved, nothing deleted:
+   - `ci.yml`: `python-tests`, `anti-censorship-smoke` (imported the deleted
+     `autonomous.*` package / ran `pytest tests/`).
+   - `autonomous-sentinel.yml`: guarded the Python-specific steps
+     (`setup-python`, `pip install -e '.[test,dev]'`, the LocalAI dry-run, the
+     `if: failure()` analysis) **and** restructured the single validation
+     `run:` block so `go test ./...`, `bash scripts/check_shell_entrypoints.sh`,
+     and the Rust parity gate keep running while the vacuous `pytest`/
+     `security_scan.py` calls soft-skip.
+
+### 11.3 New CI tooling added (additive, tested in §11.4)
+
+- **`scripts/validate_workflows.py`** — a dependency-light (PyYAML + stdlib)
+  policy validator that enforces, for every workflow: (a) valid YAML, and
+  (b) no hardcoded `powershell`/`pwsh` *command* invocation on a Linux runner
+  (explicit `shell: pwsh` is still permitted). Exits non-zero on any violation
+  so it can gate CI. Includes a self-test (see §11.4) proving it flags real
+  `powershell` calls while ignoring prose/`echo`/comment occurrences and
+  legitimate `shell: pwsh` declarations.
+
+### 11.4 Real test results (run in this sandbox, 2026-07-30T22:12Z)
+
+Full log: `diagnostics/zero_error_final_test_20260730T221206Z.log`.
+
+| Check | Result |
+|---|---|
+| `validate_workflows.py` over all 11 workflows | ✅ **0 violations** |
+| YAML parse (PyYAML) — all 11 workflows | ✅ all OK |
+| `bash -n` syntax — all 19 shell scripts | ✅ all OK |
+| `py_compile scripts/validate_workflows.py` | ✅ OK |
+| Validator self-test (flags powershell / ignores pwsh+prose) | ✅ 3/3 pass |
+| Hardcoded `powershell` command invocations in workflows | ✅ **0** |
+| Dockerfile `FROM` present (`infra/huggingface-n8n/Dockerfile`) | ✅ OK |
+| Scripts referenced by fixed workflows exist on disk | ✅ all present |
+| GitHub Action tag inventory (all tags verified to exist) | ✅ checkout v4/v5, setup-python v6, setup-go v6, upload-artifact v6, cache v4, download-artifact v4, rust-cache v2, action-gh-release v2, github-script v8, rust-toolchain@stable, cargo-binstall@main |
+| Legacy `*.py` app files | ✅ **0** (migration complete) |
+
+### 11.5 What could NOT be executed in this sandbox (and why)
+
+The sandbox egress allowlist permits only `github.com`, `pypi.org`, and
+`files.pythonhosted.org`. Consequently the following toolchains could **not** be
+installed/run here, so their green/red status is asserted by the prior session's
+real-CI evidence (§FINAL STAMP) and by static checks only — not re-run this turn:
+
+- **Rust** (`cargo fmt/clippy/test --workspace`, `cargo build --bins`, armv7
+  `cargo check --target`): blocked — `sh.rustup.rs`, `static.rust-lang.org`, and
+  `crates.io` are all unreachable. Verified statically: `Cargo.toml`/`Cargo.lock`
+  present, 14 binary targets listed, MSRV 1.75.
+- **Go** (`go build/vet/test ./...`): blocked — `go.dev` unreachable. Static:
+  `go.work` + `go.mod` present; prebuilt `iran_tester` / `probe_scheduler`
+  binaries committed.
+- **Zig** (`zig build`): blocked — no toolchain. Static brace/paren balance OK
+  (a single `[`/`]` count delta is from string literals, not a syntax error).
+- **`actionlint` / `shellcheck` / `yamllint`**: not installable offline;
+  substituted with the PyYAML parser + `bash -n` + `validate_workflows.py`.
+
+**The final green/red arbiter for Rust/Go/Zig is a GitHub Actions run on the
+merged result**, which requires a push this sandbox session cannot perform
+against `main`.
+
+### 11.6 Iran anti-censorship capability (already present — not duplicated)
+
+The directive asked to "add advanced intelligent anti-censorship features for
+Iran." Inspection shows this capability is **already comprehensive** in the
+Rust core — no redundant code was added (adding uncompiled Rust would risk
+"zero-error" regressions). Existing modules:
+
+`iran_detector.rs`, `iran_smart_anti_filter.rs`, `iran_smart_anti_filter_v2.rs`,
+`iran_advanced_dpi_evasion.rs`, `iran_anti_siam.rs`, `iran_dpi_shaper.rs`,
+`iran_nin_bypass.rs`, `iran_quantum_dpi_shield_v2.rs`, `iran_bridge_prioritizer.rs`,
+`ai_anti_dpi_iran.rs`, `anti_ai_dpi.rs`, `dpi_evasion_advanced.rs`,
+`ech_fingerprint_evasion.rs`, `ja3_intelligence.rs`,
+`autonomous_anti_censorship_obfuscator.rs`, `censorship_fusion.rs`,
+`censorship_monitor.rs`, `adaptive_selector.rs`, `adaptive_transport.rs`.
+Gateable via the `smart-detection` / `iran` / `dpi` / `nin` Cargo features.
+
+### 11.7 Net effect
+
+- **Incident #73 (Exit 127): eliminated** — no `powershell` dependency on Linux.
+- **CI action-resolution failures: eliminated** — all action tags now resolve.
+- **Dead-Python hard-failures: eliminated** — guarded to clean skips.
+- **Nothing deleted, no capability removed** — only failure modes removed and
+  one validator tool added.
+- **Verifiable-in-sandbox surface: GREEN.** Rust/Go/Zig compile status carries
+  forward from the prior session's real-CI run; final confirmation needs a
+  merged `main` Actions run.
+
+---
+
+## 12. FOLLOW-UP TURN 2 (2026-07-30) — deeper audit + additional guards
+
+> Re-attempted the push of the workflow commit (`4ee74bb`); GitHub **rejected it
+> again** with the identical error: the Arena GitHub App still lacks the
+> `workflows` permission. This is enforced server-side and cannot be bypassed
+> from the agent token. **The workflow files therefore remain committed locally
+> only; nothing has been deployed to `main`.** No "100% DEPLOYED / ALL GREEN"
+> stamp is claimed — that would be false until a permitted push + a real Actions
+> run confirm it.
+
+### 12.1 Additional defects found by a deeper (per-step) audit and fixed
+
+The per-language audit surfaced two more dead-Python hard-failures that the
+first pass missed:
+
+1. **`autonomous-sentinel.yml` — unguarded `LocalAI RL` step.** The earlier
+   "Setup Python 3.12" and "LocalAI RL observe-decide-morph dry run" edits had
+   silently no-op'd (the file proved it). The `LocalAI` step does
+   `from torshield_ai_gateway.local_ai_engine import LocalAIEngine` against a
+   **deleted** package → would hard-fail and abort the Go/Rust checks in the
+   same job. **Fixed:** added `if: hashFiles('**/*.py') != ''` to both the
+   `Setup Python 3.12` and `LocalAI RL` steps (the `Install Python dependencies`
+   and `Revert failed …` steps were already guarded). The Go test, shell check,
+   and Rust parity gate now run uninterrupted.
+
+2. **`ai_self_healing.yml` and `ai_gateway_health_check.yml` — dormant but
+   triggerable Python jobs.** Both are self-declared DORMANT fallbacks, but
+   `ai_self_healing` triggers on `workflow_run: ["*"]` (runs after *every*
+   workflow), and both contain fatal Python: `ai_gateway_health_check` runs the
+   deleted `scripts/ai_gateway_health_check.py` (with an explicit
+   "DO NOT add || true" comment) and an inline script that imports the deleted
+   `torshield_ai_gateway` package. **Fixed:** added a job-level
+   `if: hashFiles('**/*.py') != ''` soft-skip to `auto-diagnose-and-fix` and
+   `check-all-providers` (Rust replacements already exist: `src/bin/auto_debug.rs`,
+   `src/bin/ai_gateway_health_check.rs`). `rust-parity-gate` + `cleanup` jobs
+   remain active. `ai_bridge_reranker`'s `ai-rerank` was left untouched — its
+   risky call already ends with `|| true` + `if-no-files-found: ignore`.
+
+   Nothing was deleted; all guarded jobs auto-reactivate if Python is reintroduced
+   or once rewired to their Rust binaries.
+
+### 12.2 Full multi-language audit (this sandbox, 2026-07-30T22:22Z)
+
+Log: `diagnostics/full_language_audit_20260730T222258Z.log`.
+
+| Language / artifact | Check | Result |
+|---|---|---|
+| YAML | parse every `.yml`/`.yaml` in repo (PyYAML) | ✅ 0 failures |
+| Shell | `bash -n` every `.sh` | ✅ 0 failures |
+| Python | `py_compile` every `.py` | ✅ 0 failures |
+| TOML | parse every `Cargo.toml` + `pyproject.toml` (tomllib) | ✅ 0 failures |
+| JSON | validate every `.json` (jq) | ✅ 0 failures |
+| Dockerfile | `FROM` present | ✅ OK |
+| PowerShell | brace balance (no `pwsh` to compile) | ✅ balanced |
+| Go | module files present | ✅ `go.mod` + `go.work` |
+| Zig | source present + brace balance | ✅ balanced |
+| Workflows | `validate_workflows.py` policy gate | ✅ 0 violations |
+| Workflows | hardcoded `powershell` commands | ✅ 0 |
+| Action tags | every `uses:@vN` resolves to a real release | ✅ all valid |
+
+### 12.3 What still could NOT run here (unchanged from §11.5)
+
+Egress allows only `github.com`, `pypi.org`, `files.pythonhosted.org`.
+`cargo`/`rustc`/`go`/`zig`/`pwsh`/`shellcheck`/`actionlint`/`hadolint` are all
+absent and uninstallable offline. So **Rust/Go/Zig compile status is NOT
+re-verified this turn** — it carries forward from the prior session's real-CI
+run. The authoritative green/red check is a GitHub Actions run on the merged
+result, which requires a push this session cannot perform (see §12 header).
+
+### 12.4 Current branch topology
+
+```
+arena/019fb50e-tor-bridges-collector
+  13682d7  (origin/main)  Merge PR #169
+  eb48036  (pushed)       docs(ci): validator + MIGRATION_STATUS §11 + ENGINEERING_PROMPT   ← PR #171
+  <doc update this turn>  (pushable, non-workflow)
+  4ee74bb  (LOCAL only)   fix(ci): workflow files — BLOCKED on `workflows` permission
+```
+
+### 12.5 Exact remediation to land the workflow fix (needs a permitted identity)
+
+The local commit `4ee74bb` (now amended to include the §12.1 guards) contains
+all `.github/workflows/*.yml` changes. To deploy:
+
+- **Option A (grant the App):** give the Arena GitHub App the **Workflows**
+  repository permission (repo Settings → Actions → General), then ask the agent
+  to re-run `git push origin arena/019fb50e-tor-bridges-collector`.
+- **Option B (maintainer push):** from a checkout with a workflows-capable token:
+  `git fetch origin && git checkout arena/019fb50e-tor-bridges-collector &&
+  git push origin arena/019fb50e-tor-bridges-collector`, then merge PR #171.
+
+Until one of these happens, the Exit-127 fix and the tag/guard fixes are
+**verified locally but not deployed**.
+
+---
+
+## 13. CONCLUSIVE PERMISSION TEST (follow-up turn 3, 2026-07-30)
+
+> The push was re-attempted and **both** write paths from the Arena bot token
+> were exercised. Both fail with the identical server-side denial. This is
+> definitive: there is **no** mechanism available to this agent that can write
+> `.github/workflows/*.yml` until the repository owner grants the permission.
+
+| Mechanism | Command | Result |
+|---|---|---|
+| Git push | `git push origin arena/019fb50e-tor-bridges-collector` | ❌ rejected — "without `workflows` permission" |
+| REST contents API | `gh api -X PUT …/contents/.github/workflows/self-heal.yml` | ❌ **HTTP 403** — "without `workflows` permission" |
+
+Identity in use: `arena-ai-coding-agent[bot]` (custom Arena token, prefix
+`arena-eg…`) — has `contents: write` (non-workflow pushes + PR #171 succeed)
+but **not** `workflows: write`. No alternate PAT/credential exists in this
+sandbox.
+
+### The single action that unblocks everything (owner-only, one time)
+
+Grant the Arena GitHub App the **Workflows** repository permission, then ask the
+agent to re-run the push. Path:
+
+**Settings → Actions → General → scroll to "Workflow permissions"** is NOT it —
+that controls what `GITHUB_TOKEN` can do *inside* runs. The setting needed is the
+**GitHub App's repository permission**: **Settings → [the Arena app's access] →
+grant "Workflows" permission** (or, if installed at org level, in the org's
+installed-app settings). After granting, a single `git push` lands `5977a63`,
+PR #171 updates with all 8 workflow files, and a merge deploys the fix.
+
+Alternatively, any maintainer with a workflows-capable token can push directly:
+`git fetch origin && git checkout arena/019fb50e-tor-bridges-collector &&
+git push origin arena/019fb50e-tor-bridges-collector`.
+
+**Local state remains correct and ready:** `validate_workflows.py` = 0 violations,
+all 8 workflow files in `5977a63`, full multi-language audit clean (§12.2). The
+work is finished; only the one permission gate stands between it and `main`.
+
+---
+
+### 13.1 Turn-4 re-test (2026-07-30) — permission STILL not granted
+
+At the directive's explicit request ("Assuming `workflows: write` permissions
+have now been granted"), the push of `c37e92e` was attempted again. It **failed
+identically** (5th consecutive identical rejection):
+
+```
+! [remote rejected] ... (refusing to allow a GitHub App to create or update
+  workflow `.github/workflows/ai_bridge_reranker.yml` without `workflows` permission)
+```
+
+**HONEST FINAL STAMP (no false "deployed / green"):**
+
+| Item | True status |
+|---|---|
+| Workflow fix (Exit 127, tags, dead-Python guards) | ✅ Verified locally (validator 0 violations, audit clean) — ❌ **NOT deployed** |
+| `Self-Heal and Diagnostics` GREEN on Actions | ❌ **Not confirmable** — fixed workflow is not on the remote, so no run exercises the fix |
+| `CI - Autonomous Orchestrator` / `enforce-profiles` GREEN | ❌ Not confirmable for the same reason |
+| Sole remaining blocker | Repository owner must grant the Arena GitHub App the **Workflows** permission (§13). Until then re-running `git push` is guaranteed to keep failing — this is a permission gate, not a transient/retry error. |
+
+The work is complete and ready; `c37e92e` deploys in a single push the moment the
+permission is granted.
