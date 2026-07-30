@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/ai_anti_dpi_iran.rs` using a native Rust helper
 // that preserves the original Python oracle behavior without an external
 // Python subprocess dependency.

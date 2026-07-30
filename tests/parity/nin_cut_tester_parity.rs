@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Differential parity tests for `src/nin_cut_tester.rs` vs
 // `nin_cut_tester.py`.
 //

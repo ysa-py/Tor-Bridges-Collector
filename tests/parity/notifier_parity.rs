@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Differential parity tests for `src/notifier.rs` vs `core/notifier.py`.
 //
 // Covers the deterministic, network-free surface: `_enabled`, `_api`

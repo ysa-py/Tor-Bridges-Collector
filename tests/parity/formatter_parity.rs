@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/formatter.rs` vs `core/formatter.py`.
 //
 // Follows the JSON-payload-via-argv pattern established in

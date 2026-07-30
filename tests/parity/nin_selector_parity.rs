@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/nin_selector.rs` vs `core/nin_selector.py`.
 //
 // Follows the same JSON-payload-via-argv pattern established in

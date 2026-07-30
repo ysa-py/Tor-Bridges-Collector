@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Smoke / parity tests for `src/telemetry_watcher.rs`.
 //
 // These tests exercise the public API surface of the Rust port of

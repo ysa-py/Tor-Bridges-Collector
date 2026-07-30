@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Deterministic loopback integration tests for the Session 9 `smart-detection`
 // warfare layer (directive §4). These run ONLY under `--features
 // smart-detection`; the whole file compiles to nothing otherwise, so the

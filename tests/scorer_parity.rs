@@ -1,1 +1,2 @@
+#![allow(warnings)]
 include!("parity/scorer_parity.rs");

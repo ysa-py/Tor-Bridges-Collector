@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Smoke / parity tests for `src/auto_debug_system.rs`.
 //
 // The Python original (`auto_debug_system.py`, 826 lines) runs live system

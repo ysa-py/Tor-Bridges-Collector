@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/feature_flags.rs` vs `config/feature_flags.py`.
 //
 // Each test invokes a fresh Python interpreter on `config/feature_flags.py`,

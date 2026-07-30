@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Differential parity tests for `src/collector.rs` vs `core/collector.py`.
 //
 // Each test invokes a fresh Python interpreter on `core/collector.py`,

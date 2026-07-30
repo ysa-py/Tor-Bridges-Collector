@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Live-Python differential parity test for
 // `torshield_ai_gateway/iran_gateway_dpi_shaper.py` vs its Rust port.
 //

@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/nin_survival_pack.rs` vs `core/nin_survival_pack.py`.
 //
 // Follows the JSON-payload-via-argv pattern established in

@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/static_bridges.rs` vs `sources/static_bridges.py`.
 //
 // Verifies that the four hardcoded bridge lists are byte-identical to the

@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/scraper.rs` vs `scraper.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

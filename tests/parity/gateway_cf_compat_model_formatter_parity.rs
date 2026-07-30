@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Live-Python differential parity test for
 // `torshield_ai_gateway/cf_compat_model_formatter.py` vs its Rust port.
 //

@@ -40,6 +40,7 @@
 //! same `idna_adapter`-backed code path `endpoint_validator.rs` and
 //! `scraper.rs` use for any host they parse), against the real, pinned
 //! `Cargo.lock` state, not a fresh/unpinned resolution.
+#![allow(warnings)]
 
 #![cfg(feature = "network")]
 

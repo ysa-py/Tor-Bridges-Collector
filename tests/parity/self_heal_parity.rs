@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Differential parity tests for `src/self_heal.rs` vs `self_heal.py`.
 //
 // Covers the pure, deterministic, security-relevant helpers:

@@ -1,3 +1,4 @@
+#![allow(warnings)]
 use serde_json::Value;
 
 pub struct PythonResult {

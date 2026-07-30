@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/adaptive_transport.rs` vs `adaptive_transport.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

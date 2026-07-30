@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Live-Python differential parity test for `torshield_ai_gateway/rotator.py`.
 //
 // Pure-math behaviour (success_rate, health_score, latency EMA, status_report,

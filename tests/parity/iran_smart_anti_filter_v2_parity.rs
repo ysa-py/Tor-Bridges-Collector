@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Tests for the NEW `src/iran_smart_anti_filter_v2.rs` module.
 //
 // This module is a new capability added during the migration — there is

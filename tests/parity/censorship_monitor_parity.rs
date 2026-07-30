@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/censorship_monitor.rs` vs `core/censorship_monitor.py`.
 //
 // See `src/censorship_monitor.rs`'s module doc comment ("This sandbox

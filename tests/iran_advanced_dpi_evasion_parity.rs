@@ -1,5 +1,6 @@
 //! Thin shim to include the single-source parity test for
 //! `iran_advanced_dpi_evasion`.
+#![allow(warnings)]
 
 #![allow(clippy::field_reassign_with_default)]
 

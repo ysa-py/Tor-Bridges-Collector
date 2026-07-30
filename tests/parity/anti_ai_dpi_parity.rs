@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity test: `anti_ai_dpi.py` vs `anti_ai_dpi.rs`.
 //
 // Runs both the Python original and the Rust port on the same fixed input

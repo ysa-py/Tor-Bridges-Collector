@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/iran_detector.rs` vs `core/iran_detector.py`.
 //
 // See `src/iran_detector.rs`'s module doc comment ("This sandbox cannot

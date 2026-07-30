@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/dt_utils.rs` vs `core/dt_utils.py`.
 //
 // Each test invokes a fresh Python interpreter on `core/dt_utils.py`,

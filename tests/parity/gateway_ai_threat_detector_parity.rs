@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Live-Python differential parity test for
 // `torshield_ai_gateway/ai_threat_detector.py` vs its Rust port.
 //

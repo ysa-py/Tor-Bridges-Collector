@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/smart_iran_scorer.rs` vs `core/smart_iran_scorer.py`.
 //
 // See `src/smart_iran_scorer.rs`'s module doc comment, section "Inherited

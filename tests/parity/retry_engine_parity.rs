@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/retry_engine.rs` vs `gateway/retry_engine.py`.
 //
 // The Python `RetryEngine.decide()` uses non-deterministic jitter in

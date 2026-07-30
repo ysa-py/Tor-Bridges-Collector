@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/ooni_correlator.rs` vs `ooni_correlator.py`.
 //
 // Each test dispatches a JSON command to a Python helper that imports

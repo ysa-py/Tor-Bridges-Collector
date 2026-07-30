@@ -1,3 +1,4 @@
+#![allow(warnings)]
 //! Parity test for `iran_advanced_dpi_evasion` Rust module.
 //!
 //! This module has no Python original — it's a NEW capability added during

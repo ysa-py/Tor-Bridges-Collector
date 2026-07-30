@@ -1,3 +1,4 @@
+#![allow(warnings)]
 // Parity tests for `src/quarantine_manager.rs` vs `quarantine_manager.py`.
 //
 // Two test groups:
