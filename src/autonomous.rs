@@ -130,10 +130,9 @@ impl IranBypassConfig {
             fingerprint: Some("CDF2E852BF539B82BD10E27E9115A31734E378C2".into()),
             extra_params: {
                 let mut m = HashMap::new();
-                                m.insert(
+                m.insert(
                     "cert".into(),
-                    "qUVQ0srL1JI/vO6V6m/24anYXiJD3zP8o7ULQzu2RDy6GIVCbvGrDlhk9MhFBlRmFBMf+Q"
-                        .into(),
+                    "qUVQ0srL1JI/vO6V6m/24anYXiJD3zP8o7ULQzu2RDy6GIVCbvGrDlhk9MhFBlRmFBMf+Q".into(),
                 );
                 m.insert("iat-mode".into(), "0".into());
                 m
@@ -149,9 +148,16 @@ impl IranBypassConfig {
 
     pub fn is_likely_blocked(&self, hostname: &str) -> bool {
         let blocked = [
-            "twitter.com", "x.com", "facebook.com", "youtube.com",
-            "telegram.org", "t.me", "instagram.com", "github.com",
-            "raw.githubusercontent.com", "google.com",
+            "twitter.com",
+            "x.com",
+            "facebook.com",
+            "youtube.com",
+            "telegram.org",
+            "t.me",
+            "instagram.com",
+            "github.com",
+            "raw.githubusercontent.com",
+            "google.com",
         ];
         let h = hostname.to_lowercase();
         for domain in &blocked {
@@ -221,7 +227,10 @@ impl SmartAntiCensorshipRouter {
     }
 
     pub fn select_bridge(&self, blocked: &[String]) -> Option<&BridgeConfig> {
-        self.bypass_config.bridges.iter().find(|b| !blocked.contains(&b.address))
+        self.bypass_config
+            .bridges
+            .iter()
+            .find(|b| !blocked.contains(&b.address))
     }
 }
 
@@ -274,8 +283,11 @@ impl ResilientOrchestrator {
 // ─────────────────────────────────────────────────────────────────────────────
 
 pub const IRAN_POISON_IPS: &[&str] = &[
-    "10.10.34.34", "10.10.34.35", "127.0.0.1",
-    "10.10.33.36", "10.10.34.36",
+    "10.10.34.34",
+    "10.10.34.35",
+    "127.0.0.1",
+    "10.10.33.36",
+    "10.10.34.36",
 ];
 
 pub const IRAN_CENSOR_ASNS: &[u32] = &[
@@ -289,8 +301,8 @@ pub const IRAN_CENSOR_ASNS: &[u32] = &[
 ];
 
 pub const IRAN_SAFE_DNS: &[&str] = &[
-    "10.202.10.10",  // Shecan
-    "10.202.10.11",  // Shecan secondary
+    "10.202.10.10", // Shecan
+    "10.202.10.11", // Shecan secondary
 ];
 
 #[cfg(test)]
@@ -352,7 +364,9 @@ mod tests {
     fn test_resilient_orchestrator_circuit_breaker() {
         let mut orch = ResilientOrchestrator::new("test");
         assert!(!orch.is_circuit_open());
-        for _ in 0..5 { orch.record_failure(); }
+        for _ in 0..5 {
+            orch.record_failure();
+        }
         assert!(orch.is_circuit_open());
         orch.record_success();
         assert!(!orch.is_circuit_open());

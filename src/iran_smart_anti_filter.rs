@@ -58,8 +58,11 @@ impl Default for IranSmartAntiFilter {
             dpi_intensity: 0.0,
             blocked_transports: Vec::new(),
             preferred_transports: vec![
-                "webtunnel".into(), "snowflake".into(), "meek_lite".into(),
-                "obfs4".into(), "vanilla".into(),
+                "webtunnel".into(),
+                "snowflake".into(),
+                "meek_lite".into(),
+                "obfs4".into(),
+                "vanilla".into(),
             ],
             irst_hour: 0,
             timestamp: Utc::now(),

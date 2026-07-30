@@ -17,9 +17,7 @@ type Obs<'a> = (&'a str, f64, bool, Option<i64>, Option<&'a str>);
 fn py_replay(window: usize, obs: &[Obs]) -> Value {
     let obs_json: Vec<Value> = obs
         .iter()
-        .map(|(p, lat, ok, st, err)| {
-            json!([p, lat, ok, st, err])
-        })
+        .map(|(p, lat, ok, st, err)| json!([p, lat, ok, st, err]))
         .collect();
     let script = r#"
 import json, sys
@@ -69,7 +67,10 @@ fn rust_replay(window: usize, obs: &[Obs]) -> Value {
 fn assert_parity(window: usize, obs: &[Obs], label: &str) {
     let py = py_replay(window, obs);
     let rust = rust_replay(window, obs);
-    assert_eq!(py["threat_level"], rust["threat_level"], "threat_level [{label}]");
+    assert_eq!(
+        py["threat_level"], rust["threat_level"],
+        "threat_level [{label}]"
+    );
     assert_eq!(py["confidence"], rust["confidence"], "confidence [{label}]");
     assert_eq!(
         py["observation_count"], rust["observation_count"],
@@ -118,7 +119,11 @@ fn parity_latency_spikes_and_dns() {
 fn parity_window_eviction() {
     let mut obs: Vec<Obs> = Vec::new();
     for i in 0..12 {
-        let provider = if i % 2 == 0 { "cloudflare-1" } else { "cerebras" };
+        let provider = if i % 2 == 0 {
+            "cloudflare-1"
+        } else {
+            "cerebras"
+        };
         let success = i % 3 != 0;
         obs.push((provider, 100.0 + i as f64 * 10.0, success, Some(200), None));
     }

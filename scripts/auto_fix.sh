@@ -52,6 +52,7 @@ fi
 PRE_HASH=$(git ls-files -s | shasum -a 1 | awk '{print $1}') || PRE_HASH=""
 set +e
 "${FIX_CMD[@]}" 2>&1 | tee "${DIAG_DIR}/cargo-fix.log"
+# shellcheck disable=SC2034
 FIX_RC=$?
 set -e
 POST_HASH=$(git ls-files -s | shasum -a 1 | awk '{print $1}') || POST_HASH=""

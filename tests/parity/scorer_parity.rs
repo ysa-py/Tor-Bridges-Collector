@@ -69,7 +69,9 @@ fn scorer() -> IranScorer {
 #[test]
 fn parity_port_score() {
     let s = scorer();
-    for p in [443u16, 80, 8080, 8443, 2083, 2087, 2096, 22, 1023, 1024, 9001, 65535, 0] {
+    for p in [
+        443u16, 80, 8080, 8443, 2083, 2087, 2096, 22, 1023, 1024, 9001, 65535, 0,
+    ] {
         let py = run_python(&format!("print(s._port_score({p}))"));
         assert_eq!(py, s.port_score(p).to_string(), "port_score({p})");
     }
@@ -78,7 +80,14 @@ fn parity_port_score() {
 #[test]
 fn parity_ipv_score() {
     let s = scorer();
-    for h in ["1.2.3.4", "2001:db8::1", "example.com", "", "255.255.255.255", "::1"] {
+    for h in [
+        "1.2.3.4",
+        "2001:db8::1",
+        "example.com",
+        "",
+        "255.255.255.255",
+        "::1",
+    ] {
         let py = run_python(&format!("print(s._ipv_score(r'''{h}'''))"));
         assert_eq!(py, s.ipv_score(h).to_string(), "ipv_score({h:?})");
     }
@@ -124,23 +133,23 @@ fn parity_ja3_penalty() {
     let records = vec![
         json!({"transport": "obfs4", "port": 443}),
         json!({"transport": "snowflake", "port": 80}),
-        json!({"transport": "vanilla", "port": 9001}),   // port_risk kicks in
+        json!({"transport": "vanilla", "port": 9001}), // port_risk kicks in
         json!({"transport": "vanilla", "port": 443}),
-        json!({"transport": "webtunnel"}),               // port defaults to 0
+        json!({"transport": "webtunnel"}), // port defaults to 0
         json!({"transport": "meek_lite", "port": 8080}),
         json!({"transport": "unknown", "port": 1}),
         json!({"transport": "obfs4", "port": 9030}),
         json!({"transport": "meek_lite", "port": 8080, "ja3_hash": "deadbeef"}), // unknown hash 0.3 -> round(4.5)=4
-        json!({"ja3_hash": "e7d705a3286e19ea42f587b344ee6865"}),                 // DB critical 1.0 -> 15
-        json!({"ja3_hash": "6734f37431670b3ab4292b8f60f29984"}),                 // 0.95 -> round(14.25)=14
-        json!({"ja3_hash": "5d7e19ef9b3a4c56f5cd4a38cd0d0aa3"}),                 // 0.55 -> round(8.25)=8
-        json!({"ja3_hash": "de350869b8c85de67a350c8d186f11e6"}),                 // 0.75 -> round(11.25)=11
-        json!({"ja3_hash": "3b5074b1b5d032e5620f69f9159c9b58"}),                 // 0.50 -> round(7.5)=8 (even)
-        json!({"ja3_hash": "cd08e31494f9531f560d64c695473da9"}),                 // 0.30 -> round(4.5)=4 (even)
-        json!({"ja3_hash": "b32309a26951912be7dba376398abc3b"}),                 // SAFE hash -> 0
-        json!({"ja3_hash": "aaa7bf52f6c250ce0e70d7d4f32a6d52"}),                 // SAFE hash -> 0
-        json!({"transport": "obfs4", "port": "9050"}),   // string port coercion
-        json!({"raw": "vanilla 1.2.3.4:9001", "port": 9001}),  // transport inferred from raw
+        json!({"ja3_hash": "e7d705a3286e19ea42f587b344ee6865"}), // DB critical 1.0 -> 15
+        json!({"ja3_hash": "6734f37431670b3ab4292b8f60f29984"}), // 0.95 -> round(14.25)=14
+        json!({"ja3_hash": "5d7e19ef9b3a4c56f5cd4a38cd0d0aa3"}), // 0.55 -> round(8.25)=8
+        json!({"ja3_hash": "de350869b8c85de67a350c8d186f11e6"}), // 0.75 -> round(11.25)=11
+        json!({"ja3_hash": "3b5074b1b5d032e5620f69f9159c9b58"}), // 0.50 -> round(7.5)=8 (even)
+        json!({"ja3_hash": "cd08e31494f9531f560d64c695473da9"}), // 0.30 -> round(4.5)=4 (even)
+        json!({"ja3_hash": "b32309a26951912be7dba376398abc3b"}), // SAFE hash -> 0
+        json!({"ja3_hash": "aaa7bf52f6c250ce0e70d7d4f32a6d52"}), // SAFE hash -> 0
+        json!({"transport": "obfs4", "port": "9050"}),           // string port coercion
+        json!({"raw": "vanilla 1.2.3.4:9001", "port": 9001}),    // transport inferred from raw
     ];
     for r in &records {
         let compact = serde_json::to_string(r).unwrap();

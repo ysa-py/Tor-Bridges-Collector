@@ -6,7 +6,9 @@ use std::{
 };
 
 use serde_json::{json, Value};
-use torshield_ir_ultra::results_writer::{load_iran_results, write_result_files, ResultsWriterError};
+use torshield_ir_ultra::results_writer::{
+    load_iran_results, write_result_files, ResultsWriterError,
+};
 
 const OUTPUT_FILES: &[&str] = &[
     "iran_likely_working_obfs4.txt",
@@ -135,7 +137,8 @@ fn assert_load_success_parity(name: &str, file_text: &str) {
     let (py_ok, py_stdout, py_stderr) = python_load(repo_root, &py_dir);
     assert!(py_ok, "python helper failed: {py_stderr}");
     let py_value: Value = serde_json::from_str(&py_stdout).expect("python helper emitted JSON");
-    let rust_value = load_iran_results(&rust_dir.join("iran_results.json")).expect("rust load succeeds");
+    let rust_value =
+        load_iran_results(&rust_dir.join("iran_results.json")).expect("rust load succeeds");
     assert_eq!(rust_value, py_value);
 }
 
@@ -149,7 +152,10 @@ fn parity_load_iran_results_happy_path_object() {
 
 #[test]
 fn parity_load_iran_results_accepts_invalid_schema_data() {
-    assert_load_success_parity("invalid_schema", r#"["python", "does", "not", "validate", 7]"#);
+    assert_load_success_parity(
+        "invalid_schema",
+        r#"["python", "does", "not", "validate", 7]"#,
+    );
 }
 
 #[test]
@@ -160,7 +166,10 @@ fn parity_load_iran_results_missing_file_exits_vs_typed_error() {
 
     let (py_ok, _py_stdout, py_stderr) = python_load(repo_root, &py_dir);
     assert!(!py_ok);
-    assert!(py_stderr.contains("SystemExit:1"), "stderr was: {py_stderr}");
+    assert!(
+        py_stderr.contains("SystemExit:1"),
+        "stderr was: {py_stderr}"
+    );
 
     let err = load_iran_results(&rust_dir.join("iran_results.json")).expect_err("missing is typed");
     assert!(matches!(err, ResultsWriterError::MissingIranResults { .. }));
@@ -176,7 +185,10 @@ fn parity_load_iran_results_malformed_json_errors() {
 
     let (py_ok, _py_stdout, py_stderr) = python_load(repo_root, &py_dir);
     assert!(!py_ok);
-    assert!(py_stderr.contains("JSONDecodeError"), "stderr was: {py_stderr}");
+    assert!(
+        py_stderr.contains("JSONDecodeError"),
+        "stderr was: {py_stderr}"
+    );
 
     let err = load_iran_results(&rust_dir.join("iran_results.json")).expect_err("parse is typed");
     assert!(matches!(err, ResultsWriterError::ParseIranResults { .. }));
@@ -192,7 +204,10 @@ fn parity_load_iran_results_directory_read_error() {
 
     let (py_ok, _py_stdout, py_stderr) = python_load(repo_root, &py_dir);
     assert!(!py_ok);
-    assert!(py_stderr.contains("IsADirectoryError"), "stderr was: {py_stderr}");
+    assert!(
+        py_stderr.contains("IsADirectoryError"),
+        "stderr was: {py_stderr}"
+    );
 
     let err = load_iran_results(&rust_dir.join("iran_results.json")).expect_err("read is typed");
     assert!(matches!(err, ResultsWriterError::ReadIranResults { .. }));

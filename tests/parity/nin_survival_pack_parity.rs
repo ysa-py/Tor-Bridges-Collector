@@ -78,7 +78,10 @@ fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
     serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
-        panic!("python helper must emit JSON: {err}; stdout={}", result.stdout)
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
     })
 }
 
@@ -117,17 +120,16 @@ macro_rules! parity_generate_pack {
 
             let bridges_rs: Vec<Map<String, Value>> = bridges_json.iter().map(as_map).collect();
             let mut pack = NinSurvivalPack::default();
-            let rs_value = pack.generate_pack(&bridges_rs).expect("rust call must succeed");
+            let rs_value = pack
+                .generate_pack(&bridges_rs)
+                .expect("rust call must succeed");
 
             assert_eq!(py_value, json!(rs_value));
         }
     };
 }
 
-parity_generate_pack!(
-    empty_input_yields_empty_output,
-    vec![]
-);
+parity_generate_pack!(empty_input_yields_empty_output, vec![]);
 
 parity_generate_pack!(
     filters_non_nin_capable_transports,
@@ -364,7 +366,8 @@ fn parity_detect_nin_state_and_status_no_detector_branch() {
     // `iran_detector.rs` up) — `without_detector` is the explicit
     // constructor for this still-real, still-reachable Python branch. See
     // `src/nin_survival_pack.rs`'s module doc comment.
-    let pack = NinSurvivalPack::without_detector("export/iran_cut_pack.txt", "data/nin_events.json");
+    let pack =
+        NinSurvivalPack::without_detector("export/iran_cut_pack.txt", "data/nin_events.json");
     assert_eq!(py_value["detect_nin_state"], json!(pack.detect_nin_state()));
 
     let py_status = &py_value["status"];
@@ -487,7 +490,10 @@ macro_rules! parity_normalize {
     };
 }
 
-parity_normalize!(normalize_plain_transport_field, json!({"transport": "obfs4"}));
+parity_normalize!(
+    normalize_plain_transport_field,
+    json!({"transport": "obfs4"})
+);
 parity_normalize!(
     normalize_transport_type_field,
     json!({"transport_type": "meek-lite"})
@@ -513,7 +519,16 @@ parity_normalize!(normalize_empty_bridge_yields_empty_string, json!({}));
 
 #[test]
 fn parity_is_nin_capable_matches_priority_table_membership() {
-    for t in ["snowflake", "webtunnel", "meek_lite", "meek-lite", "obfs4_443", "obfs4", "vanilla", ""] {
+    for t in [
+        "snowflake",
+        "webtunnel",
+        "meek_lite",
+        "meek-lite",
+        "obfs4_443",
+        "obfs4",
+        "vanilla",
+        "",
+    ] {
         let script = format!(
             r##"
 import json

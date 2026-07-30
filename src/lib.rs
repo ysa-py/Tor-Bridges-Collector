@@ -65,5 +65,12 @@ pub mod torshield_ai_gateway;
 
 /// Cargo features mirroring pytest markers used for selective test execution.
 pub const PYTEST_MARKER_FEATURES: &[&str] = &[
-    "network", "iran", "slow", "tor", "iran_bridge", "bridge", "dpi", "nin",
+    "network",
+    "iran",
+    "slow",
+    "tor",
+    "iran_bridge",
+    "bridge",
+    "dpi",
+    "nin",
 ];

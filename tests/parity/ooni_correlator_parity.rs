@@ -753,8 +753,8 @@ fn parity_correlate_end_to_end_with_mocked_ooni() {
     fs::write(&rs_iran_path, serde_json::to_string(&iran_data).unwrap()).unwrap();
     fs::write(&rs_sched_path, serde_json::to_string(&sched_data).unwrap()).unwrap();
 
-    let torsf_body = json!({"results": ooni_torsf}).to_string();
-    let tor_body = json!({"results": ooni_tor}).to_string();
+    let torsf_body = json!({ "results": ooni_torsf }).to_string();
+    let tor_body = json!({ "results": ooni_tor }).to_string();
     let client = MockOoniHttp::with_torsf_and_tor(&torsf_body, &tor_body);
 
     let mut qm = QuarantineManager::new(&rs_qm_state, &rs_qm_log).unwrap();
@@ -967,7 +967,7 @@ fn rust_run_pipeline_quality_gate_decision() {
             "composite_score": score
         }));
     }
-    let iran_data = json!({"bridges": bridges});
+    let iran_data = json!({ "bridges": bridges });
     let sched_data = json!({"results": []});
     let iran_path = dir.join("iran.json");
     let sched_path = dir.join("sched.json");

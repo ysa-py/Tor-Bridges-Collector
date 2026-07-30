@@ -47,7 +47,8 @@ print(json.dumps(m.score_bridge({line:?})))
 
 fn run_python_score_with_probe(line: &str, probe_kind: &str) -> Value {
     let probe_patch = match probe_kind {
-        "reachable_tls13" => r#"
+        "reachable_tls13" => {
+            r#"
 def _probe(host, port, timeout=8.0):
     return {
         "host": host, "port": port,
@@ -56,8 +57,10 @@ def _probe(host, port, timeout=8.0):
         "tls_probe_status": "reachable", "tls_error_type": None,
     }
 m._check_ech = _probe
-"#,
-        "ech_supported" => r#"
+"#
+        }
+        "ech_supported" => {
+            r#"
 def _probe(host, port, timeout=8.0):
     return {
         "host": host, "port": port,
@@ -66,8 +69,10 @@ def _probe(host, port, timeout=8.0):
         "tls_probe_status": "reachable", "tls_error_type": None,
     }
 m._check_ech = _probe
-"#,
-        "timeout" => r#"
+"#
+        }
+        "timeout" => {
+            r#"
 def _probe(host, port, timeout=8.0):
     return {
         "host": host, "port": port,
@@ -76,7 +81,8 @@ def _probe(host, port, timeout=8.0):
         "tls_probe_status": "timeout", "tls_error_type": "TimeoutError",
     }
 m._check_ech = _probe
-"#,
+"#
+        }
         _ => "m._check_ech = lambda h, p, t=8.0: {}",
     };
     let script = format!(
@@ -150,9 +156,7 @@ impl rs::TlsProbe for AlwaysTimeout {
 
 fn assert_json_eq(a: Value, b: Value, ctx: &str) {
     if a != b {
-        panic!(
-            "{ctx}: JSON mismatch\n--- Python:\n{a:#}\n--- Rust:\n{b:#}"
-        );
+        panic!("{ctx}: JSON mismatch\n--- Python:\n{a:#}\n--- Rust:\n{b:#}");
     }
 }
 
@@ -214,10 +218,7 @@ fn parity_score_with_timeout_probe() {
 
 #[test]
 fn parity_score_webtunnel_with_ech_clamps_to_one() {
-    let py = run_python_score_with_probe(
-        "webtunnel url=https://x 1.2.3.4:443",
-        "ech_supported",
-    );
+    let py = run_python_score_with_probe("webtunnel url=https://x 1.2.3.4:443", "ech_supported");
     let rs_v = rs::score_bridge_with_probe("webtunnel url=https://x 1.2.3.4:443", &EchSupported);
     assert_json_eq(py, rs_v, "webtunnel+ech clamps to 1.0");
 }

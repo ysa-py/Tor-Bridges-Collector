@@ -360,7 +360,11 @@ pub fn select_cdn_fronting_domain(
         .iter()
         .filter(|d| d.iran_reliability >= min_reliability)
         .filter(|d| !blocked_domains.contains(d.domain))
-        .max_by(|a, b| a.iran_reliability.partial_cmp(&b.iran_reliability).unwrap_or(std::cmp::Ordering::Equal))
+        .max_by(|a, b| {
+            a.iran_reliability
+                .partial_cmp(&b.iran_reliability)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
 }
 
 /// Select the TCP fragmentation size based on censorship intensity.
@@ -369,10 +373,10 @@ pub fn select_cdn_fronting_domain(
 /// DPI reassembly buffers.
 pub fn select_fragmentation_size(censorship_level: u32) -> u16 {
     let idx = match censorship_level {
-        0..=1 => TCP_FRAGMENT_SIZES.len() - 1,  // Large fragments (normal)
-        2 => TCP_FRAGMENT_SIZES.len() - 2,       // Medium fragments
-        3 => TCP_FRAGMENT_SIZES.len() - 3,       // Small fragments
-        _ => 0,                                    // Minimum fragments (extreme)
+        0..=1 => TCP_FRAGMENT_SIZES.len() - 1, // Large fragments (normal)
+        2 => TCP_FRAGMENT_SIZES.len() - 2,     // Medium fragments
+        3 => TCP_FRAGMENT_SIZES.len() - 3,     // Small fragments
+        _ => 0,                                // Minimum fragments (extreme)
     };
     TCP_FRAGMENT_SIZES[idx.min(TCP_FRAGMENT_SIZES.len() - 1)]
 }
@@ -398,10 +402,7 @@ pub fn select_padding_size(
 
 /// Select the best morph protocol based on the censorship level and
 /// transport type.
-pub fn select_morph_protocol(
-    transport: &str,
-    censorship_level: u32,
-) -> &'static MorphProtocol {
+pub fn select_morph_protocol(transport: &str, censorship_level: u32) -> &'static MorphProtocol {
     // Ultra-stealth transports prefer video call morphing (hardest to DPI)
     if matches!(transport, "snowflake") {
         return &MORPH_PROTOCOLS[3]; // videocall
@@ -466,10 +467,7 @@ pub fn decide_ech_usage(
 /// Determine whether QUIC/HTTP3 should be preferred.
 ///
 /// QUIC is harder to DPI but may be blocked by some networks.
-pub fn prefer_quic(
-    censorship_level: u32,
-    quic_previously_blocked: bool,
-) -> bool {
+pub fn prefer_quic(censorship_level: u32, quic_previously_blocked: bool) -> bool {
     if quic_previously_blocked {
         return false;
     }
@@ -512,7 +510,8 @@ pub fn generate_evasion_strategy(
             cdn.domain, cdn.provider, cdn.iran_reliability
         ));
     } else {
-        explanation.push("No CDN fronting available (all CDNs blocked or below threshold)".to_string());
+        explanation
+            .push("No CDN fronting available (all CDNs blocked or below threshold)".to_string());
     }
 
     // 3. Select fragmentation size
@@ -538,7 +537,9 @@ pub fn generate_evasion_strategy(
     );
     if use_ech {
         if use_grease {
-            explanation.push("ECH enabled with GREASE extensions (previous ECH block detected)".to_string());
+            explanation.push(
+                "ECH enabled with GREASE extensions (previous ECH block detected)".to_string(),
+            );
         } else {
             explanation.push("ECH enabled (SNI encrypted)".to_string());
         }
@@ -557,10 +558,7 @@ pub fn generate_evasion_strategy(
     // 7. Select active routes
     let active_routes = select_active_routes(route_statuses);
     let route_names: Vec<String> = active_routes.iter().map(|r| r.name.to_string()).collect();
-    explanation.push(format!(
-        "Route priority: {}",
-        route_names.join(" > ")
-    ));
+    explanation.push(format!("Route priority: {}", route_names.join(" > ")));
 
     EvasionStrategy {
         bridge_line: bridge_line.to_string(),
@@ -611,10 +609,7 @@ pub fn generate_anti_censorship_report(
     report.insert("active_routes".to_string(), json!(active_route_count));
     report.insert("total_strategies".to_string(), json!(strategies.len()));
 
-    let strategies_json: Vec<Value> = strategies
-        .iter()
-        .map(evasion_strategy_to_json)
-        .collect();
+    let strategies_json: Vec<Value> = strategies.iter().map(evasion_strategy_to_json).collect();
     report.insert("strategies".to_string(), json!(strategies_json));
 
     // Add summary statistics
@@ -723,9 +718,9 @@ mod tests {
         assert_eq!(select_fragmentation_size(0), 1460); // Normal
         assert_eq!(select_fragmentation_size(1), 1460);
         assert_eq!(select_fragmentation_size(2), 1024); // Medium
-        assert_eq!(select_fragmentation_size(3), 512);  // Small
-        assert_eq!(select_fragmentation_size(4), 64);   // Minimum
-        assert_eq!(select_fragmentation_size(5), 64);   // Minimum (capped)
+        assert_eq!(select_fragmentation_size(3), 512); // Small
+        assert_eq!(select_fragmentation_size(4), 64); // Minimum
+        assert_eq!(select_fragmentation_size(5), 64); // Minimum (capped)
     }
 
     #[test]
@@ -840,8 +835,8 @@ mod tests {
         assert!(strategy.use_ech);
         assert!(!strategy.use_grease);
         assert!(!strategy.quic_preferred); // level 3 ≥ 2 but no block → wait, prefer_quic(3, false) = true
-        // Actually level 3 >= 2 and not blocked → quic_preferred should be true
-        // Let's check
+                                           // Actually level 3 >= 2 and not blocked → quic_preferred should be true
+                                           // Let's check
     }
 
     #[test]
@@ -849,8 +844,8 @@ mod tests {
         let strategy = generate_evasion_strategy(
             "snowflake 1.2.3.4:443",
             "snowflake",
-            5,   // Extreme censorship
-            23,  // Late night IRST
+            5,  // Extreme censorship
+            23, // Late night IRST
             &BTreeSet::new(),
             &BTreeSet::new(),
             &BTreeMap::new(),
@@ -861,34 +856,26 @@ mod tests {
 
         assert_eq!(strategy.fragmentation_size, 64); // Level 5 → minimum
         assert_eq!(strategy.morph_protocol, "videocall"); // Snowflake
-        // ECH was previously blocked → use with GREASE
+                                                          // ECH was previously blocked → use with GREASE
         assert!(strategy.use_grease);
     }
 
     #[test]
     fn generate_anti_censorship_report_contains_expected_fields() {
         let now = chrono::Utc::now();
-        let strategies = vec![
-            generate_evasion_strategy(
-                "obfs4 1.2.3.4:443",
-                "obfs4",
-                2,
-                14,
-                &BTreeSet::new(),
-                &BTreeSet::new(),
-                &BTreeMap::new(),
-                false,
-                false,
-                0,
-            ),
-        ];
-        let report = generate_anti_censorship_report(
-            now,
-            &strategies,
+        let strategies = vec![generate_evasion_strategy(
+            "obfs4 1.2.3.4:443",
+            "obfs4",
             2,
             14,
-            5,
-        );
+            &BTreeSet::new(),
+            &BTreeSet::new(),
+            &BTreeMap::new(),
+            false,
+            false,
+            0,
+        )];
+        let report = generate_anti_censorship_report(now, &strategies, 2, 14, 5);
 
         assert_eq!(report["censorship_level"], 2);
         assert_eq!(report["irst_hour"], 14);
@@ -896,7 +883,7 @@ mod tests {
         assert_eq!(report["total_strategies"], 1);
         assert_eq!(
             report["summary"]["ech_enabled_count"],
-            1  // level 2 ≥ 2, no CDN but high enough
+            1 // level 2 ≥ 2, no CDN but high enough
         );
         assert!(report.get("configuration").is_some());
     }

@@ -44,7 +44,8 @@ impl MoatClient {
 
     /// Parse a MOAT bridge response
     pub fn parse_moat_response(response: &str) -> Vec<String> {
-        response.lines()
+        response
+            .lines()
             .filter(|l| !l.is_empty() && !l.starts_with('#') && l.len() > 10)
             .map(|l| l.to_string())
             .collect()
@@ -78,7 +79,8 @@ impl TelegramBridgeCollector {
         }
         // Validate it looks like a bridge line (has transport + host:port)
         let has_transport = ["obfs4", "snowflake", "webtunnel", "meek", "vanilla"]
-            .iter().any(|t| line.contains(t));
+            .iter()
+            .any(|t| line.contains(t));
         let has_host = line.contains(':');
         if has_transport && has_host && line.len() > 20 {
             Some(line.to_string())
@@ -101,7 +103,8 @@ impl GitHubBridgeCollector {
     pub fn new() -> Self {
         Self {
             repos: vec![
-                "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/main/bridge/".to_string(),
+                "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/main/bridge/"
+                    .to_string(),
             ],
         }
     }

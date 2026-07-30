@@ -13,13 +13,8 @@ use serde_json::{json, Value};
 
 use torshield_ir_ultra::ai_anti_dpi_iran::IranAntiDpi;
 use utils::python_helper_mock::{
-    run_python_json,
-    ANALYZE_ENTROPY_SCRIPT,
-    ANALYZE_THREATS_SCRIPT,
-    EVASION_STRATEGY_SCRIPT,
-    OPTIMIZE_BRIDGE_SCRIPT,
-    SNI_EVASION_SCRIPT,
-    TRAFFIC_SHAPING_SCRIPT,
+    run_python_json, ANALYZE_ENTROPY_SCRIPT, ANALYZE_THREATS_SCRIPT, EVASION_STRATEGY_SCRIPT,
+    OPTIMIZE_BRIDGE_SCRIPT, SNI_EVASION_SCRIPT, TRAFFIC_SHAPING_SCRIPT,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -44,13 +39,19 @@ fn assert_analyze_threats_matches(censorship_level: i64, isp: &str) {
         py["recommended_evasions"], rs["recommended_evasions"],
         "level {censorship_level}"
     );
-    assert_eq!(py["risk_level"], rs["risk_level"], "level {censorship_level}");
+    assert_eq!(
+        py["risk_level"], rs["risk_level"],
+        "level {censorship_level}"
+    );
     assert_eq!(py["isp"], rs["isp"]);
     assert_eq!(py["censorship_level"], rs["censorship_level"]);
     // active_threats: compare as sets of names (order matches since both
     // sides iterate the same fixed threat list, but compare content
     // precisely rather than assuming).
-    assert_eq!(py["active_threats"], rs["active_threats"], "level {censorship_level}");
+    assert_eq!(
+        py["active_threats"], rs["active_threats"],
+        "level {censorship_level}"
+    );
 }
 
 #[test]

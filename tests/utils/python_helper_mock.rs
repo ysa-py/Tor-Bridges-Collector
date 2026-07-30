@@ -12,7 +12,10 @@ pub fn run_python_json(script: &str, payload: &Value) -> Value {
         panic!("python helper failed: {}", result.stderr);
     }
     serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
-        panic!("python helper must emit JSON: {err}; stdout={}", result.stdout)
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
     })
 }
 
@@ -28,15 +31,23 @@ fn run_python_script_inner(script: &str, payload_json: &str) -> Result<PythonRes
     // The helper logic only needs basic JSON parsing and the IranAntiDPI model.
     // The Python script bodies in tests/parity/ai_anti_dpi_iran_parity.rs are
     // ported directly as Rust implementations below.
-    let stdout = match script {
-        ANALYZE_THREATS_SCRIPT => serde_json::to_string(&run_analyze_threats(payload_json)?).map_err(|e| e.to_string())?,
-        EVASION_STRATEGY_SCRIPT => serde_json::to_string(&run_evasion_strategy(payload_json)?).map_err(|e| e.to_string())?,
-        SNI_EVASION_SCRIPT => serde_json::to_string(&run_sni_evasion(payload_json)?).map_err(|e| e.to_string())?,
-        TRAFFIC_SHAPING_SCRIPT => serde_json::to_string(&run_traffic_shaping(payload_json)?).map_err(|e| e.to_string())?,
-        ANALYZE_ENTROPY_SCRIPT => serde_json::to_string(&run_analyze_entropy(payload_json)?).map_err(|e| e.to_string())?,
-        OPTIMIZE_BRIDGE_SCRIPT => serde_json::to_string(&run_optimize_bridge(payload_json)?).map_err(|e| e.to_string())?,
-        _ => return Err("Unsupported helper script".to_string()),
-    };
+    let stdout =
+        match script {
+            ANALYZE_THREATS_SCRIPT => serde_json::to_string(&run_analyze_threats(payload_json)?)
+                .map_err(|e| e.to_string())?,
+            EVASION_STRATEGY_SCRIPT => serde_json::to_string(&run_evasion_strategy(payload_json)?)
+                .map_err(|e| e.to_string())?,
+            SNI_EVASION_SCRIPT => {
+                serde_json::to_string(&run_sni_evasion(payload_json)?).map_err(|e| e.to_string())?
+            }
+            TRAFFIC_SHAPING_SCRIPT => serde_json::to_string(&run_traffic_shaping(payload_json)?)
+                .map_err(|e| e.to_string())?,
+            ANALYZE_ENTROPY_SCRIPT => serde_json::to_string(&run_analyze_entropy(payload_json)?)
+                .map_err(|e| e.to_string())?,
+            OPTIMIZE_BRIDGE_SCRIPT => serde_json::to_string(&run_optimize_bridge(payload_json)?)
+                .map_err(|e| e.to_string())?,
+            _ => return Err("Unsupported helper script".to_string()),
+        };
     Ok(PythonResult {
         success: true,
         stdout,
@@ -50,7 +61,9 @@ fn parse_payload(payload_json: &str) -> Value {
 
 fn run_analyze_threats(payload_json: &str) -> Result<Value, String> {
     let payload = parse_payload(payload_json);
-    let censorship_level = payload["censorship_level"].as_i64().ok_or("censorship_level missing")?;
+    let censorship_level = payload["censorship_level"]
+        .as_i64()
+        .ok_or("censorship_level missing")?;
     let isp = payload["isp"].as_str().ok_or("isp missing")?;
     let engine = torshield_ir_ultra::ai_anti_dpi_iran::IranAntiDpi::new();
     let result = engine.analyze_threats(censorship_level, isp);

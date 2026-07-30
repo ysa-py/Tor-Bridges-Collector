@@ -48,7 +48,13 @@ print(json.dumps({
 fn deterministic_keys(level: &str) -> Vec<&'static str> {
     let mut keys = Vec::new();
     if matches!(level, "medium" | "high" | "critical") {
-        keys.extend(["Accept", "Accept-Language", "Accept-Encoding", "Origin", "Referer"]);
+        keys.extend([
+            "Accept",
+            "Accept-Language",
+            "Accept-Encoding",
+            "Origin",
+            "Referer",
+        ]);
     }
     if matches!(level, "high" | "critical") {
         keys.extend([
@@ -127,7 +133,10 @@ fn parity_critical_ip_shape() {
     let rust = e.apply_evasion(&base, "critical", "cf");
     for key in ["X-Forwarded-For", "X-Real-IP"] {
         let ip = &rust[key];
-        assert!(IP_PREFIXES.iter().any(|p| ip.starts_with(p)), "{key} prefix");
+        assert!(
+            IP_PREFIXES.iter().any(|p| ip.starts_with(p)),
+            "{key} prefix"
+        );
         let octets: Vec<&str> = ip.split('.').collect();
         assert_eq!(octets.len(), 4, "{key} should have 4 octets");
         for o in &octets[2..] {
@@ -153,7 +162,11 @@ print(json.dumps({"base_delay": base_delay}, separators=(",", ":")))
         for attempt in [1_i64, 2, 3, 5] {
             let py = oracle(script, &[level, &attempt.to_string(), "500"]);
             let rust = IranTrafficEvasion::retry_base_delay(attempt, level, 500.0);
-            assert_eq!(py["base_delay"], json!(rust), "base_delay {level} a{attempt}");
+            assert_eq!(
+                py["base_delay"],
+                json!(rust),
+                "base_delay {level} a{attempt}"
+            );
             // Full delay stays within the documented clamp on the Rust side.
             let d = IranTrafficEvasion::get_safe_retry_delay(attempt, level, 500.0);
             assert!((0.1..=45.0).contains(&d));

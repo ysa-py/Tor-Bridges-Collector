@@ -98,7 +98,12 @@ fn replay_rust(ops: &Value) -> (Value, Value) {
                 } else {
                     Some(op[3].as_i64().unwrap())
                 };
-                b.record_failure(op[1].as_str().unwrap(), op[2].as_str().unwrap(), http, clock);
+                b.record_failure(
+                    op[1].as_str().unwrap(),
+                    op[2].as_str().unwrap(),
+                    http,
+                    clock,
+                );
             }
             "record_success" => {
                 b.record_success(op[1].as_str().unwrap(), op[2].as_f64().unwrap(), clock);

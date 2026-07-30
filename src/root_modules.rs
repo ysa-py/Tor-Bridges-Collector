@@ -54,7 +54,8 @@ impl UTlsEvasionLayer {
     }
 
     pub fn get_ja3_fingerprint(&self, profile_name: &str) -> Option<&str> {
-        self.available_profiles.iter()
+        self.available_profiles
+            .iter()
             .find(|p| p.name == profile_name)
             .map(|p| p.ja3.as_str())
     }
@@ -79,10 +80,7 @@ impl XtlsRealityWrapper {
                 "google.com".into(),
                 "github.com".into(),
             ],
-            flow_types: vec![
-                "xtls-rprx-vision".into(),
-                "xtls-rprx-direct".into(),
-            ],
+            flow_types: vec!["xtls-rprx-vision".into(), "xtls-rprx-direct".into()],
         }
     }
 
@@ -324,8 +322,12 @@ mod tests {
 
     #[test]
     fn test_detect_reality_line() {
-        assert!(XtlsRealityWrapper::detect_reality_line("vless://abc@1.2.3.4:443"));
-        assert!(!XtlsRealityWrapper::detect_reality_line("obfs4 1.2.3.4:443"));
+        assert!(XtlsRealityWrapper::detect_reality_line(
+            "vless://abc@1.2.3.4:443"
+        ));
+        assert!(!XtlsRealityWrapper::detect_reality_line(
+            "obfs4 1.2.3.4:443"
+        ));
     }
 
     #[test]

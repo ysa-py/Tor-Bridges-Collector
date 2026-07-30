@@ -54,7 +54,8 @@ print(json.dumps({
         // (high/critical): membership only, since Python uses random.choice.
         if !matches!(lvl, "high" | "critical") {
             assert_eq!(
-                py["domain"], s.get_fronting_domain(lvl),
+                py["domain"],
+                s.get_fronting_domain(lvl),
                 "domain mismatch at {lvl}"
             );
         }
@@ -132,7 +133,10 @@ print(json.dumps({
         let mut rust_headers = s.get_dpi_evading_headers(&base, lvl);
         let rust_ua = rust_headers.remove("User-Agent");
         let rust_headers_json: Value = serde_json::to_value(&rust_headers).expect("headers json");
-        assert_eq!(py["headers"], rust_headers_json, "headers mismatch at {lvl}");
+        assert_eq!(
+            py["headers"], rust_headers_json,
+            "headers mismatch at {lvl}"
+        );
         match rust_ua {
             None => assert_eq!(py["ua_in_pool"], Value::Null, "UA presence mismatch"),
             Some(ua) => {

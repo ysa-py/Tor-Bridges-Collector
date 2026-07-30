@@ -4,32 +4,86 @@ use serde_json::{json, Value};
 use torshield_ir_ultra::config::{from_env_map, ConfigError, EnvMap};
 
 const CONFIG_KEYS: &[&str] = &[
-    "MAX_WORKERS", "CONNECTION_TIMEOUT", "SSL_TIMEOUT", "MAX_RETRIES", "MAX_TEST_PER_TYPE",
-    "RECENT_HOURS", "HISTORY_RETENTION_DAYS", "BRIDGE_DIR", "EXPORT_DIR", "HISTORY_FILE",
-    "SCORES_FILE", "REPO_URL", "IS_GITHUB", "CF_N_SLOTS", "CF_ACCOUNT_IDS", "CF_API_TOKENS",
-    "CF_AI_GATEWAY_URLS", "CF_VALID_SLOTS", "CEREBRAS_API_KEY", "PORTKEY_API_KEY",
-    "PORTKEY_GATEWAY_URL", "PORTKEY_VIRTUAL_KEYS", "GROQ_API_KEY", "GITHUB_TOKEN",
-    "GITHUB_REPOSITORY", "GITHUB_SHA", "GH_PAT_AUTOFIX", "GH_REPO_OWNER", "GH_REPO_NAME",
-    "TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID", "TELEGRAM_UPLOAD", "HTTP_PROXY", "HTTPS_PROXY",
-    "USE_TORPROJECT_SCRAPER", "USE_MOAT_API", "USE_BRIDGEDB_API", "USE_TELEGRAM_SOURCES",
-    "USE_STATIC_BRIDGES", "USE_GITHUB_SOURCES", "DEEP_TEST", "IRAN_PREFERRED_PORTS",
-    "IRAN_CDN_FRONTS", "NIN_MODE", "IRAN_BRIDGE_PRIORITIZATION_ENABLED",
-    "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_PORT", "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_TRANSPORT",
-    "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_RECENCY", "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_REACHABILITY",
-    "RIPE_ATLAS_API_KEY", "ANTI_DPI_MODE", "ANTI_FILTER_MODE", "TORSHIELD_IRAN_MODE",
-    "AUTO_DEBUG_MODE", "UTLS_EVASION_MODE", "UTLS_PROFILE_ROTATION", "ELITE_REGISTRY_ENABLED",
-    "ELITE_REGISTRY_REFRESH_HRS", "CIRCUIT_BREAKER_ENABLED", "CIRCUIT_BREAKER_MAX_FAILURES",
-    "CIRCUIT_BREAKER_RESET_SECS", "SESSION_BLACKLIST_DURATION_SECS", "TELEMETRY_ENABLED",
-    "TELEMETRY_AUTO_DEBUG_THRESHOLD", "TELEMETRY_LOG_MAX_MB", "IRST_HIGH_CENSORSHIP_START",
-    "IRST_HIGH_CENSORSHIP_END", "IRST_ULTRA_STEALTH_START", "IRST_ULTRA_STEALTH_END",
+    "MAX_WORKERS",
+    "CONNECTION_TIMEOUT",
+    "SSL_TIMEOUT",
+    "MAX_RETRIES",
+    "MAX_TEST_PER_TYPE",
+    "RECENT_HOURS",
+    "HISTORY_RETENTION_DAYS",
+    "BRIDGE_DIR",
+    "EXPORT_DIR",
+    "HISTORY_FILE",
+    "SCORES_FILE",
+    "REPO_URL",
+    "IS_GITHUB",
+    "CF_N_SLOTS",
+    "CF_ACCOUNT_IDS",
+    "CF_API_TOKENS",
+    "CF_AI_GATEWAY_URLS",
+    "CF_VALID_SLOTS",
+    "CEREBRAS_API_KEY",
+    "PORTKEY_API_KEY",
+    "PORTKEY_GATEWAY_URL",
+    "PORTKEY_VIRTUAL_KEYS",
+    "GROQ_API_KEY",
+    "GITHUB_TOKEN",
+    "GITHUB_REPOSITORY",
+    "GITHUB_SHA",
+    "GH_PAT_AUTOFIX",
+    "GH_REPO_OWNER",
+    "GH_REPO_NAME",
+    "TELEGRAM_BOT_TOKEN",
+    "TELEGRAM_CHAT_ID",
+    "TELEGRAM_UPLOAD",
+    "HTTP_PROXY",
+    "HTTPS_PROXY",
+    "USE_TORPROJECT_SCRAPER",
+    "USE_MOAT_API",
+    "USE_BRIDGEDB_API",
+    "USE_TELEGRAM_SOURCES",
+    "USE_STATIC_BRIDGES",
+    "USE_GITHUB_SOURCES",
+    "DEEP_TEST",
+    "IRAN_PREFERRED_PORTS",
+    "IRAN_CDN_FRONTS",
+    "NIN_MODE",
+    "IRAN_BRIDGE_PRIORITIZATION_ENABLED",
+    "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_PORT",
+    "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_TRANSPORT",
+    "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_RECENCY",
+    "IRAN_BRIDGE_PRIORITIZATION_WEIGHT_REACHABILITY",
+    "RIPE_ATLAS_API_KEY",
+    "ANTI_DPI_MODE",
+    "ANTI_FILTER_MODE",
+    "TORSHIELD_IRAN_MODE",
+    "AUTO_DEBUG_MODE",
+    "UTLS_EVASION_MODE",
+    "UTLS_PROFILE_ROTATION",
+    "ELITE_REGISTRY_ENABLED",
+    "ELITE_REGISTRY_REFRESH_HRS",
+    "CIRCUIT_BREAKER_ENABLED",
+    "CIRCUIT_BREAKER_MAX_FAILURES",
+    "CIRCUIT_BREAKER_RESET_SECS",
+    "SESSION_BLACKLIST_DURATION_SECS",
+    "TELEMETRY_ENABLED",
+    "TELEMETRY_AUTO_DEBUG_THRESHOLD",
+    "TELEMETRY_LOG_MAX_MB",
+    "IRST_HIGH_CENSORSHIP_START",
+    "IRST_HIGH_CENSORSHIP_END",
+    "IRST_ULTRA_STEALTH_START",
+    "IRST_ULTRA_STEALTH_END",
 ];
-
 
 fn python_executable() -> PathBuf {
     if let Ok(path) = std::env::var("PYTHON") {
         return PathBuf::from(path);
     }
-    for candidate in ["/root/.pyenv/shims/python", "/usr/local/bin/python", "/usr/bin/python3"] {
+    for candidate in [
+        "/root/.pyenv/shims/python",
+        "/usr/local/bin/python",
+        "/usr/bin/python3",
+    ] {
         let path = PathBuf::from(candidate);
         if path.exists() {
             return path;
@@ -52,25 +106,38 @@ print(json.dumps({{key: getattr(config, key) for key in keys}}, sort_keys=True, 
     );
     let repo_root = env!("CARGO_MANIFEST_DIR");
     let mut command = Command::new(python_executable());
-    command.current_dir(repo_root).env_clear().env("PYTHONPATH", repo_root);
+    command
+        .current_dir(repo_root)
+        .env_clear()
+        .env("PYTHONPATH", repo_root);
     for (key, value) in env {
         command.env(key, value);
     }
-    let output = command.arg("-c").arg(script).output().unwrap_or_else(|err| {
-        panic!("python config parity helper must execute: {err}");
-    });
+    let output = command
+        .arg("-c")
+        .arg(script)
+        .output()
+        .unwrap_or_else(|err| {
+            panic!("python config parity helper must execute: {err}");
+        });
     assert!(
         output.status.success(),
         "python helper failed: {}",
         String::from_utf8_lossy(&output.stderr)
     );
     serde_json::from_slice(&output.stdout).unwrap_or_else(|err| {
-        panic!("python helper must emit JSON: {err}; stdout={}", String::from_utf8_lossy(&output.stdout));
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            String::from_utf8_lossy(&output.stdout)
+        );
     })
 }
 
 fn rust_config(env: &BTreeMap<&str, &str>) -> Value {
-    let mapped: EnvMap = env.iter().map(|(k, v)| ((*k).to_string(), (*v).to_string())).collect();
+    let mapped: EnvMap = env
+        .iter()
+        .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+        .collect();
     from_env_map(&mapped)
         .unwrap_or_else(|err| panic!("rust config parsed valid env: {err}"))
         .to_json_value()
@@ -197,12 +264,21 @@ fn parity_python_invalid_integer_import_fails() {
         .arg("import config")
         .output()
         .unwrap_or_else(|err| panic!("python invalid-env helper must execute: {err}"));
-    assert!(!output.status.success(), "Python import should fail on invalid int env");
+    assert!(
+        !output.status.success(),
+        "Python import should fail on invalid int env"
+    );
 }
 
 #[test]
 fn config_json_shape_includes_all_python_constants() {
     let value = rust_config(&BTreeMap::new());
-    assert_eq!(value.as_object().map(|object| object.len()), Some(CONFIG_KEYS.len()));
-    assert_eq!(value["IRAN_PREFERRED_PORTS"], json!([443, 80, 8080, 8443, 2083, 2087, 2096]));
+    assert_eq!(
+        value.as_object().map(|object| object.len()),
+        Some(CONFIG_KEYS.len())
+    );
+    assert_eq!(
+        value["IRAN_PREFERRED_PORTS"],
+        json!([443, 80, 8080, 8443, 2083, 2087, 2096])
+    );
 }

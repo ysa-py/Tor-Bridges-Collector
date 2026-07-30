@@ -19,17 +19,24 @@ fn tls_profile_rotation_is_deterministic() {
 #[test]
 fn tls_profile_different_hours_give_different_profiles() {
     let seen = BTreeSet::new();
-    let p0 = select_tls_profile(BROWSER_TLS_PROFILES, 0, &seen).unwrap().name.to_string();
-    let p1 = select_tls_profile(BROWSER_TLS_PROFILES, 1, &seen).unwrap().name.to_string();
+    let p0 = select_tls_profile(BROWSER_TLS_PROFILES, 0, &seen)
+        .unwrap()
+        .name
+        .to_string();
+    let p1 = select_tls_profile(BROWSER_TLS_PROFILES, 1, &seen)
+        .unwrap()
+        .name
+        .to_string();
     // 0 % 4 = 0 (chrome_120), 1 % 4 = 1 (firefox_120)
     assert_ne!(p0, p1);
 }
 
 #[test]
 fn cdn_fronting_arvan_is_most_reliable_in_iran() {
-    let best = CDN_FRONTING_DOMAINS.iter().max_by(|a, b| {
-        a.iran_reliability.partial_cmp(&b.iran_reliability).unwrap()
-    }).unwrap();
+    let best = CDN_FRONTING_DOMAINS
+        .iter()
+        .max_by(|a, b| a.iran_reliability.partial_cmp(&b.iran_reliability).unwrap())
+        .unwrap();
     assert_eq!(best.provider, "Arvan Cloud");
 }
 
@@ -53,7 +60,8 @@ fn generate_evasion_strategy_includes_explanation() {
         false,
         0,
     );
-    assert!(!strategy.explanation.is_empty(),
+    assert!(
+        !strategy.explanation.is_empty(),
         "expected at least one explanation item, got {}",
         strategy.explanation.len()
     );

@@ -93,7 +93,8 @@ impl SelfHealingEngineV2 {
     }
 
     pub fn apply_patch(&mut self, patch: &str) {
-        self.patch_log.push(format!("{}: {}", Utc::now().to_rfc3339(), patch));
+        self.patch_log
+            .push(format!("{}: {}", Utc::now().to_rfc3339(), patch));
     }
 
     pub fn get_patches(&self) -> &[String] {
@@ -173,13 +174,16 @@ impl ModelRegistry {
     }
 
     pub fn register(&mut self, name: &str, provider: &str, version: &str) {
-        self.models.insert(name.to_string(), ModelEntry {
-            name: name.to_string(),
-            provider: provider.to_string(),
-            version: version.to_string(),
-            enabled: true,
-            score: 0.0,
-        });
+        self.models.insert(
+            name.to_string(),
+            ModelEntry {
+                name: name.to_string(),
+                provider: provider.to_string(),
+                version: version.to_string(),
+                enabled: true,
+                score: 0.0,
+            },
+        );
     }
 
     pub fn get(&self, name: &str) -> Option<&ModelEntry> {
