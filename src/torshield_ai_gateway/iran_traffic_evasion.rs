@@ -75,6 +75,7 @@ fn random_range_incl(lo: u64, hi: u64) -> u64 {
 pub struct IranTrafficEvasion;
 
 impl IranTrafficEvasion {
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

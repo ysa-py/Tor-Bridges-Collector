@@ -62,6 +62,7 @@ pub struct GatewayDPIShaper;
 
 impl GatewayDPIShaper {
     /// Create a shaper. Mirrors `GatewayDPIShaper()`.
+    #[must_use]
     pub fn new() -> Self {
         Self
     }

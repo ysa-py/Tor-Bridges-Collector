@@ -271,6 +271,7 @@ pub struct NinDetector {
 
 impl NinDetector {
     /// Mirrors `NINDetector.__init__`.
+    #[must_use]
     pub fn new(events_path: impl Into<PathBuf>, export_path: impl Into<PathBuf>) -> Self {
         Self {
             events_path: events_path.into(),

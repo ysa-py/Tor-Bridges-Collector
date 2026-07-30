@@ -36,6 +36,7 @@ pub struct ProviderConfigurationError {
 
 impl ProviderConfigurationError {
     /// Mirrors `ProviderConfigurationError(message="")` — no provider.
+    #[must_use]
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),
@@ -78,6 +79,7 @@ pub struct BadRequestError {
 
 impl BadRequestError {
     /// Mirrors `BadRequestError(message="")` — no provider, `slot=0`.
+    #[must_use]
     pub fn new(message: impl Into<String>) -> Self {
         Self {
             message: message.into(),

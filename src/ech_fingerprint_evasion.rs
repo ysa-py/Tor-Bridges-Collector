@@ -123,6 +123,7 @@ pub struct TlsProbeResult {
 impl TlsProbeResult {
     /// Build a fresh probe result for `(host, port)`. Mirrors the Python
     /// `_check_ech` initial dict literal (status = `"not_attempted"`).
+    #[must_use]
     pub fn new(host: impl Into<String>, port: u16) -> Self {
         Self {
             host: host.into(),

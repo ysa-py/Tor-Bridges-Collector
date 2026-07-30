@@ -19,8 +19,6 @@
 //!   cat bridge/bridges.json | ./bridge-probe --timeout 20 --workers 50
 //!   cat bridge/bridges.json | ./bridge-probe --nin-only
 
-#![allow(warnings, clippy::all, clippy::pedantic)]
-
 use std::io::{self, Read};
 use std::time::Duration;
 

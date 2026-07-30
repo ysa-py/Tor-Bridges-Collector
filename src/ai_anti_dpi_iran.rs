@@ -431,6 +431,7 @@ impl Default for IranAntiDpi {
 }
 
 impl IranAntiDpi {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             threats: default_threats(),

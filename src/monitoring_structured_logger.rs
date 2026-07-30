@@ -125,6 +125,7 @@ pub struct Entry {
 }
 
 impl Entry {
+    #[must_use]
     pub fn new() -> Self {
         Self { pairs: Vec::new() }
     }
@@ -171,6 +172,7 @@ impl StructuredLogger {
     /// Construct with a log directory, mirroring `__init__`: create the
     /// directory (falling back to `.` on error) and read `LOG_MAX_MB` (default
     /// 10) for the rotation threshold.
+    #[must_use]
     pub fn new(log_dir: &str) -> Self {
         let mut dir = PathBuf::from(log_dir);
         if fs::create_dir_all(&dir).is_err() {

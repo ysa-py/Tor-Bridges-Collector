@@ -335,6 +335,7 @@ impl Default for EndpointValidator {
 }
 
 impl EndpointValidator {
+    #[must_use]
     pub fn new() -> Self {
         let enabled = std::env::var("ENABLE_ENDPOINT_VALIDATION")
             .map(|v| v.to_lowercase() == "true")

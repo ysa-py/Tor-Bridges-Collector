@@ -78,6 +78,7 @@ impl Default for AIThreatDetector {
 
 impl AIThreatDetector {
     /// Mirrors `AIThreatDetector(window_size=20)`.
+    #[must_use]
     pub fn new(window_size: usize) -> Self {
         Self {
             window_size,

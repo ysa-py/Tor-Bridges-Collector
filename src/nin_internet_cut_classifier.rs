@@ -320,6 +320,7 @@ pub struct IranCidrTable {
 
 impl IranCidrTable {
     /// Build the table from the default [`IRAN_CDN_CIDR_RAW`] constants.
+    #[must_use]
     pub fn new() -> Self {
         Self::from_cidrs(IRAN_CDN_CIDR_RAW)
     }
@@ -399,6 +400,7 @@ impl Default for NINInternetCutClassifier {
 impl NINInternetCutClassifier {
     /// Production constructor — uses the default module-level paths and
     /// `chrono::Utc::now()` clock.
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }

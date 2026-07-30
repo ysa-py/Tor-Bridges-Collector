@@ -322,6 +322,7 @@ pub struct Shield {
 
 impl Shield {
     /// Construct a new shield with the given injectable `now`.
+    #[must_use]
     pub fn new(now: DateTime<Utc>) -> Self {
         Self { now }
     }
