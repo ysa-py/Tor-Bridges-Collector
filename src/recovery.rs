@@ -17,7 +17,7 @@ pub struct SelfHealingEngine {
     pub heal_history: Vec<HealEvent>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct HealEvent {
     pub timestamp: String,
     pub component: String,
@@ -323,5 +323,7 @@ mod tests {
         };
         let json_str = serde_json::to_string(&event).unwrap();
         assert!(json_str.contains("restart"));
+        let decoded: HealEvent = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(decoded, event);
     }
 }
