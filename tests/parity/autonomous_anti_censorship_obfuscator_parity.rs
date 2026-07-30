@@ -127,7 +127,11 @@ fn parity_derive_key() {
     let ob = TrafficObfuscator::new(KEY.to_vec());
     for salt in [&b""[..], b"0123456789abcdef", b"salt", &[0u8; 16]] {
         let py = oracle(&["derive", &hex(&KEY), &hex(salt)]);
-        assert_eq!(py, hex(&ob.derive_key(salt)), "derive mismatch salt={salt:?}");
+        assert_eq!(
+            py,
+            hex(&ob.derive_key(salt)),
+            "derive mismatch salt={salt:?}"
+        );
     }
 }
 
@@ -144,7 +148,12 @@ fn parity_xor_encrypt() {
     ];
     for pt in cases {
         let py = oracle(&["xor", &hex(&KEY), &hex(pt), &hex(salt)]);
-        assert_eq!(py, hex(&ob.xor_encrypt(pt, salt)), "xor mismatch len={}", pt.len());
+        assert_eq!(
+            py,
+            hex(&ob.xor_encrypt(pt, salt)),
+            "xor mismatch len={}",
+            pt.len()
+        );
     }
 }
 
@@ -186,7 +195,10 @@ fn parity_http_wrap_unwrap() {
 
         // unwrap the Python-produced wrap on the Rust side and vice versa.
         let py_unwrap = oracle(&["unwrap", &py_wrap]);
-        assert_eq!(py_unwrap, hex(&TrafficObfuscator::http_unwrap(&unhex(&py_wrap))));
+        assert_eq!(
+            py_unwrap,
+            hex(&TrafficObfuscator::http_unwrap(&unhex(&py_wrap)))
+        );
     }
     // unwrap of a blob with no CRLFCRLF separator returns it unchanged.
     let raw = "deadbeef";
@@ -220,7 +232,11 @@ fn parity_cross_roundtrip_python_encode_rust_decode() {
     for data in [&b""[..], b"secret message", &[0x42u8; 128][..]] {
         let py_wire = oracle(&["obf", &hex(&KEY), &hex(data)]);
         let decoded = ob.deobfuscate(&unhex(&py_wire));
-        assert_eq!(hex(&decoded), hex(data), "Rust could not decode Python obfuscate output");
+        assert_eq!(
+            hex(&decoded),
+            hex(data),
+            "Rust could not decode Python obfuscate output"
+        );
     }
 }
 
@@ -230,6 +246,10 @@ fn parity_cross_roundtrip_rust_encode_python_decode() {
     for data in [&b""[..], b"another payload", &[0x7fu8; 90][..]] {
         let wire = ob.obfuscate(data);
         let decoded = oracle(&["deobf", &hex(&KEY), &hex(&wire)]);
-        assert_eq!(decoded, hex(data), "Python could not decode Rust obfuscate output");
+        assert_eq!(
+            decoded,
+            hex(data),
+            "Python could not decode Rust obfuscate output"
+        );
     }
 }

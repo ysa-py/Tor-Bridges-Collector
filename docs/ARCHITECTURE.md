@@ -157,7 +157,7 @@ Detects DPI threats, recommends evasion str
 - `QuantumTrafficProfile` — Traffic profile for quantum-resistant obfuscation.
 - `QuantumDPIEvasion` — Quantum-enhanced AI Anti-DPI engine for Iran.
 
-Provides real-time, adaptive DPI 
+Provides real-time, adaptive DPI
   - `__init__()`
   - `analyze_current_threats()`
   - `get_quantum_strategy()`
@@ -1297,7 +1297,7 @@ Selectio
 - `SmartBypassEngine` — AI-powered anti-filtering and anti-DPI engine for Iran.
 
 This engine provides:
- 
+
   - `__init__()`
   - `_build_dpi_evasion_profiles()`
   - `get_bypass_strategy()`

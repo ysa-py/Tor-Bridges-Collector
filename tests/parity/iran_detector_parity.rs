@@ -66,8 +66,12 @@ fn run_python_script(script: &str, payload: &Value) -> PythonResult {
 fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
-    serde_json::from_str(result.stdout.trim())
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", result.stdout))
+    serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
+    })
 }
 
 /// Starts a local listener that accepts and immediately drops connections
@@ -303,7 +307,11 @@ fn record_event_creates_file_and_appends() {
     let after_second: Value =
         serde_json::from_str(&std::fs::read_to_string(&events_path).unwrap()).unwrap();
     let arr_second = after_second.as_array().unwrap();
-    assert_eq!(arr_second.len(), 2, "second call must append, not overwrite");
+    assert_eq!(
+        arr_second.len(),
+        2,
+        "second call must append, not overwrite"
+    );
     assert_eq!(arr_second[0]["kind"], json!("first"));
     assert_eq!(arr_second[1]["kind"], json!("second"));
 
@@ -312,7 +320,8 @@ fn record_event_creates_file_and_appends() {
 
 #[test]
 fn record_event_recovers_from_corrupt_json() {
-    let dir = std::env::temp_dir().join(format!("torshield-nin-test-corrupt-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("torshield-nin-test-corrupt-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let events_path = dir.join("nin_events.json");
@@ -321,9 +330,14 @@ fn record_event_recovers_from_corrupt_json() {
     let detector = NinDetector::new(&events_path, dir.join("iran_cut_pack.txt"));
     detector.record_event("after_corruption", json!({}));
 
-    let contents: Value = serde_json::from_str(&std::fs::read_to_string(&events_path).unwrap()).unwrap();
+    let contents: Value =
+        serde_json::from_str(&std::fs::read_to_string(&events_path).unwrap()).unwrap();
     let arr = contents.as_array().expect("must recover to a fresh array");
-    assert_eq!(arr.len(), 1, "corrupt prior contents must be discarded, not appended to");
+    assert_eq!(
+        arr.len(),
+        1,
+        "corrupt prior contents must be discarded, not appended to"
+    );
     assert_eq!(arr[0]["kind"], json!("after_corruption"));
 
     let _ = std::fs::remove_dir_all(&dir);
@@ -331,7 +345,8 @@ fn record_event_recovers_from_corrupt_json() {
 
 #[test]
 fn record_event_recovers_from_non_array_json() {
-    let dir = std::env::temp_dir().join(format!("torshield-nin-test-nonarr-{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("torshield-nin-test-nonarr-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let events_path = dir.join("nin_events.json");
@@ -340,7 +355,8 @@ fn record_event_recovers_from_non_array_json() {
     let detector = NinDetector::new(&events_path, dir.join("iran_cut_pack.txt"));
     detector.record_event("after_wrong_shape", json!({}));
 
-    let contents: Value = serde_json::from_str(&std::fs::read_to_string(&events_path).unwrap()).unwrap();
+    let contents: Value =
+        serde_json::from_str(&std::fs::read_to_string(&events_path).unwrap()).unwrap();
     let arr = contents.as_array().expect("must recover to a fresh array");
     assert_eq!(arr.len(), 1);
     assert_eq!(arr[0]["kind"], json!("after_wrong_shape"));
@@ -388,10 +404,7 @@ fn record_event_directory_creation_failure_panics() {
 fn is_nin_active_caches_within_30s_and_force_refresh_bypasses_it() {
     let dir = std::env::temp_dir().join(format!("torshield-nin-test-cache-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    let detector = NinDetector::new(
-        dir.join("nin_events.json"),
-        dir.join("iran_cut_pack.txt"),
-    );
+    let detector = NinDetector::new(dir.join("nin_events.json"), dir.join("iran_cut_pack.txt"));
 
     let t0 = Instant::now();
     let first = detector.is_nin_active(false);
@@ -401,7 +414,10 @@ fn is_nin_active_caches_within_30s_and_force_refresh_bypasses_it() {
     let second = detector.is_nin_active(false);
     let second_elapsed = t1.elapsed();
 
-    assert_eq!(first, second, "within 30s, the cached value must be returned");
+    assert_eq!(
+        first, second,
+        "within 30s, the cached value must be returned"
+    );
     assert!(
         second_elapsed < Duration::from_millis(500),
         "a cache hit must not re-probe the network; took {second_elapsed:?}"

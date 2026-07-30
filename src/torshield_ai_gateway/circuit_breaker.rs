@@ -117,6 +117,7 @@ impl IranAwareCircuitBreaker {
     /// Construct a fresh breaker (threat level `"none"`). Unlike Python, this
     /// does NOT auto-load persisted state; call [`Self::load_state`] explicitly
     /// (the parity test does so where it matters) to keep construction pure.
+    #[must_use]
     pub fn new() -> Self {
         Self {
             threat_level: "none".to_string(),

@@ -58,11 +58,11 @@ fn parity_port_of_variants() {
         json!({"port": 8080}),
         json!({"port": 0}),
         json!({"port": 9001}),
-        json!({"port": "443"}),   // string port -> int()
-        json!({"port": "abc"}),   // non-numeric -> except -> 0
-        json!({"port": ""}),      // empty string -> falsy -> 0
-        json!({"port": null}),    // None -> 0
-        json!({}),                // missing -> 0
+        json!({"port": "443"}),        // string port -> int()
+        json!({"port": "abc"}),        // non-numeric -> except -> 0
+        json!({"port": ""}),           // empty string -> falsy -> 0
+        json!({ "port": null }),       // None -> 0
+        json!({}),                     // missing -> 0
         json!({"transport": "obfs4"}), // unrelated fields only
     ];
     for c in &cases {

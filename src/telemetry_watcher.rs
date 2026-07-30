@@ -277,6 +277,7 @@ pub struct SelfHealEvent {
 impl SelfHealEvent {
     /// Construct a `SelfHealEvent` mirroring the Python dataclass defaults
     /// (`details=dict()`, `success=True`, `recovery_time_ms=0.0`).
+    #[must_use]
     pub fn new(timestamp: impl Into<String>, action_type: impl Into<String>) -> Self {
         Self {
             timestamp: timestamp.into(),

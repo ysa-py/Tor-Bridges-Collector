@@ -241,6 +241,7 @@ pub struct JA3Intel {
 
 impl JA3Intel {
     /// Construct a new intelligence database indexed by lowercased `hash_hex`.
+    #[must_use]
     pub fn new() -> Self {
         let mut index = HashMap::new();
         for entry in database() {

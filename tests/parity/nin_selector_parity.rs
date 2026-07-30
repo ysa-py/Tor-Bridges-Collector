@@ -83,7 +83,10 @@ fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
     serde_json::from_str(&result.stdout).unwrap_or_else(|err| {
-        panic!("python helper must emit JSON: {err}; stdout={}", result.stdout)
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
     })
 }
 
@@ -242,11 +245,22 @@ fn parity_composite_score_explicit_null_fails_on_both_sides() {
     // successful value from either side to compare — both must fail.
     let record = json!({"transport": "snowflake", "composite_score": Value::Null});
     let py = python_is_nin_eligible(&record);
-    assert!(!py.success, "python call was expected to raise but succeeded: {}", py.stdout);
-    assert!(py.stderr.contains("TypeError"), "expected a TypeError, got: {}", py.stderr);
+    assert!(
+        !py.success,
+        "python call was expected to raise but succeeded: {}",
+        py.stdout
+    );
+    assert!(
+        py.stderr.contains("TypeError"),
+        "expected a TypeError, got: {}",
+        py.stderr
+    );
 
     let rs_result = is_nin_eligible(&as_map(&record));
-    assert!(rs_result.is_err(), "rust call was expected to fail but returned Ok");
+    assert!(
+        rs_result.is_err(),
+        "rust call was expected to fail but returned Ok"
+    );
 }
 
 #[test]
@@ -254,7 +268,11 @@ fn parity_non_numeric_score_string_fails_on_both_sides() {
     let record = json!({"transport": "snowflake", "composite_score": "not-a-number"});
     let py = python_is_nin_eligible(&record);
     assert!(!py.success);
-    assert!(py.stderr.contains("ValueError"), "expected a ValueError, got: {}", py.stderr);
+    assert!(
+        py.stderr.contains("ValueError"),
+        "expected a ValueError, got: {}",
+        py.stderr
+    );
 
     let rs_result = is_nin_eligible(&as_map(&record));
     assert!(rs_result.is_err());
@@ -272,10 +290,8 @@ fn parity_rescore_basic_multiplier_and_sort() {
         json!({"id": "c", "transport": "obfs4", "composite_score": 0.8}),
     ];
     let py = python_rescore_for_nin(&records);
-    let rs_maps = rescore_for_nin(
-        &records.iter().map(as_map).collect::<Vec<_>>(),
-    )
-    .expect("rust call must succeed");
+    let rs_maps = rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>())
+        .expect("rust call must succeed");
     let rs = Value::Array(rs_maps.into_iter().map(Value::Object).collect());
     assert_eq!(py, rs);
 }
@@ -286,8 +302,7 @@ fn parity_rescore_clamps_overshoot_to_one() {
     // the clamp-then-round vs round-then-clamp order explicitly.
     let records = vec![json!({"transport": "snowflake", "composite_score": 0.9})];
     let py = python_rescore_for_nin(&records);
-    let rs_maps =
-        rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
+    let rs_maps = rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
     let rs = Value::Array(rs_maps.into_iter().map(Value::Object).collect());
     assert_eq!(py, rs);
     assert_eq!(py[0]["nin_score"], json!(1.0));
@@ -297,8 +312,7 @@ fn parity_rescore_clamps_overshoot_to_one() {
 fn parity_rescore_unknown_transport_default_multiplier() {
     let records = vec![json!({"transport": "some-future-transport", "composite_score": 0.6})];
     let py = python_rescore_for_nin(&records);
-    let rs_maps =
-        rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
+    let rs_maps = rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
     let rs = Value::Array(rs_maps.into_iter().map(Value::Object).collect());
     assert_eq!(py, rs);
 }
@@ -307,8 +321,7 @@ fn parity_rescore_unknown_transport_default_multiplier() {
 fn parity_rescore_missing_transport_defaults_unknown() {
     let records = vec![json!({"composite_score": 0.6})];
     let py = python_rescore_for_nin(&records);
-    let rs_maps =
-        rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
+    let rs_maps = rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
     let rs = Value::Array(rs_maps.into_iter().map(Value::Object).collect());
     assert_eq!(py, rs);
 }
@@ -321,11 +334,15 @@ fn parity_rescore_ties_preserve_original_order() {
         json!({"id": 2, "transport": "obfs4", "composite_score": 1.0}),
     ];
     let py = python_rescore_for_nin(&records);
-    let rs_maps =
-        rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
+    let rs_maps = rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
     let rs = Value::Array(rs_maps.into_iter().map(Value::Object).collect());
     assert_eq!(py, rs);
-    let py_ids: Vec<i64> = py.as_array().unwrap().iter().map(|r| r["id"].as_i64().unwrap()).collect();
+    let py_ids: Vec<i64> = py
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|r| r["id"].as_i64().unwrap())
+        .collect();
     assert_eq!(py_ids, vec![0, 1, 2]);
 }
 
@@ -338,8 +355,7 @@ fn parity_rescore_field_preservation() {
         "nested": {"a": 1}
     })];
     let py = python_rescore_for_nin(&records);
-    let rs_maps =
-        rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
+    let rs_maps = rescore_for_nin(&records.iter().map(as_map).collect::<Vec<_>>()).unwrap();
     let rs = Value::Array(rs_maps.into_iter().map(Value::Object).collect());
     assert_eq!(py, rs);
     assert_eq!(py[0]["custom_field"], json!("must survive"));
@@ -347,7 +363,9 @@ fn parity_rescore_field_preservation() {
 
 #[test]
 fn rescore_for_nin_does_not_mutate_input_rust_only() {
-    let records = vec![as_map(&json!({"transport": "snowflake", "composite_score": 0.5}))];
+    let records = vec![as_map(
+        &json!({"transport": "snowflake", "composite_score": 0.5}),
+    )];
     let before = records.clone();
     let _ = rescore_for_nin(&records).unwrap();
     assert_eq!(records, before);
@@ -426,22 +444,19 @@ fn rust_build_pack_normalized(tmp: &Path, latest: &Value, iran: &Value) -> Value
     std::fs::write(&iran_path, serde_json::to_string(iran).unwrap()).unwrap();
 
     let now = Utc::now();
-    let summary =
-        build_nin_pack_with_paths(&latest_path, &iran_path, &export_dir, &data_dir, now)
-            .expect("rust build_nin_pack_with_paths must succeed");
+    let summary = build_nin_pack_with_paths(&latest_path, &iran_path, &export_dir, &data_dir, now)
+        .expect("rust build_nin_pack_with_paths must succeed");
 
-    let pack_text = std::fs::read_to_string(export_dir.join("iran_cut_pack.txt"))
-        .unwrap_or_default();
+    let pack_text =
+        std::fs::read_to_string(export_dir.join("iran_cut_pack.txt")).unwrap_or_default();
     let pack_body: String = pack_text
         .split('\n')
         .filter(|l| !l.starts_with("# Generated:"))
         .collect::<Vec<_>>()
         .join("\n");
     let eligible_json: Value = if data_dir.join("nin_eligible.json").exists() {
-        serde_json::from_str(
-            &std::fs::read_to_string(data_dir.join("nin_eligible.json")).unwrap(),
-        )
-        .unwrap()
+        serde_json::from_str(&std::fs::read_to_string(data_dir.join("nin_eligible.json")).unwrap())
+            .unwrap()
     } else {
         json!([])
     };

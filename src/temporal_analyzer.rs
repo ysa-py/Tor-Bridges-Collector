@@ -72,6 +72,7 @@ pub struct IranTemporalAnalyzer {
 
 impl IranTemporalAnalyzer {
     /// Construct with the default schedule and an injectable clock.
+    #[must_use]
     pub fn new(now: DateTime<Utc>) -> Self {
         Self {
             schedule: IRAN_BLOCKING_SCHEDULE.to_vec(),

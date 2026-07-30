@@ -253,8 +253,7 @@ fn run_pipeline_rust(tmp_dir: &Path, fixtures: &[Fixture]) -> Value {
     let readme_path = tmp_dir.join("README.md");
 
     let now = fixed_now();
-    let mut history =
-        HistoryManager::new(&history_file, &bridge_dir, &export_dir, now).unwrap();
+    let mut history = HistoryManager::new(&history_file, &bridge_dir, &export_dir, now).unwrap();
     for fx in fixtures {
         history.add_bridge(fx.line, fx.transport);
         history.update_score(fx.line, fx.score);
@@ -267,10 +266,7 @@ fn run_pipeline_rust(tmp_dir: &Path, fixtures: &[Fixture]) -> Value {
     cfg.bridge_dir = bridge_dir.display().to_string();
     cfg.export_dir = export_dir.display().to_string();
 
-    let formatter = BridgeFormatter::new(
-        now,
-        &tmp_dir.join("nonexistent_transport_weights.json"),
-    );
+    let formatter = BridgeFormatter::new(now, &tmp_dir.join("nonexistent_transport_weights.json"));
     let stats = formatter.export_all(&history, &cfg, now).unwrap();
     formatter
         .update_readme_with_path(&stats, &readme_path, &cfg, now)
@@ -303,9 +299,10 @@ fn run_pipeline_rust(tmp_dir: &Path, fixtures: &[Fixture]) -> Value {
         }
     }
 
-    let mut api: Value =
-        serde_json::from_str(&std::fs::read_to_string(export_dir.join("bridges_api.json")).unwrap())
-            .unwrap();
+    let mut api: Value = serde_json::from_str(
+        &std::fs::read_to_string(export_dir.join("bridges_api.json")).unwrap(),
+    )
+    .unwrap();
     api.as_object_mut().unwrap().remove("updated");
     if let Some(bridges) = api.get_mut("bridges").and_then(|b| b.as_object_mut()) {
         for entries in bridges.values_mut() {
@@ -320,9 +317,10 @@ fn run_pipeline_rust(tmp_dir: &Path, fixtures: &[Fixture]) -> Value {
         }
     }
 
-    let scores_db: Value =
-        serde_json::from_str(&std::fs::read_to_string(bridge_dir.join("bridge_scores.json")).unwrap())
-            .unwrap();
+    let scores_db: Value = serde_json::from_str(
+        &std::fs::read_to_string(bridge_dir.join("bridge_scores.json")).unwrap(),
+    )
+    .unwrap();
 
     let zip_file = std::fs::File::open(bridge_dir.join("tor_bridges.zip")).unwrap();
     let mut archive = zip::ZipArchive::new(zip_file).unwrap();
@@ -377,12 +375,18 @@ fn parity_full_pipeline_mixed_fixtures() {
         py["stats_without_zip_path"], rs["stats_without_zip_path"],
         "per-file bridge counts must match"
     );
-    assert_eq!(py["bridge_txts"], rs["bridge_txts"], "bridge/*.txt contents must match");
+    assert_eq!(
+        py["bridge_txts"], rs["bridge_txts"],
+        "bridge/*.txt contents must match"
+    );
     assert_eq!(py["iran_pack_body"], rs["iran_pack_body"]);
     assert_eq!(py["iran_cut_pack_body"], rs["iran_cut_pack_body"]);
     assert_eq!(py["bridges_api"], rs["bridges_api"]);
     assert_eq!(py["scores_db"], rs["scores_db"]);
-    assert_eq!(py["zip_entries"], rs["zip_entries"], "zip archive contents (set) must match");
+    assert_eq!(
+        py["zip_entries"], rs["zip_entries"],
+        "zip archive contents (set) must match"
+    );
     assert_eq!(py["readme_body"], rs["readme_body"]);
 
     let _ = std::fs::remove_dir_all(&tmp);
@@ -526,9 +530,18 @@ fn tie_break_order_documented_divergence() {
         .iter()
         .map(|e| e["line"].as_str().unwrap())
         .collect();
-    assert!(py_lines[0].contains("2001:db8::42"), "python: insertion order preserved");
-    assert!(rs_lines[0].contains("192.0.2.1"), "rust: BTreeMap key order preserved");
-    assert_ne!(py_lines, rs_lines, "this test exists to document that these DO diverge");
+    assert!(
+        py_lines[0].contains("2001:db8::42"),
+        "python: insertion order preserved"
+    );
+    assert!(
+        rs_lines[0].contains("192.0.2.1"),
+        "rust: BTreeMap key order preserved"
+    );
+    assert_ne!(
+        py_lines, rs_lines,
+        "this test exists to document that these DO diverge"
+    );
 
     // Confirm the divergence is scoped to ordering only: same two lines
     // present on both sides, same everything else.
@@ -650,9 +663,15 @@ fn parity_zip_categories_present() {
 
     assert_eq!(py["zip_entries"], rs["zip_entries"]);
     let entries = py["zip_entries"].as_array().unwrap();
-    assert!(entries.iter().any(|e| e.as_str().unwrap().contains("Tested (Verified)")));
-    assert!(entries.iter().any(|e| e.as_str().unwrap().contains("Full Archive")));
-    assert!(entries.iter().any(|e| e.as_str().unwrap().contains("Iran Optimized")));
+    assert!(entries
+        .iter()
+        .any(|e| e.as_str().unwrap().contains("Tested (Verified)")));
+    assert!(entries
+        .iter()
+        .any(|e| e.as_str().unwrap().contains("Full Archive")));
+    assert!(entries
+        .iter()
+        .any(|e| e.as_str().unwrap().contains("Iran Optimized")));
 
     let _ = std::fs::remove_dir_all(&tmp);
 }

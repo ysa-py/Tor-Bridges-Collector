@@ -71,7 +71,11 @@ fn run_python_normalize(line: &str) -> String {
         ))
         .output()
         .unwrap();
-    assert!(output.status.success(), "python failed: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "python failed: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
     String::from_utf8_lossy(&output.stdout).trim().to_string()
 }
 
@@ -92,7 +96,11 @@ fn parity_normalize_key() {
         // Python prints repr(...) e.g. "'obfs4 1.2.3.4:443'"; strip the quotes.
         let py = run_python_normalize(line);
         let py_val = py.trim_matches('\'');
-        assert_eq!(py_val, HistoryManager::normalize_key(line), "normalize_key({line:?})");
+        assert_eq!(
+            py_val,
+            HistoryManager::normalize_key(line),
+            "normalize_key({line:?})"
+        );
     }
 }
 
@@ -146,13 +154,16 @@ fn load_mgr(db_str: &str) -> HistoryManager {
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let uniq = COUNTER.fetch_add(1, Ordering::Relaxed);
-    let tmp = std::env::temp_dir().join(format!(
-        "hist_parity_q_{}_{uniq}.json",
-        std::process::id()
-    ));
+    let tmp =
+        std::env::temp_dir().join(format!("hist_parity_q_{}_{uniq}.json", std::process::id()));
     std::fs::write(&tmp, db_str).unwrap();
-    let mgr =
-        HistoryManager::new(&tmp, &std::env::temp_dir(), &std::env::temp_dir(), fixed_now()).unwrap();
+    let mgr = HistoryManager::new(
+        &tmp,
+        &std::env::temp_dir(),
+        &std::env::temp_dir(),
+        fixed_now(),
+    )
+    .unwrap();
     let _ = std::fs::remove_file(&tmp);
     mgr
 }
@@ -170,25 +181,46 @@ fn parity_get_recent_get_tested_get_by_transport() {
     let mgr = load_mgr(&db_str);
 
     // get_recent(72): only first_seen within 72h of fixed_now.
-    let py_recent = run_python(FIXED_NOW_ISO, &db_str,
-        "print(json.dumps(sorted(v['raw'] for v in h.get_recent(72))))");
+    let py_recent = run_python(
+        FIXED_NOW_ISO,
+        &db_str,
+        "print(json.dumps(sorted(v['raw'] for v in h.get_recent(72))))",
+    );
     let py_recent_v: Value = serde_json::from_str(&py_recent).unwrap();
-    assert_eq!(py_recent_v, json!(sorted_raws(mgr.get_recent(72))), "get_recent(72)");
+    assert_eq!(
+        py_recent_v,
+        json!(sorted_raws(mgr.get_recent(72))),
+        "get_recent(72)"
+    );
 
     // get_tested(True) and get_tested(False)
     for (lit, passed) in [("True", true), ("False", false)] {
-        let py = run_python(FIXED_NOW_ISO, &db_str,
-            &format!("print(json.dumps(sorted(v['raw'] for v in h.get_tested({lit}))))"));
+        let py = run_python(
+            FIXED_NOW_ISO,
+            &db_str,
+            &format!("print(json.dumps(sorted(v['raw'] for v in h.get_tested({lit}))))"),
+        );
         let pv: Value = serde_json::from_str(&py).unwrap();
-        assert_eq!(pv, json!(sorted_raws(mgr.get_tested(passed))), "get_tested({lit})");
+        assert_eq!(
+            pv,
+            json!(sorted_raws(mgr.get_tested(passed))),
+            "get_tested({lit})"
+        );
     }
 
     // get_by_transport
     for t in ["obfs4", "OBFS4", "snowflake", "meek_lite"] {
-        let py = run_python(FIXED_NOW_ISO, &db_str,
-            &format!("print(json.dumps(sorted(v['raw'] for v in h.get_by_transport(r'''{t}'''))))"));
+        let py = run_python(
+            FIXED_NOW_ISO,
+            &db_str,
+            &format!("print(json.dumps(sorted(v['raw'] for v in h.get_by_transport(r'''{t}'''))))"),
+        );
         let pv: Value = serde_json::from_str(&py).unwrap();
-        assert_eq!(pv, json!(sorted_raws(mgr.get_by_transport(t))), "get_by_transport({t})");
+        assert_eq!(
+            pv,
+            json!(sorted_raws(mgr.get_by_transport(t))),
+            "get_by_transport({t})"
+        );
     }
 }
 
@@ -200,12 +232,19 @@ fn parity_get_stats_updated_nonzero_micros() {
     let now_iso = "2026-06-28T12:00:00.500000+00:00";
     let db = json!({});
     let db_str = serde_json::to_string(&db).unwrap();
-    let py = run_python(now_iso, &db_str,
-        "print(json.dumps(h.get_stats(), sort_keys=True, ensure_ascii=False))");
+    let py = run_python(
+        now_iso,
+        &db_str,
+        "print(json.dumps(h.get_stats(), sort_keys=True, ensure_ascii=False))",
+    );
     let tmp = std::env::temp_dir().join(format!("hist_parity_micros_{}.json", std::process::id()));
     std::fs::write(&tmp, &db_str).unwrap();
     let mgr = HistoryManager::new(&tmp, &std::env::temp_dir(), &std::env::temp_dir(), now).unwrap();
     let _ = std::fs::remove_file(&tmp);
     let py_val: Value = serde_json::from_str(&py).unwrap();
-    assert_eq!(py_val, mgr.get_stats(), "get_stats updated (nonzero micros)");
+    assert_eq!(
+        py_val,
+        mgr.get_stats(),
+        "get_stats updated (nonzero micros)"
+    );
 }

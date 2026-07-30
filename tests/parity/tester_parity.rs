@@ -82,7 +82,8 @@ fn parity_extract_endpoint() {
         let rs = format!(
             "{}|{}|{}",
             h.unwrap_or_else(|| "None".to_string()),
-            p.map(|v| v.to_string()).unwrap_or_else(|| "None".to_string()),
+            p.map(|v| v.to_string())
+                .unwrap_or_else(|| "None".to_string()),
             t
         );
         assert_eq!(py, rs, "extract_endpoint for {line:?}");

@@ -58,6 +58,7 @@ pub struct BridgeCollector<'a> {
 }
 
 impl<'a> BridgeCollector<'a> {
+    #[must_use]
     pub fn new(history: &'a mut HistoryManager, sources: Vec<Box<dyn BridgeSource>>) -> Self {
         Self { history, sources }
     }
@@ -95,6 +96,7 @@ pub struct StaticSource {
 }
 
 impl StaticSource {
+    #[must_use]
     pub fn new(bridges: Vec<(String, String, String)>) -> Self {
         Self { bridges }
     }

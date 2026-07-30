@@ -98,6 +98,7 @@ pub struct IranScorer {
 
 impl IranScorer {
     /// Construct with default transport scores and an injectable clock.
+    #[must_use]
     pub fn new(now: DateTime<Utc>) -> Self {
         let mut transport_scores = BTreeMap::new();
         for (k, v) in default_transport_scores() {

@@ -846,7 +846,7 @@ mod tests {
         ));
         fs::create_dir_all(&dir).unwrap();
         let path = dir.join("history.json");
-        let history: Vec<Value> = (0..100).map(|i| json!({"i": i})).collect();
+        let history: Vec<Value> = (0..100).map(|i| json!({ "i": i })).collect();
         save_weight_history(&path, &history).unwrap();
         let loaded = load_weight_history(&path);
         assert_eq!(loaded.len(), 90);

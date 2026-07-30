@@ -1,10 +1,10 @@
 # Security Report — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Scan Date**: 2026-06-12  
-> **Scanner**: `scripts/security_scan.py` v1.0  
-> **Total Issues**: 66  
-> **Status**: 2 Critical, 58 High, 4 Medium, 2 Low  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Scan Date**: 2026-06-12
+> **Scanner**: `scripts/security_scan.py` v1.0
+> **Total Issues**: 66
+> **Status**: 2 Critical, 58 High, 4 Medium, 2 Low
 
 ---
 

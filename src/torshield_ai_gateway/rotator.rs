@@ -51,6 +51,7 @@ pub struct AccountSlot {
 
 impl AccountSlot {
     /// Construct a slot with the Python dataclass defaults.
+    #[must_use]
     pub fn new(index: i64, account_id: impl Into<String>, api_key: impl Into<String>) -> Self {
         Self {
             index,

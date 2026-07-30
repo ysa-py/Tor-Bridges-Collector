@@ -33,9 +33,7 @@ fn python_executable() -> &'static str {
 
 fn run_python(body: &str) -> String {
     let repo_root = env!("CARGO_MANIFEST_DIR");
-    let script = format!(
-        "import json\nfrom pathlib import Path\nimport self_heal as s\n{body}\n"
-    );
+    let script = format!("import json\nfrom pathlib import Path\nimport self_heal as s\n{body}\n");
     let output = Command::new(python_executable())
         .current_dir(repo_root)
         .env_clear()
@@ -70,9 +68,15 @@ fn parity_redact_secret_text() {
         "",
     ];
     for v in cases {
-        let py = run_python(&format!("print(json.dumps(s._redact_secret_text(r'''{v}''')))"));
+        let py = run_python(&format!(
+            "print(json.dumps(s._redact_secret_text(r'''{v}''')))"
+        ));
         let py_val: Value = serde_json::from_str(&py).unwrap();
-        assert_eq!(py_val, Value::String(redact_secret_text(v)), "redact for {v:?}");
+        assert_eq!(
+            py_val,
+            Value::String(redact_secret_text(v)),
+            "redact for {v:?}"
+        );
     }
 }
 
@@ -80,14 +84,20 @@ fn parity_redact_secret_text() {
 fn parity_build_limited_diff() {
     // (path_posix, original, fixed)
     let cases: &[(&str, &str, &str)] = &[
-        ("core/x.py", "line1\nline2\nline3\n", "line1\nline2 changed\nline3\n"),
-        ("main.py", "a\nb\nc\n", "a\nb\nc\n"),                     // identical -> None
-        ("sources/moat.py", "", "new content\nsecond\n"),          // creation
-        ("core/y.py", "old only\n", ""),                           // deletion
-        ("z.py", "keep\nremove me\nkeep2\n", "keep\nkeep2\n"),      // removal
-        ("core/multi.py",
-         "l1\nl2\nl3\nl4\nl5\n",
-         "l1\nL2\nl3\nL4\nl5\n"),                                  // multiple hunks-ish
+        (
+            "core/x.py",
+            "line1\nline2\nline3\n",
+            "line1\nline2 changed\nline3\n",
+        ),
+        ("main.py", "a\nb\nc\n", "a\nb\nc\n"), // identical -> None
+        ("sources/moat.py", "", "new content\nsecond\n"), // creation
+        ("core/y.py", "old only\n", ""),       // deletion
+        ("z.py", "keep\nremove me\nkeep2\n", "keep\nkeep2\n"), // removal
+        (
+            "core/multi.py",
+            "l1\nl2\nl3\nl4\nl5\n",
+            "l1\nL2\nl3\nL4\nl5\n",
+        ), // multiple hunks-ish
     ];
     for (p, orig, fixed) in cases {
         let py = run_python(&format!(

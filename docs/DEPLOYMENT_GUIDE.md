@@ -1,8 +1,8 @@
 # Deployment Guide — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Version**: v15.0 — Ultra-Quantum Edition  
-> **Guide Date**: 2026-06-12  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Version**: v15.0 — Ultra-Quantum Edition
+> **Guide Date**: 2026-06-12
 
 ---
 
@@ -511,7 +511,7 @@ V3 features:
 
 #### Issue: Cerebras returns 404 "Model not found"
 
-**Cause**: Invalid model name in configuration  
+**Cause**: Invalid model name in configuration
 **Fix**: The default model is now `llama3.1-8b`. If you've overridden `CEREBRAS_DEFAULT_MODEL`, ensure it's a valid Cerebras model name.
 
 ```bash
@@ -525,7 +525,7 @@ print('Available models:', p.CEREBRAS_MODELS)
 
 #### Issue: CF AI Gateway returns 400
 
-**Cause**: Gateway URL missing account_id or malformed  
+**Cause**: Gateway URL missing account_id or malformed
 **Fix**: Ensure URL format is `https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway-slug}`
 
 ```bash
@@ -539,7 +539,7 @@ provider = CFAIGatewayProvider(url='your-url-here')
 
 #### Issue: Portkey returns 401
 
-**Cause**: API key format invalid or missing  
+**Cause**: API key format invalid or missing
 **Fix**: Ensure key starts with `pk-` prefix and has no trailing whitespace
 
 ```bash
@@ -554,7 +554,7 @@ echo -n "$PORTKEY_API_KEY" | wc -c
 
 #### Issue: Health check reports degraded but providers should work
 
-**Cause**: Environment variables not mapped in workflow  
+**Cause**: Environment variables not mapped in workflow
 **Fix**: Verify secrets are mapped to env vars in the workflow step:
 
 ```yaml
@@ -564,17 +564,17 @@ env:
 
 #### Issue: Workflow fails with "ModuleNotFoundError"
 
-**Cause**: Missing `pip install -r requirements.txt` step  
+**Cause**: Missing `pip install -r requirements.txt` step
 **Fix**: All workflows now include the install step. If you're seeing this, you may be running an older workflow version.
 
 #### Issue: All tests pass locally but fail in CI
 
-**Cause**: Missing secrets or environment-specific configuration  
+**Cause**: Missing secrets or environment-specific configuration
 **Fix**: Check GitHub Actions secrets configuration. The pre-flight validation step will report missing secrets.
 
 #### Issue: `aioquic` fails to install
 
-**Cause**: Missing system dependencies for building aioquic  
+**Cause**: Missing system dependencies for building aioquic
 **Fix**:
 ```bash
 # Ubuntu/Debian
@@ -586,7 +586,7 @@ pip install aioquic
 
 #### Issue: Rust build fails with "feature `edition2024` is required"
 
-**Cause**: Older Cargo version (<1.85) and clap 4.6+ dependency  
+**Cause**: Older Cargo version (<1.85) and clap 4.6+ dependency
 **Fix**: The Cargo.toml pins clap to 4.5.x. Ensure you're using the pinned version:
 ```bash
 cd bridge-probe && cargo update && cargo build --release

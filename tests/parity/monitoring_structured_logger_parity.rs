@@ -82,7 +82,10 @@ fn oracle(method: &str, params_json: &str) -> (Vec<String>, Value) {
 
 /// Turn a Rust `Entry` (plus the appended timestamp/log_type) into the same
 /// `(keys, normalised-object)` representation the oracle emits.
-fn rust_repr(mut entry: torshield_ir_ultra::monitoring_structured_logger::Entry, log_type: &str) -> (Vec<String>, Value) {
+fn rust_repr(
+    mut entry: torshield_ir_ultra::monitoring_structured_logger::Entry,
+    log_type: &str,
+) -> (Vec<String>, Value) {
     entry.push("timestamp", LogValue::Str("T".into()));
     entry.push("log_type", LogValue::Str(log_type.into()));
     let keys = entry.keys();
@@ -162,9 +165,8 @@ fn parity_log_gateway_latency_rounding() {
             r#"{{"level":"INFO","provider":"cf","slot":2,"model":"m","latency_ms":{latency:?},"success":true,"error_code":"","message":"ok"}}"#
         );
         let (py_keys, py_obj) = oracle("log_gateway", &params);
-        let entry = StructuredLogger::gateway_entry(
-            "INFO", "cf", 2, "m", latency, true, "", "ok", &[],
-        );
+        let entry =
+            StructuredLogger::gateway_entry("INFO", "cf", 2, "m", latency, true, "", "ok", &[]);
         let (r_keys, r_obj) = rust_repr(entry, "gateway");
         assert_eq!(py_keys, r_keys, "gateway key order latency={latency}");
         assert_eq!(py_obj, r_obj, "gateway values latency={latency}");
@@ -176,9 +178,7 @@ fn parity_unicode_message_not_escaped() {
     // ensure_ascii=False: non-ASCII must be preserved verbatim in both.
     let params = r#"{"level":"INFO","provider":"","slot":0,"model":"","error_code":"","message":"فیلترینگ هوشمند"}"#;
     let (py_keys, py_obj) = oracle("log_diagnostics", params);
-    let entry = StructuredLogger::diagnostics_entry(
-        "INFO", "", 0, "", "", "فیلترینگ هوشمند", &[],
-    );
+    let entry = StructuredLogger::diagnostics_entry("INFO", "", 0, "", "", "فیلترینگ هوشمند", &[]);
     let (r_keys, r_obj) = rust_repr(entry, "diagnostics");
     assert_eq!(py_keys, r_keys);
     assert_eq!(py_obj, r_obj);

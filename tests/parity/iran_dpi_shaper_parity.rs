@@ -47,8 +47,12 @@ fn run_python_script(script: &str, payload: &Value) -> PythonResult {
 fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
-    serde_json::from_str(result.stdout.trim())
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", result.stdout))
+    serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
+    })
 }
 
 const SCORE_SCRIPT: &str = r##"
@@ -68,21 +72,12 @@ fn assert_score_matches_python(line: &str, ja3_hash: Option<&str>) -> Value {
     assert_eq!(py["bridge_line"], rs["bridge_line"], "line: {line}");
     assert_eq!(py["transport"], rs["transport"], "line: {line}");
     assert_eq!(py["port"], rs["port"], "line: {line}");
-    assert_eq!(
-        py["iran_siam_score"], rs["iran_siam_score"],
-        "line: {line}"
-    );
+    assert_eq!(py["iran_siam_score"], rs["iran_siam_score"], "line: {line}");
     assert_eq!(py["bypass_tier"], rs["bypass_tier"], "line: {line}");
-    assert_eq!(
-        py["layers_bypassed"], rs["layers_bypassed"],
-        "line: {line}"
-    );
+    assert_eq!(py["layers_bypassed"], rs["layers_bypassed"], "line: {line}");
     assert_eq!(py["evasion_flags"], rs["evasion_flags"], "line: {line}");
     assert_eq!(py["layer_scores"], rs["layer_scores"], "line: {line}");
-    assert_eq!(
-        py["recommendation"], rs["recommendation"],
-        "line: {line}"
-    );
+    assert_eq!(py["recommendation"], rs["recommendation"], "line: {line}");
     rs
 }
 
@@ -140,8 +135,7 @@ fn obfs4_iat_mode_absent_defaults_to_zero() {
 
 #[test]
 fn obfs4_on_ngfw_blocked_port_gets_penalized() {
-    let rs =
-        assert_score_matches_python("obfs4 5.6.7.8:9001 FINGERPRINT iat-mode=2", None);
+    let rs = assert_score_matches_python("obfs4 5.6.7.8:9001 FINGERPRINT iat-mode=2", None);
     assert_eq!(rs["port"], json!(9001));
     let flags = rs["evasion_flags"].as_array().unwrap();
     assert!(flags.iter().any(|f| f == "ngfw_blocked_port"));
@@ -149,8 +143,7 @@ fn obfs4_on_ngfw_blocked_port_gets_penalized() {
 
 #[test]
 fn obfs4_on_siam_safe_port_gets_bonus() {
-    let rs =
-        assert_score_matches_python("obfs4 5.6.7.8:8443 FINGERPRINT iat-mode=2", None);
+    let rs = assert_score_matches_python("obfs4 5.6.7.8:8443 FINGERPRINT iat-mode=2", None);
     let flags = rs["evasion_flags"].as_array().unwrap();
     assert!(flags.iter().any(|f| f == "siam_safe_port"));
 }
@@ -226,7 +219,11 @@ fn score_all_sorts_descending_and_skips_blank_lines() {
     let py_arr = py.as_array().unwrap();
     let rs_arr = rs.as_array().unwrap();
     assert_eq!(py_arr.len(), rs_arr.len());
-    assert_eq!(py_arr.len(), 3, "blank/whitespace-only lines must be skipped");
+    assert_eq!(
+        py_arr.len(),
+        3,
+        "blank/whitespace-only lines must be skipped"
+    );
     for (p, r) in py_arr.iter().zip(rs_arr.iter()) {
         assert_eq!(p["bridge_line"], r["bridge_line"]);
         assert_eq!(p["iran_siam_score"], r["iran_siam_score"]);

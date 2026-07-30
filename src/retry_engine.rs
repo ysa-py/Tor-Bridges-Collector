@@ -104,6 +104,7 @@ impl RetryEngine<fn(i64) -> f64> {
     /// Construct a retry engine with the default deterministic backoff
     /// function (no jitter). Used in production when jitter is added by the
     /// caller, or in tests where determinism is required.
+    #[must_use]
     pub fn new(config: RetryConfig) -> Self {
         Self {
             config,

@@ -186,7 +186,11 @@ print(json.dumps({{"primary": r.get_primary().index}}, separators=(",", ":")))
         let mut r = AccountRotator::new("cf", make_rust_slots(&specs)).unwrap();
         let primary_idx = r.get_primary();
         let chosen = r.slots[primary_idx].index;
-        assert_eq!(py["primary"], json!(chosen), "primary mismatch for {run_id}");
+        assert_eq!(
+            py["primary"],
+            json!(chosen),
+            "primary mismatch for {run_id}"
+        );
     }
 
     std::env::remove_var("GITHUB_RUN_ID");

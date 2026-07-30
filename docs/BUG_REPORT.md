@@ -1,9 +1,9 @@
 # Bug Report — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Report Date**: 2026-06-12  
-> **Version Audited**: v15.0 — Ultra-Quantum Edition  
-> **Total Bugs Documented**: 16  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Report Date**: 2026-06-12
+> **Version Audited**: v15.0 — Ultra-Quantum Edition
+> **Total Bugs Documented**: 16
 > **Status**: ALL FIXED
 
 ---

@@ -1,9 +1,9 @@
 # Build Report — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Report Date**: 2026-06-12  
-> **Build Status**: ALL PASSING ✅  
-> **CI Platform**: GitHub Actions  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Report Date**: 2026-06-12
+> **Build Status**: ALL PASSING ✅
+> **CI Platform**: GitHub Actions
 
 ---
 

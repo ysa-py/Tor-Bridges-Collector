@@ -1,8 +1,8 @@
 # Change Log — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Repository**: github.com/py-ultra/infra-sync-prod  
-> **Current Version**: v15.0 — Ultra-Quantum Edition  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Repository**: github.com/py-ultra/infra-sync-prod
+> **Current Version**: v15.0 — Ultra-Quantum Edition
 
 ---
 

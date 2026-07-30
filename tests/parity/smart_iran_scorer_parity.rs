@@ -49,8 +49,12 @@ fn run_python_script(script: &str, payload: &Value) -> PythonResult {
 fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
-    serde_json::from_str(result.stdout.trim())
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", result.stdout))
+    serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
+    })
 }
 
 fn as_map(v: &Value) -> Map<String, Value> {
@@ -98,7 +102,10 @@ macro_rules! parity_extract_endpoint {
     };
 }
 
-parity_extract_endpoint!(endpoint_snowflake_basic, "bridge snowflake 1.2.3.4:443 abcd");
+parity_extract_endpoint!(
+    endpoint_snowflake_basic,
+    "bridge snowflake 1.2.3.4:443 abcd"
+);
 parity_extract_endpoint!(
     endpoint_obfs4_override_wins_over_other_regex_match,
     "webtunnel-ish but really obfs4 1.1.1.1:9001"
@@ -109,9 +116,15 @@ parity_extract_endpoint!(
 );
 parity_extract_endpoint!(endpoint_no_ip_present, "obfs4 no address here");
 parity_extract_endpoint!(endpoint_unknown_transport, "some random line 8.8.8.8:53");
-parity_extract_endpoint!(endpoint_meek_lite_case_insensitive, "Bridge MEEK_LITE 9.9.9.9:2083 ff");
+parity_extract_endpoint!(
+    endpoint_meek_lite_case_insensitive,
+    "Bridge MEEK_LITE 9.9.9.9:2083 ff"
+);
 parity_extract_endpoint!(endpoint_vanilla, "bridge vanilla 5.5.5.5:9001 aa");
-parity_extract_endpoint!(endpoint_multiple_ip_ports_takes_first, "1.1.1.1:1 then 2.2.2.2:2 snowflake");
+parity_extract_endpoint!(
+    endpoint_multiple_ip_ports_takes_first,
+    "1.1.1.1:1 then 2.2.2.2:2 snowflake"
+);
 
 const NIN_SIGNAL_SCRIPT: &str = r##"
 import json, sys
@@ -180,9 +193,18 @@ macro_rules! parity_dpi_signal {
     };
 }
 
-parity_dpi_signal!(dpi_signal_snowflake, json!({"raw": "bridge snowflake 1.2.3.4:443 abcd"}));
-parity_dpi_signal!(dpi_signal_vanilla, json!({"raw": "bridge vanilla 1.2.3.4:9001 abcd"}));
-parity_dpi_signal!(dpi_signal_unrecognized_transport, json!({"raw": "no transport keyword 1.1.1.1:1"}));
+parity_dpi_signal!(
+    dpi_signal_snowflake,
+    json!({"raw": "bridge snowflake 1.2.3.4:443 abcd"})
+);
+parity_dpi_signal!(
+    dpi_signal_vanilla,
+    json!({"raw": "bridge vanilla 1.2.3.4:9001 abcd"})
+);
+parity_dpi_signal!(
+    dpi_signal_unrecognized_transport,
+    json!({"raw": "no transport keyword 1.1.1.1:1"})
+);
 
 const PORT_SIGNAL_SCRIPT: &str = r##"
 import json, sys
@@ -438,7 +460,10 @@ print(json.dumps([{{"transport": r.transport, "final_score": r.final_score}} for
 // ─────────────────────────────────────────────────────────────────────────────
 
 fn temp_dir(tag: &str) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("smart_iran_scorer_parity_{tag}_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!(
+        "smart_iran_scorer_parity_{tag}_{}",
+        std::process::id()
+    ));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     dir
@@ -477,8 +502,11 @@ print(Path(payload["path"]).read_text())
     let records_rs: Vec<Map<String, Value>> = records.iter().map(as_map).collect();
     let results = scorer.score_all(&records_rs);
     let rs_report_path = dir.join("report_rs.json");
-    scorer.write_report(&results, Some(&rs_report_path)).unwrap();
-    let rs_report: Value = serde_json::from_str(&std::fs::read_to_string(&rs_report_path).unwrap()).unwrap();
+    scorer
+        .write_report(&results, Some(&rs_report_path))
+        .unwrap();
+    let rs_report: Value =
+        serde_json::from_str(&std::fs::read_to_string(&rs_report_path).unwrap()).unwrap();
 
     assert_eq!(py_report, rs_report);
     let _ = std::fs::remove_dir_all(&dir);

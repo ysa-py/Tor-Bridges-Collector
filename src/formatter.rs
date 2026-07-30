@@ -216,6 +216,7 @@ impl BridgeFormatter {
     /// (see `scorer.rs`'s own doc comments), so this constructor calls
     /// `load_transport_scores` explicitly to reproduce the same
     /// observable behavior.
+    #[must_use]
     pub fn new(now: DateTime<Utc>, transport_weights_path: &Path) -> Self {
         let mut scorer = IranScorer::new(now);
         scorer.load_transport_scores(transport_weights_path);

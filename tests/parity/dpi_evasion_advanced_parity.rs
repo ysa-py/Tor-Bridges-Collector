@@ -49,8 +49,12 @@ fn run_python_script(script: &str, payload: &Value) -> PythonResult {
 fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
-    serde_json::from_str(result.stdout.trim())
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", result.stdout))
+    serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -185,10 +189,8 @@ print(json.dumps(report))
 
 #[test]
 fn update_dpi_report_matches_python_with_mixed_records() {
-    let dir = std::env::temp_dir().join(format!(
-        "dpi-evasion-advanced-test-{}",
-        std::process::id()
-    ));
+    let dir =
+        std::env::temp_dir().join(format!("dpi-evasion-advanced-test-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let output_path = dir.join("dpi_intelligence.json");

@@ -43,9 +43,7 @@ print(json.dumps(m.score_anti_ai_dpi({line:?})))
 
 fn assert_json_eq(a: Value, b: Value, ctx: &str) {
     if a != b {
-        panic!(
-            "{ctx}: JSON mismatch\n--- Python:\n{a:#}\n--- Rust:\n{b:#}"
-        );
+        panic!("{ctx}: JSON mismatch\n--- Python:\n{a:#}\n--- Rust:\n{b:#}");
     }
 }
 

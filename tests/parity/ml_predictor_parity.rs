@@ -558,7 +558,7 @@ fn rust_train_sufficient_data_returns_sklearn_required() {
     }
     fs::write(
         &iran_path,
-        serde_json::to_string(&json!({"bridges": bridges})).unwrap(),
+        serde_json::to_string(&json!({ "bridges": bridges })).unwrap(),
     )
     .unwrap();
 

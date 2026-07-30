@@ -1455,6 +1455,7 @@ impl Default for ReqwestHttpFetch {
 impl ReqwestHttpFetch {
     /// Construct a new client with the given default request timeout and
     /// the `scraper.py` User-Agent / Accept headers.
+    #[must_use]
     pub fn new(timeout: Duration) -> Self {
         let client = reqwest::blocking::Client::builder()
             .timeout(timeout)

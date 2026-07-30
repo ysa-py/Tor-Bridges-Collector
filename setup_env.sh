@@ -223,7 +223,7 @@ if ! python3 -c "import aioquic" 2>/dev/null; then
 fi
 
 # ── libbpf headers (eBPF/XDP blueprint documentation) ─────────────────────
-sudo apt-get install -y libbpf-dev linux-headers-$(uname -r) \
+sudo apt-get install -y libbpf-dev linux-headers-"$(uname -r)" \
   2>/dev/null || true
 
 # ── cryptography (X25519 key generation for XTLS-Reality) ──────────────────

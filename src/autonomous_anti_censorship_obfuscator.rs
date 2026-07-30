@@ -226,6 +226,7 @@ pub struct TrafficObfuscator {
 impl TrafficObfuscator {
     /// Construct with an explicit 32-byte key and the Python default padding /
     /// jitter parameters.
+    #[must_use]
     pub fn new(key: Vec<u8>) -> Self {
         Self::with_params(Some(key), 64, 512, 20.0)
     }

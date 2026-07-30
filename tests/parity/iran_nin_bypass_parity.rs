@@ -53,11 +53,11 @@ fn parity_nin_score() {
         json!({"transport": "obfs4", "asn": "AS54113", "port": 8443, "composite_score": 0.5}),
         json!({"transport": "vanilla", "asn": "UNKNOWN", "port": 9001, "composite_score": 0.2}),
         json!({"transport": "meek_lite", "asn": "AS16509", "port": 80, "composite_score": 0.9}),
-        json!({"transport": "obfs4", "port": 2083}),                       // missing asn/composite -> defaults
+        json!({"transport": "obfs4", "port": 2083}), // missing asn/composite -> defaults
         json!({"transport": "unknown-thing", "asn": "AS15169", "port": 443, "composite_score": 1.0}),
         json!({"transport": "snowflake", "asn": "AS13335", "port": 443, "composite_score": 1.0}), // clamp to 1.0
-        json!({"port": "443", "transport": "webtunnel"}),                  // string port coercion
-        json!({}),                                                          // all defaults
+        json!({"port": "443", "transport": "webtunnel"}), // string port coercion
+        json!({}),                                        // all defaults
     ];
     for r in &records {
         let compact = serde_json::to_string(r).unwrap();
@@ -79,13 +79,13 @@ fn parity_detect_nextgen() {
     let lines = [
         "hysteria2://abc@1.2.3.4:443",
         "hysteria://abc@1.2.3.4:443",
-        "vless://uuid@host:443?security=reality",   // both vless and reality present -> order matters
+        "vless://uuid@host:443?security=reality", // both vless and reality present -> order matters
         "reality server 1.2.3.4",
         "vmess://base64blob",
         "trojan://pass@host:443",
         "ss://method:pass@host:8388",
-        "obfs4 1.2.3.4:443 cert=abc",                // no next-gen -> None
-        "HYSTERIA2://UPPER@host",                    // case-insensitive
+        "obfs4 1.2.3.4:443 cert=abc", // no next-gen -> None
+        "HYSTERIA2://UPPER@host",     // case-insensitive
         "plain vanilla line",
     ];
     for line in lines {

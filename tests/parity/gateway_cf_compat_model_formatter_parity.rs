@@ -75,9 +75,17 @@ print(json.dumps({
     ];
     for m in inputs {
         let py = oracle(script, &[m]);
-        assert_eq!(py["compat"], cf::format_model_for_compat_endpoint(m), "compat {m:?}");
+        assert_eq!(
+            py["compat"],
+            cf::format_model_for_compat_endpoint(m),
+            "compat {m:?}"
+        );
         assert_eq!(py["rest"], cf::format_model_for_rest_api(m), "rest {m:?}");
-        assert_eq!(py["native"], cf::format_model_for_native_path(m), "native {m:?}");
+        assert_eq!(
+            py["native"],
+            cf::format_model_for_native_path(m),
+            "native {m:?}"
+        );
         assert_eq!(py["is_cf"], Value::Bool(cf::is_cf_model(m)), "is_cf {m:?}");
     }
 }

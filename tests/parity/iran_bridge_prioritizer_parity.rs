@@ -68,19 +68,31 @@ struct ConfigOverride {
 }
 
 fn ov_bool(attr: &'static str, value: bool) -> ConfigOverride {
-    ConfigOverride { attr, value: json!(value) }
+    ConfigOverride {
+        attr,
+        value: json!(value),
+    }
 }
 
 fn ov_int(attr: &'static str, value: i64) -> ConfigOverride {
-    ConfigOverride { attr, value: json!(value) }
+    ConfigOverride {
+        attr,
+        value: json!(value),
+    }
 }
 
 fn ov_float(attr: &'static str, value: f64) -> ConfigOverride {
-    ConfigOverride { attr, value: json!(value) }
+    ConfigOverride {
+        attr,
+        value: json!(value),
+    }
 }
 
 fn ov_str(attr: &'static str, value: &str) -> ConfigOverride {
-    ConfigOverride { attr, value: json!(value) }
+    ConfigOverride {
+        attr,
+        value: json!(value),
+    }
 }
 
 fn overrides_to_json(overrides: &[ConfigOverride]) -> Value {
@@ -192,16 +204,10 @@ fn apply_overrides(cfg: &mut Config, overrides: &[ConfigOverride]) {
             "IRST_HIGH_CENSORSHIP_START" => {
                 cfg.irst_high_censorship_start = ov.value.as_i64().unwrap()
             }
-            "IRST_HIGH_CENSORSHIP_END" => {
-                cfg.irst_high_censorship_end = ov.value.as_i64().unwrap()
-            }
-            "IRST_ULTRA_STEALTH_START" => {
-                cfg.irst_ultra_stealth_start = ov.value.as_i64().unwrap()
-            }
+            "IRST_HIGH_CENSORSHIP_END" => cfg.irst_high_censorship_end = ov.value.as_i64().unwrap(),
+            "IRST_ULTRA_STEALTH_START" => cfg.irst_ultra_stealth_start = ov.value.as_i64().unwrap(),
             "IRST_ULTRA_STEALTH_END" => cfg.irst_ultra_stealth_end = ov.value.as_i64().unwrap(),
-            "RIPE_ATLAS_API_KEY" => {
-                cfg.ripe_atlas_api_key = ov.value.as_str().unwrap().to_string()
-            }
+            "RIPE_ATLAS_API_KEY" => cfg.ripe_atlas_api_key = ov.value.as_str().unwrap().to_string(),
             "IRAN_BRIDGE_PRIORITIZATION_ENABLED" => {
                 cfg.iran_bridge_prioritization_enabled = ov.value.as_bool().unwrap()
             }
@@ -620,10 +626,7 @@ fn parity_score_bridge_negative_weight_clamped_to_zero() {
 
 #[test]
 fn parity_prioritize_bridges_disabled_passthrough() {
-    let records = vec![
-        json!({"id": 1, "port": 443}),
-        json!({"id": 2, "port": 21}),
-    ];
+    let records = vec![json!({"id": 1, "port": 443}), json!({"id": 2, "port": 21})];
     // IRAN_BRIDGE_PRIORITIZATION_ENABLED defaults to false — no override needed.
     let py = python_prioritize_bridges(&records, FIXED_NOW, true, &[]);
     let rs = rust_prioritize_bridges(&records, FIXED_NOW, true, &[]);
@@ -694,11 +697,10 @@ fn parity_prioritize_bridges_empty_list() {
 fn score_bridge_does_not_mutate_input_record() {
     let cfg = default_cfg();
     let now = parse_now(FIXED_NOW);
-    let original: Map<String, Value> =
-        json!({"port": 443, "raw": "obfs4 1.2.3.4:443 ABC"})
-            .as_object()
-            .unwrap()
-            .clone();
+    let original: Map<String, Value> = json!({"port": 443, "raw": "obfs4 1.2.3.4:443 ABC"})
+        .as_object()
+        .unwrap()
+        .clone();
     let before = original.clone();
     let _ = score_bridge(&original, &cfg, now);
     assert_eq!(original, before, "input record must remain unmodified");

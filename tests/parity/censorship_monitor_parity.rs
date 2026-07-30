@@ -52,8 +52,12 @@ fn run_python_script(script: &str, payload: &Value) -> PythonResult {
 fn run_python_json(script: &str, payload: &Value) -> Value {
     let result = run_python_script(script, payload);
     assert!(result.success, "python helper failed: {}", result.stderr);
-    serde_json::from_str(result.stdout.trim())
-        .unwrap_or_else(|err| panic!("python helper must emit JSON: {err}; stdout={}", result.stdout))
+    serde_json::from_str(result.stdout.trim()).unwrap_or_else(|err| {
+        panic!(
+            "python helper must emit JSON: {err}; stdout={}",
+            result.stdout
+        )
+    })
 }
 
 /// Starts a local listener that accepts and immediately drops
@@ -128,8 +132,36 @@ parity_decide_level!(decide_l4_strong_signal, 2, 4, 4, 4, 0, 4, 0, 4, 2, 3, 3, 4
 parity_decide_level!(decide_l3_tor_blocked, 4, 4, 4, 4, 1, 4, 2, 4, 2, 3, 3, 4);
 parity_decide_level!(decide_l2_f_low, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 1, 4);
 parity_decide_level!(decide_l2_f_mid, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 4);
-parity_decide_level!(decide_l2_falls_through_to_l1, 4, 4, 4, 4, 4, 4, 3, 3, 3, 3, 4, 4);
-parity_decide_level!(decide_l2_falls_through_to_default, 4, 4, 1, 4, 1, 3, 3, 3, 3, 3, 4, 4);
+parity_decide_level!(
+    decide_l2_falls_through_to_l1,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4
+);
+parity_decide_level!(
+    decide_l2_falls_through_to_default,
+    4,
+    4,
+    1,
+    4,
+    1,
+    3,
+    3,
+    3,
+    3,
+    3,
+    4,
+    4
+);
 parity_decide_level!(decide_true_default, 2, 4, 1, 4, 0, 4, 1, 3, 1, 3, 2, 4);
 parity_decide_level!(decide_all_zero_totals, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
@@ -325,7 +357,10 @@ async fn parity_probe_tcp_times_out_on_blocked_egress() {
     let py = run_python_json(PROBE_TCP_SCRIPT, &payload);
     let (ok, _lat) = probe_tcp("10.255.255.1", 53, 1.2).await;
     assert_eq!(py["ok"], json!(ok));
-    assert!(!ok, "expected the unroutable target to time out as unreachable");
+    assert!(
+        !ok,
+        "expected the unroutable target to time out as unreachable"
+    );
 }
 
 const PROBE_CATEGORY_SCRIPT: &str = r##"
@@ -355,8 +390,11 @@ async fn parity_probe_category_mixed_reachability() {
     let payload = json!({ "category": "test_cat", "targets": targets, "timeout": 2.0 });
     let py = run_python_json(PROBE_CATEGORY_SCRIPT, &payload);
 
-    let targets_rs: Vec<(&str, u16)> =
-        vec![("127.0.0.1", reachable_port), ("127.0.0.1", closed1), ("127.0.0.1", closed2)];
+    let targets_rs: Vec<(&str, u16)> = vec![
+        ("127.0.0.1", reachable_port),
+        ("127.0.0.1", closed1),
+        ("127.0.0.1", closed2),
+    ];
     let (ok, total, _results) = probe_category("test_cat", &targets_rs, 2.0).await;
 
     assert_eq!(py["ok"], json!(ok));
@@ -455,9 +493,11 @@ async fn parity_measure_censorship_level_writes_state_file() {
     let (reach_a, _h1) = start_reachable_listener();
     let cat_a: Vec<(&str, u16)> = vec![("127.0.0.1", reach_a)];
     let closed_targets: Vec<u16> = (0..8).map(|_| closed_port()).collect();
-    let empty_cat = |i: usize| -> Vec<(&'static str, u16)> { vec![("127.0.0.1", closed_targets[i])] };
+    let empty_cat =
+        |i: usize| -> Vec<(&'static str, u16)> { vec![("127.0.0.1", closed_targets[i])] };
 
-    let dir = std::env::temp_dir().join(format!("censorship_monitor_parity_{}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("censorship_monitor_parity_{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     let state_path = dir.join("state.json");
 
