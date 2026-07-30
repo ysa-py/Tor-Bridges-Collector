@@ -436,7 +436,7 @@ pub fn select_active_routes(
                 .unwrap_or(true)
         })
         .collect();
-    active.sort_by(|a, b| a.priority.cmp(&b.priority));
+    active.sort_by_key(|route| route.priority);
     active
 }
 
@@ -478,6 +478,7 @@ pub fn prefer_quic(censorship_level: u32, quic_previously_blocked: bool) -> bool
 ///
 /// This is the main entry point that composes all evasion techniques
 /// into a single recommendation.
+#[allow(clippy::too_many_arguments)] // Public policy API keeps each independent signal explicit.
 pub fn generate_evasion_strategy(
     bridge_line: &str,
     transport: &str,

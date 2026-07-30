@@ -178,17 +178,9 @@ pub struct ModelEntry {
     pub score: f64,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ModelRegistry {
     pub models: HashMap<String, ModelEntry>,
-}
-
-impl Default for ModelRegistry {
-    fn default() -> Self {
-        Self {
-            models: HashMap::new(),
-        }
-    }
 }
 
 impl ModelRegistry {

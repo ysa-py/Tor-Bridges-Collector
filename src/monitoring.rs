@@ -131,7 +131,7 @@ impl HealthCheck {
 }
 
 /// Telemetry dashboard
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct TelemetryDashboard {
     pub bridge_count: u64,
     pub working_bridges: u64,
@@ -139,19 +139,6 @@ pub struct TelemetryDashboard {
     pub irst_hour: u32,
     pub last_update: Option<DateTime<Utc>>,
     pub metrics: HashMap<String, f64>,
-}
-
-impl Default for TelemetryDashboard {
-    fn default() -> Self {
-        Self {
-            bridge_count: 0,
-            working_bridges: 0,
-            censorship_level: 0,
-            irst_hour: 0,
-            last_update: None,
-            metrics: HashMap::new(),
-        }
-    }
 }
 
 impl TelemetryDashboard {
