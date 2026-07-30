@@ -11,7 +11,7 @@
     dead_code,
     unused_variables,
     unused_assignments,
-    unreachable_code,
+    unreachable_code
 )]
 use serde_json::{json, Value};
 use std::collections::HashMap;

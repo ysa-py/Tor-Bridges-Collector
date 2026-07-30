@@ -12,7 +12,7 @@
     dead_code,
     unused_variables,
     unused_assignments,
-    unreachable_code,
+    unreachable_code
 )]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
