@@ -1,5 +1,5 @@
 # JA3/TLS Fingerprint Rotation Report
-**Generated:** 2026-06-28 07:08:15 UTC  
+**Generated:** 2026-06-28 07:08:15 UTC
 
 ## Summary
 

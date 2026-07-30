@@ -1,9 +1,9 @@
 # Dependency Report — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Validation Date**: 2026-06-12  
-> **Validator**: `scripts/validate_dependencies.py` v1.0  
-> **Total Issues**: 4 (all Python — missing packages)  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Validation Date**: 2026-06-12
+> **Validator**: `scripts/validate_dependencies.py` v1.0
+> **Total Issues**: 4 (all Python — missing packages)
 
 ---
 

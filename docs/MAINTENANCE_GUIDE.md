@@ -1,8 +1,8 @@
 # Maintenance Guide — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Version**: v15.0 — Ultra-Quantum Edition  
-> **Guide Date**: 2026-06-12  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Version**: v15.0 — Ultra-Quantum Edition
+> **Guide Date**: 2026-06-12
 
 ---
 
@@ -192,18 +192,18 @@ Add a new provider class in `torshield_ai_gateway/providers.py`:
 ```python
 class NewProvider:
     """New AI provider implementation."""
-    
+
     PROVIDER_NAME = "new_provider"
     DEFAULT_MODEL = "default-model-name"
     MAX_NETWORK_RETRIES = 3
-    
+
     def __init__(self, api_key: str = None, **kwargs):
         self._api_key = self._validate_key(api_key or os.environ.get("NEW_PROVIDER_API_KEY", ""))
         self._circuit_breaker = ProviderCircuitBreaker(
             failure_threshold=3,
             recovery_timeout=60
         )
-    
+
     @staticmethod
     def _validate_key(key: str) -> str:
         """Validate API key format."""
@@ -211,12 +211,12 @@ class NewProvider:
         if not key:
             raise ValueError("API key is required")
         return key
-    
+
     def post_json(self, prompt: str, **kwargs) -> Optional[str]:
         """Send a prompt and return the response text."""
         if not self._circuit_breaker.allow_request():
             return None
-        
+
         try:
             # Implement API call here
             response = self._make_api_call(prompt)
@@ -231,12 +231,12 @@ class NewProvider:
                 return self._retry_request(prompt)
             self._circuit_breaker.record_failure()
             return None
-    
+
     def _make_api_call(self, prompt: str) -> str:
         """Make the actual API call."""
         # Implement HTTP request
         pass
-    
+
     def _retry_request(self, prompt: str) -> Optional[str]:
         """Retry with exponential backoff."""
         for attempt in range(self.MAX_NETWORK_RETRIES):
@@ -267,10 +267,10 @@ class TorShieldAIGateway:
         "portkey",
         "new_provider",  # Add here — position determines priority
     ]
-    
+
     def _init_providers(self):
         # ... existing providers ...
-        
+
         # New provider
         new_key = os.environ.get("NEW_PROVIDER_API_KEY", "")
         if new_key:
@@ -285,17 +285,17 @@ Create tests in `tests/test_providers.py`:
 ```python
 class TestNewProvider:
     """Tests for NewProvider."""
-    
+
     def test_key_validation_valid(self):
         """Valid key should be accepted."""
         provider = NewProvider(api_key="valid-key")
         assert provider._api_key == "valid-key"
-    
+
     def test_key_validation_empty(self):
         """Empty key should be rejected."""
         with pytest.raises(ValueError):
             NewProvider(api_key="")
-    
+
     def test_circuit_breaker_integration(self):
         """Circuit breaker should track failures."""
         provider = NewProvider(api_key="test-key")
@@ -362,11 +362,11 @@ log = logging.getLogger("torshield.ai.your_strategy")
 
 class YourNewStrategy:
     """New anti-censorship strategy implementation."""
-    
+
     def __init__(self):
         self._active = True
         log.info("[YourStrategy] Initialized")
-    
+
     def analyze(self, traffic_info: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze traffic and return evasion recommendations."""
         # Implement your strategy
@@ -375,7 +375,7 @@ class YourNewStrategy:
             "recommendation": "...",
             "confidence": 0.85,
         }
-    
+
     def get_status(self) -> Dict[str, Any]:
         """Return current status of the strategy."""
         return {
@@ -399,20 +399,20 @@ class AntiDPIV3Orchestrator:
         except ImportError:
             self._your_strategy = None
             self._your_strategy_available = False
-    
+
     def analyze_and_evade(self, traffic_info):
         """Unified analysis with all subsystems."""
         result = {}
-        
+
         # Existing subsystems
         result["traffic_morphing"] = self._traffic_morphing.analyze(traffic_info)
         result["ja3_rotation"] = self._ja3_engine.get_next_fingerprint()
         result["ech_fallback"] = self._ech_router.resolve(traffic_info)
-        
+
         # New strategy
         if self._your_strategy_available:
             result["your_strategy"] = self._your_strategy.analyze(traffic_info)
-        
+
         return result
 ```
 
@@ -423,11 +423,11 @@ class AntiDPIV3Orchestrator:
 
 class TestYourNewStrategy:
     """Tests for YourNewStrategy."""
-    
+
     def test_initialization(self):
         strategy = YourNewStrategy()
         assert strategy._active is True
-    
+
     def test_analysis_returns_valid_structure(self):
         strategy = YourNewStrategy()
         result = strategy.analyze({})

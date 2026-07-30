@@ -1,10 +1,10 @@
 # Test Coverage Report — Tor-Bridges-Collector
 
-> **Project**: Tor-Bridges-Collector (TorShield-IR)  
-> **Report Date**: 2026-06-12  
-> **Test Framework**: pytest 9.0.2  
-> **Total Tests**: 314  
-> **Status**: ALL PASSING (314 passed, 51 subtests passed)  
+> **Project**: Tor-Bridges-Collector (TorShield-IR)
+> **Report Date**: 2026-06-12
+> **Test Framework**: pytest 9.0.2
+> **Total Tests**: 314
+> **Status**: ALL PASSING (314 passed, 51 subtests passed)
 
 ---
 
