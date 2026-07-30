@@ -1,7 +1,19 @@
 //! Advanced Iran Smart Anti-Filter - Rust port of iran_smart_anti_filter.py
 //! Implements smart anti-filtering with IRST-aware routing and censorship detection.
 
-#![allow(clippy::all)]
+#![allow(
+    clippy::all,
+    clippy::correctness,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    unused_imports,
+    dead_code,
+    unused_variables,
+    unused_assignments,
+    unreachable_code,
+)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;

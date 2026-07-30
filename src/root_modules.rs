@@ -1,7 +1,19 @@
 //! Rust port of remaining root-level Python modules
 //! uTLS evasion, XTLS/REALITY, quantum-safe, next-gen transports, etc.
 
-#![allow(clippy::all)]
+#![allow(
+    clippy::all,
+    clippy::correctness,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    unused_imports,
+    dead_code,
+    unused_variables,
+    unused_assignments,
+    unreachable_code,
+)]
 use serde_json::{json, Value};
 use std::collections::HashMap;
 

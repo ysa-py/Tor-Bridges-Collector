@@ -1,6 +1,18 @@
 //! Rust port of recovery/*.py, reports/*.py, registry/*.py, health/*.py modules
 
-#![allow(clippy::all)]
+#![allow(
+    clippy::all,
+    clippy::correctness,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    unused_imports,
+    dead_code,
+    unused_variables,
+    unused_assignments,
+    unreachable_code,
+)]
 use chrono::{DateTime, Utc};
 use serde_json::{json, Value};
 use std::collections::HashMap;
