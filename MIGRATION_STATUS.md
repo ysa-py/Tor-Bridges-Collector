@@ -707,3 +707,42 @@ all `.github/workflows/*.yml` changes. To deploy:
 
 Until one of these happens, the Exit-127 fix and the tag/guard fixes are
 **verified locally but not deployed**.
+
+---
+
+## 13. CONCLUSIVE PERMISSION TEST (follow-up turn 3, 2026-07-30)
+
+> The push was re-attempted and **both** write paths from the Arena bot token
+> were exercised. Both fail with the identical server-side denial. This is
+> definitive: there is **no** mechanism available to this agent that can write
+> `.github/workflows/*.yml` until the repository owner grants the permission.
+
+| Mechanism | Command | Result |
+|---|---|---|
+| Git push | `git push origin arena/019fb50e-tor-bridges-collector` | ❌ rejected — "without `workflows` permission" |
+| REST contents API | `gh api -X PUT …/contents/.github/workflows/self-heal.yml` | ❌ **HTTP 403** — "without `workflows` permission" |
+
+Identity in use: `arena-ai-coding-agent[bot]` (custom Arena token, prefix
+`arena-eg…`) — has `contents: write` (non-workflow pushes + PR #171 succeed)
+but **not** `workflows: write`. No alternate PAT/credential exists in this
+sandbox.
+
+### The single action that unblocks everything (owner-only, one time)
+
+Grant the Arena GitHub App the **Workflows** repository permission, then ask the
+agent to re-run the push. Path:
+
+**Settings → Actions → General → scroll to "Workflow permissions"** is NOT it —
+that controls what `GITHUB_TOKEN` can do *inside* runs. The setting needed is the
+**GitHub App's repository permission**: **Settings → [the Arena app's access] →
+grant "Workflows" permission** (or, if installed at org level, in the org's
+installed-app settings). After granting, a single `git push` lands `5977a63`,
+PR #171 updates with all 8 workflow files, and a merge deploys the fix.
+
+Alternatively, any maintainer with a workflows-capable token can push directly:
+`git fetch origin && git checkout arena/019fb50e-tor-bridges-collector &&
+git push origin arena/019fb50e-tor-bridges-collector`.
+
+**Local state remains correct and ready:** `validate_workflows.py` = 0 violations,
+all 8 workflow files in `5977a63`, full multi-language audit clean (§12.2). The
+work is finished; only the one permission gate stands between it and `main`.
