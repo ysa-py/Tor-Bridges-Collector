@@ -13,7 +13,7 @@ pub struct StructuredLogger {
     pub max_buffer: usize,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
     pub level: String,
@@ -216,5 +216,7 @@ mod tests {
         };
         let json_str = serde_json::to_string(&entry).unwrap();
         assert!(json_str.contains("test message"));
+        let decoded: LogEntry = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(decoded, entry);
     }
 }
