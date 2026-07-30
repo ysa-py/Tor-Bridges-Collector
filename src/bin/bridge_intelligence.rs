@@ -6,6 +6,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::Utc;
 use serde_json::{json, Map, Value};
+use torshield_ir_ultra::censorship_fusion::{CensorshipSignals, FusedCensorshipAssessment};
 use torshield_ir_ultra::dpi_evasion_advanced::update_dpi_report_now;
 use torshield_ir_ultra::iran_advanced_dpi_evasion::{
     generate_anti_censorship_report, generate_evasion_strategy, EvasionStrategy, MULTI_PATH_ROUTES,
@@ -20,13 +21,13 @@ use torshield_ir_ultra::smart_iran_scorer::{extract_endpoint, BridgeScore, Smart
 #[derive(Debug)]
 struct Options {
     input: PathBuf,
-    censorship_level: u32,
+    censorship_level: Option<u32>,
     strategy_limit: usize,
 }
 
 fn parse_args() -> Result<Options, String> {
     let mut input = PathBuf::from("bridge/iran_results.json");
-    let mut censorship_level = 4_u32;
+    let mut censorship_level = None;
     let mut strategy_limit = 50_usize;
     let mut args = std::env::args().skip(1);
 
@@ -34,11 +35,19 @@ fn parse_args() -> Result<Options, String> {
         match arg.as_str() {
             "--input" => input = PathBuf::from(args.next().ok_or("--input requires a path")?),
             "--censorship-level" => {
-                censorship_level = args
+                let value = args
                     .next()
-                    .ok_or("--censorship-level requires an integer")?
-                    .parse()
-                    .map_err(|_| "--censorship-level must be an integer")?;
+                    .ok_or("--censorship-level requires auto or an integer")?;
+                censorship_level = if value.eq_ignore_ascii_case("auto") {
+                    None
+                } else {
+                    Some(
+                        value
+                            .parse::<u32>()
+                            .map_err(|_| "--censorship-level must be auto or an integer")?
+                            .clamp(1, 5),
+                    )
+                };
             }
             "--strategy-limit" => {
                 strategy_limit = args
@@ -50,7 +59,7 @@ fn parse_args() -> Result<Options, String> {
             "--help" | "-h" => {
                 println!(
                     "Usage: bridge_intelligence [--input PATH] \
-                     [--censorship-level 1..5] [--strategy-limit N]"
+                     [--censorship-level auto|1..5] [--strategy-limit N]"
                 );
                 std::process::exit(0);
             }
@@ -60,7 +69,7 @@ fn parse_args() -> Result<Options, String> {
 
     Ok(Options {
         input,
-        censorship_level: censorship_level.clamp(1, 5),
+        censorship_level,
         strategy_limit,
     })
 }
@@ -113,37 +122,19 @@ fn ranked_report(scores: &[BridgeScore], input_count: usize, level: i64) -> Valu
     })
 }
 
-fn failure_forecast(bridges: &[Value]) -> ForecastInput {
-    let total = bridges.len();
-    let confirmed_count = bridges
-        .iter()
-        .filter(|bridge| {
-            matches!(
-                bridge.get("iran_status").and_then(Value::as_str),
-                Some("iran_likely_blocked" | "iran_frequently_blocked" | "iran_asn_blocked")
-            )
-        })
-        .count();
-    let failure_count = bridges
-        .iter()
-        .filter(|bridge| bridge.get("tcp_reachable").and_then(Value::as_bool) == Some(false))
-        .count();
-    let anomaly_count = bridges
-        .iter()
-        .filter(|bridge| bridge.get("iran_status").and_then(Value::as_str) == Some("iran_unknown"))
-        .count();
-
+fn failure_forecast(assessment: &FusedCensorshipAssessment) -> ForecastInput {
+    let signals = &assessment.signals;
     ForecastInput {
-        anomaly_count: u32::try_from(anomaly_count).unwrap_or(u32::MAX),
-        confirmed_count: u32::try_from(confirmed_count).unwrap_or(u32::MAX),
-        failure_count: u32::try_from(failure_count).unwrap_or(u32::MAX),
+        anomaly_count: u32::try_from(signals.unknown).unwrap_or(u32::MAX),
+        confirmed_count: u32::try_from(signals.confirmed_blocked).unwrap_or(u32::MAX),
+        failure_count: u32::try_from(signals.tcp_unreachable).unwrap_or(u32::MAX),
         window_hours: 24,
-        bridge_failure_rate: if total == 0 {
+        bridge_failure_rate: if signals.total == 0 {
             0.0
         } else {
-            failure_count as f64 / total as f64
+            signals.tcp_unreachable as f64 / signals.total as f64
         },
-        nin_detected: false,
+        nin_detected: assessment.nin_likely,
     }
 }
 
@@ -151,10 +142,16 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
     let source = std::fs::read_to_string(&options.input)?;
     let root: Value = serde_json::from_str(&source)?;
     let bridges = bridge_array(&root)?;
+    let assessment = CensorshipSignals::from_bridge_results(bridges).assess();
+    let effective_level = options.censorship_level.unwrap_or(assessment.level);
+    write_json(
+        Path::new("data/iran_censorship_fusion.json"),
+        &assessment.to_json(),
+    )?;
 
     let result_stats = write_result_files(Path::new("bridge"), bridges)?;
     let records: Vec<Map<String, Value>> = bridges.iter().filter_map(scoring_record).collect();
-    let scorer = SmartIranScorer::new(options.censorship_level.into(), false, 35.0, 70.0);
+    let scorer = SmartIranScorer::new(effective_level.into(), false, 35.0, 70.0);
     let scores = scorer.score_all(&records);
     write_json(
         Path::new("bridge/bridges_ai_iran_ranked.json"),
@@ -181,7 +178,7 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
     write_json(Path::new("data/iran_routing_recommendation.json"), &routing)?;
 
     let shield = Shield::new(now);
-    let forecast = failure_forecast(bridges);
+    let forecast = failure_forecast(&assessment);
     let last_used = TransportLastUsed::new();
     write_json(
         Path::new("data/iran_quantum_shield_report.json"),
@@ -200,7 +197,7 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
             generate_evasion_strategy(
                 &score.raw,
                 &score.transport,
-                options.censorship_level,
+                effective_level,
                 irst_hour,
                 &previous_ja3,
                 &blocked_cdns,
@@ -214,7 +211,7 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
     let advanced_report = generate_anti_censorship_report(
         now,
         &strategies,
-        options.censorship_level,
+        effective_level,
         irst_hour,
         MULTI_PATH_ROUTES.len(),
     );
@@ -231,6 +228,11 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
             "input": options.input,
             "bridges": bridges.len(),
             "ranked": scores.len(),
+            "censorship_level_mode": if options.censorship_level.is_some() { "manual" } else { "auto" },
+            "effective_censorship_level": effective_level,
+            "censorship_pressure": assessment.pressure,
+            "censorship_confidence": assessment.confidence,
+            "nin_likely": assessment.nin_likely,
             "generated_bridge_files": result_stats,
             "status": "ok",
         }),

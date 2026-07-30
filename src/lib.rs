@@ -11,6 +11,7 @@ pub mod auto_debug_system;
 pub mod autonomous;
 pub mod autonomous_anti_censorship_obfuscator;
 pub mod bridge_scoring;
+pub mod censorship_fusion;
 pub mod censorship_monitor;
 pub mod circuit_breaker_11slot;
 pub mod collector;
