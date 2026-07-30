@@ -26,11 +26,12 @@ use std::path::{Path, PathBuf};
 use chrono::Utc;
 use serde_json::{json, Value};
 
+use torshield_ir_ultra::iran_smart_rotation;
 use torshield_ir_ultra::{
     adaptive_transport, anti_ai_dpi,
     ech_fingerprint_evasion::{self, NoProbe},
-    iran_anti_siam, iran_nin_bypass, iran_smart_rotation, ja3_intelligence, ml_predictor,
-    nin_advanced_bypass, nin_cut_tester,
+    iran_anti_siam, iran_nin_bypass, ja3_intelligence, ml_predictor, nin_advanced_bypass,
+    nin_cut_tester,
     nin_internet_cut_classifier::NINInternetCutClassifier,
     nin_selector, results_writer, root_modules,
 };
