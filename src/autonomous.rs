@@ -130,7 +130,11 @@ impl IranBypassConfig {
             fingerprint: Some("CDF2E852BF539B82BD10E27E9115A31734E378C2".into()),
             extra_params: {
                 let mut m = HashMap::new();
-                m.insert("cert".into(), "qUVQ0srL1JI/vO6V6m/24anYXiJD3zP8o7ULQzu2RDy6GIVCbvGrDlhk9MhFBlRmFBMf+Q".into());
+                                m.insert(
+                    "cert".into(),
+                    "qUVQ0srL1JI/vO6V6m/24anYXiJD3zP8o7ULQzu2RDy6GIVCbvGrDlhk9MhFBlRmFBMf+Q"
+                        .into(),
+                );
                 m.insert("iat-mode".into(), "0".into());
                 m
             },
