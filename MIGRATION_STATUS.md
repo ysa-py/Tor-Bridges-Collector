@@ -611,3 +611,99 @@ Gateable via the `smart-detection` / `iran` / `dpi` / `nin` Cargo features.
 - **Verifiable-in-sandbox surface: GREEN.** Rust/Go/Zig compile status carries
   forward from the prior session's real-CI run; final confirmation needs a
   merged `main` Actions run.
+
+---
+
+## 12. FOLLOW-UP TURN 2 (2026-07-30) — deeper audit + additional guards
+
+> Re-attempted the push of the workflow commit (`4ee74bb`); GitHub **rejected it
+> again** with the identical error: the Arena GitHub App still lacks the
+> `workflows` permission. This is enforced server-side and cannot be bypassed
+> from the agent token. **The workflow files therefore remain committed locally
+> only; nothing has been deployed to `main`.** No "100% DEPLOYED / ALL GREEN"
+> stamp is claimed — that would be false until a permitted push + a real Actions
+> run confirm it.
+
+### 12.1 Additional defects found by a deeper (per-step) audit and fixed
+
+The per-language audit surfaced two more dead-Python hard-failures that the
+first pass missed:
+
+1. **`autonomous-sentinel.yml` — unguarded `LocalAI RL` step.** The earlier
+   "Setup Python 3.12" and "LocalAI RL observe-decide-morph dry run" edits had
+   silently no-op'd (the file proved it). The `LocalAI` step does
+   `from torshield_ai_gateway.local_ai_engine import LocalAIEngine` against a
+   **deleted** package → would hard-fail and abort the Go/Rust checks in the
+   same job. **Fixed:** added `if: hashFiles('**/*.py') != ''` to both the
+   `Setup Python 3.12` and `LocalAI RL` steps (the `Install Python dependencies`
+   and `Revert failed …` steps were already guarded). The Go test, shell check,
+   and Rust parity gate now run uninterrupted.
+
+2. **`ai_self_healing.yml` and `ai_gateway_health_check.yml` — dormant but
+   triggerable Python jobs.** Both are self-declared DORMANT fallbacks, but
+   `ai_self_healing` triggers on `workflow_run: ["*"]` (runs after *every*
+   workflow), and both contain fatal Python: `ai_gateway_health_check` runs the
+   deleted `scripts/ai_gateway_health_check.py` (with an explicit
+   "DO NOT add || true" comment) and an inline script that imports the deleted
+   `torshield_ai_gateway` package. **Fixed:** added a job-level
+   `if: hashFiles('**/*.py') != ''` soft-skip to `auto-diagnose-and-fix` and
+   `check-all-providers` (Rust replacements already exist: `src/bin/auto_debug.rs`,
+   `src/bin/ai_gateway_health_check.rs`). `rust-parity-gate` + `cleanup` jobs
+   remain active. `ai_bridge_reranker`'s `ai-rerank` was left untouched — its
+   risky call already ends with `|| true` + `if-no-files-found: ignore`.
+
+   Nothing was deleted; all guarded jobs auto-reactivate if Python is reintroduced
+   or once rewired to their Rust binaries.
+
+### 12.2 Full multi-language audit (this sandbox, 2026-07-30T22:22Z)
+
+Log: `diagnostics/full_language_audit_20260730T222258Z.log`.
+
+| Language / artifact | Check | Result |
+|---|---|---|
+| YAML | parse every `.yml`/`.yaml` in repo (PyYAML) | ✅ 0 failures |
+| Shell | `bash -n` every `.sh` | ✅ 0 failures |
+| Python | `py_compile` every `.py` | ✅ 0 failures |
+| TOML | parse every `Cargo.toml` + `pyproject.toml` (tomllib) | ✅ 0 failures |
+| JSON | validate every `.json` (jq) | ✅ 0 failures |
+| Dockerfile | `FROM` present | ✅ OK |
+| PowerShell | brace balance (no `pwsh` to compile) | ✅ balanced |
+| Go | module files present | ✅ `go.mod` + `go.work` |
+| Zig | source present + brace balance | ✅ balanced |
+| Workflows | `validate_workflows.py` policy gate | ✅ 0 violations |
+| Workflows | hardcoded `powershell` commands | ✅ 0 |
+| Action tags | every `uses:@vN` resolves to a real release | ✅ all valid |
+
+### 12.3 What still could NOT run here (unchanged from §11.5)
+
+Egress allows only `github.com`, `pypi.org`, `files.pythonhosted.org`.
+`cargo`/`rustc`/`go`/`zig`/`pwsh`/`shellcheck`/`actionlint`/`hadolint` are all
+absent and uninstallable offline. So **Rust/Go/Zig compile status is NOT
+re-verified this turn** — it carries forward from the prior session's real-CI
+run. The authoritative green/red check is a GitHub Actions run on the merged
+result, which requires a push this session cannot perform (see §12 header).
+
+### 12.4 Current branch topology
+
+```
+arena/019fb50e-tor-bridges-collector
+  13682d7  (origin/main)  Merge PR #169
+  eb48036  (pushed)       docs(ci): validator + MIGRATION_STATUS §11 + ENGINEERING_PROMPT   ← PR #171
+  <doc update this turn>  (pushable, non-workflow)
+  4ee74bb  (LOCAL only)   fix(ci): workflow files — BLOCKED on `workflows` permission
+```
+
+### 12.5 Exact remediation to land the workflow fix (needs a permitted identity)
+
+The local commit `4ee74bb` (now amended to include the §12.1 guards) contains
+all `.github/workflows/*.yml` changes. To deploy:
+
+- **Option A (grant the App):** give the Arena GitHub App the **Workflows**
+  repository permission (repo Settings → Actions → General), then ask the agent
+  to re-run `git push origin arena/019fb50e-tor-bridges-collector`.
+- **Option B (maintainer push):** from a checkout with a workflows-capable token:
+  `git fetch origin && git checkout arena/019fb50e-tor-bridges-collector &&
+  git push origin arena/019fb50e-tor-bridges-collector`, then merge PR #171.
+
+Until one of these happens, the Exit-127 fix and the tag/guard fixes are
+**verified locally but not deployed**.
