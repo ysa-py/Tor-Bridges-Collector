@@ -1,33 +1,30 @@
 {
-  "level": 5,
+  "level": 1,
   "confidence": 0.8,
-  "international_ok": false,
-  "nin_active": true,
+  "international_ok": true,
+  "nin_active": false,
   "tor_direct_ok": true,
   "isp_tier": "unknown",
-  "detected_at": "2026-07-30T08:07:37.046328+00:00",
+  "detected_at": "2026-07-30T14:08:45.570519+00:00",
   "probe_summary": {
-    "dns_intl": "0/4",
+    "dns_intl": "4/4",
     "cdn_https": "4/4",
-    "tor_da": "3/4",
+    "tor_da": "4/4",
     "obfs4_port": "3/3",
-    "nin_domestic": "3/3",
+    "nin_domestic": "2/3",
     "ooni_https": "3/3"
   },
   "recommendations": {
-    "label": "NIN Active — Internet Cut",
-    "description": "شبکه ملی فعال. International cut. CDN-fronted only.",
+    "label": "Minimal Filtering",
+    "description": "Only basic DNS/HTTP blocking. Direct Tor may work.",
     "best_transports": [
-      "snowflake",
-      "webtunnel-cdn"
-    ],
-    "avoid": [
       "vanilla",
       "obfs4",
-      "meek_lite-non-cdn"
+      "webtunnel"
     ],
-    "pack_file": "export/iran_cut_pack.txt",
-    "urgency": "critical"
+    "avoid": [],
+    "pack_file": "export/iran_pack.txt",
+    "urgency": "low"
   },
-  "best_pack": "export/iran_cut_pack.txt"
+  "best_pack": "export/iran_pack.txt"
 }
