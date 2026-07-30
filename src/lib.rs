@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![allow(warnings)]
 
 //! Rust migration anchor crate for TorShield-IR Ultra VIP Edition.
 //! All modules are now fully Rust-native after Python-to-Rust migration.
@@ -8,7 +9,7 @@ pub mod adaptive_transport;
 pub mod ai_anti_dpi_iran;
 pub mod anti_ai_dpi;
 pub mod auto_debug_system;
-// pub mod autonomous;
+pub mod autonomous;
 pub mod autonomous_anti_censorship_obfuscator;
 pub mod bridge_scoring;
 pub mod censorship_monitor;
@@ -31,11 +32,11 @@ pub mod iran_detector;
 pub mod iran_dpi_shaper;
 pub mod iran_nin_bypass;
 pub mod iran_quantum_dpi_shield_v2;
-// pub mod iran_smart_anti_filter;
+pub mod iran_smart_anti_filter;
 pub mod iran_smart_anti_filter_v2;
 pub mod ja3_intelligence;
 pub mod ml_predictor;
-// pub mod monitoring;
+pub mod monitoring;
 pub mod monitoring_structured_logger;
 pub mod nin_advanced_bypass;
 pub mod nin_cut_tester;
@@ -46,16 +47,16 @@ pub mod notifier;
 pub mod onionhop_collector;
 pub mod ooni_correlator;
 pub mod quarantine_manager;
-// pub mod recovery;
+pub mod recovery;
 pub mod results_writer;
 pub mod retry_engine;
-// pub mod root_modules;
+pub mod root_modules;
 pub mod scorer;
 pub mod scraper;
 pub mod self_heal;
 pub mod slot_circuit_breaker;
 pub mod smart_iran_scorer;
-// pub mod sources_extra;
+pub mod sources_extra;
 pub mod sources_torproject;
 pub mod static_bridges;
 pub mod telemetry_watcher;
