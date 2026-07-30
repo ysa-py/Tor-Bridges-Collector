@@ -135,6 +135,7 @@ pub struct TelemetryDashboard {
     pub metrics: HashMap<String, f64>,
 }
 
+#[allow(clippy::new_without_default)]
 impl TelemetryDashboard {
     pub fn new() -> Self {
         Self {

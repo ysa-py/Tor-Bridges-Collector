@@ -83,6 +83,7 @@ pub struct SelfHealingEngineV2 {
     pub patch_log: Vec<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl SelfHealingEngineV2 {
     pub fn new() -> Self {
         Self {
@@ -166,6 +167,7 @@ pub struct ModelRegistry {
     pub models: HashMap<String, ModelEntry>,
 }
 
+#[allow(clippy::new_without_default)]
 impl ModelRegistry {
     pub fn new() -> Self {
         Self {
@@ -213,6 +215,7 @@ pub struct SlotHealth {
     pub failure_streak: u32,
 }
 
+#[allow(clippy::new_without_default)]
 impl SlotHealth {
     pub fn new(slot_id: u32) -> Self {
         Self {

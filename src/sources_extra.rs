@@ -13,6 +13,7 @@ pub struct BridgeDbApi {
     pub timeout_secs: u64,
 }
 
+#[allow(clippy::new_without_default)]
 impl BridgeDbApi {
     pub fn new() -> Self {
         Self {
@@ -35,6 +36,7 @@ pub struct MoatClient {
     pub moat_url: String,
 }
 
+#[allow(clippy::new_without_default)]
 impl MoatClient {
     pub fn new() -> Self {
         Self {
@@ -61,6 +63,7 @@ pub struct TelegramBridgeCollector {
     pub channels: Vec<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl TelegramBridgeCollector {
     pub fn new() -> Self {
         Self {
@@ -99,6 +102,7 @@ pub struct GitHubBridgeCollector {
     pub repos: Vec<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl GitHubBridgeCollector {
     pub fn new() -> Self {
         Self {
@@ -119,6 +123,7 @@ pub struct LegacyScraper {
     pub data_dir: String,
 }
 
+#[allow(clippy::new_without_default)]
 impl LegacyScraper {
     pub fn new(data_dir: &str) -> Self {
         Self {
@@ -136,6 +141,7 @@ pub struct DirectScraper {
     pub sources: Vec<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl DirectScraper {
     pub fn new() -> Self {
         Self {

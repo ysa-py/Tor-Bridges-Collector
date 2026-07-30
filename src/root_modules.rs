@@ -22,6 +22,7 @@ pub struct TlsProfile {
     pub tls_version: String,
 }
 
+#[allow(clippy::new_without_default)]
 impl UTlsEvasionLayer {
     pub fn new() -> Self {
         Self {
@@ -71,6 +72,7 @@ pub struct XtlsRealityWrapper {
     pub flow_types: Vec<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl XtlsRealityWrapper {
     pub fn new() -> Self {
         Self {
@@ -117,6 +119,7 @@ pub struct QuantumSafeTransport {
     pub mlkem_enabled: bool,
 }
 
+#[allow(clippy::new_without_default)]
 impl QuantumSafeTransport {
     pub fn new() -> Self {
         Self {
@@ -193,6 +196,7 @@ pub struct QuantumNoiseInjector {
     pub budget_pct: f64,
 }
 
+#[allow(clippy::new_without_default)]
 impl QuantumNoiseInjector {
     pub fn new(budget_pct: f64) -> Self {
         Self { budget_pct }
@@ -220,6 +224,7 @@ pub struct WarpBootstrap {
     pub license_key: Option<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl WarpBootstrap {
     pub fn new() -> Self {
         Self {
@@ -246,6 +251,7 @@ pub struct CtMonitor {
     pub last_check: Option<String>,
 }
 
+#[allow(clippy::new_without_default)]
 impl CtMonitor {
     pub fn new() -> Self {
         Self {
@@ -269,6 +275,7 @@ pub struct EliteRegistry {
     pub entries: HashMap<String, Value>,
 }
 
+#[allow(clippy::new_without_default)]
 impl EliteRegistry {
     pub fn new() -> Self {
         Self {

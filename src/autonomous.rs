@@ -200,6 +200,7 @@ pub struct SmartAntiCensorshipRouter {
     pub health_status: HashMap<String, bool>,
 }
 
+#[allow(clippy::new_without_default)]
 impl SmartAntiCensorshipRouter {
     pub fn new(bypass_config: IranBypassConfig) -> Self {
         Self {
@@ -247,6 +248,7 @@ pub struct ResilientOrchestrator {
     pub cooldown_until: Option<DateTime<Utc>>,
 }
 
+#[allow(clippy::new_without_default)]
 impl ResilientOrchestrator {
     pub fn new(name: &str) -> Self {
         Self {
