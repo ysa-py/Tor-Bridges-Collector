@@ -29,8 +29,8 @@ use serde_json::{json, Value};
 use torshield_ir_ultra::{
     adaptive_transport, anti_ai_dpi,
     ech_fingerprint_evasion::{self, NoProbe},
-    iran_anti_siam, iran_nin_bypass, iran_smart_rotation, ja3_intelligence, ml_predictor,
-    nin_advanced_bypass, nin_cut_tester,
+    iran_anti_siam, iran_nin_bypass, ja3_intelligence, ml_predictor, nin_advanced_bypass,
+    nin_cut_tester,
     nin_internet_cut_classifier::NINInternetCutClassifier,
     nin_selector, results_writer, root_modules,
 };
@@ -75,9 +75,6 @@ const STAGES: &[&str] = &[
     "nin-classify",
     // Stage 8r  — Iran SIAM/NGFW anti-AI DPI analysis
     "siam",
-    // Stage 8s  — smart anti-filtering rotation plan (transport + ASN
-    //             diversity, censorship-level escalation)
-    "rotation",
 ];
 /// Stages whose failure must fail the whole run.
 const REQUIRED: &[&str] = &["results"];
@@ -447,28 +444,6 @@ fn stage_siam() -> StageResult {
     })))
 }
 
-fn stage_rotation(input: &Path) -> StageResult {
-    let Some(bridges) = read_bridges(input) else {
-        return Ok(Outcome::Skipped(format!(
-            "{} is missing or has no bridges array",
-            input.display()
-        )));
-    };
-    let plan = iran_smart_rotation::write_rotation_outputs(
-        &bridges,
-        4,
-        iran_smart_rotation::DEFAULT_ROTATION_SIZE,
-        Path::new(iran_smart_rotation::PLAN_PATH),
-        Path::new(iran_smart_rotation::EXPORT_PATH),
-    )?;
-    let rotation_size = plan.get("rotation_size").and_then(Value::as_u64).unwrap_or(0);
-    Ok(Outcome::Ok(json!({
-        "plan": iran_smart_rotation::PLAN_PATH,
-        "export": iran_smart_rotation::EXPORT_PATH,
-        "rotation_size": rotation_size,
-    })))
-}
-
 fn dispatch(stage: &str, input: &Path) -> StageResult {
     match stage {
         "results" => stage_results(input),
@@ -490,7 +465,6 @@ fn dispatch(stage: &str, input: &Path) -> StageResult {
         "ct" => stage_ct(),
         "nin-classify" => stage_nin_classify(),
         "siam" => stage_siam(),
-        "rotation" => stage_rotation(input),
         other => Err(format!("unknown stage: {other}").into()),
     }
 }
