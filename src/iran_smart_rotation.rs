@@ -33,5 +33,275 @@ use serde_json::{json, Value};
 
 /// Canonical output locations consumed by the pipeline and the workflow.
 pub const PLAN_PATH: &str = "data/iran_rotation_plan.json";
+pub const EXPORT_PATH: &str = "export/iran_rotation_bridges.txt";
 
-// fmt probe 3: module body fully stripped.
+/// Default maximum size of a rotation plan.
+pub const DEFAULT_ROTATION_SIZE: usize = 25;
+
+/// Maximum number of entries accepted from a single ASN surrogate prefix.
+const MAX_PER_PREFIX: usize = 3;
+
+/// Transport preference order for censorship levels 1-3 (normal internet).
+const PREFERENCE_NORMAL: [&str; 5] = ["obfs4", "webtunnel", "snowflake", "meek_lite", "vanilla"];
+
+/// Transport preference order for censorship levels 4-5 (SIAM escalation /
+/// NIN internet-cut): fronting- and morphing-capable transports first.
+const PREFERENCE_ESCALATED: [&str; 5] = ["snowflake", "webtunnel", "meek_lite", "obfs4", "vanilla"];
+
+/// One scored rotation candidate extracted from a raw bridge record.
+#[derive(Debug, Clone)]
+struct Candidate {
+    line: String,
+    transport: String,
+    prefix: String,
+    score: f64,
+    /// Original dataset index — stable tie-breaker for determinism.
+    ordinal: usize,
+}
+
+impl Candidate {
+    /// Deterministic total ordering: higher score first, then preferred
+    /// transport, then original ordinal.
+    fn sort_key(&self, transport_rank: usize) -> (i64, usize, usize) {
+        // Scale the score to an integer for a total, NaN-safe order. Values
+        // outside [0.0, 1.0] and non-finite inputs clamp to 0.
+        let scaled = if self.score.is_finite() {
+            (self.score.clamp(0.0, 1.0) * 1_000_000_000.0).round() as i64
+        } else {
+            0
+        };
+        (-scaled, transport_rank, self.ordinal)
+    }
+}
+
+/// Extract the transport name from a bridge record, mirroring the tolerant
+/// extraction used across the workspace: explicit `transport` field wins,
+/// otherwise the first word of the raw line.
+fn transport_of(bridge: &Value) -> String {
+    for key in ["transport", "type"] {
+        if let Some(t) = bridge.get(key).and_then(Value::as_str) {
+            let t = t.trim().to_ascii_lowercase();
+            if !t.is_empty() {
+                return t;
+            }
+        }
+    }
+    let raw = bridge
+        .get("raw")
+        .or_else(|| bridge.get("line"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    raw.split_whitespace()
+        .next()
+        .unwrap_or("unknown")
+        .to_ascii_lowercase()
+}
+
+/// Extract the endpoint IP from the second whitespace-separated field of the
+/// raw bridge line (`<transport> <ip:port> ...`).
+fn ip_of(bridge: &Value) -> String {
+    let raw = bridge
+        .get("raw")
+        .or_else(|| bridge.get("line"))
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let hostport = raw.split_whitespace().nth(1).unwrap_or("");
+    hostport
+        .rsplit_once(':')
+        .map_or(hostport, |(host, _)| host)
+        .trim_matches(|c| c == '[' || c == ']')
+        .to_string()
+}
+
+/// ASN surrogate prefix: IPv4 collapses to its /24, IPv6 to its /64 — the
+/// granularity at which Iranian null-routing waves are typically observed.
+fn prefix_of(ip: &str) -> String {
+    if ip.is_empty() {
+        return "unknown".to_string();
+    }
+    if ip.contains(':') {
+        let hextets: Vec<&str> = ip.split(':').collect();
+        if hextets.len() >= 4 {
+            return hextets[..4].join(":");
+        }
+        return ip.to_string();
+    }
+    let octets: Vec<&str> = ip.split('.').collect();
+    if octets.len() == 4 {
+        return octets[..3].join(".");
+    }
+    ip.to_string()
+}
+
+/// Rank of a transport inside the censorship-appropriate preference list;
+/// unknown transports sort after all known ones, in input order.
+fn transport_rank(transport: &str, censorship_level: u8) -> usize {
+    let preference = if censorship_level >= 4 {
+        &PREFERENCE_ESCALATED
+    } else {
+        &PREFERENCE_NORMAL
+    };
+    preference
+        .iter()
+        .position(|t| *t == transport)
+        .unwrap_or(preference.len())
+}
+
+/// Build the rotation plan from scored bridge records.
+///
+/// * `bridges` — records shaped like `bridge/iran_results.json` entries.
+/// * `censorship_level` — 1 (open) ..= 5 (NIN cut); >= 4 escalates the
+///   transport preference order.
+/// * `max_entries` — upper bound of the plan; `0` means "unbounded".
+///
+/// The returned value is a self-describing JSON object; it is pure (no I/O)
+/// and deterministic for identical inputs.
+pub fn build_rotation_plan(bridges: &[Value], censorship_level: u8, max_entries: usize) -> Value {
+    // ── 1. Extract + score candidates ────────────────────────────────────
+    let mut candidates: Vec<Candidate> = Vec::with_capacity(bridges.len());
+    for (ordinal, bridge) in bridges.iter().enumerate() {
+        let transport = transport_of(bridge);
+        let prefix = prefix_of(&ip_of(bridge));
+        let score = bridge
+            .get("composite_score")
+            .or_else(|| bridge.get("score"))
+            .or_else(|| bridge.get("smart_iran_scores").and_then(|s| s.get("composite")))
+            .and_then(Value::as_f64)
+            .unwrap_or(0.5);
+        let line = bridge
+            .get("raw")
+            .or_else(|| bridge.get("line"))
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        if line.is_empty() {
+            continue;
+        }
+        candidates.push(Candidate {
+            line,
+            transport,
+            prefix,
+            score,
+            ordinal,
+        });
+    }
+
+    // ── 2. Transport-aware deterministic ordering ────────────────────────
+    candidates.sort_by(|a, b| {
+        a.sort_key(transport_rank(&a.transport, censorship_level))
+            .cmp(&b.sort_key(transport_rank(&b.transport, censorship_level)))
+    });
+
+    // ── 3. Diversity-constrained selection ───────────────────────────────
+    let mut per_prefix: BTreeMap<String, usize> = BTreeMap::new();
+    let mut last_transport: Option<String> = None;
+    let mut deferred: Vec<Candidate> = Vec::new();
+    let mut chosen: Vec<Candidate> = Vec::new();
+    let cap = if max_entries == 0 {
+        usize::MAX
+    } else {
+        max_entries
+    };
+
+    for candidate in candidates {
+        if chosen.len() >= cap {
+            break;
+        }
+        let used = per_prefix.entry(candidate.prefix.clone()).or_insert(0);
+        let same_transport = last_transport.as_deref() == Some(candidate.transport.as_str());
+        if *used >= MAX_PER_PREFIX || (same_transport && !chosen.is_empty()) {
+            deferred.push(candidate);
+            continue;
+        }
+        *used += 1;
+        last_transport = Some(candidate.transport.clone());
+        chosen.push(candidate);
+    }
+    // Second pass: fill remaining slots from deferred candidates, still
+    // honouring the prefix cap (transport alternation relaxes once the
+    // primary pass is exhausted — any surviving bridge beats none).
+    if chosen.len() < cap {
+        for candidate in deferred {
+            if chosen.len() >= cap {
+                break;
+            }
+            let used = per_prefix.entry(candidate.prefix.clone()).or_insert(0);
+            if *used >= MAX_PER_PREFIX {
+                continue;
+            }
+            *used += 1;
+            chosen.push(candidate);
+        }
+    }
+
+    // ── 4. Serialize plan + histograms ───────────────────────────────────
+    let mut transport_histogram: BTreeMap<String, usize> = BTreeMap::new();
+    let mut prefixes: BTreeSet<String> = BTreeSet::new();
+    let entries: Vec<Value> = chosen
+        .iter()
+        .enumerate()
+        .map(|(rank, c)| {
+            *transport_histogram.entry(c.transport.clone()).or_insert(0) += 1;
+            prefixes.insert(c.prefix.clone());
+            json!({
+                "rank": rank + 1,
+                "line": c.line,
+                "transport": c.transport,
+                "asn_prefix": c.prefix,
+                "composite_score": c.score,
+            })
+        })
+        .collect();
+
+    json!({
+        "generated_at": Utc::now().to_rfc3339(),
+        "engine": "iran-smart-rotation-v1",
+        "censorship_level": censorship_level,
+        "candidates_evaluated": bridges.len(),
+        "rotation_size": entries.len(),
+        "asn_diversity": prefixes.len(),
+        "transport_histogram": transport_histogram,
+        "plan": entries,
+    })
+}
+
+/// Build the plan and persist both the JSON plan and the plain-text export
+/// (one bridge line per entry — directly usable by Tor Browser's network
+/// settings or downstream distribution stages).
+pub fn write_rotation_outputs(
+    bridges: &[Value],
+    censorship_level: u8,
+    max_entries: usize,
+    plan_path: &Path,
+    export_path: &Path,
+) -> Result<Value, Box<dyn Error>> {
+    let plan = build_rotation_plan(bridges, censorship_level, max_entries);
+
+    if let Some(parent) = plan_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    let mut body = serde_json::to_string_pretty(&plan)?;
+    body.push('\n');
+    std::fs::write(plan_path, body)?;
+
+    if let Some(parent) = export_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    let mut lines = String::new();
+    if let Some(entries) = plan.get("plan").and_then(Value::as_array) {
+        for entry in entries {
+            if let Some(line) = entry.get("line").and_then(Value::as_str) {
+                lines.push_str(line);
+                lines.push('\n');
+            }
+        }
+    }
+    std::fs::write(export_path, lines)?;
+
+    Ok(plan)
+}
