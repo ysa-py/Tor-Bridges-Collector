@@ -34,6 +34,7 @@ pub mod iran_nin_bypass;
 pub mod iran_quantum_dpi_shield_v2;
 pub mod iran_smart_anti_filter;
 pub mod iran_smart_anti_filter_v2;
+pub mod iran_smart_rotation;
 pub mod ja3_intelligence;
 pub mod ml_predictor;
 pub mod monitoring;

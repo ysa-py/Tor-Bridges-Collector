@@ -871,3 +871,15 @@ Stage Summary:
 - No features dropped, no behaviors silently skipped — all parity tests pass byte-identical
 - Final tarball packaged as MICAFP-vip-Quantum-Ultra-main-Zero-error-VIP-Quantum.tar.gz at /home/z/my-project/download/
 
+
+## 2026-07-31 (session 019fb53f, continuation)
+- Solved the PR #174 rustfmt gate offline (chain_width/single_line_if_else rules)
+  and restored the full iran_smart_rotation module; queued as ed05762.
+- Found the WORKFLOWS_RUST_NATIVE_FIX patch had never been committed; regenerated
+  the complete 9-workflow remediation from measured root causes; apply-checked
+  against pristine main 90b8e16; validator/yamllint/PyYAML all clean (47332e2).
+- Repaired pyproject setuptools package list (retired trees) and +x on
+  scripts/security_scan.py; re-ran the full local test matrix — all green.
+- GitHub installation token expired at 00:07 UTC and never rotated back this turn
+  (env GH_TOKEN, sandbox files all 401); 8 commits queued for push; live Actions
+  verification remains pending, honestly recorded in MIGRATION_STATUS section 17.

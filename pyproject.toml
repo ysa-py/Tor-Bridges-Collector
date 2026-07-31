@@ -79,22 +79,14 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = [
-    "torshield_ai_gateway",
-    "core",
-    "sources",
-    "config",
-    "circuit_breaker",
-    "recovery",
-    "monitoring",
-    "reports",
-    "health",
-    "gateway",
-    "registry",
-    "anti_censorship",
-    "diagnostics",
-    "autonomous",
-]
+# 2026-07-30 (Python→Rust migration): every package previously listed here
+# (torshield_ai_gateway, core, sources, config, circuit_breaker, recovery,
+# monitoring, reports, health, gateway, registry, anti_censorship,
+# diagnostics, autonomous) was retired when the runtime moved to the Rust
+# workspace. Packaging an empty list keeps `pip install .` / `-e .`
+# deterministic for CI tooling instead of hard-failing on missing
+# directories (the Autonomous Sentinel regression, run 30588619598).
+packages = []
 
 [[tool.mypy.overrides]]
 module = ["scripts.*", "torshield_ai_gateway.*", "monitoring.*"]
