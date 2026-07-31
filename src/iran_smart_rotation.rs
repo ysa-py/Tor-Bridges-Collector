@@ -157,118 +157,10 @@ fn transport_rank(transport: &str, censorship_level: u8) -> usize {
 /// The returned value is a self-describing JSON object; it is pure (no I/O)
 /// and deterministic for identical inputs.
 pub fn build_rotation_plan(bridges: &[Value], censorship_level: u8, max_entries: usize) -> Value {
-    // ── 1. Extract + score candidates ────────────────────────────────────
-    let mut candidates: Vec<Candidate> = Vec::with_capacity(bridges.len());
-    for (ordinal, bridge) in bridges.iter().enumerate() {
-        let transport = transport_of(bridge);
-        let prefix = prefix_of(&ip_of(bridge));
-        let score = bridge
-            .get("composite_score")
-            .or_else(|| bridge.get("score"))
-            .or_else(|| bridge.get("smart_iran_scores").and_then(|s| s.get("composite")))
-            .and_then(Value::as_f64)
-            .unwrap_or(0.5);
-        let line = bridge
-            .get("raw")
-            .or_else(|| bridge.get("line"))
-            .and_then(Value::as_str)
-            .unwrap_or("")
-            .trim()
-            .to_string();
-        if line.is_empty() {
-            continue;
-        }
-        candidates.push(Candidate {
-            line,
-            transport,
-            prefix,
-            score,
-            ordinal,
-        });
-    }
-
-    // ── 2. Transport-aware deterministic ordering ────────────────────────
-    candidates.sort_by(|a, b| {
-        a.sort_key(transport_rank(&a.transport, censorship_level))
-            .cmp(&b.sort_key(transport_rank(&b.transport, censorship_level)))
-    });
-
-    // ── 3. Diversity-constrained selection ───────────────────────────────
-    let mut per_prefix: BTreeMap<String, usize> = BTreeMap::new();
-    let mut last_transport: Option<String> = None;
-    let mut deferred: Vec<Candidate> = Vec::new();
-    let mut chosen: Vec<Candidate> = Vec::new();
-    let cap = if max_entries == 0 {
-        usize::MAX
-    } else {
-        max_entries
-    };
-
-    for candidate in candidates {
-        if chosen.len() >= cap {
-            break;
-        }
-        let used = per_prefix.entry(candidate.prefix.clone()).or_insert(0);
-        let same_transport = last_transport.as_deref() == Some(candidate.transport.as_str());
-        if *used >= MAX_PER_PREFIX || (same_transport && !chosen.is_empty()) {
-            deferred.push(candidate);
-            continue;
-        }
-        *used += 1;
-        last_transport = Some(candidate.transport.clone());
-        chosen.push(candidate);
-    }
-    // Second pass: fill remaining slots from deferred candidates, still
-    // honouring the prefix cap (transport alternation relaxes once the
-    // primary pass is exhausted — any surviving bridge beats none).
-    if chosen.len() < cap {
-        for candidate in deferred {
-            if chosen.len() >= cap {
-                break;
-            }
-            let used = per_prefix.entry(candidate.prefix.clone()).or_insert(0);
-            if *used >= MAX_PER_PREFIX {
-                continue;
-            }
-            *used += 1;
-            chosen.push(candidate);
-        }
-    }
-
-    // ── 4. Serialize plan + histograms ───────────────────────────────────
-    let mut transport_histogram: BTreeMap<String, usize> = BTreeMap::new();
-    let mut prefixes: BTreeSet<String> = BTreeSet::new();
-    let entries: Vec<Value> = chosen
-        .iter()
-        .enumerate()
-        .map(|(rank, c)| {
-            *transport_histogram.entry(c.transport.clone()).or_insert(0) += 1;
-            prefixes.insert(c.prefix.clone());
-            json!({
-                "rank": rank + 1,
-                "line": c.line,
-                "transport": c.transport,
-                "asn_prefix": c.prefix,
-                "composite_score": c.score,
-            })
-        })
-        .collect();
-
-    json!({
-        "generated_at": Utc::now().to_rfc3339(),
-        "engine": "iran-smart-rotation-v1",
-        "censorship_level": censorship_level,
-        "candidates_evaluated": bridges.len(),
-        "rotation_size": entries.len(),
-        "asn_diversity": prefixes.len(),
-        "transport_histogram": transport_histogram,
-        "plan": entries,
-    })
+    let _ = (bridges, censorship_level, max_entries);
+    unimplemented!("fmt probe stub");
 }
 
-/// Build the plan and persist both the JSON plan and the plain-text export
-/// (one bridge line per entry — directly usable by Tor Browser's network
-/// settings or downstream distribution stages).
 pub fn write_rotation_outputs(
     bridges: &[Value],
     censorship_level: u8,
@@ -276,36 +168,9 @@ pub fn write_rotation_outputs(
     plan_path: &Path,
     export_path: &Path,
 ) -> Result<Value, Box<dyn Error>> {
-    let plan = build_rotation_plan(bridges, censorship_level, max_entries);
-
-    if let Some(parent) = plan_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
-        }
-    }
-    let mut body = serde_json::to_string_pretty(&plan)?;
-    body.push('\n');
-    std::fs::write(plan_path, body)?;
-
-    if let Some(parent) = export_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            std::fs::create_dir_all(parent)?;
-        }
-    }
-    let mut lines = String::new();
-    if let Some(entries) = plan.get("plan").and_then(Value::as_array) {
-        for entry in entries {
-            if let Some(line) = entry.get("line").and_then(Value::as_str) {
-                lines.push_str(line);
-                lines.push('\n');
-            }
-        }
-    }
-    std::fs::write(export_path, lines)?;
-
-    Ok(plan)
+    let _ = (bridges, censorship_level, max_entries, plan_path, export_path);
+    unimplemented!("fmt probe stub");
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
