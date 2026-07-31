@@ -1,0 +1,160 @@
+---
+name: "70 · AI Ultra-Pro Cleanup Engine"
+# Reusable workflow — invoked at the end of every orchestrator run + on schedule.
+# Owns: safe deletion of old workflow runs (keep >=2 per workflow), self-protection,
+#       rate-limit aware, retry engine, dry-run by default for manual triggers.
+
+'on':
+  workflow_call:
+    inputs:
+      keep_last_n:
+        description: 'Number of recent runs to keep per workflow (minimum 2)'
+        required: false
+        default: '2'
+        type: string
+      dry_run:
+        description: 'Dry-run: preview deletions without performing them'
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      keep_last_n:
+        description: 'Number of recent runs to keep per workflow (minimum 2)'
+        required: false
+        default: '2'
+        type: string
+      dry_run:
+        description: 'Dry-run: preview deletions without performing them'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: ai-ultra-pro-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Global Cleanup — All Workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: AI Ultra-Pro Global Cleanup (zero-error engine)
+        if: always()
+        uses: actions/github-script@v7
+        env:
+          KEEP_LAST_N: ${{ inputs.keep_last_n || '2' }}
+          DRY_RUN_INPUT: ${{ inputs.dry_run }}
+          EVENT_NAME: ${{ github.event_name }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const rawKeepLast = Number.parseInt(process.env.KEEP_LAST_N || '2', 10);
+            const KEEP_LAST_N = Number.isFinite(rawKeepLast) && rawKeepLast >= 2 ? rawKeepLast : 2;
+            const rawDryRunInput = String(process.env.DRY_RUN_INPUT || '').trim().toLowerCase();
+            const EVENT_NAME = String(process.env.EVENT_NAME || context.eventName || '').trim();
+            let DRY_RUN, DRY_RUN_SOURCE;
+            if (rawDryRunInput === 'true' || rawDryRunInput === 'false') {
+              DRY_RUN = rawDryRunInput === 'true';
+              DRY_RUN_SOURCE = `input dry_run=${rawDryRunInput}`;
+            } else if (EVENT_NAME === 'schedule') {
+              DRY_RUN = false; DRY_RUN_SOURCE = 'schedule default dry_run=false';
+            } else {
+              DRY_RUN = true; DRY_RUN_SOURCE = `${EVENT_NAME || 'unknown'} default dry_run=true`;
+            }
+            const THROTTLE_MS = 250, MAX_RETRIES = 4, CURRENT_RUN_ID = Number(context.runId);
+            const { owner, repo } = context.repo;
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            const mdCell = v => String(v).replaceAll('|', '\\|').replace(/\r?\n/g, ' ');
+            const ACTIVE = new Set(['in_progress','queued','requested','waiting','pending']);
+            async function withRetry(fn, label) {
+              for (let a=1; a<=MAX_RETRIES; a++) {
+                try { return { ok: true, data: await fn() }; }
+                catch (err) {
+                  const s = err.status ?? 0, msg = err.message || String(err);
+                  if (s === 404) return { ok: false, reason: 'not_found', detail: msg };
+                  if (s === 409) return { ok: false, reason: 'active_lock', detail: msg };
+                  if (s === 401 || s === 422) return { ok: false, reason: 'api_rejected', detail: msg };
+                  if (s === 403 && msg.includes('Cannot delete')) return { ok: false, reason: 'protected', detail: msg };
+                  if (a === MAX_RETRIES) return { ok: false, reason: 'error', detail: `HTTP ${s}: ${msg}` };
+                  const retryAfter = Number(err.response?.headers?.['retry-after'] || 0) * 1000;
+                  const backoff = Math.max(retryAfter, THROTTLE_MS * Math.pow(2, a));
+                  core.warning(`[${label}] ${s===429||s===403?'Rate-limit':`HTTP ${s}`} — retry ${a}/${MAX_RETRIES-1} in ${backoff} ms`);
+                  await sleep(backoff);
+                }
+              }
+              return { ok: false, reason: 'exhausted' };
+            }
+            let extraThrottle = 0;
+            try {
+              const { data: rl } = await github.rest.rateLimit.get();
+              const c = rl.resources.core;
+              const pct = Math.round((c.remaining / c.limit) * 100);
+              core.info(`🔋 API Quota: ${c.remaining}/${c.limit} (${pct}%) | Resets: ${new Date(c.reset*1000).toUTCString()}`);
+              if (c.remaining < 200) { extraThrottle = 500; core.warning('⚠️ Low API quota — adding +500 ms throttle'); }
+            } catch (e) { core.warning(`Rate-limit pre-check skipped: ${e.message}`); }
+            const throttle = THROTTLE_MS + extraThrottle;
+            const wfRes = await withRetry(
+              () => github.paginate(github.rest.actions.listRepoWorkflows, { owner, repo, per_page: 100 }),
+              'listRepoWorkflows'
+            );
+            if (!wfRes.ok) {
+              const reason = wfRes.detail || wfRes.reason || 'unknown';
+              core.warning(`Cleanup skipped: cannot list workflows — ${reason}`);
+              await core.summary.addRaw(`## 🧹 Cleanup Skipped\n\n> ${mdCell(reason)}\n`).write();
+              return;
+            }
+            const workflows = wfRes.data;
+            core.info(`📂 Discovered ${workflows.length} workflow(s)`);
+            let gS=0, gK=0, gD=0, gSk=0, gF=0; const rows=[];
+            for (const wf of workflows) {
+              const runsRes = await withRetry(
+                () => github.paginate(github.rest.actions.listWorkflowRuns, { owner, repo, workflow_id: wf.id, per_page: 100 }),
+                `listRuns:${wf.id}`
+              );
+              if (!runsRes.ok) {
+                rows.push({ name: wf.name, total: '?', kept: '?', del: 0, skip: 0, fail: 0, st: '⚠️' });
+                continue;
+              }
+              const allRuns = runsRes.data.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+              gS += allRuns.length;
+              const protectedRuns = allRuns.slice(0, KEEP_LAST_N);
+              const candidates = allRuns.slice(KEEP_LAST_N);
+              gK += protectedRuns.length;
+              let wD=0, wSk=0, wF=0;
+              for (const run of candidates) {
+                const lbl = `run #${run.run_number} (id: ${run.id}, status: ${run.status})`;
+                if (Number(run.id) === CURRENT_RUN_ID) { wSk++; continue; }
+                if (ACTIVE.has(run.status)) { wSk++; continue; }
+                if (DRY_RUN) { wD++; continue; }
+                const delRes = await withRetry(
+                  () => github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: run.id }),
+                  `deleteRun:${run.id}`
+                );
+                if (delRes.ok || delRes.reason === 'not_found') wD++;
+                else if (delRes.reason === 'active_lock' || delRes.reason === 'protected') wSk++;
+                else { wF++; core.warning(`Failed: ${lbl} — ${delRes.detail || delRes.reason}`); }
+                await sleep(throttle);
+              }
+              gD += wD; gSk += wSk; gF += wF;
+              rows.push({ name: wf.name, total: allRuns.length, kept: protectedRuns.length, del: wD, skip: wSk, fail: wF, st: wF > 0 ? '⚠️' : '✅' });
+            }
+            let md = `## 🧹 AI Ultra-Pro Cleanup Report\n\n`;
+            md += `> **Repo:** \`${owner}/${repo}\` · **Keep:** ${KEEP_LAST_N} · **Mode:** ${DRY_RUN ? '🔵 Dry-Run' : '🔴 Live'}\n\n`;
+            md += '| Workflow | Total | Kept | Deleted | Skipped | Failed | Status |\n';
+            md += '|:--|--:|--:|--:|--:|--:|:--:|\n';
+            for (const r of rows) {
+              md += `| ${mdCell(r.name)} | ${r.total} | ${r.kept} | ${r.del} | ${r.skip} | ${r.fail} | ${r.st} |\n`;
+            }
+            md += `| **TOTAL** | **${gS}** | **${gK}** | **${gD}** | **${gSk}** | **${gF}** | ${gF === 0 ? '✅' : '⚠️'} |\n`;
+            await core.summary.addRaw(md).write();
+            core.info(DRY_RUN ? `🔵 Dry-run: ${gD} would be removed across ${workflows.length} workflows.`
+                              : `🎉 Cleanup complete! Deleted: ${gD} | Kept: ${gK}`);
+

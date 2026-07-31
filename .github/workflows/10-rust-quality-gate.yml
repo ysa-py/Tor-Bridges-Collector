@@ -1,0 +1,174 @@
+---
+name: "10 · Rust Quality Gate"
+# Reusable workflow — invoked by 00-orchestrator.yml.
+# Owns: cargo fmt --check, cargo clippy -D warnings, cargo test --workspace,
+#       cargo audit (security), cross-compile to armv7.
+
+'on':
+  workflow_call:
+    inputs:
+      enable-cross-compile:
+        description: 'Run ARMv7 cross-compile check'
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: rust-quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fmt-clippy-test:
+    name: fmt + clippy + test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+
+      - name: Subpackage profile scanner (migrated from enforce-profiles.yml)
+        run: |
+          set -euo pipefail
+          if [ -f scripts/check_subpackage_profiles.sh ]; then
+            bash scripts/check_subpackage_profiles.sh
+          else
+            echo "::warning::scripts/check_subpackage_profiles.sh not found — skipping (non-fatal)"
+          fi
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies (parity fallback path)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pyyaml requests aiohttp structlog tenacity rich
+          fi
+
+      - name: Set up Rust (stable, with rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check (cargo fmt --check)
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings, default features)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Clippy (smart-detection feature)
+        run: cargo clippy --lib --tests --features smart-detection -- -D warnings
+        continue-on-error: true
+
+      - name: Clippy (smart-detection + network)
+        run: cargo clippy --lib --tests --features smart-detection,network -- -D warnings
+        continue-on-error: true
+
+      - name: Workspace tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: cargo test --workspace --release
+
+      - name: Smart-detection tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: cargo test --features smart-detection --release
+        continue-on-error: true
+
+      - name: Upload test logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-test-output-${{ github.run_id }}
+          path: target/test-output.log
+          if-no-files-found: ignore
+          retention-days: 7
+
+  security-audit:
+    name: Security audit (cargo-audit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-binstall (pinned tag)
+        uses: cargo-bins/cargo-binstall@v1.13.5
+
+      - name: Install cargo-audit
+        run: cargo binstall cargo-audit -y --no-confirm
+
+      - name: Run cargo-audit (fail on vulnerabilities)
+        run: |
+          set -euo pipefail
+          cargo audit --json > audit-report.json || true
+          count=$(jq -r '(.vulnerabilities.count // .vulnerabilities.found // (.vulnerabilities.list | length) // 0) as $c | ($c // 0)' audit-report.json)
+          echo "Vulnerability count: $count"
+          if [ "$count" -gt 0 ]; then
+            echo "::error::$count vulnerabilities detected — failing per Zero-Error policy."
+            exit 1
+          fi
+
+      - name: Upload audit report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-audit-${{ github.run_id }}
+          path: |
+            audit-report.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  cross-compile-armv7:
+    name: Cross-compile (armv7-unknown-linux-musleabihf)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ inputs.enable-cross-compile }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@v1.13.5
+
+      - name: Install `cross` (container-based cross-compile)
+        run: cargo binstall cross -y --no-confirm
+
+      - name: Add ARMv7 musl target
+        run: rustup target add armv7-unknown-linux-musleabihf
+
+      - name: Cross check (armv7 release)
+        run: cross check --target armv7-unknown-linux-musleabihf --workspace --release
+

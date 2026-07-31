@@ -1,0 +1,602 @@
+---
+name: "90 · Tor-Bridges-Collector ULTRA MONOLITH"
+# ══════════════════════════════════════════════════════════════════════════
+# GIANT SINGLE-FILE ALTERNATIVE — everything in one workflow.
+# Same capabilities as 00-orchestrator + all reusables combined.
+# Use this if you prefer a single file over the orchestrator + reusable split.
+# Both files are kept in sync by the installer script.
+# ══════════════════════════════════════════════════════════════════════════
+
+'on':
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, master]
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'AI task category'
+        required: false
+        default: 'general'
+        type: choice
+        options: [general, reasoning, coding, vision, fast]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NODE_NO_WARNINGS: '1'
+  PYTHONPATH: ${{ github.workspace }}
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: monolith-ultra
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # JOB 1: Rust quality gate (fmt + clippy + test + audit)
+  # ─────────────────────────────────────────────────────────────────────────
+  rust-quality-gate:
+    name: Rust Quality Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies (parity fallback path)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pyyaml requests aiohttp structlog tenacity rich
+          fi
+      - name: Set up Rust (stable, with rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Workspace tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: cargo test --workspace --release
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # JOB 2: Build all binaries (Rust + Go)
+  # ─────────────────────────────────────────────────────────────────────────
+  build-binaries:
+    name: Build Binaries
+    needs: [rust-quality-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+      - name: Set up Rust (stable, with rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build Rust workspace (release)
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: cargo build --release --workspace
+
+      - name: Build bridge-probe (release)
+        working-directory: bridge-probe
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: cargo build --release
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build Go binaries
+        run: |
+          CGO_ENABLED=0 GOOS=linux go build -o iran_tester ./cmd/iran_tester/ || echo "::warning::iran_tester build failed"
+          CGO_ENABLED=0 GOOS=linux go build -o probe_scheduler ./cmd/probe_scheduler/ || echo "::warning::probe_scheduler build failed"
+
+      - name: Stage artifacts
+        run: |
+          mkdir -p artifact-bin
+          find target/release -maxdepth 1 -type f -executable ! -name '*.d' -exec cp {} artifact-bin/ \; 2>/dev/null || true
+          [ -f bridge-probe/target/release/bridge-probe ] && cp bridge-probe/target/release/bridge-probe artifact-bin/
+          [ -f iran_tester ] && cp iran_tester artifact-bin/
+          [ -f probe_scheduler ] && cp probe_scheduler artifact-bin/
+          ls -la artifact-bin/
+
+      - name: Upload binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: monolith-binaries
+          path: artifact-bin/
+          retention-days: 1
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # JOB 3: AI Gateway Health Check
+  # ─────────────────────────────────────────────────────────────────────────
+  ai-gateway-health:
+    name: AI Gateway Health
+    needs: [rust-quality-gate]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies (parity fallback path)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pyyaml requests aiohttp structlog tenacity rich
+          fi
+      - name: Set up Rust (stable, with rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Pre-flight secret validation
+        env:
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
+          PORTKEY_GATEWAY_URL: ${{ secrets.PORTKEY_GATEWAY_URL }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
+        run: |
+          set -euo pipefail
+          MISSING=0
+          [ -z "$CEREBRAS_API_KEY_1" ] && MISSING=$((MISSING+1))
+          [ -z "$PORTKEY_API_KEY_1" ] && MISSING=$((MISSING+1))
+          [ -z "$CF_ACCOUNT_ID_1" ] && MISSING=$((MISSING+1))
+          [ "$MISSING" -ge 3 ] && { echo "::error::CRITICAL — secrets missing"; exit 1; }
+          echo "✓ Pre-flight passed"
+
+      - name: Run Gateway Health Check (Rust first)
+        env:
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
+          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
+          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
+          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
+          PORTKEY_API_KEY_2: ${{ secrets.PORTKEY_API_KEY_2 }}
+          PORTKEY_API_KEY_3: ${{ secrets.PORTKEY_API_KEY_3 }}
+          PORTKEY_GATEWAY_URL: ${{ secrets.PORTKEY_GATEWAY_URL }}
+          PORTKEY_PROVIDER_KEY: ${{ secrets.PORTKEY_PROVIDER_KEY }}
+          PORTKEY_HEALTH_MODEL: ${{ secrets.PORTKEY_HEALTH_MODEL }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
+          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
+          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
+          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
+          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
+          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
+          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
+          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
+          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
+          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
+          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
+          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
+          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
+          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
+          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
+          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
+          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
+          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
+          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
+          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
+          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
+          CF_AI_GATEWAY_URL_2: ${{ secrets.CF_AI_GATEWAY_URL_2 }}
+          CF_AI_GATEWAY_URL_3: ${{ secrets.CF_AI_GATEWAY_URL_3 }}
+          CF_AI_GATEWAY_URL_4: ${{ secrets.CF_AI_GATEWAY_URL_4 }}
+          CF_AI_GATEWAY_URL_5: ${{ secrets.CF_AI_GATEWAY_URL_5 }}
+          CF_AI_GATEWAY_URL_6: ${{ secrets.CF_AI_GATEWAY_URL_6 }}
+          CF_AI_GATEWAY_URL_7: ${{ secrets.CF_AI_GATEWAY_URL_7 }}
+          CF_AI_GATEWAY_URL_8: ${{ secrets.CF_AI_GATEWAY_URL_8 }}
+          CF_AI_GATEWAY_URL_9: ${{ secrets.CF_AI_GATEWAY_URL_9 }}
+          CF_AI_GATEWAY_URL_10: ${{ secrets.CF_AI_GATEWAY_URL_10 }}
+          CF_AI_GATEWAY_URL_11: ${{ secrets.CF_AI_GATEWAY_URL_11 }}
+        run: |
+          set -euo pipefail
+          mkdir -p data
+          if cargo build --release --bin ai_gateway_health_check 2>/dev/null; then
+            ./target/release/ai_gateway_health_check \
+              --output data/gateway_health_report.json \
+              --task "${{ github.event.inputs.task || 'general' }}" \
+              --max-retries 2
+          else
+            python scripts/ai_gateway_health_check.py \
+              --output data/gateway_health_report.json \
+              --task "${{ github.event.inputs.task || 'general' }}" \
+              --max-retries 2
+          fi
+
+      - name: Upload health report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monolith-health-report
+          path: data/gateway_health_report.json
+          if-no-files-found: warn
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # JOB 4: TorShield-IR Pipeline (14 stages, condensed)
+  # ─────────────────────────────────────────────────────────────────────────
+  torshield-pipeline:
+    name: TorShield-IR Pipeline
+    needs: [build-binaries, ai-gateway-health]
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT_AUTOFIX || github.token }}
+
+      - name: Bootstrap
+        run: |
+          [ -f scripts/github_actions_env_bootstrap.sh ] && bash scripts/github_actions_env_bootstrap.sh || true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python deps
+        run: |
+          python -m pip install --upgrade pip
+          [ -f requirements.txt ] && pip install -r requirements.txt || true
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+        with: { toolchain: 'stable' }
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Download prebuilt binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: monolith-binaries
+          path: downloaded-bin/
+
+      - name: Restore binaries to expected locations
+        run: |
+          set -euo pipefail
+          mkdir -p target/release bridge-probe/target/release
+          for bin in downloaded-bin/*; do
+            name=$(basename "$bin")
+            case "$name" in
+              bridge-probe) cp "$bin" bridge-probe/target/release/bridge-probe ;;
+              *) cp "$bin" target/release/"$name" 2>/dev/null || cp "$bin" "./$name" 2>/dev/null || true ;;
+            esac
+            chmod +x "./$name" 2>/dev/null || true
+          done
+          # Restore key binaries
+          [ -f downloaded-bin/iran_tester ] && cp downloaded-bin/iran_tester ./iran_tester && chmod +x ./iran_tester
+          [ -f downloaded-bin/probe_scheduler ] && cp downloaded-bin/probe_scheduler ./probe_scheduler && chmod +x ./probe_scheduler
+          ls -la iran_tester probe_scheduler bridge-probe/target/release/bridge-probe 2>/dev/null || true
+
+      - name: Stage 1 — Scraper (Rust first, Python fallback)
+        timeout-minutes: 10
+        run: |
+          set -euo pipefail
+          mkdir -p bridge data
+          if [ -x target/release/scraper ]; then
+            ./target/release/scraper --all-sources
+          elif [ -f scraper.py ]; then
+            python scraper.py
+          else
+            echo "::error::No scraper available"; exit 1
+          fi
+
+      - name: Stage 2 — iran_tester
+        timeout-minutes: 12
+        run: |
+          [ -x ./iran_tester ] && ./iran_tester --input bridge/bridge_list_for_testing.json --output bridge/iran_results.json --workers 100 --timeout 8s || echo "::warning::iran_tester missing"
+
+      - name: Stage 3 — probe_scheduler (background + timeout)
+        continue-on-error: true
+        timeout-minutes: 12
+        env:
+          RIPE_ATLAS_API_KEY: ${{ secrets.RIPE_ATLAS_API_KEY }}
+        run: |
+          if [ -x ./probe_scheduler ]; then
+            timeout 300 ./probe_scheduler --bridges data/iran_bridges.json --port 8742 &
+            echo $! > /tmp/probe_sched.pid
+            sleep 10
+          fi
+
+      - name: Stage 4 — bridge-probe
+        timeout-minutes: 15
+        run: |
+          if [ -x bridge-probe/target/release/bridge-probe ]; then
+            cat bridge/bridge_list_for_testing.json | ./bridge-probe/target/release/bridge-probe --timeout 20 --workers 50 > data/pt_results.json
+          else
+            echo '{"results":[]}' > data/pt_results.json
+          fi
+
+      - name: Stage 4 cleanup — kill probe_scheduler
+        if: always()
+        run: |
+          [ -f /tmp/probe_sched.pid ] && kill -KILL $(cat /tmp/probe_sched.pid) 2>/dev/null || true
+          fuser -k 8742/tcp 2>/dev/null || true
+
+      - name: Stage 6 — Score + export (Rust pipeline first)
+        timeout-minutes: 10
+        run: |
+          if [ -x target/release/pipeline ]; then
+            ./target/release/pipeline --mode score && ./target/release/pipeline --mode export
+          elif [ -f main.py ]; then
+            python main.py --mode score && python main.py --mode export
+          else
+            echo "::warning::No pipeline runner — skipping score/export"
+          fi
+
+      - name: Stage 8r — Iran SIAM/NGFW analysis (Rust first)
+        continue-on-error: true
+        timeout-minutes: 6
+        run: |
+          if [ -x target/release/iran_anti_siam ]; then
+            ./target/release/iran_anti_siam
+          elif [ -f iran_anti_siam.py ]; then
+            python iran_anti_siam.py
+          fi
+
+      - name: Stage 8j — Agentic AI DPI mutator
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          HYPERBOLIC_API_KEY: ${{ secrets.HYPERBOLIC_API_KEY }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
+          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
+          PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
+          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
+          PORTKEY_API_KEY_2: ${{ secrets.PORTKEY_API_KEY_2 }}
+          PORTKEY_API_KEY_3: ${{ secrets.PORTKEY_API_KEY_3 }}
+          PORTKEY_GATEWAY_URL: ${{ secrets.PORTKEY_GATEWAY_URL }}
+          PORTKEY_PROVIDER_KEY: ${{ secrets.PORTKEY_PROVIDER_KEY }}
+          PORTKEY_HEALTH_MODEL: ${{ secrets.PORTKEY_HEALTH_MODEL }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
+          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
+          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
+          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
+          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
+          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
+          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
+          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
+          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
+          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
+          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
+          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
+          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
+          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
+          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
+          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
+          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
+          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
+          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
+          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
+          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
+          CF_AI_GATEWAY_URL_2: ${{ secrets.CF_AI_GATEWAY_URL_2 }}
+          CF_AI_GATEWAY_URL_3: ${{ secrets.CF_AI_GATEWAY_URL_3 }}
+          CF_AI_GATEWAY_URL_4: ${{ secrets.CF_AI_GATEWAY_URL_4 }}
+          CF_AI_GATEWAY_URL_5: ${{ secrets.CF_AI_GATEWAY_URL_5 }}
+          CF_AI_GATEWAY_URL_6: ${{ secrets.CF_AI_GATEWAY_URL_6 }}
+          CF_AI_GATEWAY_URL_7: ${{ secrets.CF_AI_GATEWAY_URL_7 }}
+          CF_AI_GATEWAY_URL_8: ${{ secrets.CF_AI_GATEWAY_URL_8 }}
+          CF_AI_GATEWAY_URL_9: ${{ secrets.CF_AI_GATEWAY_URL_9 }}
+          CF_AI_GATEWAY_URL_10: ${{ secrets.CF_AI_GATEWAY_URL_10 }}
+          CF_AI_GATEWAY_URL_11: ${{ secrets.CF_AI_GATEWAY_URL_11 }}
+        run: |
+          [ -f ai_dpi_mutator.py ] && python ai_dpi_mutator.py || echo "::warning::ai_dpi_mutator.py absent"
+
+      - name: Stage 9 — Write results (Telegram OPTIONAL)
+        timeout-minutes: 8
+        run: |
+          if [ -x target/release/results_writer ]; then
+            ./target/release/results_writer
+          elif [ -f results_writer.py ]; then
+            TELEGRAM_BOT_TOKEN="" TELEGRAM_CHAT_ID="" python results_writer.py
+          fi
+
+      - name: Stage 11 — Commit + push
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          git config --global user.name  "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull origin "${{ github.ref_name }}" --rebase --autostash 2>/dev/null || true
+          git add bridge/ data/ docs/ export/ *.py 2>/dev/null || true
+          git diff --staged --quiet || { git commit -m "chore: update bridges (monolith) [skip ci]" && git push; }
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: monolith-bridge-report
+          path: |
+            data/latest-results.json
+            data/pt_results.json
+            bridge/iran_results.json
+            export/
+          if-no-files-found: ignore
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # JOB 5: AI Self-Healing (additive-only patch engine)
+  # ─────────────────────────────────────────────────────────────────────────
+  self-heal:
+    name: Self-Heal
+    needs: [torshield-pipeline]
+    if: always() && !cancelled()
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies (parity fallback path)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pyyaml requests aiohttp structlog tenacity rich
+          fi
+      - name: Set up Rust (stable, with rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Run AutoDebug (Rust first, Python fallback)
+        env:
+          GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX }}
+          GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+          GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+          PARENT_WORKFLOW_NAME: ${{ github.workflow }}
+          PARENT_RUN_ID: ${{ github.run_id }}
+        run: |
+          set +e
+          if cargo build --release --bin auto_debug 2>/dev/null; then
+            ./target/release/auto_debug "$PARENT_WORKFLOW_NAME" "$PARENT_RUN_ID"
+          else
+            python -m torshield_ai_gateway.auto_debug "$PARENT_WORKFLOW_NAME" "$PARENT_RUN_ID" || true
+          fi
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # JOB 6: Cleanup (always runs)
+  # ─────────────────────────────────────────────────────────────────────────
+  cleanup:
+    name: Cleanup Engine
+    needs: [rust-quality-gate, build-binaries, ai-gateway-health, torshield-pipeline, self-heal]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          KEEP_LAST_N: '2'
+          DRY_RUN_INPUT: ${{ github.event_name == 'workflow_dispatch' }}
+          EVENT_NAME: ${{ github.event_name }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const KEEP = Number.parseInt(process.env.KEEP_LAST_N || '2', 10);
+            const DRY = String(process.env.DRY_RUN_INPUT || 'false').toLowerCase() === 'true';
+            const { owner, repo } = context.repo;
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+            const wfs = await github.paginate(github.rest.actions.listRepoWorkflows, { owner, repo, per_page: 100 });
+            let deleted=0, kept=0;
+            for (const wf of wfs) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, { owner, repo, workflow_id: wf.id, per_page: 100 });
+              const sorted = runs.sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+              for (let i = KEEP; i < sorted.length; i++) {
+                const r = sorted[i];
+                if (Number(r.id) === Number(context.runId)) continue;
+                if (['in_progress','queued','requested','waiting','pending'].includes(r.status)) continue;
+                if (DRY) { deleted++; continue; }
+                try { await github.rest.actions.deleteWorkflowRun({ owner, repo, run_id: r.id }); deleted++; }
+                catch (e) { core.warning(`Failed: ${r.id} — ${e.message}`); }
+                await sleep(250);
+              }
+              kept += Math.min(KEEP, sorted.length);
+            }
+            core.info(`Cleanup: ${DRY?'dry-run, would delete':'deleted'} ${deleted} | kept ${kept}`);
+

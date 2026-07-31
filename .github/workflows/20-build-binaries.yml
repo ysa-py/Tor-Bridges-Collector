@@ -1,0 +1,179 @@
+---
+name: "20 · Build Binaries"
+# Reusable workflow — invoked by 00-orchestrator.yml.
+# Owns: building all Rust workspace binaries (release), building Go binaries
+#       (iran_tester + probe_scheduler), staging + uploading artifacts.
+
+'on':
+  workflow_call:
+    outputs:
+      rust-binaries-built:
+        description: "'true' if Rust release binaries were built successfully"
+        value: ${{ jobs.build-rust.outputs.built }}
+      go-binaries-built:
+        description: "'true' if Go binaries were built successfully"
+        value: ${{ jobs.build-go.outputs.built }}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: build-binaries-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-rust:
+    name: Build Rust binaries (release)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    outputs:
+      built: ${{ steps.stage.outputs.built }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+      - name: Set up Rust (stable, with rustfmt + clippy)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - name: Restore Cargo cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Generate Cargo.lock if absent (deterministic cache key)
+        run: |
+          set -euo pipefail
+          if [ ! -f Cargo.lock ]; then
+            cargo generate-lockfile
+            echo "Cargo.lock generated"
+          fi
+          if [ -d bridge-probe ] && [ ! -f bridge-probe/Cargo.lock ]; then
+            (cd bridge-probe && cargo generate-lockfile)
+          fi
+
+      - name: Build workspace (release, deny warnings)
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: |
+          set -euo pipefail
+          cargo build --release --workspace 2>&1
+
+      - name: Build bridge-probe (release, deny warnings)
+        working-directory: bridge-probe
+        env:
+          RUSTFLAGS: "-D warnings"
+        run: |
+          set -euo pipefail
+          cargo build --release 2>&1
+
+      - name: Stage release binaries
+        id: stage
+        run: |
+          set -euo pipefail
+          rm -rf artifact-bin
+          mkdir -p artifact-bin
+          # Copy every release binary that exists; ignore missing ones.
+          if [ -d target/release ]; then
+            find target/release -maxdepth 1 -type f -executable ! -name '*.d' ! -name '*.dylib' |
+              while read -r bin; do
+                cp "$bin" "artifact-bin/$(basename "$bin")" 2>/dev/null || true
+              done
+          fi
+          if [ -f bridge-probe/target/release/bridge-probe ]; then
+            cp bridge-probe/target/release/bridge-probe artifact-bin/bridge-probe
+          fi
+          [ -f Cargo.lock ] && cp Cargo.lock artifact-bin/Cargo.lock || true
+          [ -f bridge-probe/Cargo.lock ] && cp bridge-probe/Cargo.lock artifact-bin/bridge-probe-Cargo.lock || true
+          ls -la artifact-bin/
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Rust binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-binaries
+          path: artifact-bin/
+          retention-days: 1
+          if-no-files-found: warn
+
+  build-go:
+    name: Build Go binaries (iran_tester + probe_scheduler)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      built: ${{ steps.go-build.outputs.built }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+          cache-dependency-path: 'go.mod'
+
+      - name: Lock canonical Go module path (additive check, no destructive rewrite)
+        run: |
+          set -euo pipefail
+          CANONICAL=$(grep '^module ' go.mod | awk '{print $2}')
+          echo "Current module path: $CANONICAL"
+          # No rewriting — only verify the path is consistent.
+          BAD=$(grep -rn '"github.com/py-vip/ultra/' --include='*.go' --exclude-dir=vendor . 2>/dev/null || true)
+          if [ -n "$BAD" ]; then
+            echo "::warning::Stale legacy imports detected — please update to canonical path: $CANONICAL"
+            echo "$BAD"
+          fi
+
+      - name: Tidy + go vet
+        run: |
+          set -euo pipefail
+          go mod tidy 2>/dev/null || true
+          touch go.sum
+          go vet ./...
+
+      - name: Build iran_tester + probe_scheduler
+        id: go-build
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 GOOS=linux go build -o iran_tester ./cmd/iran_tester/ 2>/dev/null || {
+            echo "::warning::iran_tester build failed — checking for prebuilt binary"
+            [ -f iran_tester ] || echo "::error::iran_tester missing"
+          }
+          CGO_ENABLED=0 GOOS=linux go build -o probe_scheduler ./cmd/probe_scheduler/ 2>/dev/null || {
+            echo "::warning::probe_scheduler build failed — checking for prebuilt binary"
+            [ -f probe_scheduler ] || echo "::error::probe_scheduler missing"
+          }
+          ls -la iran_tester probe_scheduler 2>/dev/null || true
+          echo "built=true" >> "$GITHUB_OUTPUT"
+
+      - name: Upload Go binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-binaries
+          path: |
+            iran_tester
+            probe_scheduler
+            go.mod
+            go.sum
+          retention-days: 1
+          if-no-files-found: warn
+

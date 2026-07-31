@@ -1,0 +1,321 @@
+---
+name: "30 · AI Gateway Health Check"
+# Reusable workflow — invoked by 00-orchestrator.yml and on schedule.
+# Owns: pre-flight secret validation, dynamic model ranking, gateway health
+#       check across Cerebras + Cloudflare + Portkey providers, observability
+#       report generation.
+
+'on':
+  workflow_call:
+    inputs:
+      task:
+        description: 'Task category for model selection test'
+        required: false
+        default: 'general'
+        type: string
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task category (general|reasoning|coding|vision|fast)'
+        required: false
+        default: 'general'
+        type: choice
+        options: [general, reasoning, coding, vision, fast]
+      max_retries:
+        description: 'Max retry attempts per provider'
+        required: false
+        default: '2'
+        type: string
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NODE_NO_WARNINGS: '1'
+  PYTHONPATH: ${{ github.workspace }}
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: ai-gateway-health
+  cancel-in-progress: false
+
+jobs:
+  check-all-providers:
+    name: Gateway Health Check (all providers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python dependencies (parity fallback path)
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          else
+            pip install pyyaml requests aiohttp structlog tenacity rich
+          fi
+
+      - name: Ensure output directories
+        run: mkdir -p data export docs
+
+      - name: Pre-flight secret validation
+        env:
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
+          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
+          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
+          PORTKEY_API_KEY_2: ${{ secrets.PORTKEY_API_KEY_2 }}
+          PORTKEY_API_KEY_3: ${{ secrets.PORTKEY_API_KEY_3 }}
+          PORTKEY_GATEWAY_URL: ${{ secrets.PORTKEY_GATEWAY_URL }}
+          PORTKEY_PROVIDER_KEY: ${{ secrets.PORTKEY_PROVIDER_KEY }}
+          PORTKEY_HEALTH_MODEL: ${{ secrets.PORTKEY_HEALTH_MODEL }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
+          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
+          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
+          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
+          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
+          CF_AI_GATEWAY_URL_2: ${{ secrets.CF_AI_GATEWAY_URL_2 }}
+          CF_AI_GATEWAY_URL_3: ${{ secrets.CF_AI_GATEWAY_URL_3 }}
+        run: |
+          set -euo pipefail
+          echo "═══ Pre-flight Environment Variable Validation ═══"
+          MISSING=0; PARTIAL=0
+          # Cerebras — at least 1 key required
+          CERE_COUNT=0
+          for i in 1 2 3; do
+            eval "VAL=\$CEREBRAS_API_KEY_${i}"
+            if [ -n "$VAL" ]; then CERE_COUNT=$((CERE_COUNT + 1)); fi
+          done
+          [ "$CERE_COUNT" -eq 0 ] && { echo "::warning::No Cerebras keys"; MISSING=$((MISSING + 1)); }
+          # Portkey — gateway URL required
+          [ -z "$PORTKEY_GATEWAY_URL" ] && { echo "::warning::PORTKEY_GATEWAY_URL empty"; PARTIAL=$((PARTIAL + 1)); }
+          # Cloudflare — at least 1 account+token pair
+          CF_COUNT=0
+          for i in 1 2 3 4 5 6 7 8 9 10 11; do
+            eval "ACCT=\$CF_ACCOUNT_ID_${i}"
+            eval "TOKEN=\$CF_API_TOKEN_${i}"
+            if [ -n "$ACCT" ] && [ -n "$TOKEN" ]; then CF_COUNT=$((CF_COUNT + 1)); fi
+          done
+          [ "$CF_COUNT" -eq 0 ] && { echo "::warning::No Cloudflare accounts"; MISSING=$((MISSING + 1)); }
+          echo "Summary: missing groups=$MISSING, partial=$PARTIAL"
+          if [ "$MISSING" -ge 3 ]; then
+            echo "::error::CRITICAL — all provider groups missing. Configure secrets and retry."
+            exit 1
+          fi
+          echo "✓ Pre-flight passed"
+
+      - name: Show dynamic model rankings (Rust first, Python fallback)
+        env:
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
+          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
+          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
+          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
+          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
+          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
+          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
+          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
+          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
+          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
+          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
+          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
+          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
+          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
+          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
+          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
+          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
+          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
+          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
+          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
+          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
+          PORTKEY_API_KEY_2: ${{ secrets.PORTKEY_API_KEY_2 }}
+          PORTKEY_API_KEY_3: ${{ secrets.PORTKEY_API_KEY_3 }}
+        if: always()
+        continue-on-error: true
+        run: |
+          set +e
+          echo "═══ Dynamic Model Rankings ═══"
+          if cargo build --release --bin ai_gateway_health_check 2>/dev/null; then
+            ./target/release/ai_gateway_health_check --rankings-only || true
+          else
+            python3 - <<'ENDSCRIPT' || true
+          import sys
+          sys.path.insert(0, ".")
+          try:
+              from torshield_ai_gateway.dynamic_model_brain import DynamicModelBrain
+              brain = DynamicModelBrain()
+              brain.refresh()
+              print("=== LIVE Dynamic Model Rankings ===")
+              for task in ["general", "reasoning", "coding", "vision", "fast"]:
+                  top = brain.get_top_cf_hosted_models(task=task, top_n=3)
+                  print(f"[{task}] top-3 (LIVE):")
+                  for i, m in enumerate(top):
+                      print(f"  #{i+1} {m.id}  score={m.score}")
+          except Exception as e:
+              print(f"Dynamic ranking failed: {e}")
+              try:
+                  from torshield_ai_gateway.model_selector import ranked_cf_models
+                  print("=== Offline Fallback Rankings ===")
+                  for m in ranked_cf_models(task="fast", top_n=3):
+                      print(f"  {m.id}  score={m.score}")
+              except Exception as e2:
+                  print(f"Offline fallback also failed: {e2}")
+          ENDSCRIPT
+          fi
+
+      - name: Run Gateway Health Check (Rust first, Python fallback)
+        env:
+          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
+          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
+          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
+          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
+          PORTKEY_API_KEY_2: ${{ secrets.PORTKEY_API_KEY_2 }}
+          PORTKEY_API_KEY_3: ${{ secrets.PORTKEY_API_KEY_3 }}
+          PORTKEY_GATEWAY_URL: ${{ secrets.PORTKEY_GATEWAY_URL }}
+          PORTKEY_PROVIDER_KEY: ${{ secrets.PORTKEY_PROVIDER_KEY }}
+          PORTKEY_HEALTH_MODEL: ${{ secrets.PORTKEY_HEALTH_MODEL }}
+          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
+          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
+          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
+          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
+          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
+          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
+          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
+          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
+          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
+          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
+          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
+          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
+          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
+          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
+          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
+          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
+          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
+          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
+          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
+          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
+          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
+          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
+          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
+          CF_AI_GATEWAY_URL_2: ${{ secrets.CF_AI_GATEWAY_URL_2 }}
+          CF_AI_GATEWAY_URL_3: ${{ secrets.CF_AI_GATEWAY_URL_3 }}
+          CF_AI_GATEWAY_URL_4: ${{ secrets.CF_AI_GATEWAY_URL_4 }}
+          CF_AI_GATEWAY_URL_5: ${{ secrets.CF_AI_GATEWAY_URL_5 }}
+          CF_AI_GATEWAY_URL_6: ${{ secrets.CF_AI_GATEWAY_URL_6 }}
+          CF_AI_GATEWAY_URL_7: ${{ secrets.CF_AI_GATEWAY_URL_7 }}
+          CF_AI_GATEWAY_URL_8: ${{ secrets.CF_AI_GATEWAY_URL_8 }}
+          CF_AI_GATEWAY_URL_9: ${{ secrets.CF_AI_GATEWAY_URL_9 }}
+          CF_AI_GATEWAY_URL_10: ${{ secrets.CF_AI_GATEWAY_URL_10 }}
+          CF_AI_GATEWAY_URL_11: ${{ secrets.CF_AI_GATEWAY_URL_11 }}
+        run: |
+          set -euo pipefail
+          echo "═══ Running AI Gateway Health Check v13.0 ═══"
+          if cargo build --release --bin ai_gateway_health_check 2>/dev/null; then
+            ./target/release/ai_gateway_health_check \
+              --output data/gateway_health_report.json \
+              --task "${{ github.event.inputs.task || 'general' }}" \
+              --max-retries "${{ github.event.inputs.max_retries || '2' }}" \
+              --providers cerebras cloudflare_ai_gateway cloudflare_workers_ai portkey
+          else
+            python scripts/ai_gateway_health_check.py \
+              --output data/gateway_health_report.json \
+              --task "${{ github.event.inputs.task || 'general' }}" \
+              --max-retries "${{ github.event.inputs.max_retries || '2' }}" \
+              --providers cerebras cloudflare_ai_gateway cloudflare_workers_ai portkey
+          fi
+
+      - name: Display health report summary
+        if: always()
+        continue-on-error: true
+        run: |
+          [ ! -f data/gateway_health_report.json ] && { echo "No health report"; exit 0; }
+          python3 - <<'ENDSCRIPT' || true
+          import json
+          try:
+              report = json.load(open("data/gateway_health_report.json"))
+              summary = report.get("summary", {})
+              print(f'Version: {report.get("version", "unknown")}')
+              print(f'Primary OK: {summary.get("primary_ok", 0)}/{summary.get("total", 0)}')
+              print(f'Healthy: {summary.get("healthy", False)}')
+              for r in report.get("results", []):
+                  si = "OK" if r["status"] == "ok" else ("DG" if "degraded" in r["status"] else "ER")
+                  print(f'  [{si}] {r["provider"]}: {r["status"]} ({r.get("latency_ms", 0)}ms)')
+          except Exception as e:
+              print(f"Could not parse report: {e}")
+          ENDSCRIPT
+
+      - name: Generate observability report
+        if: always()
+        continue-on-error: true
+        run: |
+          python3 - <<'ENDSCRIPT' || true
+          import json, sys, os
+          sys.path.insert(0, ".")
+          try:
+              from monitoring.structured_logging import (
+                  ProviderHealthMetrics, FailureAnalytics, HealthReportGenerator,
+              )
+              metrics = ProviderHealthMetrics()
+              analytics = FailureAnalytics()
+              if os.path.exists("data/gateway_health_report.json"):
+                  report = json.load(open("data/gateway_health_report.json"))
+                  for result in report.get("results", []):
+                      provider = result.get("provider", "unknown")
+                      is_success = result.get("status") == "ok"
+                      metrics.record_request(
+                          provider_name=provider, success=is_success,
+                          latency_ms=result.get("latency_ms", 0),
+                          error=None if is_success else result.get("error"),
+                      )
+                      if not is_success:
+                          analytics.record_failure(
+                              provider=provider,
+                              error_message=result.get("error", "unknown"),
+                              http_status=result.get("http_status"),
+                          )
+              generator = HealthReportGenerator(metrics=metrics, analytics=analytics)
+              report = generator.generate()
+              generator.save("data/observability_report.json")
+              summary_path = os.environ.get("GITHUB_STEP_SUMMARY", "")
+              if summary_path:
+                  with open(summary_path, "a") as f:
+                      f.write("## Observability Report\n\n")
+                      f.write(f"**Overall Status:** `{report['overall_status'].upper()}`\n\n")
+          except Exception as e:
+              print(f"Observability report generation failed: {e}")
+          ENDSCRIPT
+
+      - name: Upload health + observability reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-health-${{ github.run_id }}
+          path: |
+            data/gateway_health_report.json
+            data/observability_report.json
+          retention-days: 30
+          if-no-files-found: warn
+

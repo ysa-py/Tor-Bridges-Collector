@@ -1,0 +1,183 @@
+---
+# ══════════════════════════════════════════════════════════════════════════
+# 15 · Legacy Multi-Language Quality Gate
+# Reusable workflow — invoked by 00-orchestrator.yml.
+# Migrated verbatim (zero capability loss) from the original standalone
+# go-quality-gate.yml: Go build/vet/fmt/test, Python syntax check, and the
+# Rust parity gate (Python→Rust migration regression check).
+#
+# ⚠ NOTE (carried over from the original file's own banner): this suite was
+# marked DORMANT in the legacy workflow because CircleCI was the primary,
+# gating CI system for this project and this workflow's secrets/branch
+# protections were not fully wired on GitHub Actions. It is wired into the
+# orchestrator here as a NON-BLOCKING advisory gate (continue-on-error) so
+# you get full visibility with zero risk of it breaking the "zero-error"
+# pipeline. Flip `continue-on-error` to `false` per-job once you've
+# confirmed it's green in your environment.
+# ══════════════════════════════════════════════════════════════════════════
+
+'on':
+  workflow_call: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: legacy-multilang-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-quality-gate:
+    name: Go Build & Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.work
+
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      - name: Go Build
+        run: |
+          echo "═══ Go Build ═══"
+          go build ./...
+          echo "✔ Build successful"
+
+      - name: Go Vet
+        run: |
+          echo "═══ Go Vet ═══"
+          go vet ./...
+          echo "✔ Vet passed"
+
+      - name: Go Format Check (internal/bridge)
+        run: |
+          echo "═══ Format Check (internal/bridge) ═══"
+          if gofmt -l ./internal/bridge/ | grep -q .; then
+            echo "✘ Format check failed:"
+            gofmt -l ./internal/bridge/
+            echo "Run: gofmt -w ./internal/bridge/"
+            exit 1
+          fi
+          echo "✔ Format check passed"
+
+      - name: Go Tests
+        run: |
+          echo "═══ Go Tests ═══"
+          go test ./... -v
+          echo "✔ All tests passed"
+
+  python-quality-gate:
+    name: Python Quality Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          pip install --upgrade pip
+          if [ -f requirements.txt ]; then
+            pip install -r requirements.txt
+          fi
+
+      - name: Python Syntax Check
+        run: |
+          echo "═══ Python Syntax Check ═══"
+          for f in $(find . -name '*.py' -not -path './vendor/*' -not -path './.git/*' -not -path './__pycache__/*'); do
+            python3 -m py_compile "$f" || exit 1
+          done
+          echo "✔ All Python files have valid syntax"
+
+  rust-parity-gate:
+    name: Rust Parity Tests (Python→Rust migration gate)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap environment defaults
+        run: |
+          set -euo pipefail
+          if [ -f scripts/github_actions_env_bootstrap.sh ]; then
+            bash scripts/github_actions_env_bootstrap.sh
+          else
+            echo "bootstrap script absent — continuing with defaults"
+          fi
+
+      - name: Set up Python (parity tests subprocess-invoke Python originals)
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install Python deps
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install pyyaml requests aiohttp structlog tenacity rich
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 'stable'
+          components: rustfmt, clippy
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-parity-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Format check
+        run: cargo fmt --all -- --check
+
+      - name: Clippy (deny warnings)
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Parity tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: cargo test --workspace
+
