@@ -1,0 +1,103 @@
+---
+name: AI Ultra-Pro Cleanup
+
+'on':
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      keep_last_n:
+        description: 'Completed runs to keep per workflow'
+        required: false
+        default: '2'
+      dry_run:
+        description: 'Preview deletions without deleting runs'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+  workflow_call:
+    inputs:
+      keep_last_n:
+        required: false
+        type: string
+        default: '2'
+      dry_run:
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  NODE_NO_WARNINGS: '1'
+
+concurrency:
+  group: ai-ultra-pro-cleanup-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Cleanup old workflow runs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Cleanup completed workflow runs
+        uses: actions/github-script@v8
+        env:
+          KEEP_LAST_N: ${{ inputs.keep_last_n || github.event.inputs.keep_last_n || '2' }}
+          DRY_RUN_RAW: ${{ inputs.dry_run || github.event.inputs.dry_run || 'true' }}
+        with:
+          script: |
+            const keepLast = Math.max(0, Number.parseInt(process.env.KEEP_LAST_N || '2', 10) || 2);
+            const dryRaw = String(process.env.DRY_RUN_RAW || 'true').toLowerCase();
+            const dryRun = ['1', 'true', 'yes', 'y'].includes(dryRaw);
+            const {owner, repo} = context.repo;
+            const currentRunId = context.runId;
+            const workflows = await github.paginate(github.rest.actions.listRepoWorkflows, {
+              owner,
+              repo,
+              per_page: 100,
+            });
+            const summary = [];
+            let deleted = 0;
+            for (const workflow of workflows) {
+              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
+                owner,
+                repo,
+                workflow_id: workflow.id,
+                status: 'completed',
+                per_page: 100,
+              });
+              const oldRuns = runs
+                .filter(run => run.id !== currentRunId)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+                .slice(keepLast);
+              for (const run of oldRuns) {
+                summary.push({workflow: workflow.name, id: run.id, created_at: run.created_at, dry_run: dryRun});
+                if (!dryRun) {
+                  try {
+                    await github.rest.actions.deleteWorkflowRun({owner, repo, run_id: run.id});
+                    deleted += 1;
+                  } catch (error) {
+                    core.warning(`Could not delete run ${run.id} from ${workflow.name}: ${error.message}`);
+                  }
+                }
+              }
+            }
+            await core.summary
+              .addHeading('AI Ultra-Pro Cleanup')
+              .addRaw(`Mode: ${dryRun ? 'dry-run' : 'delete'}\n\n`)
+              .addRaw(`Keep last completed runs per workflow: ${keepLast}\n\n`)
+              .addRaw(`Candidates: ${summary.length}; Deleted: ${deleted}\n`)
+              .write();
+            core.setOutput('candidates', String(summary.length));
+            core.setOutput('deleted', String(deleted));
