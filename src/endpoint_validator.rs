@@ -602,31 +602,34 @@ mod tests {
         assert_eq!(python_str_suffix("", 5), "");
     }
 
+    fn validator_with_enabled(enabled: bool) -> EndpointValidator {
+        EndpointValidator {
+            results: Vec::new(),
+            enabled,
+            probe_timeout: Duration::from_secs(8),
+        }
+    }
+
     #[test]
     fn validate_slot_url_disabled_short_circuits() {
-        std::env::set_var("ENABLE_ENDPOINT_VALIDATION", "false");
-        let mut v = EndpointValidator::new();
+        let mut v = validator_with_enabled(false);
         let r = v.validate_slot_url(1, "https://example.com", "", "");
         assert!(r.is_valid);
         assert!(r.is_reachable);
         assert_eq!(r.detected_suffix, "validation_disabled");
-        std::env::remove_var("ENABLE_ENDPOINT_VALIDATION");
     }
 
     #[test]
     fn validate_slot_url_rejects_non_https() {
-        std::env::set_var("ENABLE_ENDPOINT_VALIDATION", "true");
-        let mut v = EndpointValidator::new();
+        let mut v = validator_with_enabled(true);
         let r = v.validate_slot_url(1, "http://example.com", "", "");
         assert!(!r.is_valid);
         assert_eq!(r.error_message, "URL must start with https://");
-        std::env::remove_var("ENABLE_ENDPOINT_VALIDATION");
     }
 
     #[test]
     fn results_preserve_insertion_order_not_numeric_order() {
-        std::env::set_var("ENABLE_ENDPOINT_VALIDATION", "true");
-        let mut v = EndpointValidator::new();
+        let mut v = validator_with_enabled(true);
         v.validate_slot_url(
             5,
             "https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai",
@@ -641,13 +644,11 @@ mod tests {
         );
         let indices: Vec<i64> = v.results().iter().map(|(k, _)| *k).collect();
         assert_eq!(indices, vec![5, 2]); // call order, not sorted
-        std::env::remove_var("ENABLE_ENDPOINT_VALIDATION");
     }
 
     #[test]
     fn get_recommended_url_none_when_unset() {
-        std::env::set_var("ENABLE_ENDPOINT_VALIDATION", "true");
-        let mut v = EndpointValidator::new();
+        let mut v = validator_with_enabled(true);
         v.validate_slot_url(
             1,
             "https://api.cloudflare.com/client/v4/accounts/0123456789abcdef0123456789abcdef/ai",
@@ -657,13 +658,11 @@ mod tests {
         // DIRECT endpoints return the URL unchanged as "recommended", so
         // this is testing a slot that was never validated at all.
         assert_eq!(v.get_recommended_url(99), None);
-        std::env::remove_var("ENABLE_ENDPOINT_VALIDATION");
     }
 
     #[test]
     fn get_validation_summary_counts() {
-        std::env::set_var("ENABLE_ENDPOINT_VALIDATION", "true");
-        let mut v = EndpointValidator::new();
+        let mut v = validator_with_enabled(true);
         v.validate_slot_url(
             1,
             "https://gateway.ai.cloudflare.com/v1/0123456789abcdef0123456789abcdef/s/workers-ai/v1/chat/completions",
@@ -674,6 +673,5 @@ mod tests {
         assert_eq!(summary["total_slots_validated"], json!(1));
         assert_eq!(summary["workers_ai_bug_detected"], json!(1));
         assert_eq!(summary["fix_applied"], json!(true));
-        std::env::remove_var("ENABLE_ENDPOINT_VALIDATION");
     }
 }
