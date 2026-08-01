@@ -1001,7 +1001,7 @@ jobs:
         run: |
           set -euo pipefail
           cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
-          python3 scripts/sync_bridge_outputs.py \
+          cargo run --quiet --features network --bin sync_bridge_outputs -- \
             --bridge-dir bridge \
             --repo-url "$REPO_URL" \
             --telegram-upload "$TELEGRAM_UPLOAD"
@@ -1055,7 +1055,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull origin main --rebase --autostash
           git add bridge/ data/ docs/ export/ README.md go.mod go.sum \
-                  scripts/sync_bridge_outputs.py \
+                  src/bin/sync_bridge_outputs.rs \
                   cmd/ internal/ onionhop_collector.py zig-scanner/ \
                   ebpf_blueprint.py nin_cut_tester.py xtls_reality_wrapper.py \
                   ai_dpi_mutator.py next_gen_transports.py quantum_safe.py \
