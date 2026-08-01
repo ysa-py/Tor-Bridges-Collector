@@ -79,7 +79,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Cache cargo registry
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -129,7 +129,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Run subpackage profile scanner
         run: |
@@ -362,7 +362,7 @@ jobs:
           go-version-file: go.work
 
       - name: Cache Go modules
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
@@ -409,7 +409,7 @@ jobs:
     name: Test (release)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Rust toolchain (stable) with clippy and rustfmt
         uses: dtolnay/rust-toolchain@stable
@@ -420,7 +420,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Restore Cargo cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -440,7 +440,7 @@ jobs:
 
       - name: Upload test logs on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: test-output
           path: test-output.log
@@ -453,7 +453,7 @@ jobs:
     name: Security Audit (cargo-binstall + report)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Rust toolchain (stable)
         uses: dtolnay/rust-toolchain@stable
@@ -484,7 +484,7 @@ jobs:
 
       - name: Upload Security Audit Report on Failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: security-audit-report
           path: |
@@ -506,7 +506,7 @@ jobs:
     name: Cross-compile verification (armv7-unknown-linux-musleabihf)
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Rust toolchain (stable)
         uses: dtolnay/rust-toolchain@stable

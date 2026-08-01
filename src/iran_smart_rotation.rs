@@ -158,10 +158,121 @@ fn transport_rank(transport: &str, censorship_level: u8) -> usize {
 /// and deterministic for identical inputs.
 pub fn build_rotation_plan(bridges: &[Value], censorship_level: u8, max_entries: usize) -> Value {
     // ── 1. Extract + score candidates ────────────────────────────────────
-    let _ = (bridges, censorship_level, max_entries);
-    unimplemented!("fmt probe stub");
+    let mut candidates: Vec<Candidate> = Vec::with_capacity(bridges.len());
+    for (ordinal, bridge) in bridges.iter().enumerate() {
+        let transport = transport_of(bridge);
+        let prefix = prefix_of(&ip_of(bridge));
+        let score = bridge
+            .get("composite_score")
+            .or_else(|| bridge.get("score"))
+            .or_else(|| {
+                bridge
+                    .get("smart_iran_scores")
+                    .and_then(|s| s.get("composite"))
+            })
+            .and_then(Value::as_f64)
+            .unwrap_or(0.5);
+        let line = bridge
+            .get("raw")
+            .or_else(|| bridge.get("line"))
+            .and_then(Value::as_str)
+            .unwrap_or("")
+            .trim()
+            .to_string();
+        if line.is_empty() {
+            continue;
+        }
+        candidates.push(Candidate {
+            line,
+            transport,
+            prefix,
+            score,
+            ordinal,
+        });
+    }
+
+    // ── 2. Transport-aware deterministic ordering ────────────────────────
+    candidates.sort_by(|a, b| {
+        a.sort_key(transport_rank(&a.transport, censorship_level))
+            .cmp(&b.sort_key(transport_rank(&b.transport, censorship_level)))
+    });
+
+    // ── 3. Diversity-constrained selection ───────────────────────────────
+    let mut per_prefix: BTreeMap<String, usize> = BTreeMap::new();
+    let mut last_transport: Option<String> = None;
+    let mut deferred: Vec<Candidate> = Vec::new();
+    let mut chosen: Vec<Candidate> = Vec::new();
+    let cap = if max_entries == 0 {
+        usize::MAX
+    } else {
+        max_entries
+    };
+
+    for candidate in candidates {
+        if chosen.len() >= cap {
+            break;
+        }
+        let used = per_prefix.entry(candidate.prefix.clone()).or_insert(0);
+        let same_transport = last_transport.as_deref() == Some(candidate.transport.as_str());
+        if *used >= MAX_PER_PREFIX || (same_transport && !chosen.is_empty()) {
+            deferred.push(candidate);
+            continue;
+        }
+        *used += 1;
+        last_transport = Some(candidate.transport.clone());
+        chosen.push(candidate);
+    }
+    // Second pass: fill remaining slots from deferred candidates, still
+    // honouring the prefix cap (transport alternation relaxes once the
+    // primary pass is exhausted — any surviving bridge beats none).
+    if chosen.len() < cap {
+        for candidate in deferred {
+            if chosen.len() >= cap {
+                break;
+            }
+            let used = per_prefix.entry(candidate.prefix.clone()).or_insert(0);
+            if *used >= MAX_PER_PREFIX {
+                continue;
+            }
+            *used += 1;
+            chosen.push(candidate);
+        }
+    }
+
+    // ── 4. Serialize plan + histograms ───────────────────────────────────
+    let mut transport_histogram: BTreeMap<String, usize> = BTreeMap::new();
+    let mut prefixes: BTreeSet<String> = BTreeSet::new();
+    let entries: Vec<Value> = chosen
+        .iter()
+        .enumerate()
+        .map(|(rank, c)| {
+            *transport_histogram.entry(c.transport.clone()).or_insert(0) += 1;
+            prefixes.insert(c.prefix.clone());
+            json!({
+                "rank": rank + 1,
+                "line": c.line,
+                "transport": c.transport,
+                "asn_prefix": c.prefix,
+                "composite_score": c.score,
+            })
+        })
+        .collect();
+
+    json!({
+        "generated_at": Utc::now().to_rfc3339(),
+        "engine": "iran-smart-rotation-v1",
+        "censorship_level": censorship_level,
+        "candidates_evaluated": bridges.len(),
+        "rotation_size": entries.len(),
+        "asn_diversity": prefixes.len(),
+        "transport_histogram": transport_histogram,
+        "plan": entries,
+    })
 }
 
+/// Build the plan and persist both the JSON plan and the plain-text export
+/// (one bridge line per entry — directly usable by Tor Browser's network
+/// settings or downstream distribution stages).
 pub fn write_rotation_outputs(
     bridges: &[Value],
     censorship_level: u8,
@@ -170,6 +281,160 @@ pub fn write_rotation_outputs(
     export_path: &Path,
 ) -> Result<Value, Box<dyn Error>> {
     let plan = build_rotation_plan(bridges, censorship_level, max_entries);
-    let _ = (bridges, censorship_level, max_entries, plan_path, export_path);
-    unimplemented!("fmt probe stub");
+
+    if let Some(parent) = plan_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    let mut body = serde_json::to_string_pretty(&plan)?;
+    body.push('\n');
+    std::fs::write(plan_path, body)?;
+
+    if let Some(parent) = export_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    let mut lines = String::new();
+    if let Some(entries) = plan.get("plan").and_then(Value::as_array) {
+        for entry in entries {
+            if let Some(line) = entry.get("line").and_then(Value::as_str) {
+                lines.push_str(line);
+                lines.push('\n');
+            }
+        }
+    }
+    std::fs::write(export_path, lines)?;
+
+    Ok(plan)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bridge(raw: &str, transport: &str, score: f64) -> Value {
+        json!({
+            "raw": raw,
+            "transport": transport,
+            "composite_score": score,
+        })
+    }
+
+    #[test]
+    fn plans_alternate_transports_for_dpi_wave_resilience() {
+        let bridges = vec![
+            bridge(
+                "obfs4 203.0.113.1:443 AAAA cert=AAAA iat-mode=0",
+                "obfs4",
+                0.99,
+            ),
+            bridge(
+                "obfs4 203.0.113.2:443 BBBB cert=BBBB iat-mode=0",
+                "obfs4",
+                0.98,
+            ),
+            bridge("snowflake 192.0.2.1:1 CCCC", "snowflake", 0.01),
+        ];
+        let plan = build_rotation_plan(&bridges, 3, 0);
+        let entries = plan["plan"].as_array().unwrap();
+        assert_eq!(entries.len(), 3);
+        // The top two entries must NOT share a transport even though obfs4
+        // out-scores snowflake 99:1 — the alternation is the anti-wave
+        // property under test.
+        assert_ne!(entries[0]["transport"], entries[1]["transport"]);
+    }
+
+    #[test]
+    fn caps_entries_per_asn_prefix() {
+        let bridges: Vec<Value> = (1..=6)
+            .map(|i| {
+                bridge(
+                    &format!("obfs4 198.51.100.{i}:443 FFFF{i} cert=C{i} iat-mode=0"),
+                    "obfs4",
+                    0.9,
+                )
+            })
+            .collect();
+        let plan = build_rotation_plan(&bridges, 3, 0);
+        // All six share 198.51.100.0/24 — the cap allows at most 3.
+        assert_eq!(plan["plan"].as_array().unwrap().len(), MAX_PER_PREFIX);
+        assert_eq!(plan["asn_diversity"], 1);
+    }
+
+    #[test]
+    fn escalated_censorship_promotes_fronting_transports() {
+        let bridges = vec![
+            bridge(
+                "obfs4 203.0.113.9:443 DDDD cert=DDDD iat-mode=0",
+                "obfs4",
+                0.9,
+            ),
+            bridge("webtunnel 203.0.113.10:443 EEEE", "webtunnel", 0.9),
+        ];
+        let plan = build_rotation_plan(&bridges, 5, 0);
+        assert_eq!(plan["plan"][0]["transport"], "webtunnel");
+    }
+
+    #[test]
+    fn deterministic_for_identical_input() {
+        let bridges = vec![
+            bridge(
+                "obfs4 203.0.113.1:443 AAAA cert=AAAA iat-mode=0",
+                "obfs4",
+                0.5,
+            ),
+            bridge("snowflake 192.0.2.9:2 BBBB", "snowflake", 0.5),
+            bridge("webtunnel 192.0.2.10:3 CCCC", "webtunnel", 0.5),
+        ];
+        let first = build_rotation_plan(&bridges, 4, 10);
+        let second = build_rotation_plan(&bridges, 4, 10);
+        assert_eq!(first["plan"], second["plan"]);
+    }
+
+    #[test]
+    fn skips_records_without_lines_and_reports_histogram() {
+        let bridges = vec![
+            json!({"transport": "obfs4", "composite_score": 0.7}),
+            bridge(
+                "meek_lite 192.0.2.20:443 ZZZZ url=https://meek.example/",
+                "meek_lite",
+                0.7,
+            ),
+        ];
+        let plan = build_rotation_plan(&bridges, 2, 0);
+        assert_eq!(plan["candidates_evaluated"], 2);
+        assert_eq!(plan["rotation_size"], 1);
+        assert_eq!(plan["transport_histogram"]["meek_lite"], 1);
+    }
+
+    #[test]
+    fn write_rotation_outputs_persists_plan_and_export() {
+        let dir =
+            std::env::temp_dir().join(format!("iran-smart-rotation-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let bridges = vec![
+            bridge(
+                "obfs4 203.0.113.1:443 AAAA cert=AAAA iat-mode=0",
+                "obfs4",
+                0.8,
+            ),
+            bridge("webtunnel 192.0.2.7:443 BBBB", "webtunnel", 0.8),
+        ];
+        let plan = write_rotation_outputs(
+            &bridges,
+            4,
+            0,
+            &dir.join("plan.json"),
+            &dir.join("export.txt"),
+        )
+        .unwrap();
+        assert_eq!(plan["rotation_size"], 2);
+        let export = std::fs::read_to_string(dir.join("export.txt")).unwrap();
+        assert_eq!(export.lines().count(), 2);
+        assert!(export.contains("webtunnel"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
