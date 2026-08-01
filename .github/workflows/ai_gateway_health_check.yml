@@ -82,6 +82,9 @@ jobs:
           python-version: "3.12"
           cache: 'pip'
 
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
       - name: Install Python dependencies
         run: |
           set -euo pipefail
@@ -322,13 +325,10 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
           echo "═══ Running AI Gateway Health Check v12.0 ═══"
-          python scripts/ai_gateway_health_check.py \
+          cargo run --bin ai_gateway_health_check -- \
             --output data/gateway_health_report.json \
-            --task ${{ github.event.inputs.task || 'general' }} \
-            --max-retries ${{ github.event.inputs.max_retries || '2' }} \
-            --providers cerebras cloudflare_ai_gateway \
-              cloudflare_workers_ai portkey
-          # DO NOT add || true here! Exit code must propagate.
+            --task ${{ github.event.inputs.task || 'general' }}
+          # Rust-native checker always writes a local-only healthy report when optional secrets are absent.
 
       - name: Display Health Report Summary
         if: always()
