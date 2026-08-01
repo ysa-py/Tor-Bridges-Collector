@@ -49,7 +49,7 @@ Use: bridge/iran_likely_working_all.txt   ← TCP-tested / OONI-aware working se
 
 | Destination | Artifact | Status |
 | :--- | :--- | :--- |
-| Runtime artifact | `tor_bridges.zip` | Rust-built from every committed `.txt` and `.json` bridge output during Stage 9; kept out of PR diffs to avoid binary-review errors |
+| Runtime artifact | `tor_bridges.zip` | Rust-built by the Rust-native Stage 9 synchronizer from every committed `.txt` and `.json` bridge output; stored in `bridge/` for repository consumers and reused for Telegram upload |
 | Git repository | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | JSON manifest with SHA-256, counts, raw URLs, and required-file health |
 | Telegram | `tor_bridges.zip` | Uploaded by the Rust Stage 9 sync when `TELEGRAM_UPLOAD=true` and secrets exist |
 

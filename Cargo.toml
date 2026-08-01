@@ -62,7 +62,6 @@ html5ever = "=0.29.1"
 linfa = "=0.7.1"
 ndarray = "=0.15.6"
 rustls = "=0.23.28"
-ring = "=0.17.14"
 pqcrypto-kyber = "=0.8.1"
 pqcrypto-mlkem = "=0.1.1"
 hickory-dns = "=0.25.2"
@@ -87,7 +86,6 @@ serde = { workspace = true }
 serde_json = "=1.0.150"
 chrono = { version = "=0.4.41", default-features = false, features = ["std", "clock"] }
 thiserror = { workspace = true }
-ring = { workspace = true }
 # `tokio` is required for `censorship_monitor.rs`'s concurrent TCP
 # reachability probing (mirrors Python's `asyncio.gather`/`asyncio.
 # open_connection`). Already a workspace dependency (via `reqwest`,
