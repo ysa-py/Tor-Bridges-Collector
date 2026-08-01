@@ -997,6 +997,7 @@ jobs:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_UPLOAD: ${{ github.event.inputs.upload_to_telegram || 'false' }}
+          TELEGRAM_ARCHIVE_PATH: bridge/tor_bridges.zip
           REPO_URL: https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/${{ github.ref_name }}
         run: |
           set -euo pipefail
@@ -1004,7 +1005,52 @@ jobs:
           cargo run --quiet --features network --bin sync_bridge_outputs -- \
             --bridge-dir bridge \
             --repo-url "$REPO_URL" \
+            --archive-path "$TELEGRAM_ARCHIVE_PATH" \
             --telegram-upload "$TELEGRAM_UPLOAD"
+
+      - name: Stage 9b — Verify required bridge artifacts
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          required=(
+            bridge_history.json bridge_list_for_testing.json bridge_scores.json
+            conjure.txt conjure_72h.txt conjure_tested.txt
+            iran_blocked.txt iran_likely_working_all.txt iran_likely_working_nin.txt
+            iran_likely_working_obfs4.txt iran_likely_working_snowflake.txt
+            iran_likely_working_vanilla.txt iran_likely_working_webtunnel.txt
+            iran_results.json meek-azure.txt meek-azure_72h.txt meek-azure_tested.txt
+            meek_lite.txt meek_lite_72h.txt meek_lite_72h_ipv6.txt
+            meek_lite_ipv6.txt meek_lite_ipv6_tested.txt meek_lite_tested.txt
+            obfs4.txt obfs4_72h.txt obfs4_72h_ipv6.txt obfs4_ipv6.txt
+            obfs4_ipv6_72h.txt obfs4_ipv6_tested.txt obfs4_tested.txt
+            snowflake.txt snowflake_72h.txt snowflake_72h_ipv6.txt
+            snowflake_ipv6.txt snowflake_ipv6_tested.txt snowflake_tested.txt
+            telegram_manifest.json tested_global_obfs4.txt tested_global_vanilla.txt
+            tested_global_webtunnel.txt tor_bridges.zip vanilla.txt vanilla_72h.txt
+            vanilla_72h_ipv6.txt vanilla_ipv6.txt vanilla_ipv6_72h.txt
+            vanilla_ipv6_tested.txt vanilla_tested.txt webtunnel.txt webtunnel_72h.txt
+            webtunnel_72h_ipv6.txt webtunnel_ipv6.txt webtunnel_ipv6_72h.txt
+            webtunnel_ipv6_tested.txt webtunnel_tested.txt
+          )
+          missing=()
+          for name in "${required[@]}"; do
+            if [ ! -f "bridge/$name" ]; then
+              missing+=("$name")
+            fi
+          done
+          if [ "${#missing[@]}" -ne 0 ]; then
+            printf '❌ Missing required bridge artifacts: %s\n' "${missing[*]}" >&2
+            exit 5
+          fi
+          if ! grep -q '"required_files_present": true' bridge/telegram_manifest.json; then
+            echo '❌ bridge/telegram_manifest.json does not confirm required_files_present=true' >&2
+            exit 6
+          fi
+          if ! grep -q '"name": "tor_bridges.zip"' bridge/telegram_manifest.json; then
+            echo '❌ bridge/telegram_manifest.json does not include tor_bridges.zip' >&2
+            exit 7
+          fi
+          echo "✅ Verified ${#required[@]} required bridge artifacts in bridge/."
 
       # ── BUG FIX: Stage 10 ─────────────────────────────────────────────────
       # Previous error: "printf: 0 0: invalid number"

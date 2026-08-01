@@ -49,9 +49,13 @@ Use: bridge/iran_likely_working_all.txt   ← TCP-tested / OONI-aware working se
 
 | Destination | Artifact | Status |
 | :--- | :--- | :--- |
-| Runtime artifact | `tor_bridges.zip` | Rust-built from every committed `.txt` and `.json` bridge output during Stage 9; kept out of PR diffs to avoid binary-review errors |
+| Runtime artifact | `tor_bridges.zip` | Rust-built by the Rust-native Stage 9 synchronizer from every committed `.txt` and `.json` bridge output; stored in `bridge/` for repository consumers and reused for Telegram upload |
 | Git repository | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | JSON manifest with SHA-256, counts, raw URLs, and required-file health |
 | Telegram | `tor_bridges.zip` | Uploaded by the Rust Stage 9 sync when `TELEGRAM_UPLOAD=true` and secrets exist |
+
+### GitHub Actions bridge automation
+
+The `torshield-ir.yml` workflow builds every required `bridge/` artifact in Stage 9, writes `bridge/tor_bridges.zip`, updates `bridge/telegram_manifest.json`, verifies the full required-file set in Stage 9b, and then commits the refreshed bridge outputs in Stage 11. When `TELEGRAM_UPLOAD=true` and Telegram secrets are configured, the same ZIP is uploaded to Telegram, so repository storage and Telegram delivery stay synchronized.
 
 ---
 
