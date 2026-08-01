@@ -1,0 +1,150 @@
+name: Sync bridge outputs (build → generate → persist → notify)
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 * * * *" # run hourly
+  push:
+    paths:
+      - 'src/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+
+jobs:
+  build-and-sync:
+    runs-on: ubuntu-latest
+    env:
+      BRIDGE_DIR: ${{ github.workspace }}/bridge
+      TELEGRAM_ARCHIVE_PATH: ${{ github.workspace }}/bridge/tor_bridges.zip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Ensure bridge dir exists
+        run: mkdir -p "$BRIDGE_DIR"
+
+      - name: Build sync_bridge_outputs binary (release)
+        run: cargo build --release --bin sync_bridge_outputs
+
+      - name: Run sync_bridge_outputs (generates bridge/* and telegram_manifest.json)
+        run: |
+          ./target/release/sync_bridge_outputs \
+            --archive-path "$TELEGRAM_ARCHIVE_PATH" \
+            --repo-url "https://github.com/${{ github.repository }}" \
+            || { echo "sync_bridge_outputs failed"; exit 10; }
+
+      - name: Verify required bridge files exist (strict list)
+        env:
+          BRIDGE_DIR: ${{ github.workspace }}/bridge
+        run: |
+          set -euo pipefail
+
+          missing=()
+          for f in \
+            bridge_history.json \
+            bridge_list_for_testing.json \
+            bridge_scores.json \
+            conjure.txt \
+            conjure_72h.txt \
+            conjure_tested.txt \
+            iran_blocked.txt \
+            iran_likely_working_all.txt \
+            iran_likely_working_nin.txt \
+            iran_likely_working_obfs4.txt \
+            iran_likely_working_snowflake.txt \
+            iran_likely_working_vanilla.txt \
+            iran_likely_working_webtunnel.txt \
+            iran_results.json \
+            meek-azure.txt \
+            meek-azure_72h.txt \
+            meek-azure_tested.txt \
+            meek_lite.txt \
+            meek_lite_72h.txt \
+            meek_lite_72h_ipv6.txt \
+            meek_lite_ipv6.txt \
+            meek_lite_ipv6_tested.txt \
+            meek_lite_tested.txt \
+            obfs4.txt \
+            obfs4_72h.txt \
+            obfs4_72h_ipv6.txt \
+            obfs4_ipv6.txt \
+            obfs4_ipv6_72h.txt \
+            obfs4_ipv6_tested.txt \
+            obfs4_tested.txt \
+            snowflake.txt \
+            snowflake_72h.txt \
+            snowflake_72h_ipv6.txt \
+            snowflake_ipv6.txt \
+            snowflake_ipv6_tested.txt \
+            snowflake_tested.txt \
+            telegram_manifest.json \
+            tested_global_obfs4.txt \
+            tested_global_vanilla.txt \
+            tested_global_webtunnel.txt \
+            tor_bridges.zip \
+            vanilla.txt \
+            vanilla_72h.txt \
+            vanilla_72h_ipv6.txt \
+            vanilla_ipv6.txt \
+            vanilla_ipv6_72h.txt \
+            vanilla_ipv6_tested.txt \
+            vanilla_tested.txt \
+            webtunnel.txt \
+            webtunnel_72h.txt \
+            webtunnel_72h_ipv6.txt \
+            webtunnel_ipv6.txt \
+            webtunnel_ipv6_72h.txt \
+            webtunnel_ipv6_tested.txt \
+            webtunnel_tested.txt
+          do
+            if [ ! -f "$BRIDGE_DIR/$f" ]; then
+              missing+=("$f")
+            fi
+          done
+
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "Missing required bridge files:"
+            for m in "${missing[@]}"; do echo "  - $m"; done
+            exit 5
+          fi
+
+          echo "All required bridge files present."
+
+      - name: Upload tor_bridges.zip as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tor_bridges.zip
+          path: bridge/tor_bridges.zip
+
+      - name: Commit bridge/ and telegram_manifest.json if changed
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "chore: update bridge/ artifacts and telegram_manifest.json [ci skip]"
+          file_pattern: "bridge/**"
+          commit_user_name: github-actions
+          commit_user_email: github-actions@users.noreply.github.com
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: (Optional) Notify Telegram with tor_bridges.zip
+        if: ${{ secrets.TELEGRAM_BOT_TOKEN != '' && secrets.TELEGRAM_CHAT_ID != '' }}
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+            -F chat_id="${TELEGRAM_CHAT_ID}" \
+            -F document=@bridge/tor_bridges.zip \
+            -F caption="Automated bridge artifact update: $(date -u +\"%Y-%m-%d %H:%M:%S UTC\")"
+
+      - name: Generate README.md from manifest (optional - requires generator)
+        run: echo "You can generate README.md here from bridge/telegram_manifest.json (add a Rust generator or use the sync binary)."
