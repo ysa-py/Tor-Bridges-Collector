@@ -343,9 +343,10 @@ jobs:
           GITHUB_RUN_ID: ${{ github.run_id }}
           GITHUB_REF_NAME: ${{ github.ref_name }}
         run: |
-          python -m torshield_ai_gateway.auto_debug \
+          cargo run --quiet --bin auto_debug -- \
             "${{ github.event.workflow_run.name || github.workflow }}" \
             "${{ github.event.workflow_run.id || github.run_id }}" \
+            --output data/auto_debug_report.json \
           || true
 
       - name: Skip AutoDebug (No Failure)

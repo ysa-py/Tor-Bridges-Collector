@@ -471,6 +471,16 @@ jobs:
                           )
           except Exception as e:
               print(f"Observability report generation failed: {e}")
+              os.makedirs("data", exist_ok=True)
+              fallback = {
+                  "overall_status": "degraded",
+                  "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
+                  "error": str(e),
+                  "provider_stats": {},
+              }
+              with open("data/observability_report.json", "w", encoding="utf-8") as f:
+                  json.dump(fallback, f, indent=2, sort_keys=True)
+                  f.write("\n")
           ENDSCRIPT
           python3 /tmp/_obs_report.py
 

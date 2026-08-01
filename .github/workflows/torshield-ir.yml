@@ -668,23 +668,23 @@ jobs:
       - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
         continue-on-error: true
         timeout-minutes: 5
-        run: python sources/direct_scraper.py
+        run: cargo run --quiet --features network --bin scraper
 
       - name: Stage 0b — OnionHop bridge collection
         continue-on-error: true
         timeout-minutes: 5
-        run: python onionhop_collector.py
+        run: cargo run --quiet --bin scraper
 
       - name: Stage 0c — Legacy scraper (Telegram ZIP + README)
         continue-on-error: true
         timeout-minutes: 5
-        run: python sources/legacy_scraper.py
+        run: cargo run --quiet --bin scraper
 
       - name: Stage 1 — Scraper (all sources)
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          python scraper.py
+          cargo run --quiet --features network --bin scraper
 
       - name: FAILSAFE — ensure bridge files always have content
         timeout-minutes: 3
