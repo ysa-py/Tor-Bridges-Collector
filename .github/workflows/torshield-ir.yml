@@ -991,7 +991,7 @@ jobs:
         timeout-minutes: 6
         run: cargo run --quiet --bin iran_anti_siam
 
-      - name: Stage 9 — Write results + Telegram notification
+      - name: Stage 9 — Dual persist bridge/ results + Telegram archive
         timeout-minutes: 8
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
@@ -1001,6 +1001,10 @@ jobs:
         run: |
           set -euo pipefail
           cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
+          python3 scripts/sync_bridge_outputs.py \
+            --bridge-dir bridge \
+            --repo-url "$REPO_URL" \
+            --telegram-upload "$TELEGRAM_UPLOAD"
 
       # ── BUG FIX: Stage 10 ─────────────────────────────────────────────────
       # Previous error: "printf: 0 0: invalid number"
@@ -1051,6 +1055,7 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull origin main --rebase --autostash
           git add bridge/ data/ docs/ export/ README.md go.mod go.sum \
+                  scripts/sync_bridge_outputs.py \
                   cmd/ internal/ onionhop_collector.py zig-scanner/ \
                   ebpf_blueprint.py nin_cut_tester.py xtls_reality_wrapper.py \
                   ai_dpi_mutator.py next_gen_transports.py quantum_safe.py \
