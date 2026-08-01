@@ -631,7 +631,7 @@ jobs:
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: python self_heal.py --heal
+        run: cargo run --quiet --bin self_heal -- --heal --output diagnostics/torshield_ir_self_heal.json
 
       - uses: actions/download-artifact@v8
         with:
@@ -668,23 +668,23 @@ jobs:
       - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
         continue-on-error: true
         timeout-minutes: 5
-        run: python sources/direct_scraper.py
+        run: cargo run --quiet --features network --bin scraper
 
       - name: Stage 0b — OnionHop bridge collection
         continue-on-error: true
         timeout-minutes: 5
-        run: python onionhop_collector.py
+        run: cargo run --quiet --bin scraper
 
       - name: Stage 0c — Legacy scraper (Telegram ZIP + README)
         continue-on-error: true
         timeout-minutes: 5
-        run: python sources/legacy_scraper.py
+        run: cargo run --quiet --bin scraper
 
       - name: Stage 1 — Scraper (all sources)
         timeout-minutes: 10
         run: |
           set -euo pipefail
-          python scraper.py
+          cargo run --quiet --features network --bin scraper
 
       - name: FAILSAFE — ensure bridge files always have content
         timeout-minutes: 3
@@ -803,103 +803,88 @@ jobs:
       - name: Stage 5 — OONI correlator
         continue-on-error: true
         timeout-minutes: 8
-        run: python ooni_correlator.py
+        run: cargo run --quiet --bin ooni_correlator
 
       - name: Stage 6a — Score bridges
         timeout-minutes: 8
         run: |
           set -euo pipefail
-          python main.py --mode score
+          cargo run --quiet --bin pipeline -- --stage ml --stage rotation --report data/stage6a_score_report.json
 
       - name: Stage 6b — Export bridge files
         timeout-minutes: 5
         run: |
           set -euo pipefail
-          python main.py --mode export
+          cargo run --quiet --bin pipeline -- --stage results --report data/stage6b_export_report.json
 
       - name: Stage 7 — ML blocking predictor
         continue-on-error: true
         timeout-minutes: 8
-        run: python ml_predictor.py --train --apply
+        run: cargo run --quiet --bin ml_predictor
 
       - name: Stage 8 — Adaptive transport engine
         continue-on-error: true
         timeout-minutes: 5
-        run: python adaptive_transport.py
+        run: cargo run --quiet --bin pipeline -- --stage adaptive --report data/adaptive_transport_report.json
 
       - name: Stage 8b — DPI intelligence report
         continue-on-error: true
         timeout-minutes: 5
-        run: python dpi_evasion_advanced.py
+        run: cargo run --quiet --bin dpi_evasion_advanced
 
       - name: Stage 8c — Next-gen protocol scan (Hysteria2/REALITY/VLESS)
         continue-on-error: true
         timeout-minutes: 8
-        run: python next_gen_transports.py
+        run: cargo run --quiet --bin pipeline -- --stage nextgen --report data/nextgen_pipeline_report.json
 
       - name: Stage 8d — NIN internet-cut bridge pack
         continue-on-error: true
         timeout-minutes: 5
-        run: python -m core.nin_selector
+        run: cargo run --quiet --bin pipeline -- --stage nin-pack --report data/nin_pack_pipeline_report.json
 
       - name: Stage 8d2 — NIN bypass analysis (ECH/CDN survivability scoring)
         continue-on-error: true
         timeout-minutes: 5
-        run: python iran_nin_bypass.py
+        run: cargo run --quiet --bin pipeline -- --stage nin-bypass --report data/nin_bypass_pipeline_report.json
 
       - name: Stage 8e — ECH/post-quantum bridge scoring
         continue-on-error: true
         timeout-minutes: 5
-        run: python quantum_safe.py
+        run: cargo run --quiet --bin pipeline -- --stage quantum --report data/quantum_pipeline_report.json
 
       - name: Stage 8f — WARP bootstrap check
         continue-on-error: true
         timeout-minutes: 5
-        run: python warp_bootstrap.py
+        run: cargo run --quiet --bin pipeline -- --stage warp --report data/warp_pipeline_report.json
 
       - name: Stage 8g — ECH fingerprint evasion scoring
         continue-on-error: true
         timeout-minutes: 20
-        run: python ech_fingerprint_evasion.py
+        run: cargo run --quiet --bin ech_fingerprint_evasion
 
       - name: Stage 8h — NIN advanced bypass analysis
         continue-on-error: true
         timeout-minutes: 20
-        run: python nin_advanced_bypass.py
+        run: cargo run --quiet --bin pipeline -- --stage nin-advanced --report data/nin_advanced_pipeline_report.json
 
       - name: Stage 8i — Anti-AI DPI scoring
         continue-on-error: true
         timeout-minutes: 5
-        run: python anti_ai_dpi.py
+        run: cargo run --quiet --bin anti_ai_dpi
 
       - name: Stage 8i-smart — Smart Iran AI re-ranker (v9.0)
         continue-on-error: true
         timeout-minutes: 8
-        env:
-          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
-          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
-          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
-          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
         run: |
-          python scripts/ai_bridge_reranker.py \
-            --input  bridge/iran_results.json \
+          set -euo pipefail
+          cargo run --quiet --bin ai_bridge_reranker -- \
+            --input bridge/iran_results.json \
             --output data/smart_iran_results.json \
-            --batch-size 10 \
-            --ai-top-n "${AI_RERANK_TOP_N:-20}"
-          python -c "
-          import json, pathlib
-          p = pathlib.Path('data/smart_iran_results.json')
-          if p.exists():
-              d = json.loads(p.read_text())
-              bs = d.get('bridges', d) if isinstance(d, dict) else d
-              total = len(bs)
-              excellent = sum(1 for b in bs if b.get('smart_iran_scores',{}).get('tier') == 'excellent')
-              print(f'Smart-scored {total} bridges | excellent={excellent}')
-          "
+            --top-n "${AI_RERANK_TOP_N:-20}"
 
       # ── Stage 8j: Agentic AI DPI mutator ──────────────────────────────────
       # Reads data/dpi_intelligence.json produced by Stage 8b.  If active
-      # blocking patterns are detected, ai_dpi_mutator.py rewrites obfuscation
+      # blocking patterns are detected, the Rust-native DPI mutator pipeline rewrites obfuscation
       # parameters in the Go/Rust source tree, triggers a rebuild, and commits
       # the updated binaries — all without human intervention.
       - name: Stage 8j — Agentic AI DPI mutator (self-heal loop)
@@ -948,37 +933,37 @@ jobs:
           HYPERBOLIC_API_KEY: ${{ secrets.HYPERBOLIC_API_KEY }}
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
-        run: python ai_dpi_mutator.py
+        run: cargo run --quiet --bin pipeline -- --stage dpi --stage anti-ai-dpi --stage rotation --report data/ai_dpi_mutator_report.json
 
       - name: Stage 8k — NIN internet-cut survivability tester
         continue-on-error: true
         timeout-minutes: 8
-        run: python nin_cut_tester.py
+        run: cargo run --quiet --bin pipeline -- --stage nin-cut --report data/nin_cut_pipeline_report.json
 
       - name: Stage 8l — XTLS-Reality VLESS config generator
         continue-on-error: true
         timeout-minutes: 8
-        run: python xtls_reality_wrapper.py
+        run: cargo run --quiet --bin pipeline -- --stage reality --report data/reality_pipeline_report.json
 
       - name: Stage 8m — eBPF/XDP deployment blueprint generator
         continue-on-error: true
         timeout-minutes: 3
-        run: python ebpf_blueprint.py
+        run: cargo run --quiet --bin pipeline -- --stage ebpf --report data/ebpf_pipeline_report.json
 
       - name: Stage 8n — JA3/TLS fingerprint rotation engine
         continue-on-error: true
         timeout-minutes: 5
-        run: python ja3_intelligence.py --rotate
+        run: cargo run --quiet --bin pipeline -- --stage ja3 --report data/ja3_pipeline_report.json
 
       - name: Stage 8o — Certificate Transparency MITM monitor
         continue-on-error: true
         timeout-minutes: 15
-        run: python ztunnel_ct_monitor.py
+        run: cargo run --quiet --bin pipeline -- --stage ct --report data/ct_pipeline_report.json
 
       - name: Stage 8p — NIN internet-cut bridge classifier
         continue-on-error: true
         timeout-minutes: 6
-        run: python nin_internet_cut_classifier.py
+        run: cargo run --quiet --bin pipeline -- --stage nin-classify --report data/nin_classify_pipeline_report.json
 
       - name: Stage 8q — Zig ultra-fast TCP bridge pre-screener
         continue-on-error: true
@@ -1004,7 +989,7 @@ jobs:
       - name: Stage 8r — Iran SIAM/NGFW Anti-AI DPI evasion analysis
         continue-on-error: true
         timeout-minutes: 6
-        run: python iran_anti_siam.py
+        run: cargo run --quiet --bin iran_anti_siam
 
       - name: Stage 9 — Write results + Telegram notification
         timeout-minutes: 8
@@ -1015,7 +1000,7 @@ jobs:
           REPO_URL: https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/${{ github.ref_name }}
         run: |
           set -euo pipefail
-          python results_writer.py
+          cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
 
       # ── BUG FIX: Stage 10 ─────────────────────────────────────────────────
       # Previous error: "printf: 0 0: invalid number"
@@ -1253,7 +1238,7 @@ jobs:
             --batch-size 10 \
             --ai-provider "${AI_RERANK_PROVIDER:-local}" \
             --ai-time-budget "${AI_RERANK_TIME_BUDGET:-20}" \
-            --ai-top-n "${AI_RERANK_TOP_N:-20}" || true
+            --top-n "${AI_RERANK_TOP_N:-20}" || true
           python3 -c "
           import json, pathlib
           p = pathlib.Path('bridge/bridges_ai_iran_ranked.json')

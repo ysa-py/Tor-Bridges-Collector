@@ -542,15 +542,8 @@ jobs:
       - name: LocalAI RL observe-decide-morph dry run
         run: |
           set -euo pipefail
-          python - <<'PY'
-          import json
-          from torshield_ai_gateway.local_ai_engine import LocalAIEngine
-          from torshield_ai_gateway.polymorphic_traffic_morpher import PolymorphicTrafficMorpher
-          engine = LocalAIEngine()
-          engine.observe_feedback('unknown', 'obfs4', 'success')
-          plan = PolymorphicTrafficMorpher(engine).plan(censorship_level=4)
-          print(json.dumps(plan, indent=2, sort_keys=True))
-          PY
+          cargo run --quiet --bin ai_gateway_health_check -- --output data/local_ai_dry_run.json --task autonomous-sentinel
+          cargo run --quiet --bin anti_ai_dpi -- --help >/dev/null
 
       - name: Validation suite
         id: validate
@@ -567,13 +560,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p data
-          python - <<'PY'
-          import json, subprocess
-          from torshield_ai_gateway.local_ai_engine import LocalAIEngine
-          analysis = LocalAIEngine().analyze_workflow_failure('autonomous-sentinel', 'validation failed')
-          open('data/autonomous_sentinel_failure.json', 'w', encoding='utf-8').write(json.dumps(analysis, indent=2))
-          subprocess.run(['git', 'checkout', '--', 'data/local_ai_censorship_state.json'], check=False)
-          PY
+          cargo run --quiet --bin auto_debug -- autonomous-sentinel "${GITHUB_RUN_ID:-local}" --output data/autonomous_sentinel_failure.json || true
+          git checkout -- data/local_ai_censorship_state.json 2>/dev/null || true
 
       - name: Commit LocalAI state updates
         if: success() && github.event_name != 'pull_request'
