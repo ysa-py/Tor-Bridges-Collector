@@ -1001,7 +1001,7 @@ jobs:
         run: |
           set -euo pipefail
           cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
-          cargo run --quiet --features network --bin sync_bridge_outputs -- \
+          cargo run --quiet --bin sync_bridge_outputs -- \
             --bridge-dir bridge \
             --repo-url "$REPO_URL" \
             --telegram-upload "$TELEGRAM_UPLOAD"
@@ -1065,6 +1065,7 @@ jobs:
                   iran_anti_siam.py core/iran_dpi_shaper.py \
                   torshield_ai_gateway/ scripts/ || true
           [ -f go.sum ] && git add go.sum || true
+          git reset -- bridge/tor_bridges.zip || true
           [ -f bridge-probe/Cargo.lock ] && git add bridge-probe/Cargo.lock || true
           if git diff --staged --quiet; then
             echo "No changes to commit."
