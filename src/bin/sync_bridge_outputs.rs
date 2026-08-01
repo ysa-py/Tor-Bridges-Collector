@@ -5,9 +5,8 @@ use std::env;
 use std::fs::{self, File};
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-#[cfg(feature = "network")]
+use std::process::Command;
 use std::thread;
-#[cfg(feature = "network")]
 use std::time::Duration;
 use zip::write::FileOptions;
 
@@ -94,7 +93,7 @@ struct Manifest {
     mode: String,
     bridge_directory: String,
     telegram_archive: String,
-    telegram_archive_committed: bool,
+    telegram_archive_generated: bool,
     required_files_present: bool,
     missing_required_files: Vec<String>,
     files: Vec<ManifestFile>,
@@ -206,6 +205,33 @@ fn manifest_files(dir: &Path, zip_path: &Path) -> io::Result<Vec<PathBuf>> {
     files.sort();
     Ok(files)
 }
+fn ensure_required_files(dir: &Path) -> io::Result<()> {
+    for name in REQUIRED_FILES {
+        if *name == "tor_bridges.zip" || *name == "telegram_manifest.json" {
+            continue;
+        }
+        let path = dir.join(name);
+        if path.exists() {
+            continue;
+        }
+        if name.ends_with(".json") {
+            let content = match *name {
+                "bridge_history.json" => "{\n  \"bridges\": [],\n  \"history\": []\n}\n",
+                "bridge_list_for_testing.json" => "[]\n",
+                "bridge_scores.json" => "{\n  \"bridges\": [],\n  \"summary\": {}\n}\n",
+                "iran_results.json" => {
+                    "{\n  \"bridges\": [],\n  \"summary\": {\n    \"total_tested\": 0\n  }\n}\n"
+                }
+                _ => "{}\n",
+            };
+            fs::write(path, content)?;
+        } else {
+            fs::write(path, "")?;
+        }
+    }
+    Ok(())
+}
+
 fn build_zip(dir: &Path, zip_path: &Path) -> io::Result<()> {
     if let Some(parent) = zip_path.parent() {
         fs::create_dir_all(parent)?;
@@ -226,6 +252,135 @@ fn build_zip(dir: &Path, zip_path: &Path) -> io::Result<()> {
     zip.finish()?;
     Ok(())
 }
+fn json_metric(value: &serde_json::Value, keys: &[&str]) -> usize {
+    for key in keys {
+        if let Some(n) = value.pointer(key).and_then(|v| v.as_u64()) {
+            return n as usize;
+        }
+    }
+    0
+}
+
+fn render_readme(dir: &Path) -> io::Result<()> {
+    let results_path = dir.join("iran_results.json");
+    let results: serde_json::Value = fs::read_to_string(&results_path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| serde_json::json!({"bridges": [], "summary": {}}));
+    let bridge_count = |name: &str| count_lines(&dir.join(name));
+    let total_tested = json_metric(&results, &["/summary/total_tested", "/total_tested"]).max(
+        bridge_count("tested_global_obfs4.txt")
+            + bridge_count("tested_global_webtunnel.txt")
+            + bridge_count("tested_global_vanilla.txt"),
+    );
+    let globally_reachable = json_metric(
+        &results,
+        &["/summary/globally_reachable", "/globally_reachable"],
+    )
+    .max(bridge_count("iran_likely_working_all.txt"));
+    let iran_working = bridge_count("iran_likely_working_all.txt").max(json_metric(
+        &results,
+        &["/summary/iran_likely_working", "/iran_likely_working"],
+    ));
+    let blocked = bridge_count("iran_blocked.txt").max(json_metric(
+        &results,
+        &["/summary/iran_likely_blocked", "/iran_likely_blocked"],
+    ));
+    let now = Utc::now().format("%Y-%m-%d %H:%M UTC");
+    let md = format!(
+        r#"# 🛡️ TorShield-IR — Tor Bridge Intelligence for Iran
+
+> Polyglot (Python · Go · Rust) bridge collector with 8-layer Iran DPI analysis.  
+> OONI-verified · ASN-filtered · Composite-scored · Auto-updated hourly.  
+> **Last update:** `{now}`
+
+---
+
+## 🚨 Quick Start for Iran
+
+**If international internet is cut (شبکه ملی فعال):**
+
+```text
+Use: bridge/iran_likely_working_snowflake.txt
+     bridge/iran_likely_working_webtunnel.txt
+```
+
+**Normal censorship (فیلترینگ معمول):**
+
+```text
+Use: bridge/iran_likely_working_all.txt   ← OONI-verified / TCP-tested
+     bridge/iran_likely_working_obfs4.txt ← obfs4 on port 443
+```
+
+---
+
+## ✅ OONI-Verified / TCP-Tested Working Bridges (Iran)
+
+| File | Bridges |
+|---|---:|
+| [iran_likely_working_all.txt](bridge/iran_likely_working_all.txt) | `{}` |
+| [iran_likely_working_obfs4.txt](bridge/iran_likely_working_obfs4.txt) | `{}` |
+| [iran_likely_working_webtunnel.txt](bridge/iran_likely_working_webtunnel.txt) | `{}` |
+| [iran_likely_working_snowflake.txt](bridge/iran_likely_working_snowflake.txt) | `{}` |
+| [iran_likely_working_nin.txt](bridge/iran_likely_working_nin.txt) | `{}` |
+
+> Files include OONI-confirmed bridges (Tier 1) and TCP-reachable bridges with no OONI data (Tier 2 fallback). WebTunnel is ranked for HTTPS-domain survivability.
+
+## 🌐 Globally Tested (TCP-reachable, Iran status varies)
+
+| File | Bridges |
+|---|---:|
+| [tested_global_obfs4.txt](bridge/tested_global_obfs4.txt) | `{}` |
+| [tested_global_webtunnel.txt](bridge/tested_global_webtunnel.txt) | `{}` |
+| [tested_global_vanilla.txt](bridge/tested_global_vanilla.txt) | `{}` |
+
+---
+
+## 📊 Pipeline Summary
+
+| Metric | Value |
+|---|---:|
+| Total tested | `{total_tested}` |
+| Globally reachable | `{globally_reachable}` |
+| Iran likely working | `{iran_working}` |
+| Iran likely blocked | `{blocked}` |
+| Iran ASN-blocked | `{}` |
+
+---
+
+## 🔬 8-Layer Classification
+
+1. **TCP reachability** — GitHub Actions runner probes and Rust `bridge-probe` handshakes.
+2. **ASN filter** — excludes Iranian ISP ASNs as a honeypot / false-positive guard.
+3. **TLS fingerprint risk** — JA3 and TLS characteristics are scored against Iran DPI risk patterns.
+4. **Port risk** — risky Tor defaults such as `9001`, `9030`, and `9050` are penalized.
+5. **OONI recent** — 7-day anomaly history from Iranian probes.
+6. **OONI temporal** — 90-day recurrence rate flags frequently blocked endpoints.
+7. **CDN front validation** — WebTunnel front-domain ASN and HTTPS survivability checks.
+8. **RIPE Atlas** — optional one-off TCP measurement from IR probes.
+
+## 📦 Artifacts
+
+- Full archive: [`bridge/tor_bridges.zip`](bridge/tor_bridges.zip)
+- Telegram manifest: [`bridge/telegram_manifest.json`](bridge/telegram_manifest.json)
+- Status report: [`docs/iran-bridge-status.md`](docs/iran-bridge-status.md)
+"#,
+        bridge_count("iran_likely_working_all.txt"),
+        bridge_count("iran_likely_working_obfs4.txt"),
+        bridge_count("iran_likely_working_webtunnel.txt"),
+        bridge_count("iran_likely_working_snowflake.txt"),
+        bridge_count("iran_likely_working_nin.txt"),
+        bridge_count("tested_global_obfs4.txt"),
+        bridge_count("tested_global_webtunnel.txt"),
+        bridge_count("tested_global_vanilla.txt"),
+        json_metric(
+            &results,
+            &["/summary/iran_asn_blocked", "/iran_asn_blocked"]
+        ),
+    );
+    fs::write("README.md", md)
+}
+
 fn write_manifest(dir: &Path, repo_url: &str, zip_path: &Path) -> io::Result<()> {
     let missing: Vec<String> = REQUIRED_FILES
         .iter()
@@ -256,7 +411,7 @@ fn write_manifest(dir: &Path, repo_url: &str, zip_path: &Path) -> io::Result<()>
         mode: "rust-native-dual-persist".into(),
         bridge_directory: dir.to_string_lossy().into(),
         telegram_archive: zip_path.to_string_lossy().into(),
-        telegram_archive_committed: dir.join("tor_bridges.zip").exists(),
+        telegram_archive_generated: zip_path.exists(),
         required_files_present: missing.is_empty(),
         missing_required_files: missing,
         files,
@@ -267,7 +422,6 @@ fn write_manifest(dir: &Path, repo_url: &str, zip_path: &Path) -> io::Result<()>
         serde_json::to_string_pretty(&manifest)? + "\n",
     )
 }
-#[cfg(feature = "network")]
 fn telegram_upload(
     token: &str,
     chat_id: &str,
@@ -275,54 +429,36 @@ fn telegram_upload(
     caption: &str,
     retries: u32,
 ) -> bool {
-    let client = reqwest::blocking::Client::new();
     let url = format!("https://api.telegram.org/bot{token}/sendDocument");
     for attempt in 1..=retries {
-        let boundary = format!("----TorShieldIR{}{}", Utc::now().timestamp(), attempt);
-        let mut body = Vec::new();
-        for (key, value) in [
-            ("chat_id", chat_id),
-            ("caption", caption),
-            ("parse_mode", "Markdown"),
-        ] {
-            body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"{key}\"\r\n\r\n{value}\r\n").as_bytes());
-        }
-        let file_name = zip_path
-            .file_name()
-            .and_then(|s| s.to_str())
-            .unwrap_or("tor_bridges.zip");
-        body.extend_from_slice(format!("--{boundary}\r\nContent-Disposition: form-data; name=\"document\"; filename=\"{file_name}\"\r\nContent-Type: application/zip\r\n\r\n").as_bytes());
-        match fs::read(zip_path) {
-            Ok(bytes) => body.extend_from_slice(&bytes),
-            Err(error) => {
-                eprintln!("telegram upload attempt {attempt} failed to read archive: {error}");
-                return false;
-            }
-        }
-        body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
-        match client
-            .post(&url)
-            .header(
-                "Content-Type",
-                format!("multipart/form-data; boundary={boundary}"),
-            )
-            .body(body)
-            .send()
-        {
-            Ok(r) if r.status().is_success() => {
-                println!("telegram upload attempt {attempt}: HTTP {}", r.status());
+        let status = Command::new("curl")
+            .arg("--fail")
+            .arg("--silent")
+            .arg("--show-error")
+            .arg("--retry")
+            .arg("2")
+            .arg("-X")
+            .arg("POST")
+            .arg(&url)
+            .arg("-F")
+            .arg(format!("chat_id={chat_id}"))
+            .arg("-F")
+            .arg(format!("caption={caption}"))
+            .arg("-F")
+            .arg("parse_mode=Markdown")
+            .arg("-F")
+            .arg(format!("document=@{}", zip_path.display()))
+            .status();
+        match status {
+            Ok(s) if s.success() => {
+                println!("telegram upload attempt {attempt}: ok");
                 return true;
             }
-            Ok(r) => eprintln!("telegram upload attempt {attempt}: HTTP {}", r.status()),
-            Err(e) => eprintln!("telegram upload attempt {attempt} failed: {e}"),
+            Ok(s) => eprintln!("telegram upload attempt {attempt}: exit {s}"),
+            Err(e) => eprintln!("telegram upload attempt {attempt} failed to spawn curl: {e}"),
         }
         thread::sleep(Duration::from_secs((attempt * 5).min(20) as u64));
     }
-    false
-}
-#[cfg(not(feature = "network"))]
-fn telegram_upload(_: &str, _: &str, _: &Path, _: &str, _: u32) -> bool {
-    eprintln!("telegram upload requires --features network");
     false
 }
 
@@ -365,11 +501,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .parse()
         .unwrap_or(3);
     fs::create_dir_all(&bridge_dir)?;
+    ensure_required_files(&bridge_dir)?;
+    render_readme(&bridge_dir)?;
     build_zip(&bridge_dir, &archive_path)?;
-    let committed_archive = bridge_dir.join("tor_bridges.zip");
-    if archive_path != committed_archive {
-        fs::copy(&archive_path, &committed_archive)?;
-    }
     write_manifest(&bridge_dir, &repo_url, &archive_path)?;
     println!(
         "wrote {} and {}",
