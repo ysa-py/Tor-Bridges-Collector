@@ -1,8 +1,8 @@
 # 🛡️ TorShield-IR — Tor Bridge Intelligence for Iran
 
-> Polyglot (Python · Go · Rust) bridge collector with smart Iran DPI analysis.<br>
+> Rust-native bridge collector with smart Iran DPI analysis.<br>
 > OONI-aware · ASN-filtered · Composite-scored · Auto-synced to `bridge/` and Telegram.<br>
-> **Last update:** `2026-08-01 15:56 UTC`
+> **Last update:** `2026-08-01 17:36 UTC`
 
 ---
 
@@ -49,9 +49,9 @@ Use: bridge/iran_likely_working_all.txt   ← TCP-tested / OONI-aware working se
 
 | Destination | Artifact | Status |
 | :--- | :--- | :--- |
-| Runtime artifact | `tor_bridges.zip` | Built from `bridge/` during Stage 9 for Telegram upload; kept out of PR diffs to avoid binary-review errors |
-| Git repository | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | JSON manifest with SHA-256, counts, and raw URLs |
-| Telegram | `tor_bridges.zip` | Uploaded by Stage 9 when `TELEGRAM_UPLOAD=true` and secrets exist |
+| Runtime artifact | `tor_bridges.zip` | Rust-built from every committed `.txt` and `.json` bridge output during Stage 9; kept out of PR diffs to avoid binary-review errors |
+| Git repository | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | JSON manifest with SHA-256, counts, raw URLs, and required-file health |
+| Telegram | `tor_bridges.zip` | Uploaded by the Rust Stage 9 sync when `TELEGRAM_UPLOAD=true` and secrets exist |
 
 ---
 
@@ -76,7 +76,7 @@ Use: bridge/iran_likely_working_all.txt   ← TCP-tested / OONI-aware working se
 5. **OONI context** — uses recent and temporal blocking signals when available.
 6. **CDN front validation** — checks WebTunnel/Snowflake survivability assumptions.
 7. **AI DPI analysis** — records anti-AI DPI and SIAM/NGFW scoring reports.
-8. **Dual output integrity** — sorted, deduplicated files plus SHA-256 manifest and runtime Telegram archive without binary PR diffs.
+8. **Rust dual output integrity** — sorted, deduplicated files plus SHA-256 manifest and runtime Telegram archive without binary PR diffs.
 
 ---
 
