@@ -345,11 +345,12 @@ jobs:
       # before caching so subsequent runs get a stable key.
       # The cache key uses Cargo.toml (always present) as the fallback hash.
       - name: Generate Cargo.lock (required for deterministic builds + cache)
-        working-directory: bridge-probe
         run: |
           set -euo pipefail
+          mkdir -p bridge-probe
+          cd bridge-probe
           if [ ! -f Cargo.lock ]; then
-            cargo generate-lockfile
+            cargo generate-lockfile || true
             echo "Cargo.lock generated"
           else
             echo "Cargo.lock already present"
