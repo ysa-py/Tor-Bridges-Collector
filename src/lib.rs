@@ -1,3 +1,9 @@
+#![recursion_limit = "256"]
+
+//! Rust migration anchor crate for TorShield-IR Ultra VIP Edition.
+//! All modules are now fully Rust-native after Python-to-Rust migration.
+
+pub mod adaptive_selector;
 pub mod adaptive_transport;
 pub mod ai_anti_dpi_iran;
 pub mod anti_ai_dpi;
@@ -16,6 +22,7 @@ pub mod ech_fingerprint_evasion;
 pub mod endpoint_validator;
 pub mod feature_flags;
 pub mod formatter;
+pub mod generated_json_loader;
 pub mod history;
 pub mod history_utils;
 pub mod iran_advanced_dpi_evasion;
@@ -56,14 +63,16 @@ pub mod static_bridges;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
+pub mod torshield_ai_gateway;
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_library_init() {
-        assert!(true);
-    }
-}
-pub mod adaptive_selector;
-pub mod zero_trust_bridge_routing;
-pub mod quantum_resistant_obfuscator;
+/// Cargo features mirroring pytest markers used for selective test execution.
+pub const PYTEST_MARKER_FEATURES: &[&str] = &[
+    "network",
+    "iran",
+    "slow",
+    "tor",
+    "iran_bridge",
+    "bridge",
+    "dpi",
+    "nin",
+];

@@ -1,0 +1,56 @@
+══════════ FULL MULTI-LANGUAGE AUDIT — 2026-07-30T22:22:58Z ══════════
+
+### YAML — every .yml/.yaml in repo (PyYAML) ###
+YAML: 0 failures
+
+### Shell — bash -n on every .sh ###
+Shell: 0 failures
+
+### Python — py_compile every .py ###
+Python: 0 failures
+
+### TOML — parse every Cargo.toml + pyproject.toml (tomllib) ###
+TOML: 0 failures
+
+### JSON — validate every .json (jq) ###
+JSON: 0 failures
+
+### Dockerfile — structural (FROM present, balanced-ish) ###
+OK ./infra/huggingface-n8n/Dockerfile (FROM present)
+
+### PowerShell — brace balance (weak signal, no pwsh to compile) ###
+OK ./scripts/auto_fix.ps1 (braces 17/17)
+OK ./scripts/self_heal.ps1 (braces 24/24)
+
+### Go — module files present ###
+OK go.mod
+OK go.work
+
+### Zig — source present + brace balance ###
+OK ./zig-scanner/build.zig (braces 4/4)
+OK ./zig-scanner/src/main.zig (braces 66/66)
+
+### CI policy: validate_workflows.py (powershell-on-linux gate) ###
+
+Validated 11 workflow file(s); 0 violation(s).
+
+### Hardcoded powershell COMMAND invocations in workflows ###
+OK: none
+
+### Dead-Python soft-skip guards present? ###
+.github/workflows/ci.yml:20:    if: hashFiles('**/*.py') != ''
+.github/workflows/ci.yml:114:    if: hashFiles('**/*.py') != ''
+.github/workflows/autonomous-sentinel.yml:43:        if: hashFiles('**/*.py') != ''
+
+### Action tag inventory ###
+     21 uses: actions/checkout@v5
+     15 uses: actions/setup-python@v6
+     10 uses: actions/upload-artifact@v6
+     10 uses: actions/cache@v4
+      5 uses: actions/checkout@v4
+      3 uses: actions/upload-artifact@v4
+      3 uses: actions/setup-go@v6
+      3 uses: actions/download-artifact@v4
+      3 uses: Swatinem/rust-cache@v2
+      1 uses: softprops/action-gh-release@v2
+      1 uses: actions/github-script@v8

@@ -779,8 +779,3 @@ mod tests {
         dir
     }
 }
-
-fn main() {
-    println!("ech_fingerprint_evasion executed successfully");
-}
-

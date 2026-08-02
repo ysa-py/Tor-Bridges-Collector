@@ -47,10 +47,6 @@ cargo audit 2>&1 | tee "${DIAG_DIR}/cargo-audit-stdout.log" || true
 VCOUNT=0
 if [ -f "${DIAG_DIR}/audit-report.json" ]; then
   VCOUNT=$(jq -r '(.vulnerabilities.count // .vulnerabilities.found // (.vulnerabilities.list | length) // 0) as $c | ($c // 0)' "${DIAG_DIR}/audit-report.json" 2>/dev/null || echo 0)
-  # Default to 0 if empty
-  if [ -z "${VCOUNT}" ]; then
-    VCOUNT=0
-  fi
   echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
   if [ "${VCOUNT}" -gt 0 ]; then
     EXIT_CODE=1

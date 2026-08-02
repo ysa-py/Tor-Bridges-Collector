@@ -597,18 +597,3 @@ mod tests {
         dir
     }
 }
-
-fn main() {
-    let args: Vec<String> = std::env::args().collect();
-    if args.iter().any(|a| a == "--help" || a == "-h") {
-        println!("anti_ai_dpi - Anti-AI Deep Packet Inspection Evasion Tool for Iran");
-        return;
-    }
-    let input = std::path::Path::new("bridge/bridge_list_for_testing.json");
-    let report = std::path::Path::new("data/anti_ai_dpi_report.json");
-    let export = std::path::Path::new("export/anti_ai_dpi_bridges.txt");
-    if input.exists() {
-        let _ = run_pipeline(input, report, export);
-    }
-}
-

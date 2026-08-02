@@ -1,0 +1,23 @@
+[package]
+name = "iran-detector-py"
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "PyO3 runtime bridge: exposes the Rust core/iran_detector port to Python so the legacy Python logic can be retired from the runtime path (Gate 4)."
+
+# Standalone crate (NOT a member of the root workspace) so PyO3 stays fully
+# isolated from the shipped reachability crate's dependency graph and lockfile.
+[workspace]
+
+[lib]
+name = "iran_detector_rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+# The real logic lives in the already-verified parity port; the bridge only
+# adapts it to Python. Path dep into the root crate.
+torshield-ir-ultra = { path = "../.." }
+tokio = { version = "1", features = ["rt", "net", "time"] }
+serde_json = "1"
+pyo3 = { version = "0.22", features = ["extension-module"] }
