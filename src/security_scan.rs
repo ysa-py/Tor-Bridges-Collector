@@ -63,16 +63,18 @@ pub const PYTHON_SINKS: &[(&str, &str)] = &[
     ("__import__", "__import__() enables dynamic module loading"),
 ];
 
-/// Bearer-token / API-key shaped high-entropy strings. Kept in the exact
-/// order and with the exact pattern text of the Python original so that the
-/// report lines (which embed the pattern source) stay byte-identical.
+/// Bearer-token / API-key shaped high-entropy strings, in the exact order and
+/// with the exact pattern text of the Python original (report lines embed the
+/// pattern source, so they stay byte-identical). Membership order: GitHub PAT,
+/// fine-grained PAT, GitLab PAT, OpenAI-style key, AWS access key, Slack
+/// token, then the PEM private-key header.
 pub const CREDENTIAL_PATTERN_SOURCES: &[&str] = &[
-    "\\bghp_[A-Za-z0-9]{36,}\\b", // GitHub PAT
-    "\\bgithub_pat_[A-Za-z0-9_]{22,}\\b", // fine-grained PAT
-    "\\bglpat-[A-Za-z0-9\\-_]{20,}\\b", // GitLab PAT
-    "\\bsk-[A-Za-z0-9]{32,}\\b", // OpenAI-style key
-    "\\bAKIA[A-Z0-9]{16}\\b", // AWS access key
-    "\\bxox[baprs]-[A-Za-z0-9\\-]{10,}\\b", // Slack token
+    "\\bghp_[A-Za-z0-9]{36,}\\b",
+    "\\bgithub_pat_[A-Za-z0-9_]{22,}\\b",
+    "\\bglpat-[A-Za-z0-9\\-_]{20,}\\b",
+    "\\bsk-[A-Za-z0-9]{32,}\\b",
+    "\\bAKIA[A-Z0-9]{16}\\b",
+    "\\bxox[baprs]-[A-Za-z0-9\\-]{10,}\\b",
     "-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
 ];
 
