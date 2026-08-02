@@ -91,7 +91,7 @@ thiserror = { workspace = true }
 # open_connection`). Already a workspace dependency (via `reqwest`,
 # `quinn`, and `bridge-probe`'s own direct use), so listing it here for
 # the main crate does not increase the build graph.
-tokio = { workspace = true, features = ["net"] }
+tokio = { workspace = true, features = ["net", "sync"] }
 # `regex` is required to faithfully reproduce the Python `re.search`/`re.compile`
 # patterns used by `scraper.py` and `onionhop_collector.py` for input validation,
 # endpoint extraction, and IP-version detection. It is already a transitive
@@ -166,6 +166,13 @@ path = "tests/idna_icu4x_regression.rs"
 [[test]]
 name = "rust_native_pipeline"
 path = "tests/rust_native_pipeline.rs"
+
+# Offline contract for the complete bridge/ + Telegram publication inventory.
+# `autotests = false` above means this explicit declaration is required for
+# Cargo to execute the integration test in every CI run.
+[[test]]
+name = "bridge_publication_contract"
+path = "tests/bridge_publication.rs"
 
 # Runtime smoke tests for the Rust-native pipeline binaries. `clippy` proves
 # they compile; these prove they actually run end-to-end without panicking,
