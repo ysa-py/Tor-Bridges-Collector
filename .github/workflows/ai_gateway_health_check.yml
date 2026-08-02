@@ -198,10 +198,11 @@ jobs:
       - name: Show Dynamic Model Rankings
         continue-on-error: true
         run: |
-          echo "=== TypeScript/Node.js AI Gateway model and Iran DPI health ==="
-          mkdir -p data
-          echo '{"status": "healthy", "engine": "typescript_full_stack", "models": ["gemini-2.5-pro", "gemini-2.5-flash"], "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' > data/model_rankings_report.json
-          echo "✔ Dynamic Model Rankings report generated."
+          echo "=== Rust-native AI Gateway model and Iran DPI health ==="
+          cargo run --quiet --bin ai_gateway_health_check -- \
+            --output data/model_rankings_report.json \
+            --task "${{ github.event.inputs.task || 'general' }}"
+          cargo run --quiet --bin anti_ai_dpi -- --help >/dev/null
 
       # ════════════════════════════════════════════════════════════════════════
       # MAIN: Run Gateway Health Check
@@ -257,10 +258,11 @@ jobs:
           CF_AI_GATEWAY_URL_11: ${{ secrets.CF_AI_GATEWAY_URL_11 }}
           GITHUB_RUN_ID: ${{ github.run_id }}
         run: |
-          echo "═══ Running AI Gateway Health Check v12.0 (TypeScript Full-Stack) ═══"
-          mkdir -p data
-          echo '{"status": "healthy", "mode": "typescript_full_stack", "gateway_online": true, "timestamp": "'$(date -u +"%Y-%m-%dT%H:%M:%SZ")'"}' > data/gateway_health_report.json
-          echo "✔ AI Gateway health check completed successfully with zero errors."
+          echo "═══ Running AI Gateway Health Check v12.0 ═══"
+          cargo run --bin ai_gateway_health_check -- \
+            --output data/gateway_health_report.json \
+            --task ${{ github.event.inputs.task || 'general' }}
+          # Rust-native checker always writes a local-only healthy report when optional secrets are absent.
 
       - name: Display Health Report Summary
         if: always()

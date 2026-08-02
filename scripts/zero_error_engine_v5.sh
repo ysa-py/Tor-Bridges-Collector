@@ -456,18 +456,6 @@ main() {
     echo    "║    §7 IMP — Go build gate with correct env vars           ║"
     echo -e "╚══════════════════════════════════════════════════════════╝${NC}"
 
-    if [ -f "package.json" ] && [ ! -f "go.mod" ] && [ ! -f "Cargo.toml" ]; then
-        echo -e "\n${BOLD}${CYAN}━━━ Detected TypeScript/Node.js Full-Stack Application ━━━${NC}"
-        echo -e "${BLUE}ℹ${NC}  Running TypeScript strict check (npx tsc --noEmit)"
-        npx tsc --noEmit
-        echo -e "${GREEN}✔${NC}  TypeScript strict check OK (0 errors)"
-        echo -e "${BLUE}ℹ${NC}  Running production build verification"
-        npm run build
-        echo -e "${GREEN}✔${NC}  Production build OK"
-        echo -e "\n${GREEN}${BOLD}✔ Zero errors! TypeScript/Node.js full-stack application verified.${NC}\n"
-        exit 0
-    fi
-
     fix_gitignore
     fix_python_future_imports
     fix_go_module_path

@@ -724,132 +724,9 @@ MaxCircuitDirtiness 60`;
   });
 });
 
-// 14. AI Bridge Evasion Mutator & Obfuscation Engine
-app.post('/api/ai/mutate-bridge', (req, res) => {
-  const { bridge_line, isp } = req.body || {};
-  const inputLine = bridge_line || 'snowflake 192.0.2.3:80 2B280B2E58D7E004B2A2FA35540D304D8C4773A6';
-  const targetIsp = isp || 'MCI';
-
-  let mutatedLine = inputLine.trim();
-  let strategyName = 'REALITY + JA4 Extension Shuffling';
-  let score = 96;
-
-  if (inputLine.toLowerCase().includes('snowflake')) {
-    mutatedLine += ' front=cdn.cloudflare.net ice=stun:stun.voip.blackberry.com:3478 utls=chrome';
-    strategyName = 'Snowflake ICE Stun Mirror + Chrome uTLS Masking';
-    score = 98;
-  } else if (inputLine.toLowerCase().includes('obfs4')) {
-    if (!mutatedLine.includes('iat-mode=')) {
-      mutatedLine += ' iat-mode=1';
-    }
-    if (!mutatedLine.includes('sni=')) {
-      mutatedLine += ' sni=www.microsoft.com';
-    }
-    strategyName = 'Obfs4 Dynamic Timing Jitter (iat-mode=1) + SNI Camouflage';
-    score = 93;
-  } else if (inputLine.toLowerCase().includes('webtunnel')) {
-    mutatedLine += ' ver=0.1.0-alpha sni=telewebion.com wss=true';
-    strategyName = 'WebTunnel Domestic CDN Fronting (Telewebion Proxy)';
-    score = 97;
-  } else {
-    mutatedLine = `obfs4 ${inputLine} cert=TORSHIELD_AI_IMMUNIZED_CERT_948a1b iat-mode=1 sni=cdn.cloudflare.net`;
-    strategyName = 'Converted to Obfs4 Quantum Shielding + Custom SSL Cert';
-    score = 94;
-  }
-
-  res.json({
-    success: true,
-    original_line: inputLine,
-    mutated_line: mutatedLine,
-    strategy_applied: strategyName,
-    siam_resistance_score: score,
-    target_isp: targetIsp,
-    mutated_at: new Date().toISOString(),
-    notes: 'Bridge line has been mathematically immunized against Iranian SIAM active TCP RST and SNI fingerprinting.'
-  });
-});
-
-// 15. AI Autonomous 5-ISP Matrix Simulation & Unified Bundle Export
-app.get('/api/ai/matrix-simulate', (req, res) => {
-  const matrix = [
-    {
-      id: 'mci',
-      isp: 'MCI (همراه اول - AS44244)',
-      threatLevel: 'CRITICAL',
-      aiResistanceScore: 95,
-      recommendedStrategy: 'SplitByte (3/7) + REALITY SNI Camouflage',
-      mtuSize: 1280,
-      protocol: 'Xray REALITY XTLS',
-      status: 'BYPASS ACTIVE',
-      latencyMs: 165
-    },
-    {
-      id: 'irancell',
-      isp: 'Irancell (ایرانسل - AS197207)',
-      threatLevel: 'HIGH',
-      aiResistanceScore: 92,
-      recommendedStrategy: 'ECH TLS 1.3 + JA4 Fingerprint Shuffling',
-      mtuSize: 1340,
-      protocol: 'Encrypted ClientHello (ECH)',
-      status: 'BYPASS ACTIVE',
-      latencyMs: 180
-    },
-    {
-      id: 'tci',
-      isp: 'TCI (مخابرات ایران - AS58224)',
-      threatLevel: 'HIGH',
-      aiResistanceScore: 90,
-      recommendedStrategy: 'obfs4 Timing Jitter (iat-mode=1) + TLS Padding',
-      mtuSize: 1400,
-      protocol: 'Tor obfs4 bridge',
-      status: 'SHIELDED',
-      latencyMs: 195
-    },
-    {
-      id: 'shatel',
-      isp: 'Shatel (شاتل - AS31549)',
-      threatLevel: 'MODERATE',
-      aiResistanceScore: 98,
-      recommendedStrategy: 'WebTunnel Domestic CDN Fronting',
-      mtuSize: 1420,
-      protocol: 'WebTunnel HTTP/2',
-      status: 'OPTIMAL',
-      latencyMs: 140
-    },
-    {
-      id: 'nin',
-      isp: 'NIN National Cut (اینترنت ملی - AS-NIN-IR)',
-      threatLevel: 'EXTREME',
-      aiResistanceScore: 89,
-      recommendedStrategy: 'Domestic Relay Proxy + Meek-Lite Domain Fronting',
-      mtuSize: 1200,
-      protocol: 'meek_lite / NIN Relay',
-      status: 'NIN SURVIVAL READY',
-      latencyMs: 110
-    }
-  ];
-
-  const unifiedBundle = {
-    generator: "TorShield IR AI Enterprise Matrix Engine",
-    version: "5.0-zero-error",
-    timestamp: new Date().toISOString(),
-    operators: matrix,
-    global_rules: {
-      block_ads: true,
-      sniffing_override: true,
-      quic_fallback: false,
-      siam_tcp_rst_mitigation: true
-    }
-  };
-
-  res.json({
-    success: true,
-    matrix,
-    unifiedBundle,
-    timestamp: new Date().toISOString()
-  });
-});
-
+// ----------------------------------------------------
+// VITE DEV & PRODUCTION STATIC MIDDLEWARE
+// ----------------------------------------------------
 
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
@@ -862,7 +739,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*all', (req, res) => {
+    app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
