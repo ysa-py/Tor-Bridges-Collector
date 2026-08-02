@@ -104,7 +104,7 @@ async def bootstrap() -> None:
     # ── Plan validation cycle ────────────────────────────────────
     orch.plan_validation_cycle([
         "python scripts/validate_artifacts.py",
-        "python scripts/security_scan.py --fail-on-severity critical",
+        "cargo run --quiet --bin security_scan -- .",  # Rust port of the retired security_scan.py
         "python scripts/validate_dependencies.py",
         "python scripts/generate_architecture_docs.py",
     ])

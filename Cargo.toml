@@ -118,6 +118,13 @@ reqwest = { workspace = true, optional = true }
 # dependency (only the "deflate" compression method is used, matching
 # Python's `zipfile.ZIP_DEFLATED`).
 zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
+# `serde_yaml` is the YAML engine behind the `validate_workflows` and
+# `quality_gate yaml-lint` Rust ports (replacing PyYAML from the retired
+# `scripts/validate_workflows.py` and the inline `_yaml_lint.py` heredoc in
+# the old workflow). It tolerates unknown `!tags` (e.g. GitLab `!reference`)
+# via `Value::Tagged`, exactly like the old custom PyYAML loader shim. The
+# pinned version string matches `[workspace.dependencies]`.
+serde_yaml = { workspace = true }
 
 [features]
 default = []
