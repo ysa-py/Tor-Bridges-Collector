@@ -1283,8 +1283,15 @@ mod tests {
         let mut counts = BTreeMap::new();
         write_transport_family(&bridge_dir, &[], "conjure", "conjure", false, &mut counts)
             .expect("write conjure");
-        write_transport_family(&bridge_dir, &[], "meek-azure", "meek-azure", false, &mut counts)
-            .expect("write meek-azure");
+        write_transport_family(
+            &bridge_dir,
+            &[],
+            "meek-azure",
+            "meek-azure",
+            false,
+            &mut counts,
+        )
+        .expect("write meek-azure");
         for name in [
             "conjure.txt",
             "conjure_72h.txt",
@@ -1323,7 +1330,10 @@ mod tests {
             assert!(body.lines().count() > 0, "{name} must not be empty");
         }
         let blocked = std::fs::read_to_string(bridge_dir.join("iran_blocked.txt")).expect("file");
-        assert!(blocked.is_empty(), "iran_blocked.txt stays empty without evidence");
+        assert!(
+            blocked.is_empty(),
+            "iran_blocked.txt stays empty without evidence"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

@@ -323,7 +323,10 @@ pub fn run(bridge_dir: &Path) -> i32 {
                 eprintln!("FAILSAFE: cannot write {}: {err}", path.display());
                 continue;
             }
-            println!("FAILSAFE: wrote valid empty JSON array to {}", path.display());
+            println!(
+                "FAILSAFE: wrote valid empty JSON array to {}",
+                path.display()
+            );
             empty_json += 1;
         }
     }
@@ -466,8 +469,14 @@ mod tests {
             transport_for_filename("webtunnel_ipv6_tested.txt"),
             Some("webtunnel")
         );
-        assert_eq!(transport_for_filename("vanilla_tested.txt"), Some("vanilla"));
-        assert_eq!(transport_for_filename("snowflake_ipv6.txt"), Some("snowflake"));
+        assert_eq!(
+            transport_for_filename("vanilla_tested.txt"),
+            Some("vanilla")
+        );
+        assert_eq!(
+            transport_for_filename("snowflake_ipv6.txt"),
+            Some("snowflake")
+        );
         assert_eq!(transport_for_filename("meek_lite.txt"), Some("meek_lite"));
         assert_eq!(transport_for_filename("meek-azure.txt"), Some("meek-azure"));
         assert_eq!(transport_for_filename("conjure_72h.txt"), Some("conjure"));

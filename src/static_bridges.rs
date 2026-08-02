@@ -288,7 +288,10 @@ mod tests {
             "conjure",
             "meek-azure",
         ] {
-            assert!(!fallback_lines(transport).is_empty(), "{transport} has no fallback");
+            assert!(
+                !fallback_lines(transport).is_empty(),
+                "{transport} has no fallback"
+            );
         }
         assert!(fallback_lines("unknown").is_empty());
     }
