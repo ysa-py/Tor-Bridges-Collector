@@ -167,6 +167,13 @@ path = "tests/idna_icu4x_regression.rs"
 name = "rust_native_pipeline"
 path = "tests/rust_native_pipeline.rs"
 
+# Offline contract for the complete bridge/ + Telegram publication inventory.
+# `autotests = false` above means this explicit declaration is required for
+# Cargo to execute the integration test in every CI run.
+[[test]]
+name = "bridge_publication_contract"
+path = "tests/bridge_publication.rs"
+
 # Runtime smoke tests for the Rust-native pipeline binaries. `clippy` proves
 # they compile; these prove they actually run end-to-end without panicking,
 # which is what the CI workflows depend on post-migration.

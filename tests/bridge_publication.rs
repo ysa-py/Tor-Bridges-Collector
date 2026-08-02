@@ -171,7 +171,10 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
     .unwrap();
     assert_eq!(manifest["schema_version"], 2);
     assert_eq!(manifest["required_files_present"], true);
-    assert_eq!(manifest["archive"]["entry_count"], json!(REQUIRED_FILES.len() - 1));
+    assert_eq!(
+        manifest["archive"]["entry_count"],
+        json!(REQUIRED_FILES.len() - 1)
+    );
 
     verify_publication(&options).unwrap();
     let _ = std::fs::remove_dir_all(root);
@@ -182,11 +185,7 @@ fn verifier_rejects_archive_or_manifest_drift() {
     let root = scratch("tamper");
     write_fixture(&root);
     let options = options(&root);
-    publish_at(
-        &options,
-        Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap(),
-    )
-    .unwrap();
+    publish_at(&options, Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap()).unwrap();
 
     std::fs::write(options.bridge_dir.join("obfs4.txt"), "tampered\n").unwrap();
     let error = verify_publication(&options).unwrap_err().to_string();
