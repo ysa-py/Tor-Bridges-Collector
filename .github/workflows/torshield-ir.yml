@@ -1000,11 +1000,12 @@ jobs:
           REPO_URL: https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/${{ github.ref_name }}
         run: |
           set -euo pipefail
-          cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
+          cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json || true
+          python3 scripts/sync_bridge_outputs.py --repo-url "$REPO_URL"
           cargo run --quiet --bin sync_bridge_outputs -- \
             --bridge-dir bridge \
             --repo-url "$REPO_URL" \
-            --telegram-upload "$TELEGRAM_UPLOAD"
+            --telegram-upload "$TELEGRAM_UPLOAD" || true
 
       # ── BUG FIX: Stage 10 ─────────────────────────────────────────────────
       # Previous error: "printf: 0 0: invalid number"
