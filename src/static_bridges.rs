@@ -11,10 +11,19 @@
 //! literals (which strip the newline and any leading whitespace on the
 //! following line while preserving the trailing space before `\`).
 //!
+//! Beyond the Python-parity constants, this module also provides static
+//! fallback lines for every published transport (webtunnel, vanilla,
+//! conjure, meek-azure included) via [`fallback_lines`] and [`fallback_all`].
+//! The exporter and the pre-publication FAILSAFE use those helpers to
+//! force-populate any `bridge/*.txt` that would otherwise be 0 bytes when
+//! live collection and testing produced no candidates for a transport.
+//!
 //! Sources:
 //! - Tor Browser source: tor-browser/src/app/tor-browser.git (torrc.defaults)
 //! - Snowflake broker: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake>
 //! - meek: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/meek>
+//! - WebTunnel: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel>
+//! - Conjure: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/conjure>
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Snowflake — WebRTC + CDN fronting. Extremely hard to block. Best for Iran.
@@ -103,12 +112,75 @@ iat-mode=2",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
+// webtunnel — TLS-in-TLS over HTTP/2 CDN fronting. Excellent for Iran.
+// Lines below mirror the public WebTunnel bridge pool format
+// `webtunnel <ip>:<port> <fingerprint> url=<registration URL> ver=<version>`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Built-in WebTunnel bridge lines (public pool, IPv6-first). Length: 4.
+pub const WEBTUNNEL_BRIDGES: &[&str] = &[
+    "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 \
+DF343521735ABE129910A998817B3A93AA2390FE \
+url=https://coellen.xyz ver=0.0.3",
+    "webtunnel [2001:db8:135d:123e:527a:c63b:5eb0:b322]:443 \
+68674E54A17AEB1C9ADE878BBBB46C6975DD3105 \
+url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+    "webtunnel [2001:db8:157f:b0b0:4ee2:b754:ee1e:76d1]:443 \
+96E16DE2F8DA38060D93A554DC56C90A681F6FE4 \
+url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3",
+    "webtunnel [2001:db8:15ff:dc41:12c5:ce54:2bfa:ab3e]:443 \
+88C9B6F63D50B63FC5E1DE2F5423FCDA2C0AC5EB \
+url=https://vault.005184.xyz/e3QD38jnqsG3jzcfa8NA6ar9 ver=0.0.3",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// vanilla — plain Tor bridges (`ip:port fingerprint`). Stored WITHOUT the
+// `Bridge ` prefix: every `.txt` writer strips that prefix on output, so the
+// fallback table uses the same convention as `normalize_for_file`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Built-in vanilla bridge lines. Length: 4.
+pub const VANILLA_BRIDGES: &[&str] = &[
+    "102.212.98.168:9393 B2CF966100CA013C4456643C98092B6FEBA3A304",
+    "103.149.168.242:9443 91637DE9ED5B069722DA7A5796926EE13238694D",
+    "107.173.164.249:50604 74DE4100C63CA34626E21C593C1A265793D69E76",
+    "107.189.3.186:22512 5ABFC5405EAFD091BCAF4D9E4318D1FC52D531B9",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// conjure — domain-fronted registration transport (Refraction Networking).
+// Same line as `onionhop_collector::fronted_conjure`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Built-in conjure bridge lines. Length: 1.
+pub const CONJURE_BRIDGES: &[&str] = &[
+    "conjure 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+url=https://registration.refraction.network/api \
+fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// meek-azure — Azure CDN domain fronting. Same line as
+// `onionhop_collector::fronted_meek_azure`.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Built-in meek-azure bridge lines. Length: 1.
+pub const MEEK_AZURE_BRIDGES: &[&str] = &[
+    "meek_lite 192.0.2.20:80 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
+url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Public interface
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Return the list of `(bridge_line, transport, ip_version)` tuples for all
 /// built-in bridges, in the same order as the Python `get_all()`:
 /// snowflake×4, meek_lite×3, obfs4×5 (12 tuples total).
+///
+/// This function is the byte-for-byte parity surface with the Python source
+/// and is intentionally NOT extended; the transport families added for the
+/// publication FAILSAFE live in [`fallback_lines`] / [`fallback_all`].
 pub fn get_all() -> Vec<(&'static str, &'static str, &'static str)> {
     let mut results: Vec<(&'static str, &'static str, &'static str)> = Vec::new();
     for line in SNOWFLAKE_BRIDGES {
@@ -121,6 +193,43 @@ pub fn get_all() -> Vec<(&'static str, &'static str, &'static str)> {
         results.push((line, "obfs4", "ipv4"));
     }
     results
+}
+
+/// Static fallback lines for a single transport family.
+///
+/// Used by the exporter (`bridge_publication`) and the FAILSAFE to guarantee
+/// that no published `bridge/*.txt` protocol file is ever 0 bytes, even when
+/// live collection/probing produced no candidates for that transport.
+/// Returns an empty vector for unknown transports.
+pub fn fallback_lines(transport: &str) -> Vec<&'static str> {
+    match transport {
+        "snowflake" => SNOWFLAKE_BRIDGES.to_vec(),
+        "meek_lite" => MEEK_BRIDGES.to_vec(),
+        "obfs4" => OBFS4_BRIDGES.to_vec(),
+        "webtunnel" => WEBTUNNEL_BRIDGES.to_vec(),
+        "vanilla" => VANILLA_BRIDGES.to_vec(),
+        "conjure" => CONJURE_BRIDGES.to_vec(),
+        "meek-azure" => MEEK_AZURE_BRIDGES.to_vec(),
+        _ => Vec::new(),
+    }
+}
+
+/// Static fallback lines across every published transport, in a fixed order,
+/// used for aggregate files such as `iran_likely_working_all.txt`.
+pub fn fallback_all() -> Vec<&'static str> {
+    let mut lines = Vec::new();
+    for transport in [
+        "obfs4",
+        "webtunnel",
+        "vanilla",
+        "snowflake",
+        "meek_lite",
+        "conjure",
+        "meek-azure",
+    ] {
+        lines.extend(fallback_lines(transport));
+    }
+    lines
 }
 
 #[cfg(test)]
@@ -157,6 +266,40 @@ mod tests {
         for entry in &all[7..12] {
             assert_eq!(entry.1, "obfs4");
             assert_eq!(entry.2, "ipv4");
+        }
+    }
+
+    #[test]
+    fn webtunnel_and_vanilla_constants_are_non_empty() {
+        assert_eq!(WEBTUNNEL_BRIDGES.len(), 4);
+        assert_eq!(VANILLA_BRIDGES.len(), 4);
+        assert_eq!(CONJURE_BRIDGES.len(), 1);
+        assert_eq!(MEEK_AZURE_BRIDGES.len(), 1);
+    }
+
+    #[test]
+    fn fallback_lines_cover_every_published_transport() {
+        for transport in [
+            "obfs4",
+            "webtunnel",
+            "vanilla",
+            "snowflake",
+            "meek_lite",
+            "conjure",
+            "meek-azure",
+        ] {
+            assert!(!fallback_lines(transport).is_empty(), "{transport} has no fallback");
+        }
+        assert!(fallback_lines("unknown").is_empty());
+    }
+
+    #[test]
+    fn fallback_all_is_non_empty_and_has_no_duplicates() {
+        let all = fallback_all();
+        assert!(!all.is_empty());
+        let mut seen = std::collections::BTreeSet::new();
+        for line in &all {
+            assert!(seen.insert(*line), "duplicate line in fallback_all");
         }
     }
 }
