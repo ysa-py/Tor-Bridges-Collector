@@ -1,5 +1,5 @@
 # JA3/TLS Fingerprint Rotation Report
-**Generated:** 2026-06-28 07:08:15 UTC
+**Generated:** 2026-08-02 19:13:28 UTC  
 
 ## Summary
 
@@ -10,11 +10,11 @@
 
 ## Blocked Hash Details
 
-### `a0e9f5d64349fb13191bc781f81f42e1`
-- **Profile:** Tor Browser 11.x / obfs4 default
-- **Action:** `random_padding`
-- **Padding bytes:** 20
-- **SIAM defeat note:** Add random TLS padding extension (RFC 7685) to alter JA3 hash.
+### `e7d705a3286e19ea42f587b344ee6865`
+- **Profile:** Tor Browser 12.x default
+- **Action:** `cipher_suite_reorder`
+- **Padding bytes:** 17
+- **SIAM defeat note:** Reordering cipher suites + adding 17-byte padding block changes the JA3 hash completely. Mimics Chrome 120 profile.
 
 ## Universal Recommendations
 

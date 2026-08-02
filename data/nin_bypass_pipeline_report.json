@@ -1,0 +1,75 @@
+{
+  "engine": "torshield-rust-pipeline-v1",
+  "generated_at": "2026-08-02T19:13:09.918429823+00:00",
+  "input": "bridge/iran_results.json",
+  "stages": [
+    {
+      "detail": {
+        "generated_at": "2026-08-02T19:13:09.918107957+00:00",
+        "international_ok": true,
+        "nin_detected": false,
+        "nin_pack_size": 4,
+        "top_bridges": [
+          {
+            "composite_score": 0.325,
+            "host": "meek.azureedge.net",
+            "iran_status": "tcp_unreachable",
+            "line": "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+            "nextgen_proto": null,
+            "nin_score": 0.773,
+            "ooni_checked": false,
+            "port": 443,
+            "tcp_reachable": false,
+            "transport": "webtunnel"
+          },
+          {
+            "composite_score": 0.325,
+            "host": "a0.awsstatic.com",
+            "iran_status": "tcp_unreachable",
+            "line": "meek_lite 192.0.2.16:80 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 url=https://a0.awsstatic.com/ front=a0.awsstatic.com",
+            "nextgen_proto": null,
+            "nin_score": 0.773,
+            "ooni_checked": false,
+            "port": 443,
+            "tcp_reachable": false,
+            "transport": "webtunnel"
+          },
+          {
+            "composite_score": 0.875,
+            "host": "",
+            "iran_status": "iran_likely_working",
+            "line": "snowflake 192.0.2.3:1 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=ftls.googlevideo.com ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478 utls-imitate=hellorandomizedalpn",
+            "nextgen_proto": null,
+            "nin_score": 0.763,
+            "ooni_checked": false,
+            "port": 0,
+            "tcp_reachable": true,
+            "transport": "snowflake"
+          },
+          {
+            "composite_score": 0.875,
+            "host": "",
+            "iran_status": "iran_likely_working",
+            "line": "snowflake 192.0.2.4:1 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ fronts=snowflake-broker.torproject.net.global.prod.fastly.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478 utls-imitate=hellorandomizedalpn",
+            "nextgen_proto": null,
+            "nin_score": 0.763,
+            "ooni_checked": false,
+            "port": 0,
+            "tcp_reachable": true,
+            "transport": "snowflake"
+          }
+        ],
+        "total_scored": 4
+      },
+      "required": false,
+      "stage": "nin-bypass",
+      "started_at": "2026-08-02T19:13:09.906097306+00:00",
+      "status": "ok"
+    }
+  ],
+  "summary": {
+    "failed": 0,
+    "ok": 1,
+    "skipped": 0
+  }
+}

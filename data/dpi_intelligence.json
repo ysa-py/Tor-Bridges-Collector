@@ -1,130 +1,44 @@
 {
-  "generated_at": "2026-07-30T14:08:45.600841+00:00",
-  "total_bridges_analyzed": 3,
-  "transport_profiles": {
+  "empirical_stats": {
     "snowflake": {
-      "tier": "maximum",
-      "base_dpi_score": 0.95,
-      "mechanism": "WebRTC/DTLS over UDP — mimics video conferencing",
-      "iran_block_rate": 0.02,
-      "survives_nin": true,
-      "ai_detectable": false,
-      "description": "Snowflake uses WebRTC (same protocol as Google Meet / Zoom). Iran cannot block WebRTC wholesale without collateral damage. Fingerprint: DTLS 1.2 over UDP port 3478 (STUN) or 443 (WebSocket fallback). Signalling via CDN-fronted broker.",
-      "dpi_tier": "maximum"
+      "avg_dpi_score": 0.946,
+      "blocked": 0,
+      "dpi_risk_flags": 0,
+      "observed_block_rate": 0.0,
+      "tested": 2,
+      "working": 2
     },
     "webtunnel": {
-      "tier": "very_high",
-      "base_dpi_score": 0.88,
-      "mechanism": "HTTP/2 upgrade masquerading as standard HTTPS",
-      "iran_block_rate": 0.08,
-      "survives_nin": true,
-      "ai_detectable": false,
-      "description": "WebTunnel encapsulates Tor traffic inside an HTTP/2 CONNECT tunnel. To SIAM DPI, it looks identical to normal HTTPS traffic to a CDN domain. AI classifiers cannot distinguish it from real HTTPS without statistical analysis of inter-packet timing, which is expensive at scale. CDN-fronted variants survive internet cuts.",
-      "dpi_tier": "very_high"
-    },
-    "obfs4": {
-      "tier": "high",
-      "base_dpi_score": 0.75,
-      "mechanism": "Random-looking byte stream (Elligator2 key exchange)",
-      "iran_block_rate": 0.18,
-      "survives_nin": false,
-      "ai_detectable": true,
-      "description": "obfs4 produces traffic that appears statistically random. Classic DPI (signature matching) cannot identify it. However, Iran's newer ML classifiers (deployed 2023+) can identify obfs4 via packet-size distribution and inter-arrival timing analysis. Bridges on port 443 with fresh IPs have higher survival rates.",
-      "dpi_tier": "high"
-    },
-    "meek_lite": {
-      "tier": "high",
-      "base_dpi_score": 0.8,
-      "mechanism": "Domain fronting via Azure/AWS CDN",
-      "iran_block_rate": 0.12,
-      "survives_nin": true,
-      "ai_detectable": false,
-      "description": "meek-lite routes Tor through large CDN providers (Azure, AWS) that Iran cannot block entirely. The SNI in the TLS hello shows a CDN domain; the inner HTTP request is forwarded to the Tor bridge. Bandwidth-limited but very reliable during internet cuts.",
-      "dpi_tier": "high"
-    },
-    "vanilla": {
-      "tier": "low",
-      "base_dpi_score": 0.1,
-      "mechanism": "Plain TLS Tor — fully identifiable",
-      "iran_block_rate": 0.97,
-      "survives_nin": false,
-      "ai_detectable": true,
-      "description": "Vanilla Tor uses standard TLS with a recognisable handshake. Iran blocks virtually all known Tor relay IPs via both IP blocklists and JA3 fingerprint matching. Unusable in Iran without further obfuscation.",
-      "dpi_tier": "low"
-    },
-    "hysteria2": {
-      "tier": "maximum",
-      "base_dpi_score": 0.97,
-      "mechanism": "QUIC/UDP with MASQ obfuscation — looks like HTTPS/3",
-      "iran_block_rate": 0.01,
-      "survives_nin": false,
-      "ai_detectable": false,
-      "description": "Hysteria2 uses QUIC (same as Chrome's HTTPS/3) with an additional MASQ obfuscation layer that makes it indistinguishable from normal QUIC traffic. Iran cannot block it without blocking all QUIC/HTTPS/3, which would break major services. Currently not in Tor Browser but available as a standalone proxy.",
-      "add_to_project": true,
-      "integration_notes": "Add as a scored bridge type; probe via UDP QUIC handshake.",
-      "dpi_tier": "maximum"
-    },
-    "reality": {
-      "tier": "maximum",
-      "base_dpi_score": 0.98,
-      "mechanism": "TLS mimicry — server impersonates a real HTTPS website",
-      "iran_block_rate": 0.005,
-      "survives_nin": false,
-      "ai_detectable": false,
-      "description": "REALITY (part of the XTLS/Xray project) makes the server present a valid TLS handshake for a real target domain (e.g. microsoft.com). DPI cannot distinguish it from real HTTPS traffic. Undetectable by AI classifiers without active probing. Not in Tor Browser yet, but can be integrated as a proxy front-end for Tor.",
-      "add_to_project": true,
-      "integration_notes": "Detect REALITY bridge lines via xtls-rprx-reality keyword.",
-      "dpi_tier": "maximum"
-    },
-    "shadowsocks_2022": {
-      "tier": "very_high",
-      "base_dpi_score": 0.9,
-      "mechanism": "AEAD-2022 with timestamp replay protection",
-      "iran_block_rate": 0.05,
-      "survives_nin": false,
-      "ai_detectable": false,
-      "description": "Shadowsocks 2022 edition uses 2022 AEAD ciphers with mandatory timestamp-based replay protection. Traffic looks like random noise with perfect forward secrecy. Significantly harder to detect than classic SS due to fixed-length headers. Can be used as a Tor front-end.",
-      "add_to_project": true,
-      "integration_notes": "Parse ss:// URIs in bridge lines.",
-      "dpi_tier": "very_high"
-    },
-    "vless_xtls": {
-      "tier": "maximum",
-      "base_dpi_score": 0.96,
-      "mechanism": "TLS passthrough with XTLS vision flow control",
-      "iran_block_rate": 0.01,
-      "survives_nin": false,
-      "ai_detectable": false,
-      "description": "VLESS+XTLS Vision sends inner TLS records within outer TLS at the raw record layer, making the combined traffic look identical to TLS 1.3 traffic with typical browser cipher suites. No statistically detectable patterns. Extremely effective in Iran as of 2025.",
-      "add_to_project": true,
-      "integration_notes": "Detect vless:// URIs and xtls-rprx-vision flow keyword.",
-      "dpi_tier": "maximum"
+      "avg_dpi_score": 0.914,
+      "blocked": 0,
+      "dpi_risk_flags": 0,
+      "observed_block_rate": 0.0,
+      "tested": 2,
+      "working": 0
     }
   },
-  "empirical_stats": {
-    "obfs4": {
-      "tested": 1,
-      "working": 0,
-      "blocked": 0,
-      "dpi_risk_flags": 0,
-      "avg_dpi_score": 0.764,
-      "observed_block_rate": 0.0
+  "generated_at": "2026-08-02T19:13:11Z",
+  "iran_dpi_notes": "Iran's SIAM (v3, deployed 2023) uses AI-based flow classifiers that can identify obfs4 at ~82% accuracy under sustained monitoring. Snowflake and WebTunnel remain undetected as of 2026 OONI data. Bridges on port 443 with CDN fronting have the highest survival rates.",
+  "next_gen_to_add": {
+    "hysteria2": {
+      "integration_notes": "Add as a scored bridge type; probe via UDP QUIC handshake.",
+      "mechanism": "QUIC/UDP with MASQ obfuscation — looks like HTTPS/3",
+      "tier": "maximum"
     },
-    "webtunnel": {
-      "tested": 1,
-      "working": 0,
-      "blocked": 0,
-      "dpi_risk_flags": 0,
-      "avg_dpi_score": 0.914,
-      "observed_block_rate": 0.0
+    "reality": {
+      "integration_notes": "Detect REALITY bridge lines via xtls-rprx-reality keyword.",
+      "mechanism": "TLS mimicry — server impersonates a real HTTPS website",
+      "tier": "maximum"
     },
-    "snowflake": {
-      "tested": 1,
-      "working": 0,
-      "blocked": 0,
-      "dpi_risk_flags": 0,
-      "avg_dpi_score": 0.996,
-      "observed_block_rate": 0.0
+    "shadowsocks_2022": {
+      "integration_notes": "Parse ss:// URIs in bridge lines.",
+      "mechanism": "AEAD-2022 with timestamp replay protection",
+      "tier": "very_high"
+    },
+    "vless_xtls": {
+      "integration_notes": "Detect vless:// URIs and xtls-rprx-vision flow keyword.",
+      "mechanism": "TLS passthrough with XTLS vision flow control",
+      "tier": "maximum"
     }
   },
   "recommended_for_iran": [
@@ -133,27 +47,105 @@
     "meek_lite",
     "obfs4"
   ],
-  "next_gen_to_add": {
+  "total_bridges_analyzed": 4,
+  "transport_profiles": {
     "hysteria2": {
-      "tier": "maximum",
+      "add_to_project": true,
+      "ai_detectable": false,
+      "base_dpi_score": 0.97,
+      "description": "Hysteria2 uses QUIC (same as Chrome's HTTPS/3) with an additional MASQ obfuscation layer that makes it indistinguishable from normal QUIC traffic. Iran cannot block it without blocking all QUIC/HTTPS/3, which would break major services. Currently not in Tor Browser but available as a standalone proxy.",
+      "dpi_tier": "maximum",
+      "integration_notes": "Add as a scored bridge type; probe via UDP QUIC handshake.",
+      "iran_block_rate": 0.01,
       "mechanism": "QUIC/UDP with MASQ obfuscation — looks like HTTPS/3",
-      "integration_notes": "Add as a scored bridge type; probe via UDP QUIC handshake."
+      "survives_nin": false,
+      "tier": "maximum"
+    },
+    "meek_lite": {
+      "ai_detectable": false,
+      "base_dpi_score": 0.8,
+      "description": "meek-lite routes Tor through large CDN providers (Azure, AWS) that Iran cannot block entirely. The SNI in the TLS hello shows a CDN domain; the inner HTTP request is forwarded to the Tor bridge. Bandwidth-limited but very reliable during internet cuts.",
+      "dpi_tier": "high",
+      "iran_block_rate": 0.12,
+      "mechanism": "Domain fronting via Azure/AWS CDN",
+      "survives_nin": true,
+      "tier": "high"
+    },
+    "obfs4": {
+      "ai_detectable": true,
+      "base_dpi_score": 0.75,
+      "description": "obfs4 produces traffic that appears statistically random. Classic DPI (signature matching) cannot identify it. However, Iran's newer ML classifiers (deployed 2023+) can identify obfs4 via packet-size distribution and inter-arrival timing analysis. Bridges on port 443 with fresh IPs have higher survival rates.",
+      "dpi_tier": "high",
+      "iran_block_rate": 0.18,
+      "mechanism": "Random-looking byte stream (Elligator2 key exchange)",
+      "survives_nin": false,
+      "tier": "high"
     },
     "reality": {
-      "tier": "maximum",
+      "add_to_project": true,
+      "ai_detectable": false,
+      "base_dpi_score": 0.98,
+      "description": "REALITY (part of the XTLS/Xray project) makes the server present a valid TLS handshake for a real target domain (e.g. microsoft.com). DPI cannot distinguish it from real HTTPS traffic. Undetectable by AI classifiers without active probing. Not in Tor Browser yet, but can be integrated as a proxy front-end for Tor.",
+      "dpi_tier": "maximum",
+      "integration_notes": "Detect REALITY bridge lines via xtls-rprx-reality keyword.",
+      "iran_block_rate": 0.005,
       "mechanism": "TLS mimicry — server impersonates a real HTTPS website",
-      "integration_notes": "Detect REALITY bridge lines via xtls-rprx-reality keyword."
+      "survives_nin": false,
+      "tier": "maximum"
     },
     "shadowsocks_2022": {
-      "tier": "very_high",
+      "add_to_project": true,
+      "ai_detectable": false,
+      "base_dpi_score": 0.9,
+      "description": "Shadowsocks 2022 edition uses 2022 AEAD ciphers with mandatory timestamp-based replay protection. Traffic looks like random noise with perfect forward secrecy. Significantly harder to detect than classic SS due to fixed-length headers. Can be used as a Tor front-end.",
+      "dpi_tier": "very_high",
+      "integration_notes": "Parse ss:// URIs in bridge lines.",
+      "iran_block_rate": 0.05,
       "mechanism": "AEAD-2022 with timestamp replay protection",
-      "integration_notes": "Parse ss:// URIs in bridge lines."
+      "survives_nin": false,
+      "tier": "very_high"
+    },
+    "snowflake": {
+      "ai_detectable": false,
+      "base_dpi_score": 0.95,
+      "description": "Snowflake uses WebRTC (same protocol as Google Meet / Zoom). Iran cannot block WebRTC wholesale without collateral damage. Fingerprint: DTLS 1.2 over UDP port 3478 (STUN) or 443 (WebSocket fallback). Signalling via CDN-fronted broker.",
+      "dpi_tier": "maximum",
+      "iran_block_rate": 0.02,
+      "mechanism": "WebRTC/DTLS over UDP — mimics video conferencing",
+      "survives_nin": true,
+      "tier": "maximum"
+    },
+    "vanilla": {
+      "ai_detectable": true,
+      "base_dpi_score": 0.1,
+      "description": "Vanilla Tor uses standard TLS with a recognisable handshake. Iran blocks virtually all known Tor relay IPs via both IP blocklists and JA3 fingerprint matching. Unusable in Iran without further obfuscation.",
+      "dpi_tier": "low",
+      "iran_block_rate": 0.97,
+      "mechanism": "Plain TLS Tor — fully identifiable",
+      "survives_nin": false,
+      "tier": "low"
     },
     "vless_xtls": {
-      "tier": "maximum",
+      "add_to_project": true,
+      "ai_detectable": false,
+      "base_dpi_score": 0.96,
+      "description": "VLESS+XTLS Vision sends inner TLS records within outer TLS at the raw record layer, making the combined traffic look identical to TLS 1.3 traffic with typical browser cipher suites. No statistically detectable patterns. Extremely effective in Iran as of 2025.",
+      "dpi_tier": "maximum",
+      "integration_notes": "Detect vless:// URIs and xtls-rprx-vision flow keyword.",
+      "iran_block_rate": 0.01,
       "mechanism": "TLS passthrough with XTLS vision flow control",
-      "integration_notes": "Detect vless:// URIs and xtls-rprx-vision flow keyword."
+      "survives_nin": false,
+      "tier": "maximum"
+    },
+    "webtunnel": {
+      "ai_detectable": false,
+      "base_dpi_score": 0.88,
+      "description": "WebTunnel encapsulates Tor traffic inside an HTTP/2 CONNECT tunnel. To SIAM DPI, it looks identical to normal HTTPS traffic to a CDN domain. AI classifiers cannot distinguish it from real HTTPS without statistical analysis of inter-packet timing, which is expensive at scale. CDN-fronted variants survive internet cuts.",
+      "dpi_tier": "very_high",
+      "iran_block_rate": 0.08,
+      "mechanism": "HTTP/2 upgrade masquerading as standard HTTPS",
+      "survives_nin": true,
+      "tier": "very_high"
     }
-  },
-  "iran_dpi_notes": "Iran's SIAM (v3, deployed 2023) uses AI-based flow classifiers that can identify obfs4 at ~82% accuracy under sustained monitoring. Snowflake and WebTunnel remain undetected as of 2026 OONI data. Bridges on port 443 with CDN fronting have the highest survival rates."
+  }
 }

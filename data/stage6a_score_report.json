@@ -1,0 +1,36 @@
+{
+  "engine": "torshield-rust-pipeline-v1",
+  "generated_at": "2026-08-02T19:13:08.719821368+00:00",
+  "input": "bridge/iran_results.json",
+  "stages": [
+    {
+      "detail": {
+        "metadata": {
+          "samples": 2,
+          "status": "insufficient_data"
+        },
+        "records_updated": 4
+      },
+      "required": false,
+      "stage": "ml",
+      "started_at": "2026-08-02T19:13:08.718620214+00:00",
+      "status": "ok"
+    },
+    {
+      "detail": {
+        "export": "export/iran_rotation_bridges.txt",
+        "plan": "data/iran_rotation_plan.json",
+        "rotation_size": 3
+      },
+      "required": false,
+      "stage": "rotation",
+      "started_at": "2026-08-02T19:13:08.719398079+00:00",
+      "status": "ok"
+    }
+  ],
+  "summary": {
+    "failed": 0,
+    "ok": 2,
+    "skipped": 0
+  }
+}

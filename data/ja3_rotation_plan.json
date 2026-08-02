@@ -1,22 +1,33 @@
 {
-  "generated_at": "2026-06-28T07:08:15.259470+00:00",
   "baseline_hashes_checked": 1,
-  "blocked_hashes_found": 1,
-  "rotation_needed": true,
-  "siam_blocked_database_size": 9,
   "blocked_details": [
     {
-      "ja3_hash": "a0e9f5d64349fb13191bc781f81f42e1",
-      "blocked_profile": "Tor Browser 11.x / obfs4 default",
+      "blocked_profile": "Tor Browser 12.x default",
+      "ja3_hash": "e7d705a3286e19ea42f587b344ee6865",
       "rotation_strategy": {
-        "action": "random_padding",
-        "padding_bytes": 20,
-        "recommended_cipher_order": [],
-        "extensions_order": [],
-        "siam_defeat_note": "Add random TLS padding extension (RFC 7685) to alter JA3 hash."
+        "action": "cipher_suite_reorder",
+        "extensions_order": [
+          "SNI",
+          "EC_POINT_FORMATS",
+          "ALPN",
+          "PADDING"
+        ],
+        "padding_bytes": 17,
+        "recommended_cipher_order": [
+          "TLS_AES_128_GCM_SHA256",
+          "TLS_CHACHA20_POLY1305_SHA256",
+          "TLS_AES_256_GCM_SHA384",
+          "ECDHE-ECDSA-AES128-GCM-SHA256",
+          "ECDHE-RSA-AES128-GCM-SHA256"
+        ],
+        "siam_defeat_note": "Reordering cipher suites + adding 17-byte padding block changes the JA3 hash completely. Mimics Chrome 120 profile."
       }
     }
   ],
+  "blocked_hashes_found": 1,
+  "generated_at": "2026-08-02T19:13:28.347576341+00:00",
+  "rotation_needed": true,
+  "siam_blocked_database_size": 9,
   "universal_recommendations": [
     "Enable TLS padding extension (RFC 7685) on all pluggable transport clients.",
     "Use iat-mode=2 for obfs4 to randomise inter-arrival timing.",

@@ -1,33 +1,33 @@
 {
-  "generated_at": "2026-06-27T21:15:59.887451+00:00",
-  "total_scanned": 2886,
-  "next_gen_found": 0,
-  "protocol_counts": {},
-  "bridges": [],
-  "integration_guide": {
-    "hysteria2": {
-      "detection": "Line starts with hysteria2://",
-      "tor_usage": "Run Hysteria2 client → expose SOCKS5 → configure Tor to use it",
-      "install": "https://github.com/apernet/hysteria",
-      "iran_notes": "Extremely effective. Requires server on non-blocked IP."
+  "generated_at": "2026-08-02T19:13:09.684663769+00:00",
+  "transports": [
+    {
+      "description": "MASQ obfuscation - looks like HTTPS/3",
+      "dpi_resistance": 0.97,
+      "iran_viable": true,
+      "name": "hysteria2",
+      "protocol": "QUIC/UDP"
     },
-    "reality": {
-      "detection": "Line contains xtls-rprx-reality or security=reality",
-      "tor_usage": "Xray/sing-box client → SOCKS5 → Tor",
-      "install": "https://github.com/XTLS/Xray-core",
-      "iran_notes": "Best single-host solution for Iran as of 2026."
+    {
+      "description": "Impersonates real HTTPS websites",
+      "dpi_resistance": 0.98,
+      "iran_viable": true,
+      "name": "reality",
+      "protocol": "TLS mimicry"
     },
-    "vless_xtls": {
-      "detection": "vless:// with xtls-rprx-vision flow",
-      "tor_usage": "Xray/sing-box client → SOCKS5 → Tor",
-      "install": "https://github.com/XTLS/Xray-core",
-      "iran_notes": "Near-zero detection rate, uses Chrome TLS fingerprint."
+    {
+      "description": "Timestamp replay protection",
+      "dpi_resistance": 0.9,
+      "iran_viable": true,
+      "name": "shadowsocks_2022",
+      "protocol": "AEAD-2022"
     },
-    "ss2022": {
-      "detection": "ss:// with 2022-blake3-* cipher",
-      "tor_usage": "sslocal → SOCKS5 → Tor",
-      "install": "https://github.com/shadowsocks/shadowsocks-rust",
-      "iran_notes": "Much harder to detect than classic Shadowsocks."
+    {
+      "description": "TLS passthrough with flow control",
+      "dpi_resistance": 0.96,
+      "iran_viable": true,
+      "name": "vless_xtls",
+      "protocol": "XTLS Vision"
     }
-  }
+  ]
 }
