@@ -17,6 +17,14 @@
       "transport": "snowflake"
     },
     {
+      "ip": "146.57.248.225",
+      "port": 22,
+      "raw": "obfs4 146.57.248.225:22 10A6CD36A537FCE513A322E120CD05179CE93655 cert=K1gDtDAIcUfeLqbstggjIos/FsSYZ2h24CNQpDjEs62Tm4bFDIoE9+X/mhzOt5Jsvg iat-mode=2",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "193.11.166.194",
       "port": 27025,
       "raw": "obfs4 193.11.166.194:27025 1AE2C08904527FEA90C4307C2A428523CF4DFED2 cert=IYmSp4TQw7V87kQOPhwOGCHGEuNwMaS0IW0OEuYZVXslGcWCMI1Kes/GzJYKGR/5QQIZXQ iat-mode=2",
@@ -26,10 +34,58 @@
     },
     {
       "ip": "193.11.166.194",
-      "port": 27025,
-      "raw": "webtunnel 193.11.166.194:27025 1AE2C08904527FEA90C4307C2A428523CF4DFED2",
+      "port": 27067,
+      "raw": "obfs4 193.11.166.194:27067 1AE2C08904527FEA90C4307C2A428523CF4DFED2 cert=cCbNa6Y1UrN9lGtKR3N0MhF5H62gU1VBIoJcNRHuInkBgMmJh5j0bECEMmjHgfSJUdRJqw iat-mode=2",
       "sni": "",
       "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
+      "ip": "37.218.245.14",
+      "port": 38224,
+      "raw": "obfs4 37.218.245.14:38224 D9A82D2F9C2F65A18407B1D2B764F130847F8B5D cert=L4N/KQa4TQ24v0Q0VPKWG1Qq2ZXGQAB2OAhKj0f6YnEo1A99oPIFpLv1dMKiQAbHtFhXog iat-mode=2",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
+      "ip": "89.163.212.153",
+      "port": 15000,
+      "raw": "obfs4 89.163.212.153:15000 A30B2B9F02AEE22D1F26D0D73C4B61DB6C5F84AA cert=Dq5X8Ap5MJIO3sPbEG8vZONOvHUFIEJGN5oOpnAWKpMqXNDWjmhJCkNRmMDgj0H7a/MiFQ iat-mode=2",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
+      "ip": "2001:db8:1218:1de7:3a91:22cc:8d7f:197c",
+      "port": 443,
+      "raw": "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
+      "sni": "coellen.xyz",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "2001:db8:135d:123e:527a:c63b:5eb0:b322",
+      "port": 443,
+      "raw": "webtunnel [2001:db8:135d:123e:527a:c63b:5eb0:b322]:443 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+      "sni": "vika7.space",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "2001:db8:157f:b0b0:4ee2:b754:ee1e:76d1",
+      "port": 443,
+      "raw": "webtunnel [2001:db8:157f:b0b0:4ee2:b754:ee1e:76d1]:443 96E16DE2F8DA38060D93A554DC56C90A681F6FE4 url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3",
+      "sni": "jochenkessler.de",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "2001:db8:15ff:dc41:12c5:ce54:2bfa:ab3e",
+      "port": 443,
+      "raw": "webtunnel [2001:db8:15ff:dc41:12c5:ce54:2bfa:ab3e]:443 88C9B6F63D50B63FC5E1DE2F5423FCDA2C0AC5EB url=https://vault.005184.xyz/e3QD38jnqsG3jzcfa8NA6ar9 ver=0.0.3",
+      "sni": "vault.005184.xyz",
+      "tier": "YELLOW",
       "transport": "webtunnel"
     },
     {
@@ -54,10 +110,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-02T20:40:19.447877+00:00",
+  "generated_at": "2026-08-02T21:28:49.505841+00:00",
   "green_count": 4,
-  "red_count": 2,
+  "red_count": 5,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 6,
-  "yellow_count": 0
+  "total_bridges": 13,
+  "yellow_count": 4
 }

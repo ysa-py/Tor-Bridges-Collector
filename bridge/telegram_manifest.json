@@ -1,9 +1,389 @@
 {
-  "schema_version": 2,
-  "generated_at": "2026-08-02T20:59:55Z",
-  "producer": "torshield-ir-rust-publication-v2",
-  "evidence_scope": "TCP observations are made from the CI runner. Iran labels are advisory rankings derived from recorded evidence and transport capability; they are not a guarantee of reachability from Iran.",
+  "archive": {
+    "entry_count": 54,
+    "excludes_self": true,
+    "layout": "bridge/<filename>",
+    "name": "tor_bridges.zip",
+    "verification": "Each non-self-referential payload file is SHA-256 recorded above; the publisher byte-compares every ZIP entry before delivery."
+  },
   "bridge_directory": "bridge",
+  "evidence_scope": "TCP observations are made from the CI runner. Iran labels are advisory rankings derived from recorded evidence and transport capability; they are not a guarantee of reachability from Iran.",
+  "files": [
+    {
+      "name": "bridge_history.json",
+      "non_empty_lines": null,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/bridge_history.json",
+      "sha256": "66c8af919dc37b9eaa0440e135ad2090354b58b4ceddf43c4bae575ffdc1da76",
+      "size_bytes": 3958
+    },
+    {
+      "name": "bridge_list_for_testing.json",
+      "non_empty_lines": null,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/bridge_list_for_testing.json",
+      "sha256": "6fb8e80e2b2ebb95ef08542328a4ba80d5f7ac116a4c2171ef45190838c85fcc",
+      "size_bytes": 883
+    },
+    {
+      "name": "bridge_scores.json",
+      "non_empty_lines": null,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/bridge_scores.json",
+      "sha256": "7c37ff4677b4afe1bd126e5f9f50267623fdee9f04bc14ffb827736659a27fec",
+      "size_bytes": 1108
+    },
+    {
+      "name": "conjure.txt",
+      "non_empty_lines": 1,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/conjure.txt",
+      "sha256": "c40d2b85e40003a3b301e138091837a3d9446ef733e0f9461abdecc31828d9bb",
+      "size_bytes": 170
+    },
+    {
+      "name": "conjure_72h.txt",
+      "non_empty_lines": 1,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/conjure_72h.txt",
+      "sha256": "c40d2b85e40003a3b301e138091837a3d9446ef733e0f9461abdecc31828d9bb",
+      "size_bytes": 170
+    },
+    {
+      "name": "conjure_tested.txt",
+      "non_empty_lines": 1,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/conjure_tested.txt",
+      "sha256": "c40d2b85e40003a3b301e138091837a3d9446ef733e0f9461abdecc31828d9bb",
+      "size_bytes": 170
+    },
+    {
+      "name": "iran_blocked.txt",
+      "non_empty_lines": 0,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_blocked.txt",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "size_bytes": 0
+    },
+    {
+      "name": "iran_likely_working_all.txt",
+      "non_empty_lines": 15,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt",
+      "sha256": "3553845f71125f78f1746922e6599cf2540c3d25559a1c962289eec615c527f0",
+      "size_bytes": 2256
+    },
+    {
+      "name": "iran_likely_working_nin.txt",
+      "non_empty_lines": 6,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt",
+      "sha256": "5d2eee0d627a2148383534b7c103dc50e13fd6c7d8a379300f7800e5830b9c14",
+      "size_bytes": 1242
+    },
+    {
+      "name": "iran_likely_working_obfs4.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "iran_likely_working_snowflake.txt",
+      "non_empty_lines": 2,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt",
+      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9",
+      "size_bytes": 621
+    },
+    {
+      "name": "iran_likely_working_vanilla.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_vanilla.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "iran_likely_working_webtunnel.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "iran_results.json",
+      "non_empty_lines": null,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_results.json",
+      "sha256": "8f9f6c16ae4f46e5b894b974171f7226a16ada31b6ad47d16eaf1f6bddf4d4d2",
+      "size_bytes": 2089
+    },
+    {
+      "name": "meek-azure.txt",
+      "non_empty_lines": 1,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek-azure.txt",
+      "sha256": "ad7620e105fe5abaed875d66a6929075cc1b35767a2e87f4b2821a9438293f17",
+      "size_bytes": 122
+    },
+    {
+      "name": "meek-azure_72h.txt",
+      "non_empty_lines": 1,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek-azure_72h.txt",
+      "sha256": "ad7620e105fe5abaed875d66a6929075cc1b35767a2e87f4b2821a9438293f17",
+      "size_bytes": 122
+    },
+    {
+      "name": "meek-azure_tested.txt",
+      "non_empty_lines": 1,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek-azure_tested.txt",
+      "sha256": "ad7620e105fe5abaed875d66a6929075cc1b35767a2e87f4b2821a9438293f17",
+      "size_bytes": 122
+    },
+    {
+      "name": "meek_lite.txt",
+      "non_empty_lines": 2,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite.txt",
+      "sha256": "e36d11306f51e0a8f814d81e23dc280e086b0ef24008aec4d62b98f4d7df7d69",
+      "size_bytes": 240
+    },
+    {
+      "name": "meek_lite_72h.txt",
+      "non_empty_lines": 2,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_72h.txt",
+      "sha256": "e36d11306f51e0a8f814d81e23dc280e086b0ef24008aec4d62b98f4d7df7d69",
+      "size_bytes": 240
+    },
+    {
+      "name": "meek_lite_72h_ipv6.txt",
+      "non_empty_lines": 3,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_72h_ipv6.txt",
+      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f",
+      "size_bytes": 372
+    },
+    {
+      "name": "meek_lite_ipv6.txt",
+      "non_empty_lines": 3,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_ipv6.txt",
+      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f",
+      "size_bytes": 372
+    },
+    {
+      "name": "meek_lite_ipv6_tested.txt",
+      "non_empty_lines": 3,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_ipv6_tested.txt",
+      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f",
+      "size_bytes": 372
+    },
+    {
+      "name": "meek_lite_tested.txt",
+      "non_empty_lines": 3,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_tested.txt",
+      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f",
+      "size_bytes": 372
+    },
+    {
+      "name": "obfs4.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "obfs4_72h.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_72h.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "obfs4_72h_ipv6.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_72h_ipv6.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "obfs4_ipv6.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_ipv6.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "obfs4_ipv6_72h.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_ipv6_72h.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "obfs4_ipv6_tested.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_ipv6_tested.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "obfs4_tested.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_tested.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "snowflake.txt",
+      "non_empty_lines": 2,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake.txt",
+      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9",
+      "size_bytes": 621
+    },
+    {
+      "name": "snowflake_72h.txt",
+      "non_empty_lines": 2,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_72h.txt",
+      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9",
+      "size_bytes": 621
+    },
+    {
+      "name": "snowflake_72h_ipv6.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_72h_ipv6.txt",
+      "sha256": "3c4553cfbcb07548b8217391f8b8c43187f9151d7065a8d8d6ed630aeb50dae5",
+      "size_bytes": 1733
+    },
+    {
+      "name": "snowflake_ipv6.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_ipv6.txt",
+      "sha256": "3c4553cfbcb07548b8217391f8b8c43187f9151d7065a8d8d6ed630aeb50dae5",
+      "size_bytes": 1733
+    },
+    {
+      "name": "snowflake_ipv6_tested.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_ipv6_tested.txt",
+      "sha256": "3c4553cfbcb07548b8217391f8b8c43187f9151d7065a8d8d6ed630aeb50dae5",
+      "size_bytes": 1733
+    },
+    {
+      "name": "snowflake_tested.txt",
+      "non_empty_lines": 2,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_tested.txt",
+      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9",
+      "size_bytes": 621
+    },
+    {
+      "name": "tested_global_obfs4.txt",
+      "non_empty_lines": 5,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tested_global_obfs4.txt",
+      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb",
+      "size_bytes": 767
+    },
+    {
+      "name": "tested_global_vanilla.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tested_global_vanilla.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "tested_global_webtunnel.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tested_global_webtunnel.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "vanilla.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "vanilla_72h.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_72h.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "vanilla_72h_ipv6.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_72h_ipv6.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "vanilla_ipv6.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_ipv6.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "vanilla_ipv6_72h.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_ipv6_72h.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "vanilla_ipv6_tested.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_ipv6_tested.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "vanilla_tested.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_tested.txt",
+      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62",
+      "size_bytes": 247
+    },
+    {
+      "name": "webtunnel.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "webtunnel_72h.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_72h.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "webtunnel_72h_ipv6.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_72h_ipv6.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "webtunnel_ipv6.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_ipv6.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "webtunnel_ipv6_72h.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_ipv6_72h.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "webtunnel_ipv6_tested.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_ipv6_tested.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    },
+    {
+      "name": "webtunnel_tested.txt",
+      "non_empty_lines": 4,
+      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_tested.txt",
+      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9",
+      "size_bytes": 621
+    }
+  ],
+  "generated_at": "2026-08-02T21:28:50Z",
+  "missing_required_files": [],
+  "producer": "torshield-ir-rust-publication-v2",
   "required_files": [
     "bridge_history.json",
     "bridge_list_for_testing.json",
@@ -62,440 +442,60 @@
     "webtunnel_tested.txt"
   ],
   "required_files_present": true,
-  "missing_required_files": [],
-  "files": [
-    {
-      "name": "bridge_history.json",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/bridge_history.json",
-      "size_bytes": 3958,
-      "non_empty_lines": null,
-      "sha256": "7e3280be7fbb9829695a7838e086eb7f27aeabb78606ac9e205403bee2981909"
-    },
-    {
-      "name": "bridge_list_for_testing.json",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/bridge_list_for_testing.json",
-      "size_bytes": 883,
-      "non_empty_lines": null,
-      "sha256": "6fb8e80e2b2ebb95ef08542328a4ba80d5f7ac116a4c2171ef45190838c85fcc"
-    },
-    {
-      "name": "bridge_scores.json",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/bridge_scores.json",
-      "size_bytes": 1108,
-      "non_empty_lines": null,
-      "sha256": "7c37ff4677b4afe1bd126e5f9f50267623fdee9f04bc14ffb827736659a27fec"
-    },
-    {
-      "name": "conjure.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/conjure.txt",
-      "size_bytes": 170,
-      "non_empty_lines": 1,
-      "sha256": "c40d2b85e40003a3b301e138091837a3d9446ef733e0f9461abdecc31828d9bb"
-    },
-    {
-      "name": "conjure_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/conjure_72h.txt",
-      "size_bytes": 170,
-      "non_empty_lines": 1,
-      "sha256": "c40d2b85e40003a3b301e138091837a3d9446ef733e0f9461abdecc31828d9bb"
-    },
-    {
-      "name": "conjure_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/conjure_tested.txt",
-      "size_bytes": 170,
-      "non_empty_lines": 1,
-      "sha256": "c40d2b85e40003a3b301e138091837a3d9446ef733e0f9461abdecc31828d9bb"
-    },
-    {
-      "name": "iran_blocked.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_blocked.txt",
-      "size_bytes": 0,
-      "non_empty_lines": 0,
-      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-    },
-    {
-      "name": "iran_likely_working_all.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt",
-      "size_bytes": 2256,
-      "non_empty_lines": 15,
-      "sha256": "3553845f71125f78f1746922e6599cf2540c3d25559a1c962289eec615c527f0"
-    },
-    {
-      "name": "iran_likely_working_nin.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt",
-      "size_bytes": 1242,
-      "non_empty_lines": 6,
-      "sha256": "5d2eee0d627a2148383534b7c103dc50e13fd6c7d8a379300f7800e5830b9c14"
-    },
-    {
-      "name": "iran_likely_working_obfs4.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "iran_likely_working_snowflake.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 2,
-      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9"
-    },
-    {
-      "name": "iran_likely_working_vanilla.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_vanilla.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "iran_likely_working_webtunnel.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "iran_results.json",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_results.json",
-      "size_bytes": 2089,
-      "non_empty_lines": null,
-      "sha256": "bd3d75069d8831d4ddce08230fc75116e019bf531c7534a016a75bad5ba0acf4"
-    },
-    {
-      "name": "meek-azure.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek-azure.txt",
-      "size_bytes": 122,
-      "non_empty_lines": 1,
-      "sha256": "ad7620e105fe5abaed875d66a6929075cc1b35767a2e87f4b2821a9438293f17"
-    },
-    {
-      "name": "meek-azure_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek-azure_72h.txt",
-      "size_bytes": 122,
-      "non_empty_lines": 1,
-      "sha256": "ad7620e105fe5abaed875d66a6929075cc1b35767a2e87f4b2821a9438293f17"
-    },
-    {
-      "name": "meek-azure_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek-azure_tested.txt",
-      "size_bytes": 122,
-      "non_empty_lines": 1,
-      "sha256": "ad7620e105fe5abaed875d66a6929075cc1b35767a2e87f4b2821a9438293f17"
-    },
-    {
-      "name": "meek_lite.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite.txt",
-      "size_bytes": 240,
-      "non_empty_lines": 2,
-      "sha256": "e36d11306f51e0a8f814d81e23dc280e086b0ef24008aec4d62b98f4d7df7d69"
-    },
-    {
-      "name": "meek_lite_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_72h.txt",
-      "size_bytes": 240,
-      "non_empty_lines": 2,
-      "sha256": "e36d11306f51e0a8f814d81e23dc280e086b0ef24008aec4d62b98f4d7df7d69"
-    },
-    {
-      "name": "meek_lite_72h_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_72h_ipv6.txt",
-      "size_bytes": 372,
-      "non_empty_lines": 3,
-      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f"
-    },
-    {
-      "name": "meek_lite_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_ipv6.txt",
-      "size_bytes": 372,
-      "non_empty_lines": 3,
-      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f"
-    },
-    {
-      "name": "meek_lite_ipv6_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_ipv6_tested.txt",
-      "size_bytes": 372,
-      "non_empty_lines": 3,
-      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f"
-    },
-    {
-      "name": "meek_lite_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/meek_lite_tested.txt",
-      "size_bytes": 372,
-      "non_empty_lines": 3,
-      "sha256": "03d451623331217cd2dc0c5cae96e79f2b9d78381aedb1599a60045adf364c1f"
-    },
-    {
-      "name": "obfs4.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "obfs4_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_72h.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "obfs4_72h_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_72h_ipv6.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "obfs4_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_ipv6.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "obfs4_ipv6_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_ipv6_72h.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "obfs4_ipv6_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_ipv6_tested.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "obfs4_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/obfs4_tested.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "snowflake.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 2,
-      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9"
-    },
-    {
-      "name": "snowflake_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_72h.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 2,
-      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9"
-    },
-    {
-      "name": "snowflake_72h_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_72h_ipv6.txt",
-      "size_bytes": 1733,
-      "non_empty_lines": 4,
-      "sha256": "3c4553cfbcb07548b8217391f8b8c43187f9151d7065a8d8d6ed630aeb50dae5"
-    },
-    {
-      "name": "snowflake_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_ipv6.txt",
-      "size_bytes": 1733,
-      "non_empty_lines": 4,
-      "sha256": "3c4553cfbcb07548b8217391f8b8c43187f9151d7065a8d8d6ed630aeb50dae5"
-    },
-    {
-      "name": "snowflake_ipv6_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_ipv6_tested.txt",
-      "size_bytes": 1733,
-      "non_empty_lines": 4,
-      "sha256": "3c4553cfbcb07548b8217391f8b8c43187f9151d7065a8d8d6ed630aeb50dae5"
-    },
-    {
-      "name": "snowflake_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/snowflake_tested.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 2,
-      "sha256": "9f49675e6d74381aa77f4c7e7c49bc6d497d47da65b85f012c6d79faac8909f9"
-    },
-    {
-      "name": "tested_global_obfs4.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tested_global_obfs4.txt",
-      "size_bytes": 767,
-      "non_empty_lines": 5,
-      "sha256": "f3aabdd34d93df64176cf127003f995a49183c11ff1c6a9d68cdd8b648fd51cb"
-    },
-    {
-      "name": "tested_global_vanilla.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tested_global_vanilla.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "tested_global_webtunnel.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tested_global_webtunnel.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "vanilla.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "vanilla_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_72h.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "vanilla_72h_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_72h_ipv6.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "vanilla_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_ipv6.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "vanilla_ipv6_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_ipv6_72h.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "vanilla_ipv6_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_ipv6_tested.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "vanilla_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/vanilla_tested.txt",
-      "size_bytes": 247,
-      "non_empty_lines": 4,
-      "sha256": "9c58f6f86e93e00a1f85bf610a37a7bde31923054cf456d82d3e30b49e4e3f62"
-    },
-    {
-      "name": "webtunnel.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "webtunnel_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_72h.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "webtunnel_72h_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_72h_ipv6.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "webtunnel_ipv6.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_ipv6.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "webtunnel_ipv6_72h.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_ipv6_72h.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "webtunnel_ipv6_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_ipv6_tested.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    },
-    {
-      "name": "webtunnel_tested.txt",
-      "raw_url": "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/webtunnel_tested.txt",
-      "size_bytes": 621,
-      "non_empty_lines": 4,
-      "sha256": "43fd31f1e90c678757d246a42cef34416eb3e4300be07a5677ac80aeaa4a83e9"
-    }
-  ],
-  "archive": {
-    "name": "tor_bridges.zip",
-    "layout": "bridge/<filename>",
-    "entry_count": 54,
-    "excludes_self": true,
-    "verification": "Each non-self-referential payload file is SHA-256 recorded above; the publisher byte-compares every ZIP entry before delivery."
-  },
+  "schema_version": 2,
   "summary": {
+    "bridge_history.json": 4,
+    "bridge_list_for_testing.json": 4,
+    "bridge_scores.json": 4,
     "conjure.txt": 1,
     "conjure_72h.txt": 1,
     "conjure_tested.txt": 1,
+    "iran_blocked.txt": 0,
+    "iran_likely_working_all.txt": 15,
+    "iran_likely_working_nin.txt": 6,
+    "iran_likely_working_obfs4.txt": 5,
+    "iran_likely_working_snowflake.txt": 2,
+    "iran_likely_working_vanilla.txt": 4,
+    "iran_likely_working_webtunnel.txt": 4,
+    "iran_results.json": 4,
     "meek-azure.txt": 1,
     "meek-azure_72h.txt": 1,
     "meek-azure_tested.txt": 1,
-    "obfs4.txt": 5,
-    "obfs4_72h.txt": 5,
-    "obfs4_tested.txt": 5,
-    "obfs4_ipv6.txt": 5,
-    "obfs4_72h_ipv6.txt": 5,
-    "obfs4_ipv6_tested.txt": 5,
-    "obfs4_ipv6_72h.txt": 5,
-    "snowflake.txt": 2,
-    "snowflake_72h.txt": 2,
-    "snowflake_tested.txt": 2,
-    "snowflake_ipv6.txt": 4,
-    "snowflake_72h_ipv6.txt": 4,
-    "snowflake_ipv6_tested.txt": 4,
-    "vanilla.txt": 4,
-    "vanilla_72h.txt": 4,
-    "vanilla_tested.txt": 4,
-    "vanilla_ipv6.txt": 4,
-    "vanilla_72h_ipv6.txt": 4,
-    "vanilla_ipv6_tested.txt": 4,
-    "vanilla_ipv6_72h.txt": 4,
-    "webtunnel.txt": 4,
-    "webtunnel_72h.txt": 4,
-    "webtunnel_tested.txt": 4,
-    "webtunnel_ipv6.txt": 4,
-    "webtunnel_72h_ipv6.txt": 4,
-    "webtunnel_ipv6_tested.txt": 4,
-    "webtunnel_ipv6_72h.txt": 4,
     "meek_lite.txt": 2,
     "meek_lite_72h.txt": 2,
-    "meek_lite_tested.txt": 3,
-    "meek_lite_ipv6.txt": 3,
     "meek_lite_72h_ipv6.txt": 3,
+    "meek_lite_ipv6.txt": 3,
     "meek_lite_ipv6_tested.txt": 3,
-    "iran_likely_working_obfs4.txt": 5,
-    "iran_likely_working_webtunnel.txt": 4,
-    "iran_likely_working_vanilla.txt": 4,
-    "iran_likely_working_snowflake.txt": 2,
-    "iran_likely_working_all.txt": 15,
-    "iran_likely_working_nin.txt": 6,
-    "iran_blocked.txt": 0,
+    "meek_lite_tested.txt": 3,
+    "obfs4.txt": 5,
+    "obfs4_72h.txt": 5,
+    "obfs4_72h_ipv6.txt": 5,
+    "obfs4_ipv6.txt": 5,
+    "obfs4_ipv6_72h.txt": 5,
+    "obfs4_ipv6_tested.txt": 5,
+    "obfs4_tested.txt": 5,
+    "snowflake.txt": 2,
+    "snowflake_72h.txt": 2,
+    "snowflake_72h_ipv6.txt": 4,
+    "snowflake_ipv6.txt": 4,
+    "snowflake_ipv6_tested.txt": 4,
+    "snowflake_tested.txt": 2,
     "tested_global_obfs4.txt": 5,
-    "tested_global_webtunnel.txt": 4,
     "tested_global_vanilla.txt": 4,
-    "bridge_scores.json": 4,
-    "bridge_list_for_testing.json": 4,
-    "bridge_history.json": 4,
-    "iran_results.json": 4
+    "tested_global_webtunnel.txt": 4,
+    "vanilla.txt": 4,
+    "vanilla_72h.txt": 4,
+    "vanilla_72h_ipv6.txt": 4,
+    "vanilla_ipv6.txt": 4,
+    "vanilla_ipv6_72h.txt": 4,
+    "vanilla_ipv6_tested.txt": 4,
+    "vanilla_tested.txt": 4,
+    "webtunnel.txt": 4,
+    "webtunnel_72h.txt": 4,
+    "webtunnel_72h_ipv6.txt": 4,
+    "webtunnel_ipv6.txt": 4,
+    "webtunnel_ipv6_72h.txt": 4,
+    "webtunnel_ipv6_tested.txt": 4,
+    "webtunnel_tested.txt": 4
   }
 }
