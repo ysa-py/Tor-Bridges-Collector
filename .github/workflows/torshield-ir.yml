@@ -754,13 +754,20 @@ jobs:
           git config --global user.name  "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git pull origin main --rebase --autostash
-          git add bridge/ data/ docs/ export/ README.md go.mod go.sum \
-                  src/bin/sync_bridge_outputs.rs \
-                  cmd/ internal/ zig-scanner/ \
-                  generate_quantum_project.sh \
-                  core/ scripts/ || true
-          [ -f go.sum ] && git add go.sum || true
-          [ -f bridge-probe/Cargo.lock ] && git add bridge-probe/Cargo.lock || true
+          # Stage ONLY paths that exist in the tree. A single missing
+          # pathspec (e.g. core/, which is absent) makes `git add` fail
+          # atomically and stage NOTHING — hidden by the old `|| true`,
+          # that silently turned this step into a permanent no-op and
+          # blocked every bridge/ + README.md commit for days.
+          PATHS="bridge/ data/ docs/ export/ README.md go.mod go.sum \
+                 src/bin/sync_bridge_outputs.rs cmd/ internal/ zig-scanner/ \
+                 generate_quantum_project.sh scripts/"
+          for opt in core bridge-probe/Cargo.lock; do
+            [ -e "$opt" ] && PATHS="$PATHS $opt"
+          done
+          echo "Staging paths: $PATHS"
+          git add $PATHS
+          git status --porcelain -- bridge/ README.md | head -20
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
