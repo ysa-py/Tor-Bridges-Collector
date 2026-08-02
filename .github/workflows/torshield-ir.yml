@@ -470,7 +470,7 @@ jobs:
       - name: Stage 5 — OONI correlator
         continue-on-error: true
         timeout-minutes: 8
-        run: cargo run --quiet --bin ooni_correlator
+        run: cargo run --quiet --features network --bin ooni_correlator
 
       - name: Stage 6a — Score bridges
         timeout-minutes: 8
