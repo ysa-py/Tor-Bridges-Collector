@@ -2,21 +2,17 @@
 //! `.github/workflows/ai_gateway_health_check.yml` and
 //! `.github/workflows/ai_self_healing.yml`:
 //!
-//!   * `health-summary`      → `_health_summary.py` — pretty-print
-//!                             `data/gateway_health_report.json` (kept
-//!                             byte-compatible, including Python's
-//!                             capitalised `True`/`False` bools).
-//!   * `obs-report`          → `_obs_report.py` — build provider health
-//!                             metrics from the gateway report, persist
-//!                             `data/observability_report.json` and append
-//!                             the GitHub step-summary markdown. On any
-//!                             failure it writes the same degraded fallback
-//!                             report the Python script wrote.
-//!   * `categorize-failure`  → `_categorize.py` — classify a failed parent
-//!                             workflow run from its logs (GitHub API,
-//!                             `network` feature), write
-//!                             `data/failure_categorization.json` and the
-//!                             three `$GITHUB_OUTPUT` key/value pairs.
+//! - `health-summary` → `_health_summary.py` — pretty-print
+//!   `data/gateway_health_report.json` (kept byte-compatible, including
+//!   Python's capitalised `True`/`False` bools).
+//! - `obs-report` → `_obs_report.py` — build provider health metrics
+//!   from the gateway report, persist `data/observability_report.json`
+//!   and append the GitHub step-summary markdown. On any failure it
+//!   writes the same degraded fallback report the Python script wrote.
+//! - `categorize-failure` → `_categorize.py` — classify a failed parent
+//!   workflow run from its logs (GitHub API, `network` feature), write
+//!   `data/failure_categorization.json` and the three `$GITHUB_OUTPUT`
+//!   key/value pairs.
 //!
 //! The Python implementations imported `monitoring.structured_logging`;
 //! that package is retired, so the metrics/analytics/report logic lives in
@@ -432,7 +428,6 @@ const FIXABLE_CATEGORIES: &[&str] = &[
     "model_error",
     "unknown_fixable",
 ];
-const TRANSIENT_CATEGORIES: &[&str] = &["network_error", "timeout"];
 
 /// Classify a failure from combined lowercase text. Transient patterns are
 /// checked first, exactly as in the Python original.
@@ -457,12 +452,13 @@ pub fn categorize(combined_text_lower: &str) -> &'static str {
 }
 
 /// Decide `(is_fixable, should_run_autodebug)` for a category, mirroring the
-/// Python branch table (every arm sets `should_run_autodebug = true`).
+/// Python branch table (every arm sets `should_run_autodebug = true`). In
+/// the Python table the transient categories (`network_error`, `timeout`)
+/// and every unknown category mapped to the same `(False, True)` pair, so
+/// they fold into the fallback arm here with identical behaviour.
 pub fn category_flags(category: &str) -> (bool, bool) {
     if FIXABLE_CATEGORIES.contains(&category) {
         (true, true)
-    } else if TRANSIENT_CATEGORIES.contains(&category) {
-        (false, true)
     } else {
         (false, true)
     }
@@ -487,6 +483,10 @@ fn write_categorization_report(report: &Value) {
 
 /// Last `n` *characters* of a string (Python `text[-n:]` slices by code
 /// points, not bytes).
+// Only the `network`-gated log fetcher calls this in production code; keep
+// it compiled everywhere because the unit tests exercise it under every
+// feature set.
+#[cfg_attr(not(feature = "network"), allow(dead_code))]
 fn tail_chars(text: &str, n: usize) -> String {
     let chars: Vec<char> = text.chars().collect();
     chars.iter().skip(chars.len().saturating_sub(n)).collect()

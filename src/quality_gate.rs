@@ -4,26 +4,20 @@
 //! `quality-gate` job of `.github/workflows/torshield-ir.yml` (and the two
 //! `setup-python`-based Python jobs of `main-ci.yml`):
 //!
-//!   * `yaml-lint [root]`          — parse every `*.yml`/`*.yaml` under the
-//!                                   tree (`.git` pruned, matching the old
-//!                                   `find ... -not -path './.git/*'` command)
-//!                                   and fail if any file is invalid YAML.
-//!                                   Unknown `!tags` (e.g. GitLab `!reference`)
-//!                                   are tolerated exactly like the old
-//!                                   PyYAML `construct_unknown_tag` shim.
-//!   * `requirements [path]`       — validate `requirements.txt` with the same
-//!                                   operator-priority splitting (`>=`, `==`,
-//!                                   `~=`, `<`, `>`) as
-//!                                   `_validate_requirements.py`.
-//!   * `py-check [root]`           — the migration-era Python gate inverted:
-//!                                   the tree is now Rust-native, so the gate
-//!                                   passes when *no* `*.py` files remain
-//!                                   (excluding `.git`/`vendor`, like the old
-//!                                   py_compile sweep) and fails listing any
-//!                                   survivor.
-//!   * `report [root]`             — regenerate `data/quality_report.json`
-//!                                   with the exact schema the Python quality
-//!                                   report produced.
+//! - `yaml-lint [root]` — parse every `*.yml`/`*.yaml` under the tree
+//!   (`.git` pruned, matching the old `find ... -not -path './.git/*'`
+//!   command) and fail if any file is invalid YAML. Unknown `!tags`
+//!   (e.g. GitLab `!reference`) are tolerated exactly like the old PyYAML
+//!   `construct_unknown_tag` shim.
+//! - `requirements [path]` — validate `requirements.txt` with the same
+//!   operator-priority splitting (`>=`, `==`, `~=`, `<`, `>`) as
+//!   `_validate_requirements.py`.
+//! - `py-check [root]` — the migration-era Python gate inverted: the tree
+//!   is now Rust-native, so the gate passes when *no* `*.py` files remain
+//!   (excluding `.git`/`vendor`, like the old py_compile sweep) and fails
+//!   listing any survivor.
+//! - `report [root]` — regenerate `data/quality_report.json` with the
+//!   exact schema the Python quality report produced.
 //!
 //! All four subcommands keep the original step's output banners and exit
 //! semantics (0 pass / 1 fail) so dashboards and logs keep their shape.
@@ -39,10 +33,7 @@ use serde_json::json;
 const REPORT_PRUNE_DIRS: &[&str] = &[".git", "vendor", "__pycache__", "node_modules"];
 
 fn walk(root: &Path, prune: &[&str], out: &mut Vec<PathBuf>) -> io::Result<()> {
-    let entries = match fs::read_dir(root) {
-        Ok(entries) => entries,
-        Err(err) => return Err(err),
-    };
+    let entries = fs::read_dir(root)?;
     let mut dirs = Vec::new();
     let mut files = Vec::new();
     for entry in entries.flatten() {
