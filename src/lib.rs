@@ -10,6 +10,7 @@ pub mod anti_ai_dpi;
 pub mod auto_debug_system;
 pub mod autonomous;
 pub mod autonomous_anti_censorship_obfuscator;
+pub mod bridge_publication;
 pub mod bridge_scoring;
 pub mod censorship_fusion;
 pub mod censorship_monitor;
