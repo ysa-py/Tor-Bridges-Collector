@@ -37,5 +37,5 @@ jobs:
           DAYS_OLD: ${{ github.event.inputs.days_old || '30' }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'true' }}
         run: |
-          chmod +x ./close-stale-prs.sh
-          ./close-stale-prs.sh
+          chmod +x ./.github/scripts/close-stale-prs.sh
+          ./.github/scripts/close-stale-prs.sh
