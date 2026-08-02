@@ -350,7 +350,7 @@ fn extract_probe_records(root: &Value) -> Result<Vec<ProbeRecord>, Box<dyn std::
         let tcp_reachable = object
             .get("tcp_reachable")
             .and_then(Value::as_bool)
-            .unwrap_or_else(|| matches!(probe_status, "reachable" | "quic_reachable"));
+            .unwrap_or(matches!(probe_status, "reachable" | "quic_reachable"));
         let transport_capable = object
             .get("transport_capable")
             .and_then(Value::as_bool)
