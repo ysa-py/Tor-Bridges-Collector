@@ -895,10 +895,10 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 
 ## Telegram dual persistence
 
-Telegram delivery is opt-in because it uses a bot token and distributes a bridge inventory outside GitHub.
+Telegram delivery uses a bot token and distributes a bridge inventory outside GitHub, so it requires explicit configuration; once configured it is fully automatic.
 
-- Set repository secrets `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
-- Set repository variable `TELEGRAM_AUTO_UPLOAD=true` for scheduled delivery, or select **true** in **Run workflow**.
+- Set repository secrets `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`; delivery is then ON by default for schedule, push, and manual runs.
+- Opt out per run by selecting **false** in **Run workflow**, or repo-wide with the `TELEGRAM_AUTO_UPLOAD=false` repository variable. Pull-request runs never deliver (preview only).
 - The publisher builds and verifies one `tor_bridges.zip`; GitHub and Telegram consume that exact file. Cross-service commits cannot be literally atomic, so an upload failure stops the workflow before the repository commit step whenever possible.
 
 ## Evidence and safety notes

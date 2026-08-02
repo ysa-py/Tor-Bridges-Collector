@@ -6,6 +6,7 @@
 pub mod adaptive_selector;
 pub mod adaptive_transport;
 pub mod ai_anti_dpi_iran;
+pub mod ai_workflow_tools;
 pub mod anti_ai_dpi;
 pub mod auto_debug_system;
 pub mod autonomous;
@@ -21,6 +22,7 @@ pub mod dpi_evasion_advanced;
 pub mod dt_utils;
 pub mod ech_fingerprint_evasion;
 pub mod endpoint_validator;
+pub mod failsafe_bridges;
 pub mod feature_flags;
 pub mod formatter;
 pub mod generated_json_loader;
@@ -48,6 +50,7 @@ pub mod nin_survival_pack;
 pub mod notifier;
 pub mod onionhop_collector;
 pub mod ooni_correlator;
+pub mod quality_gate;
 pub mod quarantine_manager;
 pub mod recovery;
 pub mod results_writer;
@@ -55,6 +58,7 @@ pub mod retry_engine;
 pub mod root_modules;
 pub mod scorer;
 pub mod scraper;
+pub mod security_scan;
 pub mod self_heal;
 pub mod slot_circuit_breaker;
 pub mod smart_iran_scorer;
@@ -65,6 +69,8 @@ pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
 pub mod torshield_ai_gateway;
+pub mod validate_workflows;
+pub mod vercel_cleanup;
 
 /// Cargo features mirroring pytest markers used for selective test execution.
 pub const PYTEST_MARKER_FEATURES: &[&str] = &[
