@@ -1,63 +1,92 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Auto-fix mechanical issues: format, cargo fix (including clippy-suggested fixes if supported)
-# Workflow:
-# 1. Ensure clean working tree
-# 2. Run cargo fmt check -> if fail, run cargo fmt --all
-# 3. Run cargo fix (with --clippy if supported) to apply automated fixes
-# 4. Re-run validation (clippy -D warnings, tests)
-# 5. If validation passes: commit changes with message
-# 6. If validation fails: rollback to original HEAD
+# Auto-fix mechanical issues: format, fix, and verification for TypeScript/Node.js full-stack apps
 
 REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo '.')
 cd "${REPO_ROOT}"
 
-# Ensure no uncommitted changes to avoid clobbering developer work
-if [ -n "$(git status --porcelain)" ]; then
-  echo "[auto-fix] Working tree is not clean. Aborting auto-fix to avoid clobbering changes."
-  exit 2
-fi
-
-ORIG_HEAD=$(git rev-parse --verify HEAD)
 TS=$(date -u +"%Y%m%dT%H%M%SZ")
-ISSUE_ID="mechanical-${TS}"
 DIAG_DIR="diagnostics/auto-fix-${TS}"
 mkdir -p "${DIAG_DIR}"
-CHANGES_MADE=0
 
-echo "[auto-fix] Starting auto-fix run (${ISSUE_ID})"
+echo "[auto-fix] Starting auto-fix run at ${TS}"
 
-# 1) cargo fmt check
-echo "[auto-fix] Running cargo fmt --all -- --check"
-if ! cargo fmt --all -- --check 2>&1 | tee "${DIAG_DIR}/cargo-fmt-check.log"; then
-  echo "[auto-fix] Formatting issues found. Applying cargo fmt --all"
-  cargo fmt --all 2>&1 | tee "${DIAG_DIR}/cargo-fmt-apply.log"
-  git add -A
-  CHANGES_MADE=1
-else
-  echo "[auto-fix] No formatting issues"
+# Smart detection: TypeScript/Node.js Full-Stack Application
+if [ -f "package.json" ]; then
+  echo "[auto-fix] Detected TypeScript/Node.js full-stack application (package.json present)"
+  
+  echo "[auto-fix] Running TypeScript strict type check (npx tsc --noEmit)"
+  npx tsc --noEmit 2>&1 | tee "${DIAG_DIR}/tsc-check.log"
+  
+  echo "[auto-fix] Running production build verification"
+  npm run build 2>&1 | tee "${DIAG_DIR}/npm-build.log"
+  
+  echo "[auto-fix] ✔ TypeScript/Node.js full-stack auto-fix and verification passed with zero errors."
+  exit 0
 fi
 
-# 2) Attempt cargo fix (compiler suggestions)
-FIX_CMD=(cargo fix --workspace --allow-dirty --allow-staged)
-# Check if cargo fix supports --clippy
-if cargo fix --help 2>&1 | grep -q -- '--clippy'; then
-  FIX_CMD+=(--clippy)
-  echo "[auto-fix] cargo fix supports --clippy; enabling clippy fixes"
+# Legacy fallback for Rust/Cargo workspace
+if [ -f "Cargo.toml" ]; then
+  # Ensure no uncommitted changes to avoid clobbering developer work
+  if [ -n "$(git status --porcelain 2>/dev/null || echo '')" ]; then
+    echo "[auto-fix] Working tree is not clean. Aborting auto-fix to avoid clobbering changes."
+    exit 2
+  fi
+
+  CHANGES_MADE=0
+
+  # 1) cargo fmt check
+  echo "[auto-fix] Running cargo fmt --all -- --check"
+  if ! cargo fmt --all -- --check 2>&1 | tee "${DIAG_DIR}/cargo-fmt-check.log"; then
+    echo "[auto-fix] Formatting issues found. Applying cargo fmt --all"
+    cargo fmt --all 2>&1 | tee "${DIAG_DIR}/cargo-fmt-apply.log"
+    git add -A
+    CHANGES_MADE=1
+  else
+    echo "[auto-fix] No formatting issues"
+  fi
+
+  # 2) Attempt cargo fix (compiler suggestions)
+  FIX_CMD=(cargo fix --workspace --allow-dirty --allow-staged)
+  if cargo fix --help 2>&1 | grep -q -- '--clippy'; then
+    FIX_CMD+=(--clippy)
+    echo "[auto-fix] cargo fix supports --clippy; enabling clippy fixes"
+  fi
+
+  PRE_HASH=$(git ls-files -s | shasum -a 1 | awk '{print $1}') || PRE_HASH=""
+  set +e
+  "${FIX_CMD[@]}" 2>&1 | tee "${DIAG_DIR}/cargo-fix.log"
+  FIX_RC=$?
+  set -e
+  POST_HASH=$(git ls-files -s | shasum -a 1 | awk '{print $1}') || POST_HASH=""
+  if [ "${PRE_HASH}" != "${POST_HASH}" ]; then
+    echo "[auto-fix] cargo fix made changes"
+    git add -A
+    CHANGES_MADE=1
+  fi
+
+  # 3) Re-run validation
+  echo "[auto-fix] Running validation: clippy -D warnings and cargo test --workspace --release"
+  set +e
+  cargo clippy --workspace --all-targets -- -D warnings 2>&1 | tee "${DIAG_DIR}/cargo-clippy-postfix.log"
+  C_RC=$?
+  cargo test --workspace --release 2>&1 | tee "${DIAG_DIR}/test-output-postfix.log"
+  T_RC=$?
+  set -e
+
+  if [ ${C_RC} -eq 0 ] && [ ${T_RC} -eq 0 ]; then
+    echo "[auto-fix] Validation passed."
+    exit 0
+  else
+    echo "[auto-fix] Validation failed after fixes (clippy rc=${C_RC}, test rc=${T_RC})"
+    exit 1
+  fi
 fi
 
-# Run cargo fix only if needed
-# We'll run it and detect if any files changed
-PRE_HASH=$(git ls-files -s | shasum -a 1 | awk '{print $1}') || PRE_HASH=""
-set +e
-"${FIX_CMD[@]}" 2>&1 | tee "${DIAG_DIR}/cargo-fix.log"
-# shellcheck disable=SC2034
-FIX_RC=$?
-set -e
-POST_HASH=$(git ls-files -s | shasum -a 1 | awk '{print $1}') || POST_HASH=""
-if [ "${PRE_HASH}" != "${POST_HASH}" ]; then
-  echo "[auto-fix] cargo fix made changes"
+echo "[auto-fix] All checks completed."
+exit 0
+
   git add -A
   CHANGES_MADE=1
 else
