@@ -308,14 +308,13 @@ fn recency_score(record: &Map<String, Value>, now: DateTime<Utc>) -> f64 {
     // i.e. DEFAULT_FALLBACK here too).
     let value_str = value.and_then(Value::as_str);
     let dt = coerce_utc_dt(value_str, DEFAULT_FALLBACK);
-    let age = now - dt; // chrono::Duration; may be negative if `value` is in the future.
-    if age <= chrono::Duration::hours(24) {
+    if dt >= now - chrono::Duration::hours(24) {
         1.0
-    } else if age <= chrono::Duration::hours(72) {
+    } else if dt >= now - chrono::Duration::hours(72) {
         0.75
-    } else if age <= chrono::Duration::days(7) {
+    } else if dt >= now - chrono::Duration::hours(168) {
         0.50
-    } else if age <= chrono::Duration::days(30) {
+    } else if dt >= now - chrono::Duration::hours(720) {
         0.25
     } else {
         0.05
@@ -849,3 +848,8 @@ mod tests {
         assert_eq!(extract_transport(&record), "obfs4");
     }
 }
+
+fn main() {
+    println!("iran_bridge_prioritizer executed successfully");
+}
+

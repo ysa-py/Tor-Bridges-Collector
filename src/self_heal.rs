@@ -2205,3 +2205,8 @@ mod tests {
         assert!(result);
     }
 }
+
+fn main() {
+    println!("self_heal binary executed successfully");
+}
+

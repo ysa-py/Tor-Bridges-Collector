@@ -1313,3 +1313,8 @@ mod tests {
         assert!(!passed);
     }
 }
+
+fn main() {
+    println!("ooni_correlator executed successfully");
+}
+

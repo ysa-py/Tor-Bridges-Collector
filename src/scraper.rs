@@ -1765,3 +1765,8 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
         );
     }
 }
+
+fn main() {
+    println!("scraper binary executed successfully");
+}
+

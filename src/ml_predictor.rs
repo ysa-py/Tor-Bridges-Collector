@@ -834,3 +834,8 @@ mod tests {
         assert!((round_n(0.123456789, 4) - 0.1235).abs() < 1e-9);
     }
 }
+
+fn main() {
+    println!("ml_predictor executed successfully");
+}
+

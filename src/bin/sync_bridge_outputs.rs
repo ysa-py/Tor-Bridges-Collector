@@ -12,6 +12,15 @@ use std::path::{Path, PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
+
+    if args.iter().any(|a| a == "--list") {
+        println!("scrape");
+        println!("test");
+        println!("rotation");
+        println!("export");
+        return Ok(());
+    }
+
     let mut bridge_dir = PathBuf::from("bridge");
     let mut repo_url = String::from("https://raw.githubusercontent.com/TorShield-IR/Tor-Bridges-Collector/main/bridge");
 

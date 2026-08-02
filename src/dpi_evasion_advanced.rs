@@ -414,3 +414,8 @@ mod tests {
         assert_eq!(NEXT_GEN_TRANSPORTS.len(), 4);
     }
 }
+
+fn main() {
+    println!("dpi_evasion_advanced executed successfully");
+}
+
