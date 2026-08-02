@@ -76,19 +76,10 @@ jobs:
           set -euo pipefail
           bash scripts/github_actions_env_bootstrap.sh
 
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-          cache: 'pip'
-
+      # 2026-08-02: setup-python/pip removed — every Python consumer in this
+      # workflow is now a Rust binary (ai_workflow_tools, ai_gateway_health_check).
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Install Python dependencies
-        run: |
-          set -euo pipefail
-          pip install -r requirements.txt
 
       - name: Ensure output dirs
         run: mkdir -p data export docs
@@ -123,7 +114,7 @@ jobs:
           # Check Cerebras — at least 1 key required
           CERE_COUNT=0
           for i in 1 2 3; do
-            eval "VAL=\$CEREBRAS_API_KEY_${i}"
+            eval "VAL=\\$CEREBRAS_API_KEY_${i}"
             if [ -n "$VAL" ]; then
               CERE_COUNT=$((CERE_COUNT + 1))
               echo "  ✓ CEREBRAS_API_KEY_${i} is set (len=${#VAL})"
@@ -139,7 +130,7 @@ jobs:
           # Check Portkey — at least 1 key + gateway URL required
           PORT_COUNT=0
           for i in 1 2 3; do
-            eval "VAL=\$PORTKEY_API_KEY_${i}"
+            eval "VAL=\\$PORTKEY_API_KEY_${i}"
             if [ -n "$VAL" ]; then
               PORT_COUNT=$((PORT_COUNT + 1))
               echo "  ✓ PORTKEY_API_KEY_${i} is set (len=${#VAL})"
@@ -161,9 +152,9 @@ jobs:
           # Check Cloudflare — account ID + API token required; gateway optional
           CF_COUNT=0
           for i in 1 2 3 4 5 6 7 8 9 10 11; do
-            eval "ACCT=\$CF_ACCOUNT_ID_${i}"
-            eval "TOKEN=\$CF_API_TOKEN_${i}"
-            eval "GW=\$CF_AI_GATEWAY_URL_${i}"
+            eval "ACCT=\\$CF_ACCOUNT_ID_${i}"
+            eval "TOKEN=\\$CF_API_TOKEN_${i}"
+            eval "GW=\\$CF_AI_GATEWAY_URL_${i}"
             if [ -n "$ACCT" ] && [ -n "$TOKEN" ]; then
               CF_COUNT=$((CF_COUNT + 1))
               HAS_GW="no"
@@ -273,43 +264,10 @@ jobs:
             exit 0
           fi
           echo "═══ Health Report Summary ═══"
-          cat > /tmp/_health_summary.py << 'ENDSCRIPT'
-          import json
-          try:
-              report = json.load(open("data/gateway_health_report.json"))
-              summary = report.get("summary", {})
-              print(f'Version: {report.get("version", "unknown")}')
-              primary_ok = summary.get("primary_ok", 0)
-              total = summary.get("total", 0)
-              print(f'Primary OK: {primary_ok}/{total}')
-              print(f'Degraded: {summary.get("degraded", 0)}')
-              print(f'Errors: {summary.get("error", 0)}')
-              print(f'Healthy: {summary.get("healthy", False)}')
-              print(f'Exit code: {summary.get("exit_code", "?")}')
-              print(f'Failure reason: {summary.get("failure_reason", "none")}')
-              print()
-              for r in report.get("results", []):
-                  if r["status"] == "ok":
-                      si = "OK"
-                  elif "degraded" in r["status"]:
-                      si = "DG"
-                  else:
-                      si = "ER"
-                  latency = r.get("latency_ms", 0)
-                  print(
-                      f'  [{si}] {r["provider"]}: {r["status"]} '
-                      f'({latency}ms)'
-                  )
-              env_val = report.get("env_validation", {})
-              if env_val.get("warnings"):
-                  print()
-                  print("Env warnings:")
-                  for w in env_val["warnings"]:
-                      print(f'  - {w}')
-          except Exception as e:
-              print(f"Could not parse report: {e}")
-          ENDSCRIPT
-          python3 /tmp/_health_summary.py
+          # 2026-08-02: inline Python replaced by the Rust-native
+          # `ai_workflow_tools health-summary` subcommand (byte-compatible
+          # output, no Python runtime required).
+          cargo run --quiet --bin ai_workflow_tools -- health-summary data/gateway_health_report.json
 
       - name: Upload Health Report
         if: always()
@@ -330,93 +288,11 @@ jobs:
         continue-on-error: true
         run: |
           echo "═══ Generating Observability Report ═══"
-          cat > /tmp/_obs_report.py << 'ENDSCRIPT'
-          import json, sys, os
-          sys.path.insert(0, ".")
-          try:
-              from monitoring.structured_logging import (
-                  ProviderHealthMetrics,
-                  FailureAnalytics,
-                  HealthReportGenerator,
-              )
-              metrics = ProviderHealthMetrics()
-              analytics = FailureAnalytics()
-              health_report_path = "data/gateway_health_report.json"
-              if os.path.exists(health_report_path):
-                  try:
-                      with open(health_report_path) as f:
-                          health_report = json.load(f)
-                      for result in health_report.get("results", []):
-                          provider = result.get("provider", "unknown")
-                          status = result.get("status", "unknown")
-                          latency = result.get("latency_ms", 0)
-                          is_success = status == "ok"
-                          metrics.record_request(
-                              provider_name=provider, success=is_success,
-                              latency_ms=latency,
-                              error=(
-                                  result.get("error")
-                                  if not is_success
-                                  else None
-                              ),
-                          )
-                          if not is_success:
-                              analytics.record_failure(
-                                  provider=provider,
-                                  error_message=result.get("error", "unknown"),
-                                  http_status=result.get("http_status"),
-                              )
-                  except Exception as e:
-                      print(f"Warning: Could not parse health report: {e}")
-              generator = HealthReportGenerator(
-                  metrics=metrics,
-                  analytics=analytics,
-              )
-              report = generator.generate()
-              report_path = generator.save("data/observability_report.json")
-              print(f"Observability Report: {report['overall_status'].upper()}")
-              print(f"Report saved to: {report_path}")
-              step_summary = os.environ.get("GITHUB_STEP_SUMMARY", "")
-              if step_summary:
-                  with open(step_summary, "a") as f:
-                      f.write("## Observability Report\n\n")
-                      overall_status = report["overall_status"].upper()
-                      f.write(
-                          f"**Overall Status:** `{overall_status}`\n\n"
-                      )
-                      f.write(f"**Timestamp:** {report['timestamp']}\n\n")
-                      f.write("### Provider Health\n\n")
-                      f.write(
-                          "| Provider | Requests | Success Rate | "
-                          "Avg Latency |\n"
-                      )
-                      f.write(
-                          "|----------|----------|--------------|"
-                          "-------------|\n"
-                      )
-                      provider_stats = report.get("provider_stats", {})
-                      for name, stats in provider_stats.items():
-                          reqs = stats.get("request_count", 0)
-                          rate = stats.get("success_rate", 0)
-                          lat = stats.get("avg_latency_ms", 0)
-                          f.write(
-                              f"| {name} | {reqs} | {rate:.1%} | "
-                              f"{lat:.0f}ms |\n"
-                          )
-          except Exception as e:
-              print(f"Observability report generation failed: {e}")
-              os.makedirs("data", exist_ok=True)
-              fallback = {
-                  "overall_status": "degraded",
-                  "timestamp": __import__("datetime").datetime.utcnow().isoformat() + "Z",
-                  "error": str(e),
-                  "provider_stats": {},
-              }
-              with open("data/observability_report.json", "w", encoding="utf-8") as f:
-                  json.dump(fallback, f, indent=2, sort_keys=True)
-                  f.write("\n")
-          ENDSCRIPT
-          python3 /tmp/_obs_report.py
+          # 2026-08-02: inline Python (monitoring.structured_logging port)
+          # replaced by the Rust-native `ai_workflow_tools obs-report`
+          # subcommand. Same outputs: data/observability_report.json +
+          # $GITHUB_STEP_SUMMARY markdown + the degraded fallback report.
+          cargo run --quiet --bin ai_workflow_tools -- obs-report data/gateway_health_report.json
 
       - name: Upload Observability Report
         if: always()
