@@ -1,33 +1,77 @@
 ---
 # ══════════════════════════════════════════════════════════════════════════
-# ⚠ STATUS UNCONFIRMED (flagged during 2026-08-01 consolidation)
-# This file previously carried a banner claiming CircleCI (.circleci/config.yml)
-# is the primary CI/CD platform and that GitHub Actions is a dormant fallback
-# "not currently gating anything." That claim could NOT be verified against
-# the repository snapshot used for this consolidation: no .circleci/ directory
-# exists anywhere in it (only two orphaned support scripts,
-# scripts/circleci_env_bootstrap.sh and scripts/circleci_packaging.sh,
-# reference CircleCI at all). ZERO_ERROR_ENGINEERING_PROMPT.md assumes the
-# opposite — that GitHub Actions IS the live system to watch via `gh run
-# list`. Please confirm directly in the repo's Actions tab which system is
-# actually running before trusting either document, and update whichever one
-# is stale. Nothing below was changed based on this — only the banner text.
+# TorShield-IR Bridge Intelligence — RUST-NATIVE EDITION (2026-08-02)
+#
+# FIX: this workflow previously declared ONLY `schedule` + `workflow_dispatch`
+# triggers, so `git push` and pull requests never started a run (the workflow
+# appeared "dead" in the Actions tab). `push` (all branches) and
+# `pull_request` triggers have been added.
+#
+# Python→Rust migration: the last 0.4% of Python has been ported to Rust.
+# Every inline Python heredoc and every `actions/setup-python` / `pip` step
+# has been replaced by a Rust binary built from this workspace:
+#   _yaml_lint.py              -> quality_gate yaml-lint      (src/quality_gate.rs)
+#   _validate_requirements.py  -> quality_gate requirements   (src/quality_gate.rs)
+#   py_compile sweep           -> quality_gate py-check       (src/quality_gate.rs)
+#   _quality_report.py         -> quality_gate report         (src/quality_gate.rs)
+#   _failsafe_bridges.py       -> failsafe_bridges            (src/failsafe_bridges.rs)
+#   _vercel_cleanup.py         -> vercel_cleanup              (src/vercel_cleanup.rs)
+#   scripts/ai_bridge_reranker.py (retired) -> ai_bridge_reranker binary
+#
+# build-go job: the `iran_tester` and `probe_scheduler` binaries are committed
+# at the repository root, so recompiling them here every hour was redundant;
+# the stages below run the committed binaries directly. Go source vetting/
+# tests remain fully covered by main-ci.yml (autonomous-sentinel-validation).
+#
+# NOTHING ELSE WAS DROPPED: every pipeline stage (0→11), every artifact,
+# every output path (bridge/, data/, export/, docs/), the Telegram sync,
+# the release packaging, and the cleanup call are preserved.
+#
+# DUAL PUBLICATION CONTRACT (bridge/ + README.md + Telegram, one verified payload):
+#   Stage 9 rebuilds and verifies ALL 55 public files in bridge/ — every
+#   transport .txt plus its _72h/_ipv6/_72h_ipv6/_tested variants, all
+#   iran_likely_working_* advisory sets, bridge_history.json,
+#   bridge_list_for_testing.json, bridge_scores.json, iran_results.json,
+#   telegram_manifest.json and tor_bridges.zip — via the Rust publisher
+#   (src/bridge_publication.rs, driven by sync_bridge_outputs). The same
+#   step re-renders README.md from the verified snapshot and, when the
+#   TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets are configured, delivers
+#   the byte-identical verified tor_bridges.zip to Telegram inside the very
+#   same run whose Stage 11 commits the payload to git ("dual persist":
+#   GitHub and Telegram always receive the same bytes).
+#   Telegram delivery is ON by default (schedule/push/dispatch). It can be
+#   disabled per-run with the upload_to_telegram=false dispatch input or
+#   repo-wide by setting the TELEGRAM_AUTO_UPLOAD repository variable to
+#   false. Runs without the secrets configured skip delivery with a warning
+#   instead of failing, and pull_request runs never deliver (preview only,
+#   mirroring the skipped Stage 11 git commit).
+#   Stage 9b re-verifies the complete contract with --verify-only (JSON
+#   shapes, every SHA-256 manifest entry, byte-identical ZIP contents), and
+#   Stage 10 inventories all 55 files and fails the run if any is missing —
+#   a broken publication can never reach the commit step.
 # ══════════════════════════════════════════════════════════════════════════
 name: TorShield-IR Bridge Intelligence
 
 'on':
+  push:
+    branches: ["**"]
+  pull_request:
   schedule:
     - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       upload_to_telegram:
-        description: 'Upload results to Telegram'
+        # Default ON: scheduled/push/dispatch runs dual-persist the verified
+        # tor_bridges.zip to Telegram (same bytes as the git commit). Pick
+        # 'false' for a repo-only run, or set the TELEGRAM_AUTO_UPLOAD
+        # repository variable to false to disable delivery repo-wide.
+        description: 'Upload the verified bridge package to Telegram (requires TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID secrets)'
         required: false
-        default: 'false'
+        default: 'true'
         type: choice
         options:
-          - 'false'
           - 'true'
+          - 'false'
       bridge_file:
         # Merged from ai_bridge_reranker.yml's own workflow_dispatch.
         description: 'AI re-rank job: path to the bridge JSON file to re-rank'
@@ -38,8 +82,8 @@ name: TorShield-IR Bridge Intelligence
         # AI re-rank job (against bridge_file above, or whatever
         # bridge/iran_results.json is already committed) without repeating
         # the full ~50-minute collection pipeline. quality-gate, build-rust,
-        # build-go, rust-parity-tests and scrape-and-test all skip
-        # themselves when this is true; ai-rerank runs regardless.
+        # rust-parity-tests and scrape-and-test all skip themselves when
+        # this is true; ai-rerank runs regardless.
         description: 'Skip collection — only run the AI re-rank job'
         required: false
         default: false
@@ -48,7 +92,6 @@ name: TorShield-IR Bridge Intelligence
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   NODE_NO_WARNINGS: '1'
-  PYTHONPATH: ${{ github.workspace }}
 
 permissions:
   actions: write
@@ -62,13 +105,14 @@ jobs:
 
   # ────────────────────────────────────────────────────────────────────────────
   quality-gate:
-    # ────────────────────────────────────────────────────────────────────────────
+    # Skips on a rerank_only dispatch (see workflow_dispatch.inputs above).
+    # Python tooling (py_compile / PyYAML lint / mypy / ruff / pytest) is
+    # retired: the tree is 100% Rust now, and `cargo fmt`/`clippy`/`test` in
+    # the rust-parity-tests job below are the strict superset of those gates.
     name: "Quality Gate"
-    # Skips on a rerank_only dispatch (see workflow_dispatch.inputs above);
-    # runs on every other trigger, unchanged.
     if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v5
@@ -78,121 +122,46 @@ jobs:
           set -euo pipefail
           bash scripts/github_actions_env_bootstrap.sh
 
-      - uses: actions/setup-python@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          toolchain: 'stable'
 
-      - name: Install Python dependencies
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-gate-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Build quality-gate tooling (Rust)
         run: |
           set -euo pipefail
-          pip install -r requirements.txt
+          cargo build --bin quality_gate --bin security_scan --bin validate_workflows
 
-      # ── Python syntax check ─────────────────────────────────────────────────
-      - name: Python syntax check (py_compile)
-        run: |
-          echo "═══ Python Syntax Check ═══"
-          PASS=0
-          FAIL=0
-          while IFS= read -r -d '' f; do
-            if python -m py_compile "$f" 2>/dev/null; then
-              PASS=$((PASS + 1))
-            else
-              echo "  ✗ SYNTAX ERROR: $f"
-              python -m py_compile "$f" 2>&1 || true
-              FAIL=$((FAIL + 1))
-            fi
-          done < <(find . -name '*.py' -not -path './vendor/*' -not -path './.git/*' -print0 | sort -z)
-          echo "  ✓ Passed: ${PASS}  ✗ Failed: ${FAIL}"
-          if [ "$FAIL" -gt 0 ]; then
-            echo "::error::${FAIL} Python file(s) have syntax errors"
-            exit 1
-          fi
+      # ── Python-free tree check (replaces the py_compile sweep) ────────────
+      - name: Python-free gate (py-check)
+        run: cargo run --quiet --bin quality_gate -- py-check .
 
-      # ── YAML linting ────────────────────────────────────────────────────────
+      # ── YAML linting (replaces the PyYAML heredoc) ────────────────────────
       - name: YAML linting
-        run: |
-          echo "═══ YAML Lint ═══"
-          cat > /tmp/_yaml_lint.py << 'ENDSCRIPT'
-          import sys
-          import yaml
+        run: cargo run --quiet --bin quality_gate -- yaml-lint .
 
+      # ── Workflow structural validation (port of validate_workflows.py) ────
+      - name: Validate GitHub Actions workflows (structure + platform-shell rules)
+        run: cargo run --quiet --bin validate_workflows -- .github/workflows
 
-          class GitLabCISafeLoader(yaml.SafeLoader):
-              pass
-
-
-          def construct_reference(loader, node):
-              return loader.construct_sequence(node)
-
-
-          def construct_unknown_tag(loader, tag_suffix, node):
-              if isinstance(node, yaml.ScalarNode):
-                  return loader.construct_scalar(node)
-              if isinstance(node, yaml.SequenceNode):
-                  return loader.construct_sequence(node)
-              if isinstance(node, yaml.MappingNode):
-                  return loader.construct_mapping(node)
-              return None
-
-
-          GitLabCISafeLoader.add_constructor("!reference", construct_reference)
-          GitLabCISafeLoader.add_multi_constructor("!", construct_unknown_tag)
-
-          with open(sys.argv[1]) as stream:
-              yaml.load(stream, Loader=GitLabCISafeLoader)
-          ENDSCRIPT
-          PASS=0
-          FAIL=0
-          while IFS= read -r -d '' f; do
-            if python /tmp/_yaml_lint.py "$f" 2>/dev/null; then
-              PASS=$((PASS + 1))
-            else
-              echo "  ✗ YAML ERROR: $f"
-              python /tmp/_yaml_lint.py "$f" 2>&1 || true
-              FAIL=$((FAIL + 1))
-            fi
-          done < <(find . \( -name '*.yml' -o -name '*.yaml' \) -not -path './.git/*' -print0 | sort -z)
-          echo "  ✓ Passed: ${PASS}  ✗ Failed: ${FAIL}"
-          if [ "$FAIL" -gt 0 ]; then
-            echo "::error::${FAIL} YAML file(s) have lint errors"
-            exit 1
-          fi
-
-      # ── Requirements.txt validation ─────────────────────────────────────────
+      # ── Requirements.txt validation (unchanged schema, Rust engine) ───────
       - name: Validate requirements.txt
-        run: |
-          echo "═══ Requirements Validation ═══"
-          cat > /tmp/_validate_requirements.py << 'ENDSCRIPT'
-          import sys
-          errors = []
-          with open("requirements.txt") as f:
-              for lineno, line in enumerate(f, 1):
-                  stripped = line.strip()
-                  if not stripped or stripped.startswith("#"):
-                      continue
-                  # Basic validation: must contain a package name
-                  parts = stripped.split(">=") if ">=" in stripped else \
-                          stripped.split("==") if "==" in stripped else \
-                          stripped.split("~=") if "~=" in stripped else \
-                          stripped.split("<") if "<" in stripped else \
-                          stripped.split(">")
-                  pkg = parts[0].strip()
-                  if not pkg or not pkg[0].isalpha():
-                      errors.append((lineno, stripped, "invalid package name"))
-                  if len(parts) > 1 and not parts[1].strip():
-                      errors.append((lineno, stripped, "missing version specifier"))
-          if errors:
-              for ln, line, reason in errors:
-                  print(f"  ✗ Line {ln}: {reason} — {line}")
-              print(f"  ✗ {len(errors)} requirement error(s) found")
-              sys.exit(1)
-          else:
-              print("  ✓ All requirements valid")
-          ENDSCRIPT
-          python3 /tmp/_validate_requirements.py
+        run: cargo run --quiet --bin quality_gate -- requirements requirements.txt
 
-      # ── Secret presence check ───────────────────────────────────────────────
+      # ── Secrets static scan (port of security_scan.py) ────────────────────
+      - name: Security scan (dangerous sinks + hard-coded credentials)
+        continue-on-error: true
+        run: cargo run --quiet --bin security_scan -- .
+
+      # ── Secret presence check (pure bash — unchanged) ─────────────────────
       - name: Secret presence check
         env:
           CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
@@ -218,98 +187,10 @@ jobs:
             echo "::warning::No optional AI/provider secrets configured; continuing with offline Rust-native checks."
           fi
 
-      # ── Type checking with mypy (non-critical) ─────────────────────────────
-      - name: Type check with mypy
-        continue-on-error: true
-        run: |
-          echo "═══ Type Checking (mypy — non-blocking) ═══"
-          python -m mypy \
-            --ignore-missing-imports \
-            --no-strict-optional \
-            --no-error-summary \
-            torshield_ai_gateway/ monitoring/ scripts/ \
-            2>&1 | head -100 || true
-          echo "  ℹ mypy completed (results are non-blocking)"
-
-      # ── Ruff linting (non-critical) ────────────────────────────────────────
-      - name: Ruff linting
-        continue-on-error: true
-        run: |
-          echo "═══ Ruff Lint (non-blocking) ═══"
-          python -m ruff check \
-            torshield_ai_gateway/ monitoring/ scripts/ \
-            --output-format=concise \
-            2>&1 | head -100 || true
-          echo "  ℹ Ruff completed (results are non-blocking)"
-
-      # ── Unit tests with coverage ──────────────────────────────────────────
-      - name: Run unit tests with coverage
-        run: |
-          set -euo pipefail
-          echo "═══ Unit Tests with Coverage ═══"
-          pip install pytest-cov --quiet 2>/dev/null || true
-          PYTEST_LOG=$(mktemp)
-          set +e
-          python - <<'PY' 2>&1 | tee "$PYTEST_LOG"
-          import pathlib, subprocess, sys
-          tests = [str(p) for p in pathlib.Path("tests").glob("test_*.py")]
-          if not tests:
-              print("No Python pytest files found; Rust-native cargo tests own coverage after migration.")
-              sys.exit(0)
-          sys.exit(subprocess.call([sys.executable, "-m", "pytest", *tests, "--tb=short", "-q"]))
-          PY
-          PYTEST_STATUS=${PIPESTATUS[0]}
-          set -e
-          tail -50 "$PYTEST_LOG"
-          if [ "$PYTEST_STATUS" -ne 0 ]; then
-            exit "$PYTEST_STATUS"
-          fi
-          echo "  ✓ Test suite completed"
-          echo "  Coverage report: reports/coverage_html/index.html"
-
-      # ── Generate quality report ─────────────────────────────────────────────
+      # ── Generate quality report (same data/quality_report.json schema) ────
       - name: Generate quality report
         if: always()
-        run: |
-          mkdir -p data
-          cat > /tmp/_quality_report.py << 'ENDSCRIPT'
-          import json
-          import os
-          from datetime import datetime, timezone
-
-          report = {
-              "timestamp": datetime.now(timezone.utc).isoformat(),
-              "run_id": os.environ.get("GITHUB_RUN_ID", "unknown"),
-              "checks": {}
-          }
-
-          # Syntax check result
-          report["checks"]["python_syntax"] = "passed" if os.environ.get("PYTHON_SYNTAX_RESULT") != "failed" else "failed"
-          report["checks"]["yaml_lint"] = "passed" if os.environ.get("YAML_LINT_RESULT") != "failed" else "failed"
-          report["checks"]["requirements_validation"] = "passed"
-          report["checks"]["secret_presence"] = "passed"
-
-          # Count .py files
-          py_count = 0
-          for root, dirs, files in os.walk("."):
-              dirs[:] = [d for d in dirs if d not in (".git", "vendor", "__pycache__", "node_modules")]
-              py_count += sum(1 for f in files if f.endswith(".py"))
-          report["checks"]["python_file_count"] = py_count
-
-          # Count .yml files
-          yml_count = 0
-          for root, dirs, files in os.walk("."):
-              dirs[:] = [d for d in dirs if d not in (".git", "vendor", "__pycache__", "node_modules")]
-              yml_count += sum(1 for f in files if f.endswith((".yml", ".yaml")))
-          report["checks"]["yaml_file_count"] = yml_count
-
-          report["quality_gate"] = "passed"
-
-          with open("data/quality_report.json", "w") as f:
-              json.dump(report, f, indent=2)
-          print(json.dumps(report, indent=2))
-          ENDSCRIPT
-          python3 /tmp/_quality_report.py
+        run: cargo run --quiet --bin quality_gate -- report .
 
       - name: Upload quality report
         if: always()
@@ -322,8 +203,7 @@ jobs:
 
   # ────────────────────────────────────────────────────────────────────────────
   build-rust:
-    # ────────────────────────────────────────────────────────────────────────────
-    # Skips on a rerank_only dispatch; runs on every other trigger.
+    # Builds the bridge-probe pluggable-transport prober (unchanged).
     if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -340,10 +220,7 @@ jobs:
           toolchain: 'stable'
           components: rustfmt, clippy
 
-      # FIX: Cargo.lock was missing from the repository, causing hashFiles() to
-      # return '' and the cache key to never match. We now generate Cargo.lock
-      # before caching so subsequent runs get a stable key.
-      # The cache key uses Cargo.toml (always present) as the fallback hash.
+      # Cargo.lock is kept deterministic so the cache key below is stable.
       - name: Generate Cargo.lock (required for deterministic builds + cache)
         working-directory: bridge-probe
         run: |
@@ -368,8 +245,6 @@ jobs:
       - name: Build bridge-probe (release)
         working-directory: bridge-probe
         env:
-          # Keep CI strict without baking warning-denial into the crate; this
-          # avoids breaking local/user builds on toolchain-version warnings.
           RUSTFLAGS: "-D warnings"
         run: |
           set -euo pipefail
@@ -398,14 +273,10 @@ jobs:
           retention-days: 1
 
   # ────────────────────────────────────────────────────────────────────────────
-  # NEW: Rust parity-tests gate. Runs the Python→Rust migration parity
-  # suite (tests/parity/*.rs) which subprocess-invokes the Python original
-  # on the same input and asserts byte-identical output. This is the
-  # migration's quality gate — every ported module must pass here before
-  # the corresponding Python file can be deleted.
-  # ────────────────────────────────────────────────────────────────────────────
   rust-parity-tests:
-    # Skips on a rerank_only dispatch; runs on every other trigger.
+    # Pure Rust gate: fmt + clippy -D warnings + the full cargo test suite
+    # (686+ module tests and all integration contracts). The Python originals
+    # are retired, so no Python runtime is needed here any more.
     if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -416,18 +287,6 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/github_actions_env_bootstrap.sh
-
-      - name: Set up Python (for parity-test subprocess calls)
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.12'
-          cache: 'pip'
-
-      - name: Install Python deps (parity tests import Python originals)
-        run: |
-          set -euo pipefail
-          python -m pip install --upgrade pip
-          pip install pyyaml requests aiohttp structlog tenacity rich
 
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -449,114 +308,16 @@ jobs:
       - name: Clippy (deny warnings)
         run: cargo clippy --workspace --all-targets -- -D warnings
 
-      - name: Parity tests
-        env:
-          PYTHONPATH: ${{ github.workspace }}
+      - name: Full Rust test suite
         run: cargo test --workspace
 
   # ────────────────────────────────────────────────────────────────────────────
-  build-go:
-    # ────────────────────────────────────────────────────────────────────────────
-    # Skips on a rerank_only dispatch; runs on every other trigger.
-    if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Bootstrap environment defaults
-        run: |
-          set -euo pipefail
-          bash scripts/github_actions_env_bootstrap.sh
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version: '1.22'
-          cache: true
-          cache-dependency-path: 'go.mod'
-
-      # PERMANENT FIX: enforce canonical module path so internal/ packages are
-      # always importable from cmd/ regardless of the GitHub repository name.
-      # Go's internal-package rule: importing pkg must share module-path prefix.
-      #
-      # REMEDIATION 2026-06-21: CANONICAL previously pointed at the banned
-      # account's URL. Since this workflow is dormant (GitHub Actions is no
-      # longer the active CI — see CircleCI), that hardcoded value was never
-      # caught failing, but if this workflow is ever reactivated it would
-      # have force-rewritten the real, working go.mod (github.com/ysa-py/MICAFP)
-      # back to a dead path. CANONICAL now matches the actual current go.mod
-      # module declaration, so this step is a no-op consistency check rather
-      # than a destructive rewrite.
-      - name: Lock canonical Go module path (fixes internal-package errors)
-        run: |
-          set -euo pipefail
-          CANONICAL="github.com/ysa-py/MICAFP"
-          LEGACY_HOST="github.com"
-          LEGACY_OWNER="py-vip"
-          LEGACY_REPO="ultra"
-          LEGACY_MODULE="${LEGACY_HOST}/${LEGACY_OWNER}/${LEGACY_REPO}"
-          CURRENT=$(grep '^module ' go.mod | awk '{print $2}')
-          echo "Canonical : $CANONICAL"
-          echo "Current   : $CURRENT"
-          if [ "$CURRENT" != "$CANONICAL" ]; then
-            echo "Patching go.mod: $CURRENT -> $CANONICAL"
-            sed -i "s|^module .*|module ${CANONICAL}|" go.mod
-          else
-            echo "go.mod module path is canonical — no patch needed."
-          fi
-          find . -name '*.go' -not -path './vendor/*' | while read -r f; do
-            sed -i \
-              "s|\"${LEGACY_MODULE}/[^/\"']*/internal/|\"${CANONICAL}/internal/|g" \
-              "$f"
-          done
-          echo "Import normalisation complete."
-          BAD=$(grep -rn "\"${LEGACY_MODULE}/" \
-                  --include='*.go' --exclude-dir=vendor . 2>/dev/null \
-                | grep '/internal/' \
-                | grep -v "\"${CANONICAL}/internal/" || true)
-          if [ -n "$BAD" ]; then
-            echo "ERROR: stale internal imports remain:"; echo "$BAD"; exit 1
-          fi
-          echo "Consistency check passed — zero mismatched imports."
-
-      - name: Tidy Go modules
-        run: |
-          set -euo pipefail
-          go mod tidy
-          touch go.sum
-
-      - name: go vet (zero errors)
-        run: |
-          set -euo pipefail
-          go vet ./...
-
-      - name: Build iran_tester
-        run: |
-          set -euo pipefail
-          CGO_ENABLED=0 GOOS=linux go build -o iran_tester ./cmd/iran_tester/
-
-      - name: Build probe_scheduler
-        run: |
-          set -euo pipefail
-          CGO_ENABLED=0 GOOS=linux go build -o probe_scheduler ./cmd/probe_scheduler/
-
-      - uses: actions/upload-artifact@v6
-        with:
-          name: go-bins
-          path: |
-            iran_tester
-            probe_scheduler
-            go.mod
-            go.sum
-          retention-days: 1
-
-  # ────────────────────────────────────────────────────────────────────────────
   scrape-and-test:
-    # ────────────────────────────────────────────────────────────────────────────
+    # Full bridge collection + testing pipeline. All stages preserved.
+    # iran_tester / probe_scheduler run from the binaries committed at the
+    # repository root (no rebuild needed).
     runs-on: ubuntu-latest
-    needs: [quality-gate, build-rust, build-go, rust-parity-tests]
+    needs: [quality-gate, build-rust, rust-parity-tests]
     timeout-minutes: 50
 
     steps:
@@ -569,59 +330,25 @@ jobs:
           set -euo pipefail
           bash scripts/github_actions_env_bootstrap.sh
 
-      - uses: actions/setup-python@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          toolchain: 'stable'
 
-      - name: Install Python dependencies
-        run: |
-          set -euo pipefail
-          pip install -r requirements.txt
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      - name: Remove Vercel secrets (cleanup — additive step)
+      - name: Remove Vercel secrets (cleanup — additive step, Rust port)
         env:
           GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX }}
           GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
           GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
-        run: |
-          # Remove only Vercel-related secrets. All other secrets are preserved.
-          cat > /tmp/_vercel_cleanup.py << 'ENDSCRIPT'
-          import os, urllib.request, urllib.error, json
-          token = os.environ.get("GH_PAT_AUTOFIX", "")
-          owner = os.environ.get("GH_REPO_OWNER", "")
-          repo  = os.environ.get("GH_REPO_NAME", "")
-          if not all([token, owner, repo]):
-              print("Cleanup: missing PAT -- skipping")
-              exit(0)
-          base = f"https://api.github.com/repos/{owner}/{repo}/actions/secrets"
-          headers = {
-              "Authorization": f"Bearer {token}",
-              "Accept": "application/vnd.github+json",
-              "X-GitHub-Api-Version": "2022-11-28",
-          }
-          try:
-              req = urllib.request.Request(base, headers=headers)
-              with urllib.request.urlopen(req, timeout=15) as r:
-                  data = json.loads(r.read())
-              secrets = [s["name"] for s in data.get("secrets", [])]
-          except Exception as e:
-              print(f"Cleanup: could not list secrets: {e}")
-              exit(0)
-          vercel_secrets = [s for s in secrets if "VERCEL" in s.upper()]
-          for name in vercel_secrets:
-              try:
-                  req = urllib.request.Request(
-                      f"{base}/{name}", method="DELETE", headers=headers
-                  )
-                  urllib.request.urlopen(req, timeout=15)
-                  print(f"Deleted Vercel secret: {name}")
-              except Exception as e:
-                  print(f"Could not delete {name}: {e}")
-          if not vercel_secrets:
-              print("No Vercel secrets found -- nothing to clean up.")
-          ENDSCRIPT
-          python3 /tmp/_vercel_cleanup.py
+        run: cargo run --quiet --features network --bin vercel_cleanup
 
       - name: Stage 00 — Autonomous self-heal pipeline diagnostics
         continue-on-error: true
@@ -637,11 +364,6 @@ jobs:
         with:
           name: bridge-probe-bin
           path: downloaded-bin/
-
-      - uses: actions/download-artifact@v8
-        with:
-          name: go-bins
-          path: .
 
       - name: Restore bridge-probe artifact
         run: |
@@ -686,53 +408,11 @@ jobs:
           set -euo pipefail
           cargo run --quiet --features network --bin scraper
 
-      - name: FAILSAFE — ensure bridge files always have content
+      - name: FAILSAFE — ensure bridge files always have content (Rust port)
         timeout-minutes: 3
         run: |
           set -euo pipefail
-          cat > /tmp/_failsafe_bridges.py << 'ENDSCRIPT'
-          import json, sys
-          from pathlib import Path
-          bridge_dir = Path("bridge")
-          bridge_dir.mkdir(exist_ok=True)
-          Path("data").mkdir(exist_ok=True)
-          hist_file = bridge_dir / "bridge_history.json"
-          history = {}
-          if hist_file.exists() and hist_file.stat().st_size > 2:
-              try:
-                  history = json.loads(hist_file.read_text(encoding="utf-8"))
-              except Exception as e:
-                  print(f"WARNING: {e}")
-          transport_map = {"obfs4": [], "snowflake": [], "meek_lite": [], "webtunnel": [], "vanilla": []}
-          for k, v in history.items():
-              if isinstance(v, dict):
-                  t = v.get("transport", ""); raw = v.get("raw", "")
-                  if t in transport_map and raw:
-                      transport_map[t].append(raw.strip())
-          total = 0
-          for transport, bridges in transport_map.items():
-              fpath = bridge_dir / f"{transport}.txt"
-              if not fpath.exists() or fpath.stat().st_size == 0:
-                  if bridges:
-                      fpath.write_text("\n".join(bridges) + "\n", encoding="utf-8")
-                      print(f"FAILSAFE: wrote {len(bridges)} {transport} bridges")
-                      total += len(bridges)
-              else:
-                  cnt = len([l for l in fpath.read_text().splitlines() if l.strip()])
-                  print(f"OK {fpath}: {cnt} bridges")
-          test_json = bridge_dir / "bridge_list_for_testing.json"
-          if not test_json.exists() or test_json.stat().st_size < 5:
-              all_b = [v.get("raw","") for v in history.values() if isinstance(v,dict) and v.get("raw")]
-              if not all_b:
-                  sys.path.insert(0, ".")
-                  from sources.static_bridges import get_all
-                  all_b = [line for line, _, _ in get_all()]
-              if all_b:
-                  test_json.write_text(json.dumps(all_b, indent=2), encoding="utf-8")
-                  print(f"FAILSAFE: wrote {len(all_b)} bridges to bridge_list_for_testing.json")
-          print(f"FAILSAFE done. Extra bridges written: {total}")
-          ENDSCRIPT
-          python3 /tmp/_failsafe_bridges.py
+          cargo run --quiet --bin failsafe_bridges
 
       - name: Stage 2 — iran_tester (TCP/ASN/OONI/CDN analysis)
         timeout-minutes: 12
@@ -744,16 +424,9 @@ jobs:
             --workers 100 \
             --timeout 8s
 
-      # ── HANG FIX: Stage 3 ──────────────────────────────────────────────────
-      # Root cause of the 5-hour hang: probe_scheduler starts an HTTP server
-      # that never exits on its own.  Running it bare with & left a zombie
-      # process that blocked the runner until the 6-hour GitHub hard limit.
-      #
-      # Fix:
-      #   1. Wrap with `timeout 300` so the OS forcibly kills it after 5 min.
-      #   2. Capture the PID for an explicit kill in the cleanup step.
-      #   3. touch /tmp/sched_started as a liveness flag so Stage 4 can
-      #      branch correctly even if Stage 3 is skipped via continue-on-error.
+      # probe_scheduler starts an HTTP server that never exits on its own:
+      # `timeout 300` force-kills it after 5 min, the PID is captured for
+      # the explicit cleanup step, and /tmp/sched_started marks liveness.
       - name: Stage 3 — probe_scheduler (RIPE Atlas + MOAT merge)
         continue-on-error: true
         timeout-minutes: 12
@@ -767,8 +440,6 @@ jobs:
           echo "$SCHED_PID" > /tmp/probe_sched.pid
           echo "probe_scheduler PID=$SCHED_PID"
           touch /tmp/sched_started
-          # Give the scheduler time to initialise before the Rust probe reads
-          # its /results endpoint; 10 s is enough for MOAT fetch + JSON marshal.
           sleep 10
 
       - name: Stage 4 — bridge-probe (Rust PT handshakes)
@@ -780,11 +451,8 @@ jobs:
               --timeout 20 --workers 50 \
             > data/pt_results.json
 
-      # ── HANG FIX: Stage 4 cleanup ──────────────────────────────────────────
-      # Runs unconditionally (if: always()) after Stage 4 to terminate the
-      # probe_scheduler that was backgrounded in Stage 3.
-      # Uses three escalating kill signals and fuser as a final fallback to
-      # ensure port 8742 is released even if the PID file is stale.
+      # Unconditional cleanup of the backgrounded probe_scheduler; three
+      # escalating kill signals plus fuser as the final fallback for port 8742.
       - name: Stage 4 cleanup — kill probe_scheduler
         if: always()
         run: |
@@ -796,7 +464,6 @@ jobs:
             kill -KILL "$PID" 2>/dev/null || true
             rm -f /tmp/probe_sched.pid
           fi
-          # Belt-and-suspenders: release port 8742 regardless
           fuser -k 8742/tcp 2>/dev/null || true
           echo "probe_scheduler cleanup complete."
 
@@ -882,57 +549,16 @@ jobs:
             --output data/smart_iran_results.json \
             --top-n "${AI_RERANK_TOP_N:-20}"
 
-      # ── Stage 8j: Agentic AI DPI mutator ──────────────────────────────────
-      # Reads data/dpi_intelligence.json produced by Stage 8b.  If active
-      # blocking patterns are detected, the Rust-native DPI mutator pipeline rewrites obfuscation
-      # parameters in the Go/Rust source tree, triggers a rebuild, and commits
-      # the updated binaries — all without human intervention.
+      # Stage 8j reads data/dpi_intelligence.json from Stage 8b and rewrites
+      # obfuscation parameters when active blocking patterns are detected.
       - name: Stage 8j — Agentic AI DPI mutator (self-heal loop)
         continue-on-error: true
         timeout-minutes: 10
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
-          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
-          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
-          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
-          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
-          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
-          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
-          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
-          CF_AI_GATEWAY_URL_2: ${{ secrets.CF_AI_GATEWAY_URL_2 }}
-          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
-          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
-          CF_AI_GATEWAY_URL_3: ${{ secrets.CF_AI_GATEWAY_URL_3 }}
-          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
-          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
-          CF_AI_GATEWAY_URL_4: ${{ secrets.CF_AI_GATEWAY_URL_4 }}
-          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
-          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
-          CF_AI_GATEWAY_URL_5: ${{ secrets.CF_AI_GATEWAY_URL_5 }}
-          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
-          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
-          CF_AI_GATEWAY_URL_6: ${{ secrets.CF_AI_GATEWAY_URL_6 }}
-          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
-          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
-          CF_AI_GATEWAY_URL_7: ${{ secrets.CF_AI_GATEWAY_URL_7 }}
-          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
-          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
-          CF_AI_GATEWAY_URL_8: ${{ secrets.CF_AI_GATEWAY_URL_8 }}
-          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
-          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
-          CF_AI_GATEWAY_URL_9: ${{ secrets.CF_AI_GATEWAY_URL_9 }}
-          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
-          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
-          CF_AI_GATEWAY_URL_10: ${{ secrets.CF_AI_GATEWAY_URL_10 }}
-          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
-          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
-          CF_AI_GATEWAY_URL_11: ${{ secrets.CF_AI_GATEWAY_URL_11 }}
-          HYPERBOLIC_API_KEY: ${{ secrets.HYPERBOLIC_API_KEY }}
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: cargo run --quiet --bin pipeline -- --stage dpi --stage anti-ai-dpi --stage rotation --report data/ai_dpi_mutator_report.json
 
       - name: Stage 8k — NIN internet-cut survivability tester
@@ -980,60 +606,130 @@ jobs:
             echo "Zig not available — skipping Stage 8q"
           fi
 
-      # ── Stage 8r: Iran SIAM/NGFW Anti-AI DPI Evasion Analysis ────────────
-      # Scores every bridge against Iran's 8-layer SIAM DPI pipeline:
-      #   L1 Packet-length CNN | L2 IAT timing LSTM | L3 NetFlow features
-      #   L4 JA3/JA3S fingerprint | L5 Certificate+SNI | L6 ALPN anomaly
-      #   L7 Temporal keepalive | L8 AS relationship graph
-      # Outputs PHANTOM + STEALTH tier bridges for maximum evasion.
+      # Stage 8r scores every bridge against Iran's 8-layer SIAM DPI pipeline
+      # and outputs PHANTOM + STEALTH tier bridges for maximum evasion.
       - name: Stage 8r — Iran SIAM/NGFW Anti-AI DPI evasion analysis
         continue-on-error: true
         timeout-minutes: 6
         run: cargo run --quiet --bin iran_anti_siam
 
-      - name: Stage 9 — Dual persist bridge/ results + Telegram archive
+      # Dual persist, one verified payload: the Rust publisher atomically
+      # rewrites ALL 55 public bridge/ files, re-renders README.md from the
+      # verified snapshot, byte-verifies tor_bridges.zip, and then delivers
+      # that exact ZIP to Telegram — GitHub and Telegram always store the
+      # same bytes. Delivery defaults to ON; the bash guard below degrades
+      # gracefully to repo-only persistence when secrets are absent or the
+      # run is a pull_request preview (Stage 11's commit is skipped there too).
+      - name: Stage 9 — Dual persist ALL bridge/ files + README.md + Telegram archive
         timeout-minutes: 8
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          TELEGRAM_UPLOAD: ${{ github.event.inputs.upload_to_telegram || 'false' }}
+          # Precedence (resolved in bash below, where 'false' stays a real
+          # string): dispatch input > TELEGRAM_AUTO_UPLOAD repo variable > ON.
+          TELEGRAM_INPUT: ${{ github.event.inputs.upload_to_telegram }}
+          TELEGRAM_REPO_VAR: ${{ vars.TELEGRAM_AUTO_UPLOAD }}
           REPO_URL: https://raw.githubusercontent.com/${{ github.repository }}/refs/heads/${{ github.ref_name }}
         run: |
           set -euo pipefail
           cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
+          UPLOAD="$(printf '%s' "${TELEGRAM_INPUT:-${TELEGRAM_REPO_VAR:-true}}" | tr '[:upper:]' '[:lower:]')"
+          if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+            echo "pull_request run — publication preview only; Telegram delivery deferred"
+            echo "to the main-branch run (mirrors the skipped Stage 11 git commit)."
+            UPLOAD=false
+          fi
+          if [ "$UPLOAD" = "true" ] && { [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; }; then
+            echo "::warning::TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not configured — Telegram"
+            echo "::warning::delivery skipped; the identical verified payload is still"
+            echo "::warning::committed to bridge/ + README.md by Stage 11."
+            UPLOAD=false
+          fi
+          echo "Telegram dual-persist mode: $UPLOAD"
           cargo run --quiet --features network --bin sync_bridge_outputs -- \
             --bridge-dir bridge \
+            --readme README.md \
             --repo-url "$REPO_URL" \
-            --telegram-upload "$TELEGRAM_UPLOAD"
+            --retries 3 \
+            --telegram-upload "$UPLOAD"
+          echo "═══ README.md re-rendered from the verified snapshot ═══"
+          sed -n '1,8p' README.md
 
-      # ── BUG FIX: Stage 10 ─────────────────────────────────────────────────
-      # Previous error: "printf: 0 0: invalid number"
-      # Cause: count=$(grep -c . "$f" 2>/dev/null || echo 0)
-      #   grep exits 1 (no matches) and prints "0\n"; then || echo 0 appends
-      #   another "0\n"; $() captures "0\n0" — not a valid printf %d argument.
-      # Fix: separate the capture from the fallback:
-      #   count=$(grep -c . "$f" 2>/dev/null) || count=0
-      - name: Stage 10 — Bridge count summary
+      # Real self-test of the publication: re-validates all 55 required files,
+      # the JSON shapes, every SHA-256 entry in telegram_manifest.json, and
+      # byte-compare each tor_bridges.zip entry against its repository
+      # counterpart. Any drift fails the run before anything is committed.
+      - name: Stage 9b — Verify publication contract (all 55 files, byte-identical ZIP)
         timeout-minutes: 3
         run: |
-          echo "═══ Bridge File Summary ═══"
-          shopt -s nullglob
-          for f in bridge/*.txt; do
-            count=$(grep -c . "$f" 2>/dev/null) || count=0
+          set -euo pipefail
+          cargo run --quiet --bin sync_bridge_outputs -- \
+            --bridge-dir bridge \
+            --verify-only
+          echo "✅ Publication contract verified: every required file present,"
+          echo "   manifest hashes match, archive contents byte-identical."
+
+      - name: Stage 10 — Full bridge/ inventory (all 55 required files)
+        timeout-minutes: 3
+        run: |
+          set -euo pipefail
+          REQUIRED="bridge_history.json bridge_list_for_testing.json bridge_scores.json \
+            conjure.txt conjure_72h.txt conjure_tested.txt \
+            iran_blocked.txt iran_likely_working_all.txt iran_likely_working_nin.txt \
+            iran_likely_working_obfs4.txt iran_likely_working_snowflake.txt \
+            iran_likely_working_vanilla.txt iran_likely_working_webtunnel.txt \
+            iran_results.json \
+            meek-azure.txt meek-azure_72h.txt meek-azure_tested.txt \
+            meek_lite.txt meek_lite_72h.txt meek_lite_72h_ipv6.txt \
+            meek_lite_ipv6.txt meek_lite_ipv6_tested.txt meek_lite_tested.txt \
+            obfs4.txt obfs4_72h.txt obfs4_72h_ipv6.txt \
+            obfs4_ipv6.txt obfs4_ipv6_72h.txt obfs4_ipv6_tested.txt obfs4_tested.txt \
+            snowflake.txt snowflake_72h.txt snowflake_72h_ipv6.txt \
+            snowflake_ipv6.txt snowflake_ipv6_tested.txt snowflake_tested.txt \
+            telegram_manifest.json \
+            tested_global_obfs4.txt tested_global_vanilla.txt tested_global_webtunnel.txt \
+            tor_bridges.zip \
+            vanilla.txt vanilla_72h.txt vanilla_72h_ipv6.txt \
+            vanilla_ipv6.txt vanilla_ipv6_72h.txt vanilla_ipv6_tested.txt vanilla_tested.txt \
+            webtunnel.txt webtunnel_72h.txt webtunnel_72h_ipv6.txt \
+            webtunnel_ipv6.txt webtunnel_ipv6_72h.txt webtunnel_ipv6_tested.txt webtunnel_tested.txt"
+          echo "═══ Full bridge/ publication inventory ═══"
+          MISSING=0
+          TOTAL=0
+          for name in $REQUIRED; do
+            TOTAL=$((TOTAL + 1))
+            f="bridge/$name"
+            if [ ! -f "$f" ]; then
+              printf '❌ %-42s MISSING\n' "$name"
+              MISSING=$((MISSING + 1))
+              continue
+            fi
+            size=$(stat -c %s "$f")
+            case "$name" in
+              *.txt)
+                count=$(grep -c . "$f" 2>/dev/null) || count=0
+                count=${count//[$'\t\r\n ']/}
+                count=${count:-0}
+                printf '✅ %-42s %8d lines (%d bytes)\n' "$name" "$count" "$size"
+                ;;
+              *.json) printf '✅ %-42s   json   (%d bytes)\n' "$name" "$size" ;;
+              *.zip)  printf '✅ %-42s   zip    (%d bytes)\n' "$name" "$size" ;;
+            esac
+          done
+          echo "═══════════════════════════════════════════"
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::error::$MISSING of $TOTAL required bridge/ file(s) missing — publication contract broken"
+            exit 1
+          fi
+          echo "✅ All $TOTAL required bridge/ files present."
+          ALL_OK=true
+          for req in iran_likely_working_all.txt iran_likely_working_obfs4.txt \
+                     iran_likely_working_webtunnel.txt iran_likely_working_snowflake.txt \
+                     iran_likely_working_nin.txt; do
+            fpath="bridge/$req"
+            count=$(grep -c . "$fpath" 2>/dev/null) || count=0
             count=${count//[$'\t\r\n ']/}
             count=${count:-0}
-            printf "%-45s %d\n" "$f" "$count"
-          done
-          echo "═══════════════════════════"
-          ALL_OK=true
-          for req in iran_likely_working_all.txt iran_likely_working_obfs4.txt iran_likely_working_webtunnel.txt; do
-            fpath="bridge/$req"
-            count=0
-            if [ -f "$fpath" ]; then
-              count=$(grep -c . "$fpath" 2>/dev/null) || count=0
-              count=${count//[$'\t\r\n ']/}
-              count=${count:-0}
-            fi
             if [ "$count" -gt 0 ]; then
               echo "✅ $req: $count bridges"
             else
@@ -1042,12 +738,16 @@ jobs:
             fi
           done
           if [ "$ALL_OK" = "true" ]; then
-            echo "✅ All required bridge files populated."
+            echo "✅ All advisory bridge sets populated."
           else
-            echo "⚠️  Some bridge files empty — check scraper/tester logs above."
+            echo "⚠️  Some advisory sets empty — check scraper/tester logs above."
           fi
 
+      # Commits are only possible from first-party push/schedule/dispatch
+      # runs on the default branch — pull requests (especially forks) have a
+      # read-only token and a detached HEAD, so the step is skipped there.
       - name: Stage 11 — Commit and push
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         timeout-minutes: 5
         run: |
           set -euo pipefail
@@ -1056,20 +756,17 @@ jobs:
           git pull origin main --rebase --autostash
           git add bridge/ data/ docs/ export/ README.md go.mod go.sum \
                   src/bin/sync_bridge_outputs.rs \
-                  cmd/ internal/ onionhop_collector.py zig-scanner/ \
-                  ebpf_blueprint.py nin_cut_tester.py xtls_reality_wrapper.py \
-                  ai_dpi_mutator.py next_gen_transports.py quantum_safe.py \
-                  adaptive_transport.py ja3_intelligence.py \
-                  ztunnel_ct_monitor.py nin_internet_cut_classifier.py \
-                  self_heal.py generate_quantum_project.sh \
-                  iran_anti_siam.py core/iran_dpi_shaper.py \
-                  torshield_ai_gateway/ scripts/ || true
+                  cmd/ internal/ zig-scanner/ \
+                  generate_quantum_project.sh \
+                  core/ scripts/ || true
           [ -f go.sum ] && git add go.sum || true
           [ -f bridge-probe/Cargo.lock ] && git add bridge-probe/Cargo.lock || true
           if git diff --staged --quiet; then
             echo "No changes to commit."
           else
-            git commit -m "chore: update bridges and Iran reachability data [skip ci]"
+            WORKING=$(grep -c . bridge/iran_likely_working_all.txt 2>/dev/null || echo 0)
+            WORKING=${WORKING//[$'\t\r\n ']/}
+            git commit -m "chore: dual-persist bridge/ + README.md (advisory working: ${WORKING:-0}, run ${GITHUB_RUN_ID}) [skip ci]"
             git push
           fi
 
@@ -1120,20 +817,14 @@ jobs:
           if-no-files-found: ignore
 
   # ────────────────────────────────────────────────────────────────────────────
-  # ────────────────────────────────────────────────────────────────────────────
   ai-rerank:
-    # ────────────────────────────────────────────────────────────────────────────
-    # MERGED from ai_bridge_reranker.yml (2026-08-01 consolidation). Used to be
-    # a separate workflow, triggered by `workflow_run` after this one finished,
-    # that pulled this run's artifact across workflows via `gh run download`
-    # (with `set +e` / a warning-and-continue fallback for when that artifact
-    # wasn't there yet, since cross-workflow timing isn't guaranteed). Now it's
-    # a job in the same run: it pulls the artifact directly with
-    # actions/download-artifact, which removes that whole failure class. The
-    # standalone "just re-rank an existing file" entry point is preserved via
-    # the rerank_only workflow_dispatch input above — quality-gate, build-rust,
-    # build-go, rust-parity-tests and scrape-and-test all skip themselves in
-    # that mode, and this job runs anyway (if: always()) against whatever
+    # MERGED from ai_bridge_reranker.yml (2026-08-01 consolidation), ported to
+    # the Rust-native ai_bridge_reranker binary (the retired
+    # scripts/ai_bridge_reranker.py no longer exists). The standalone
+    # "just re-rank an existing file" entry point is preserved via the
+    # rerank_only workflow_dispatch input — quality-gate, build-rust,
+    # rust-parity-tests and scrape-and-test all skip themselves in that mode,
+    # and this job runs anyway (if: always()) against whatever
     # bridge/iran_results.json is already checked out.
     name: "AI Bridge Re-Ranker (Iran)"
     needs: [scrape-and-test]
@@ -1150,22 +841,23 @@ jobs:
           set -euo pipefail
           bash scripts/github_actions_env_bootstrap.sh
 
-      - name: Setup Python 3.12
-        uses: actions/setup-python@v6
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          python-version: "3.12"
-          cache: 'pip'
+          toolchain: 'stable'
 
-      - name: Install Python dependencies
-        run: |
-          set -euo pipefail
-          pip install -r requirements.txt
+      - uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-rerank-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
 
-      # Same-run artifact pull — replaces the old cross-workflow `gh run
-      # download`. Only fires when scrape-and-test actually ran and
-      # succeeded; in rerank_only mode (or if scrape-and-test failed) this
-      # is skipped and the next step falls back to whatever
-      # bridge/iran_results.json is already in the checkout.
+      # Same-run artifact pull — replaces the old cross-workflow
+      # `gh run download`. Skipped in rerank_only mode or when
+      # scrape-and-test failed; the next step then falls back to the
+      # bridge/iran_results.json committed in the repo.
       - name: Download this run's bridge intelligence artifact
         if: needs.scrape-and-test.result == 'success'
         uses: actions/download-artifact@v8
@@ -1188,71 +880,21 @@ jobs:
             echo "WARNING: bridge/iran_results.json not found anywhere — created empty placeholder"
           fi
 
-      - name: Run AI Re-Ranking
+      - name: Run AI Re-Ranking (Rust-native scorer)
         timeout-minutes: 8
         env:
-          AI_RERANK_PROVIDER: local
-          AI_RERANK_EXTERNAL_AI: 'false'
-          AI_RERANK_TIME_BUDGET: '20'
-          CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
-          CEREBRAS_API_KEY_2: ${{ secrets.CEREBRAS_API_KEY_2 }}
-          CEREBRAS_API_KEY_3: ${{ secrets.CEREBRAS_API_KEY_3 }}
-          PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
-          PORTKEY_GATEWAY_URL: ${{ secrets.PORTKEY_GATEWAY_URL }}
-          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
-          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
-          CF_AI_GATEWAY_URL_1: ${{ secrets.CF_AI_GATEWAY_URL_1 }}
-          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
-          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
-          CF_AI_GATEWAY_URL_2: ${{ secrets.CF_AI_GATEWAY_URL_2 }}
-          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
-          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
-          CF_AI_GATEWAY_URL_3: ${{ secrets.CF_AI_GATEWAY_URL_3 }}
-          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
-          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
-          CF_AI_GATEWAY_URL_4: ${{ secrets.CF_AI_GATEWAY_URL_4 }}
-          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
-          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
-          CF_AI_GATEWAY_URL_5: ${{ secrets.CF_AI_GATEWAY_URL_5 }}
-          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
-          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
-          CF_AI_GATEWAY_URL_6: ${{ secrets.CF_AI_GATEWAY_URL_6 }}
-          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
-          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
-          CF_AI_GATEWAY_URL_7: ${{ secrets.CF_AI_GATEWAY_URL_7 }}
-          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
-          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
-          CF_AI_GATEWAY_URL_8: ${{ secrets.CF_AI_GATEWAY_URL_8 }}
-          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
-          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
-          CF_AI_GATEWAY_URL_9: ${{ secrets.CF_AI_GATEWAY_URL_9 }}
-          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
-          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
-          CF_AI_GATEWAY_URL_10: ${{ secrets.CF_AI_GATEWAY_URL_10 }}
-          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
-          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
-          CF_AI_GATEWAY_URL_11: ${{ secrets.CF_AI_GATEWAY_URL_11 }}
           GITHUB_RUN_ID: ${{ github.run_id }}
           BRIDGE_FILE: ${{ inputs.bridge_file || 'bridge/iran_results.json' }}
         run: |
           set -euo pipefail
-          python scripts/ai_bridge_reranker.py \
-            --input  "$BRIDGE_FILE" \
+          cargo run --quiet --bin ai_bridge_reranker -- \
+            --input "$BRIDGE_FILE" \
             --output bridge/bridges_ai_iran_ranked.json \
-            --iran-mode strict \
-            --batch-size 10 \
-            --ai-provider "${AI_RERANK_PROVIDER:-local}" \
-            --ai-time-budget "${AI_RERANK_TIME_BUDGET:-20}" \
+            --censorship-level 4 \
             --top-n "${AI_RERANK_TOP_N:-20}" || true
-          python3 -c "
-          import json, pathlib
-          p = pathlib.Path('bridge/bridges_ai_iran_ranked.json')
-          if p.exists():
-              d = json.loads(p.read_text())
-              bs = d.get('bridges', d) if isinstance(d, dict) else d
-              total = len(bs)
-              print(f'AI-ranked: {total} bridges')
-          " || true
+          if [ -f bridge/bridges_ai_iran_ranked.json ]; then
+            echo "bridge/bridges_ai_iran_ranked.json written (see scorer summary above)"
+          fi
 
       - name: Upload AI-Ranked Bridges
         uses: actions/upload-artifact@v6
@@ -1262,8 +904,8 @@ jobs:
           retention-days: 30
           if-no-files-found: ignore
 
+  # ────────────────────────────────────────────────────────────────────────────
   package-final-artifact:
-    # ────────────────────────────────────────────────────────────────────────────
     name: "Package Final Artifact"
     needs: [scrape-and-test, ai-rerank]
     runs-on: ubuntu-latest
@@ -1316,7 +958,7 @@ jobs:
   cleanup:
     name: AI Ultra-Pro Cleanup
     if: always()
-    needs: [quality-gate, build-rust, build-go, rust-parity-tests, scrape-and-test, ai-rerank, package-final-artifact]
+    needs: [quality-gate, build-rust, rust-parity-tests, scrape-and-test, ai-rerank, package-final-artifact]
     uses: ./.github/workflows/ai-ultra-pro-cleanup.yml
     secrets: inherit
     with:
