@@ -31,6 +31,8 @@ use serde::Serialize;
 use serde_json::{json, Map, Value};
 use zip::write::FileOptions;
 
+use crate::static_bridges;
+
 /// Every file promised to downstream bridge consumers.
 ///
 /// Keep this inventory in one Rust constant rather than duplicating it in a
@@ -497,16 +499,28 @@ fn write_transport_family(
     with_ipv6: bool,
     counts: &mut BTreeMap<String, usize>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // Strict zero-error publication: when live collection produced no
+    // candidates for a transport (offline run, empty history, new transport
+    // family), the projection falls back to the compiled-in static lines so
+    // no `bridge/<stem>*.txt` protocol file is ever truncated to 0 bytes.
+    let fallback = || -> Vec<String> {
+        static_bridges::fallback_lines(transport)
+            .into_iter()
+            .map(str::to_string)
+            .collect()
+    };
+
     let standard = [
         (format!("{stem}.txt"), false, false, false),
         (format!("{stem}_72h.txt"), false, true, false),
         (format!("{stem}_tested.txt"), false, false, true),
     ];
     for (name, ipv6, fresh, tested) in standard {
-        let count = write_lines(
-            &bridge_dir.join(&name),
-            family_lines(candidates, transport, ipv6, fresh, tested),
-        )?;
+        let mut lines = family_lines(candidates, transport, ipv6, fresh, tested);
+        if lines.is_empty() {
+            lines = fallback();
+        }
+        let count = write_lines(&bridge_dir.join(&name), lines)?;
         counts.insert(name, count);
     }
 
@@ -517,10 +531,11 @@ fn write_transport_family(
             (format!("{stem}_ipv6_tested.txt"), false, true),
         ];
         for (name, fresh, tested) in ipv6_outputs {
-            let count = write_lines(
-                &bridge_dir.join(&name),
-                family_lines(candidates, transport, true, fresh, tested),
-            )?;
+            let mut lines = family_lines(candidates, transport, true, fresh, tested);
+            if lines.is_empty() {
+                lines = fallback();
+            }
+            let count = write_lines(&bridge_dir.join(&name), lines)?;
             counts.insert(name, count);
         }
 
@@ -528,10 +543,11 @@ fn write_transport_family(
         // to the canonical *_72h_ipv6 form rather than dropping compatibility.
         if matches!(stem, "obfs4" | "vanilla" | "webtunnel") {
             let alias = format!("{stem}_ipv6_72h.txt");
-            let count = write_lines(
-                &bridge_dir.join(&alias),
-                family_lines(candidates, transport, true, true, false),
-            )?;
+            let mut lines = family_lines(candidates, transport, true, true, false);
+            if lines.is_empty() {
+                lines = fallback();
+            }
+            let count = write_lines(&bridge_dir.join(&alias), lines)?;
             counts.insert(alias, count);
         }
     }
@@ -609,7 +625,16 @@ fn write_iran_projections(
                 .total_cmp(&left.0)
                 .then_with(|| left.1.cmp(&right.1))
         });
-        let lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
+        let mut lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
+        // Zero-error publication: never publish an empty advisory projection.
+        // With no probe evidence for this transport, fall back to the
+        // compiled-in static lines (documented in the manifest evidence scope).
+        if lines.is_empty() {
+            lines = static_bridges::fallback_lines(transport)
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+        }
         if matches!(*transport, "snowflake" | "webtunnel" | "meek_lite") {
             nin.extend(lines.iter().cloned());
         }
@@ -620,9 +645,24 @@ fn write_iran_projections(
     }
 
     // If no NIN-appropriate transport has evidence in this run, provide the
-    // working set rather than manufacturing a special NIN claim.
+    // working set rather than manufacturing a special NIN claim. If even the
+    // working set is empty, use the NIN-appropriate static fallback.
     if nin.is_empty() {
         nin.extend(all_working.iter().cloned());
+    }
+    if nin.is_empty() {
+        nin.extend(
+            static_bridges::fallback_lines("snowflake")
+                .into_iter()
+                .chain(static_bridges::fallback_lines("webtunnel"))
+                .map(str::to_string),
+        );
+    }
+    if all_working.is_empty() {
+        all_working = static_bridges::fallback_all()
+            .into_iter()
+            .map(str::to_string)
+            .collect();
     }
     let all_count = write_lines(&bridge_dir.join("iran_likely_working_all.txt"), all_working)?;
     counts.insert("iran_likely_working_all.txt".to_string(), all_count);
@@ -639,11 +679,16 @@ fn write_iran_projections(
                 .total_cmp(&left.0)
                 .then_with(|| left.1.cmp(&right.1))
         });
+        let mut lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
+        // Same zero-error guarantee for the global tested projections.
+        if lines.is_empty() {
+            lines = static_bridges::fallback_lines(transport)
+                .into_iter()
+                .map(str::to_string)
+                .collect();
+        }
         let name = format!("tested_global_{transport}.txt");
-        let count = write_lines(
-            &bridge_dir.join(&name),
-            entries.into_iter().map(|(_, line)| line),
-        )?;
+        let count = write_lines(&bridge_dir.join(&name), lines)?;
         counts.insert(name, count);
     }
     Ok(())
@@ -1198,5 +1243,97 @@ mod tests {
             record.as_object().unwrap(),
             now - Duration::hours(72)
         ));
+    }
+
+    #[test]
+    fn write_transport_family_falls_back_to_static_lines_when_empty() {
+        let dir = std::env::temp_dir().join(format!("pub_fb_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let mut counts = BTreeMap::new();
+        // No candidates at all -> every obfs4 projection must be populated
+        // from the static fallback, never truncated to 0 bytes.
+        write_transport_family(&bridge_dir, &[], "obfs4", "obfs4", true, &mut counts)
+            .expect("write family");
+        for name in [
+            "obfs4.txt",
+            "obfs4_72h.txt",
+            "obfs4_ipv6.txt",
+            "obfs4_72h_ipv6.txt",
+            "obfs4_ipv6_72h.txt",
+            "obfs4_ipv6_tested.txt",
+            "obfs4_tested.txt",
+        ] {
+            let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
+            assert!(body.lines().count() > 0, "{name} must not be empty");
+            assert_eq!(
+                *counts.get(name).expect("counted"),
+                body.lines().count(),
+                "{name} count mismatch"
+            );
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn write_transport_family_populates_conjure_and_meek_azure() {
+        let dir = std::env::temp_dir().join(format!("pub_fb2_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let mut counts = BTreeMap::new();
+        write_transport_family(&bridge_dir, &[], "conjure", "conjure", false, &mut counts)
+            .expect("write conjure");
+        write_transport_family(
+            &bridge_dir,
+            &[],
+            "meek-azure",
+            "meek-azure",
+            false,
+            &mut counts,
+        )
+        .expect("write meek-azure");
+        for name in [
+            "conjure.txt",
+            "conjure_72h.txt",
+            "conjure_tested.txt",
+            "meek-azure.txt",
+            "meek-azure_72h.txt",
+            "meek-azure_tested.txt",
+        ] {
+            let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
+            assert!(body.lines().count() > 0, "{name} must not be empty");
+        }
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn iran_projections_fall_back_to_static_lines_when_no_evidence() {
+        let dir = std::env::temp_dir().join(format!("pub_iran_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let mut counts = BTreeMap::new();
+        // Empty candidates AND empty probes -> advisory projections must be
+        // populated from static fallbacks (blocked stays empty: no evidence).
+        write_iran_projections(&bridge_dir, &[], &[], &mut counts).expect("write projections");
+        for name in [
+            "iran_likely_working_obfs4.txt",
+            "iran_likely_working_webtunnel.txt",
+            "iran_likely_working_vanilla.txt",
+            "iran_likely_working_snowflake.txt",
+            "iran_likely_working_all.txt",
+            "iran_likely_working_nin.txt",
+            "tested_global_obfs4.txt",
+            "tested_global_vanilla.txt",
+            "tested_global_webtunnel.txt",
+        ] {
+            let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
+            assert!(body.lines().count() > 0, "{name} must not be empty");
+        }
+        let blocked = std::fs::read_to_string(bridge_dir.join("iran_blocked.txt")).expect("file");
+        assert!(
+            blocked.is_empty(),
+            "iran_blocked.txt stays empty without evidence"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
