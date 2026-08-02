@@ -51,16 +51,17 @@ fn read_history(bridge_dir: &Path) -> serde_json::Map<String, Value> {
 }
 
 /// Collect trimmed `raw` lines per transport from history. Pure for testing.
-pub fn transport_map(
-    history: &serde_json::Map<String, Value>,
-) -> Vec<(&'static str, Vec<String>)> {
+pub fn transport_map(history: &serde_json::Map<String, Value>) -> Vec<(&'static str, Vec<String>)> {
     let mut map: Vec<(&'static str, Vec<String>)> =
         TRANSPORTS.iter().map(|t| (*t, Vec::new())).collect();
     for value in history.values() {
         let Some(obj) = value.as_object() else {
             continue;
         };
-        let transport = obj.get("transport").and_then(Value::as_str).unwrap_or_default();
+        let transport = obj
+            .get("transport")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
         let raw = obj.get("raw").and_then(Value::as_str).unwrap_or_default();
         if let Some((_, bridges)) = map.iter_mut().find(|(t, _)| *t == transport) {
             if !raw.is_empty() {
@@ -84,7 +85,10 @@ pub fn all_raw_bridges(history: &serde_json::Map<String, Value>) -> Vec<String> 
 }
 
 fn static_fallback_lines() -> Vec<String> {
-    static_bridges::get_all().into_iter().map(|(line, _, _)| line.to_string()).collect()
+    static_bridges::get_all()
+        .into_iter()
+        .map(|(line, _, _)| line.to_string())
+        .collect()
 }
 
 /// Execute the failsafe against `bridge_dir`, mirroring the Python script.
@@ -177,7 +181,11 @@ mod tests {
     #[test]
     fn transport_map_groups_and_trims() {
         let map = transport_map(&history_fixture());
-        let obfs4 = &map.iter().find(|(t, _)| *t == "obfs4").expect("obfs4 entry").1;
+        let obfs4 = &map
+            .iter()
+            .find(|(t, _)| *t == "obfs4")
+            .expect("obfs4 entry")
+            .1;
         assert_eq!(
             obfs4,
             &vec![
@@ -185,7 +193,11 @@ mod tests {
                 "obfs4 5.6.7.8:444 cert=ABC".to_string()
             ]
         );
-        let snowflake = &map.iter().find(|(t, _)| *t == "snowflake").expect("entry").1;
+        let snowflake = &map
+            .iter()
+            .find(|(t, _)| *t == "snowflake")
+            .expect("entry")
+            .1;
         assert!(snowflake.is_empty());
         assert_eq!(map.len(), TRANSPORTS.len());
     }
@@ -193,7 +205,12 @@ mod tests {
     #[test]
     fn all_raw_bridges_skips_non_dicts_and_empty() {
         let all = all_raw_bridges(&history_fixture());
-        assert_eq!(all.len(), 3);
+        // All four dict entries with a non-empty `raw` are collected —
+        // `all_raw_bridges` deliberately does NOT filter by transport
+        // (mirroring the Python original, which also keeps unknown
+        // transports when rebuilding bridge_list_for_testing.json); only the
+        // "not-a-dict" value and the empty-raw entry are skipped.
+        assert_eq!(all.len(), 4);
         assert!(all.contains(&"webtunnel 9.9.9.9:443 url=x".to_string()));
         assert!(all.contains(&"ignored".to_string()));
     }
@@ -221,7 +238,9 @@ mod tests {
         let testing_path = bridge_dir.join("bridge_list_for_testing.json");
         let testing = std::fs::read_to_string(testing_path).expect("json");
         let list: Vec<String> = serde_json::from_str(&testing).expect("array");
-        assert_eq!(list.len(), 3);
+        // 4 lines: both obfs4 entries, the webtunnel entry and the unknown-
+        // transport entry with a non-empty raw line.
+        assert_eq!(list.len(), 4);
         // Second run: files populated -> OK branch, no rewrite.
         assert_eq!(run(&bridge_dir), 0);
         let _ = std::fs::remove_dir_all(&dir);

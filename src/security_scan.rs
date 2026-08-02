@@ -59,26 +59,20 @@ pub const TEXT_EXTENSIONS: &[&str] = &[
 pub const PYTHON_SINKS: &[(&str, &str)] = &[
     ("eval", "eval() executes arbitrary code"),
     ("exec", "exec() executes arbitrary code"),
-    (
-        "os.system",
-        "os.system() runs a shell command directly",
-    ),
-    (
-        "__import__",
-        "__import__() enables dynamic module loading",
-    ),
+    ("os.system", "os.system() runs a shell command directly"),
+    ("__import__", "__import__() enables dynamic module loading"),
 ];
 
 /// Bearer-token / API-key shaped high-entropy strings. Kept in the exact
 /// order and with the exact pattern text of the Python original so that the
 /// report lines (which embed the pattern source) stay byte-identical.
 pub const CREDENTIAL_PATTERN_SOURCES: &[&str] = &[
-    "\\bghp_[A-Za-z0-9]{36,}\\b",                // GitHub PAT
-    "\\bgithub_pat_[A-Za-z0-9_]{22,}\\b",        // fine-grained PAT
-    "\\bglpat-[A-Za-z0-9\\-_]{20,}\\b",          // GitLab PAT
-    "\\bsk-[A-Za-z0-9]{32,}\\b",                 // OpenAI-style key
-    "\\bAKIA[A-Z0-9]{16}\\b",                    // AWS access key
-    "\\bxox[baprs]-[A-Za-z0-9\\-]{10,}\\b",      // Slack token
+    "\\bghp_[A-Za-z0-9]{36,}\\b", // GitHub PAT
+    "\\bgithub_pat_[A-Za-z0-9_]{22,}\\b", // fine-grained PAT
+    "\\bglpat-[A-Za-z0-9\\-_]{20,}\\b", // GitLab PAT
+    "\\bsk-[A-Za-z0-9]{32,}\\b", // OpenAI-style key
+    "\\bAKIA[A-Z0-9]{16}\\b", // AWS access key
+    "\\bxox[baprs]-[A-Za-z0-9\\-]{10,}\\b", // Slack token
     "-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----",
 ];
 
@@ -111,17 +105,18 @@ fn sink_patterns() -> &'static SinkPatterns {
     PATTERNS.get_or_init(|| SinkPatterns {
         call: Regex::new(r"\b(eval|exec|__import__)\s*\(")
             .expect("static sink pattern must compile"),
-        os_system: Regex::new(r"\bos\.system\s*\(")
-            .expect("static sink pattern must compile"),
+        os_system: Regex::new(r"\bos\.system\s*\(").expect("static sink pattern must compile"),
         subprocess: Regex::new(r"\b(?:run|call|check_call|check_output|Popen)\s*\(")
             .expect("static sink pattern must compile"),
-        shell_true: Regex::new(r"\bshell\s*=\s*True\b")
-            .expect("static sink pattern must compile"),
+        shell_true: Regex::new(r"\bshell\s*=\s*True\b").expect("static sink pattern must compile"),
     })
 }
 
 fn sink_reason(name: &str) -> Option<&'static str> {
-    PYTHON_SINKS.iter().find(|(key, _)| *key == name).map(|(_, reason)| *reason)
+    PYTHON_SINKS
+        .iter()
+        .find(|(key, _)| *key == name)
+        .map(|(_, reason)| *reason)
 }
 
 /// Reproduce Python's `repr()` for the (ASCII-only) pattern strings so the
@@ -322,7 +317,9 @@ pub fn scan_text(text: &str) -> Vec<String> {
 
 /// Lower-cased "`.ext`" suffix of a path, matching `pathlib.Path.suffix`.
 fn suffix(path: &Path) -> Option<String> {
-    path.extension().and_then(|ext| ext.to_str()).map(|ext| format!(".{}", ext.to_lowercase()))
+    path.extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| format!(".{}", ext.to_lowercase()))
 }
 
 /// Execute the full scan rooted at `root`, printing the exact report format

@@ -81,7 +81,10 @@ pub fn yaml_lint(root: &Path) -> i32 {
         return 1;
     }
     for file in files {
-        let name = file.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+        let name = file
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default();
         if !(name.ends_with(".yml") || name.ends_with(".yaml")) {
             continue;
         }
@@ -131,7 +134,13 @@ pub fn validate_requirement_line(stripped: &str) -> Option<&'static str> {
     if pkg.is_empty() || !first_char_ok {
         return Some("invalid package name");
     }
-    if parts.len() > 1 && parts.get(1).map(|p| p.trim()).unwrap_or_default().is_empty() {
+    if parts.len() > 1
+        && parts
+            .get(1)
+            .map(|p| p.trim())
+            .unwrap_or_default()
+            .is_empty()
+    {
         return Some("missing version specifier");
     }
     None
@@ -298,9 +307,18 @@ mod tests {
 
     #[test]
     fn requirement_line_rejects_bad_specs() {
-        assert_eq!(validate_requirement_line(">=1.0"), Some("invalid package name"));
-        assert_eq!(validate_requirement_line("9lives>=1.0"), Some("invalid package name"));
-        assert_eq!(validate_requirement_line("requests>="), Some("missing version specifier"));
+        assert_eq!(
+            validate_requirement_line(">=1.0"),
+            Some("invalid package name")
+        );
+        assert_eq!(
+            validate_requirement_line("9lives>=1.0"),
+            Some("invalid package name")
+        );
+        assert_eq!(
+            validate_requirement_line("requests>="),
+            Some("missing version specifier")
+        );
     }
 
     #[test]

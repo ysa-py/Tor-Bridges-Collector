@@ -144,7 +144,11 @@ pub fn validate_file(path: &str) -> Vec<String> {
                     Some(Value::String(name)) => name.clone(),
                     _ => "<run>".to_string(),
                 };
-                let location = if linux { "linux runner" } else { "non-linux runner" };
+                let location = if linux {
+                    "linux runner"
+                } else {
+                    "non-linux runner"
+                };
                 violations.push(format!(
                     "{path}: job '{job_name}' step '{step_name}' invokes hardcoded \
                      powershell/pwsh on a {location}: {}",
@@ -199,7 +203,10 @@ pub fn run(root: &Path) -> i32 {
         }
     }
 
-    println!("\nValidated {} workflow file(s); {total} violation(s).", paths.len());
+    println!(
+        "\nValidated {} workflow file(s); {total} violation(s).",
+        paths.len()
+    );
     if total == 0 {
         0
     } else {
@@ -210,7 +217,10 @@ pub fn run(root: &Path) -> i32 {
 /// CLI entry point: `validate_workflows [dir]` (default `.github/workflows`),
 /// mirroring `main(sys.argv)` in the Python original.
 pub fn entry(args: &[String]) -> i32 {
-    let root = args.get(1).map(String::as_str).unwrap_or(".github/workflows");
+    let root = args
+        .get(1)
+        .map(String::as_str)
+        .unwrap_or(".github/workflows");
     run(Path::new(root))
 }
 
@@ -230,7 +240,9 @@ mod tests {
     #[test]
     fn ignores_prose_and_comments() {
         assert!(!line_invokes_powershell("# powershell is absent on linux"));
-        assert!(!line_invokes_powershell("echo \"there is no powershell here\""));
+        assert!(!line_invokes_powershell(
+            "echo \"there is no powershell here\""
+        ));
         assert!(!line_invokes_powershell(""));
         assert!(!line_invokes_powershell("   "));
         // A trailing comma is not an argument boundary ([\s.\-]|$ required).
@@ -239,11 +251,15 @@ mod tests {
 
     #[test]
     fn linux_runner_detection() {
-        assert!(is_linux_runner(Some(&Value::String("ubuntu-latest".into()))));
+        assert!(is_linux_runner(Some(&Value::String(
+            "ubuntu-latest".into()
+        ))));
         assert!(is_linux_runner(Some(&Value::String("Ubuntu-22.04".into()))));
         assert!(is_linux_runner(Some(&Value::String("linux-x64".into()))));
         assert!(is_linux_runner(Some(&Value::String("self-hosted".into()))));
-        assert!(!is_linux_runner(Some(&Value::String("windows-latest".into()))));
+        assert!(!is_linux_runner(Some(&Value::String(
+            "windows-latest".into()
+        ))));
         assert!(!is_linux_runner(Some(&Value::String("macos-14".into()))));
         // A matrix expression is a *string* in YAML; Python's isinstance()
         // check applies the same startswith() test to it, so it does NOT
@@ -252,8 +268,10 @@ mod tests {
         let matrix = Value::String("${{ matrix.os }}".into());
         assert!(!is_linux_runner(Some(&matrix)));
         assert!(is_linux_runner(None));
-        let list =
-            Value::Sequence(vec![Value::String("self-hosted".into()), Value::String("gpu".into())]);
+        let list = Value::Sequence(vec![
+            Value::String("self-hosted".into()),
+            Value::String("gpu".into()),
+        ]);
         assert!(is_linux_runner(Some(&list)));
     }
 

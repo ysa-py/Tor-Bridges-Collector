@@ -63,7 +63,10 @@ fn py_str(value: &Value) -> String {
 pub fn render_health_summary(report: &Value) -> Result<Vec<String>, &'static str> {
     let summary = report.get("summary").cloned().unwrap_or_else(|| json!({}));
     let get_num = |key: &str| summary.get(key).and_then(Value::as_i64).unwrap_or(0);
-    let version = report.get("version").and_then(Value::as_str).unwrap_or("unknown");
+    let version = report
+        .get("version")
+        .and_then(Value::as_str)
+        .unwrap_or("unknown");
     let primary_ok = get_num("primary_ok");
     let total = get_num("total");
     let healthy = summary
@@ -73,7 +76,10 @@ pub fn render_health_summary(report: &Value) -> Result<Vec<String>, &'static str
     // Python: summary.get("exit_code", "?") / summary.get("failure_reason",
     // "none") — the default only applies when the key is ABSENT; a JSON null
     // present in the report interpolates as "None", exactly like CPython.
-    let exit_code = summary.get("exit_code").map(py_str).unwrap_or_else(|| "?".to_string());
+    let exit_code = summary
+        .get("exit_code")
+        .map(py_str)
+        .unwrap_or_else(|| "?".to_string());
     let failure_reason = summary
         .get("failure_reason")
         .map(py_str)
@@ -89,9 +95,20 @@ pub fn render_health_summary(report: &Value) -> Result<Vec<String>, &'static str
         format!("Failure reason: {failure_reason}"),
         String::new(),
     ];
-    for result in report.get("results").and_then(Value::as_array).cloned().unwrap_or_default() {
-        let status = result.get("status").and_then(Value::as_str).ok_or("status")?;
-        let provider = result.get("provider").and_then(Value::as_str).ok_or("provider")?;
+    for result in report
+        .get("results")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+    {
+        let status = result
+            .get("status")
+            .and_then(Value::as_str)
+            .ok_or("status")?;
+        let provider = result
+            .get("provider")
+            .and_then(Value::as_str)
+            .ok_or("provider")?;
         let marker = if status == "ok" {
             "OK"
         } else if status.contains("degraded") {
@@ -99,7 +116,10 @@ pub fn render_health_summary(report: &Value) -> Result<Vec<String>, &'static str
         } else {
             "ER"
         };
-        let latency = result.get("latency_ms").and_then(Value::as_i64).unwrap_or(0);
+        let latency = result
+            .get("latency_ms")
+            .and_then(Value::as_i64)
+            .unwrap_or(0);
         lines.push(format!("  [{marker}] {provider}: {status} ({latency}ms)"));
     }
     let warnings = report
@@ -112,7 +132,10 @@ pub fn render_health_summary(report: &Value) -> Result<Vec<String>, &'static str
         lines.push(String::new());
         lines.push("Env warnings:".to_string());
         for warning in &warnings {
-            let text = warning.as_str().map(str::to_string).unwrap_or_else(|| warning.to_string());
+            let text = warning
+                .as_str()
+                .map(str::to_string)
+                .unwrap_or_else(|| warning.to_string());
             lines.push(format!("  - {text}"));
         }
     }
@@ -171,14 +194,25 @@ impl ProviderStats {
 /// `ProviderHealthMetrics.record_request(...)` calls in the Python original.
 pub fn provider_stats_from_gateway(report: &Value) -> BTreeMap<String, ProviderStats> {
     let mut stats: BTreeMap<String, ProviderStats> = BTreeMap::new();
-    for result in report.get("results").and_then(Value::as_array).cloned().unwrap_or_default() {
+    for result in report
+        .get("results")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+    {
         let provider = result
             .get("provider")
             .and_then(Value::as_str)
             .unwrap_or("unknown")
             .to_string();
-        let status = result.get("status").and_then(Value::as_str).unwrap_or("unknown");
-        let latency = result.get("latency_ms").and_then(Value::as_f64).unwrap_or(0.0);
+        let status = result
+            .get("status")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let latency = result
+            .get("latency_ms")
+            .and_then(Value::as_f64)
+            .unwrap_or(0.0);
         let entry = stats.entry(provider).or_default();
         entry.request_count += 1;
         if status == "ok" {
@@ -220,7 +254,10 @@ pub fn obs_step_summary_markdown(report: &Value) -> String {
         .and_then(Value::as_str)
         .unwrap_or("degraded")
         .to_uppercase();
-    let timestamp = report.get("timestamp").and_then(Value::as_str).unwrap_or_default();
+    let timestamp = report
+        .get("timestamp")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
     let mut out = String::from("## Observability Report\n\n");
     out.push_str(&format!("**Overall Status:** `{overall}`\n\n"));
     out.push_str(&format!("**Timestamp:** {timestamp}\n\n"));
@@ -229,11 +266,24 @@ pub fn obs_step_summary_markdown(report: &Value) -> String {
     out.push_str("|----------|----------|--------------|-------------|\n");
     if let Some(map) = report.get("provider_stats").and_then(Value::as_object) {
         for (name, stats) in map {
-            let reqs = stats.get("request_count").and_then(Value::as_i64).unwrap_or(0);
-            let rate = stats.get("success_rate").and_then(Value::as_f64).unwrap_or(0.0);
-            let lat = stats.get("avg_latency_ms").and_then(Value::as_f64).unwrap_or(0.0);
+            let reqs = stats
+                .get("request_count")
+                .and_then(Value::as_i64)
+                .unwrap_or(0);
+            let rate = stats
+                .get("success_rate")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0);
+            let lat = stats
+                .get("avg_latency_ms")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0);
             // Python: f"| {name} | {reqs} | {rate:.1%} | {lat:.0f}ms |"
-            let row = format!("| {name} | {reqs} | {:.1}% | {:.0}ms |\n", rate * 100.0, lat);
+            let row = format!(
+                "| {name} | {reqs} | {:.1}% | {:.0}ms |\n",
+                rate * 100.0,
+                lat
+            );
             out.push_str(&row);
         }
     }
@@ -388,12 +438,18 @@ const TRANSIENT_CATEGORIES: &[&str] = &["network_error", "timeout"];
 /// checked first, exactly as in the Python original.
 pub fn categorize(combined_text_lower: &str) -> &'static str {
     for &(category, patterns) in TRANSIENT_PATTERNS {
-        if patterns.iter().any(|p| combined_text_lower.contains(&p.to_lowercase())) {
+        if patterns
+            .iter()
+            .any(|p| combined_text_lower.contains(&p.to_lowercase()))
+        {
             return category;
         }
     }
     for &(category, patterns) in FIXABLE_PATTERNS {
-        if patterns.iter().any(|p| combined_text_lower.contains(&p.to_lowercase())) {
+        if patterns
+            .iter()
+            .any(|p| combined_text_lower.contains(&p.to_lowercase()))
+        {
             return category;
         }
     }
@@ -451,15 +507,18 @@ fn fetch_parent_logs() -> String {
     let parent_run_id = (|| -> Option<String> {
         let text = fs::read_to_string(&event_path).ok()?;
         let event: Value = serde_json::from_str(&text).ok()?;
-        event.get("workflow_run")?.get("id")?.as_i64().map(|id| id.to_string())
+        event
+            .get("workflow_run")?
+            .get("id")?
+            .as_i64()
+            .map(|id| id.to_string())
     })()
     .unwrap_or_default();
     if parent_run_id.is_empty() {
         return String::new();
     }
-    let url = format!(
-        "https://api.github.com/repos/{owner}/{repo}/actions/runs/{parent_run_id}/logs"
-    );
+    let url =
+        format!("https://api.github.com/repos/{owner}/{repo}/actions/runs/{parent_run_id}/logs");
     let result = (|| -> Result<Vec<u8>, String> {
         let client = reqwest::blocking::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
@@ -520,8 +579,7 @@ fn fetch_parent_logs() -> String {
 
 /// `categorize-failure` — full port of `_categorize.py` (never exits non-zero).
 pub fn categorize_failure() -> i32 {
-    let workflow_name =
-        std::env::var("GITHUB_WORKFLOW").unwrap_or_else(|_| "unknown".to_string());
+    let workflow_name = std::env::var("GITHUB_WORKFLOW").unwrap_or_else(|_| "unknown".to_string());
     let parent_conclusion =
         std::env::var("PARENT_CONCLUSION").unwrap_or_else(|_| "manual".to_string());
 
@@ -557,7 +615,11 @@ pub fn categorize_failure() -> i32 {
         ("is_fixable", if is_fixable { "true" } else { "false" }),
         (
             "should_run_autodebug",
-            if should_run_autodebug { "true" } else { "false" },
+            if should_run_autodebug {
+                "true"
+            } else {
+                "false"
+            },
         ),
     ]);
     let report = json!({
@@ -706,7 +768,10 @@ mod tests {
         assert_eq!(categorize("syntaxerror on line 3"), "syntax_error");
         assert_eq!(categorize("http 403 forbidden"), "auth_failure");
         assert_eq!(categorize("model not found: x"), "model_error");
-        assert_eq!(categorize("cargo fmt failed mysteriously"), "unknown_fixable");
+        assert_eq!(
+            categorize("cargo fmt failed mysteriously"),
+            "unknown_fixable"
+        );
         // Transient wins even when a fixable token is present too.
         assert_eq!(categorize("valueerror and 503"), "network_error");
     }
