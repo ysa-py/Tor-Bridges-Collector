@@ -580,7 +580,7 @@ jobs:
 
       - name: Stage 8k — NIN internet-cut survivability tester
         continue-on-error: true
-        timeout-minutes: 8
+        timeout-minutes: 20
         run: cargo run --quiet --bin pipeline -- --stage nin-cut --report data/nin_cut_pipeline_report.json
 
       - name: Stage 8l — XTLS-Reality VLESS config generator
