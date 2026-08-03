@@ -22,7 +22,7 @@ pub mod dpi_evasion_advanced;
 pub mod dt_utils;
 pub mod ech_fingerprint_evasion;
 pub mod endpoint_validator;
-pub mod failsafe_bridges;
+// pub mod failsafe_bridges; // BISECT-2: disabled to isolate compile error
 pub mod feature_flags;
 pub mod formatter;
 pub mod generated_json_loader;
