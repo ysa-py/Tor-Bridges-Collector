@@ -193,7 +193,7 @@ pub fn score_for_nin(bridge_line: &str, tcp_probe: &dyn TcpProbe) -> Value {
     if let (Some(h), Some(p)) = (&host, port) {
         if transport != "snowflake" {
             // Python uses default timeout 6.0s; the production probe honors this.
-            reachable = tcp_probe.is_reachable(h, p, 6.0);
+            reachable = tcp_probe.is_reachable(h, p, 3.0);
             if reachable {
                 score += 0.10;
                 flags.push("tcp_alive".to_string());

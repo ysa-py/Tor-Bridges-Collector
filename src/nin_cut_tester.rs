@@ -264,7 +264,7 @@ impl TcpProbe for StdTcpProbe {
 /// TCP-reachability score bonus (+0.15, capped at 1.0).
 pub fn probe_bridge(parsed: &ParsedBridge, table: &IranCidrTable, probe: &dyn TcpProbe) -> Value {
     let base_score = score_bridge(parsed, table);
-    let (tcp_reachable, tcp_latency_ms) = probe.probe(&parsed.ip, parsed.port, 8.0);
+    let (tcp_reachable, tcp_latency_ms) = probe.probe(&parsed.ip, parsed.port, 3.0);
 
     let nin_score = if tcp_reachable {
         round4((base_score + 0.15).min(1.0))
