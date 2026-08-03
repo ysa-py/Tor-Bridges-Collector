@@ -387,6 +387,23 @@ jobs:
             chmod +x "$file"
           done
 
+      # High-volume seeding — runs BEFORE the collector stages to guarantee the
+      # full 1500+ real-bridge pool is ingested. refresh_bridge_seed.sh fetches
+      # fresh real Tor bridges from the public Delta-Kronecker mirror (via
+      # api.github.com) and merges them into bridge/bridge_history.json, which
+      # the publisher rebuilds every bridge/*.txt projection from. Non-fatal:
+      # an unreachable mirror leaves the existing history untouched. Set the
+      # BRIDGE_MIRRORS_REPO repository variable to override the mirror.
+      - name: Stage 0s — High-volume bridge seeding (1500+ real bridges)
+        continue-on-error: true
+        timeout-minutes: 10
+        env:
+          BRIDGE_MIRRORS_REPO: ${{ vars.BRIDGE_MIRRORS_REPO }}
+        run: |
+          set -euo pipefail
+          bash scripts/refresh_bridge_seed.sh
+          echo "✅ Seeded the high-volume real-bridge pool into bridge_history.json"
+
       - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
         continue-on-error: true
         timeout-minutes: 5
