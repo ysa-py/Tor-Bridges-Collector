@@ -1,6 +1,6 @@
 {
   "analysis_window_days": 7,
-  "generated_at": "2026-08-03T15:42:04.551910978+00:00",
+  "generated_at": "2026-08-03T15:57:09.803054537+00:00",
   "note": "Weights are recomputed on every CI run from OONI measurements. For internet cut (شبکه ملی), use only: snowflake → webtunnel → meek_lite.",
   "recommended_order": [
     "snowflake",
@@ -18,27 +18,27 @@
       "survives_nic": true,
       "total_tested": 4,
       "transport": "snowflake",
-      "weight": 1.0,
+      "weight": 0.9953,
       "working": 4
     },
     {
       "blocked": 0,
       "iran_dpi_resistance": "very_high — HTTPS CDN mimicry",
       "scorer_score": 20,
-      "success_rate": 0.0,
+      "success_rate": 0.0047,
       "survives_nic": true,
-      "total_tested": 4,
+      "total_tested": 428,
       "transport": "webtunnel",
-      "weight": 0.0,
-      "working": 0
+      "weight": 0.0047,
+      "working": 2
     },
     {
       "blocked": 0,
       "iran_dpi_resistance": "high — random-looking traffic",
-      "scorer_score": 20,
+      "scorer_score": 18,
       "success_rate": 0.0,
       "survives_nic": false,
-      "total_tested": 0,
+      "total_tested": 1808,
       "transport": "obfs4",
       "weight": 0.0,
       "working": 0
@@ -60,7 +60,7 @@
       "scorer_score": 4,
       "success_rate": 0.0,
       "survives_nic": false,
-      "total_tested": 0,
+      "total_tested": 924,
       "transport": "vanilla",
       "weight": 0.0,
       "working": 0
