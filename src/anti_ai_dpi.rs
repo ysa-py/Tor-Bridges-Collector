@@ -599,3 +599,102 @@ mod tests {
         dir
     }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Iran DPI hardening layer — uTLS profile rotation + TLS ALPN mutation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// uTLS imitation profiles supported by Tor's TLS-based pluggable transports
+/// (snowflake / webtunnel / meek / conjure). Randomising the profile per
+/// bridge defeats JA3/JA4 classifier churn on the National Information
+/// Network (NIN) route.
+pub const UTLS_PROFILES: &[&str] = &[
+    "hellorandomizedalpn",
+    "hellorandomizednoalpn",
+    "hellochrome",
+    "hellofirefox",
+    "hellosafari",
+    "hellosedge",
+    "helloiossafari",
+    "hellogolang",
+];
+
+/// TLS ALPN candidate sets used for ALPN mutation. Varying the negotiated
+/// protocol list changes the ClientHello shape observed by SNI/ALPN
+/// classifiers, breaking protocol-fingerprint matching.
+pub const ALPN_SETS: &[&str] = &["h2", "h2,http/1.1", "http/1.1", "h2,h3", "h3"];
+
+/// Transports whose TLS layer can carry `utls-imitate=` / `alpn=` hardening.
+pub const TLS_TRANSPORTS: &[&str] = &[
+    "snowflake",
+    "webtunnel",
+    "meek_lite",
+    "meek-azure",
+    "conjure",
+];
+
+/// FNV-1a 64-bit hash used to derive a deterministic per-bridge mutation
+/// profile. Deterministic across runs (stable scoring) yet varied across
+/// bridges (defeats population-level fingerprint clustering).
+#[must_use]
+pub fn stable_seed(line: &str) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in line.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
+/// Deterministically select a uTLS imitation profile for a bridge line.
+#[must_use]
+pub fn select_utls_profile(line: &str) -> &'static str {
+    let idx = (stable_seed(line) % UTLS_PROFILES.len() as u64) as usize;
+    UTLS_PROFILES[idx]
+}
+
+/// Deterministically select an ALPN set for a bridge line.
+#[must_use]
+pub fn select_alpn(line: &str) -> &'static str {
+    let idx = (stable_seed(line).rotate_left(17) % ALPN_SETS.len() as u64) as usize;
+    ALPN_SETS[idx]
+}
+
+/// True when the line already pins a uTLS imitation profile.
+#[must_use]
+pub fn has_utls(line: &str) -> bool {
+    line.to_lowercase().contains("utls-imitate=")
+}
+
+/// True when the line already pins an ALPN set.
+#[must_use]
+pub fn has_alpn(line: &str) -> bool {
+    line.to_lowercase().contains("alpn=")
+}
+
+/// Produce the TLS-hardened variant of a bridge line.
+///
+/// Appends a deterministic `utls-imitate=` profile and `alpn=` set to
+/// TLS-based transports (snowflake, webtunnel, meek_lite, conjure) that do
+/// not already pin them. Returns `(hardened_line, mutated)` — obfs4/vanilla
+/// lines are returned unchanged because their PT handshake (not TLS) already
+/// provides the obfuscation layer.
+#[must_use]
+pub fn hardened_bridge_line(line: &str) -> (String, bool) {
+    let trimmed = line.trim();
+    let transport = detect_transport(trimmed);
+    if !TLS_TRANSPORTS.contains(&transport) {
+        return (trimmed.to_string(), false);
+    }
+    let mut out = trimmed.to_string();
+    if !has_utls(&out) {
+        out.push_str(" utls-imitate=");
+        out.push_str(select_utls_profile(trimmed));
+    }
+    if !has_alpn(&out) {
+        out.push_str(" alpn=");
+        out.push_str(select_alpn(trimmed));
+    }
+    (out, true)
+}
+
