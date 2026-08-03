@@ -139,7 +139,12 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
         let mut value = score.to_json();
         let hardening = torshield_ir_ultra::anti_ai_dpi::score_iran_dpi_hardening(&score.raw);
         if let (Some(obj), Some(h)) = (value.as_object_mut(), hardening.as_object()) {
-            for key in ["hardened_line", "utls_profile", "alpn", "iran_dpi_hardening_score"] {
+            for key in [
+                "hardened_line",
+                "utls_profile",
+                "alpn",
+                "iran_dpi_hardening_score",
+            ] {
                 if let Some(entry) = h.get(key) {
                     obj.insert(key.to_string(), entry.clone());
                 }
