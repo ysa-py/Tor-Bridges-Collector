@@ -28,19 +28,28 @@
 //!      `iran_likely_working_*`, `tested_global_*`, `conjure*`, `meek-azure*`)
 //!      that is missing or 0 bytes is written from the compiled-in static
 //!      fallback lines of its transport family, so Stage 10 can never observe
-//!      a `0 lines (0 bytes)` protocol file. `iran_blocked.txt` is the single
-//!      intentional exception: an empty blocked list is truthful evidence.
+//!      a `0 lines (0 bytes)` protocol file.
 //!   6. **Empty JSON repair.** Any 0-byte `bridge/*.json` file is rewritten
 //!      as a valid empty JSON array `[]` so downstream parsers never fail.
+//!   7. **`iran_blocked.txt` marker.** The publisher legitimately leaves this
+//!      file empty when no bridge has been verified blocked, but the Stage 10
+//!      inventory contract demands > 0 bytes for all 55 files. The failsafe
+//!      therefore writes a truthful `#` comment marker line when the file is
+//!      missing or empty. Every consumer either skips `iran_blocked*` files
+//!      entirely (`iran_anti_siam::load_bridges_txt`) or drops `#` comment
+//!      lines, so the marker never leaks into candidate sets.
 //!
-//! The workflow runs this FAILSAFE twice: once right after the scrapers
-//! (historical placement) and once more after every scraper/tester/export
-//! stage finishes, immediately before publication.
+//! The workflow runs this FAILSAFE three times: once right after the scrapers
+//! (historical placement, before testers), again after every scraper/tester/
+//! export stage finishes (immediately before publication), and once more
+//! immediately before the Stage 10 inventory (the bulletproof zero-byte
+//! sweep that guarantees `> 0 lines (> 0 bytes)` for every required file).
 
 use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
+use chrono::Utc;
 use serde_json::Value;
 
 use crate::static_bridges;
@@ -211,7 +220,8 @@ fn fallback_lines_for_name(name: &str) -> Vec<String> {
 
 /// Force-populate every missing or 0-byte protocol `.txt` file in
 /// `bridge_dir` from static fallback lines. Returns the number of lines
-/// written. `iran_blocked.txt` is intentionally left untouched.
+/// written. `iran_blocked.txt` is handled separately by [`run`] (truthful
+/// marker), so it is skipped here.
 pub fn force_populate_empty_txt(bridge_dir: &Path) -> u64 {
     let mut written = 0_u64;
 
@@ -328,6 +338,23 @@ pub fn run(bridge_dir: &Path) -> i32 {
                 path.display()
             );
             empty_json += 1;
+        }
+    }
+
+    // 4) iran_blocked.txt — the publisher legitimately leaves this empty when
+    //    no bridge was verified blocked, but the Stage 10 inventory contract
+    //    demands > 0 bytes for all 55 required files. Write a truthful `#`
+    //    marker line when the file is missing or empty. Consumers skip
+    //    `iran_blocked*` files and `#` comment lines, so this never leaks
+    //    into candidate sets.
+    let blocked_path = bridge_dir.join("iran_blocked.txt");
+    if !blocked_path.is_file() || file_size(&blocked_path) == 0 {
+        let now = Utc::now().format("%Y-%m-%d %H:%M UTC");
+        let marker = format!("# iran_blocked — no bridges verified blocked as of {now}\n");
+        if let Err(err) = fs::write(&blocked_path, marker) {
+            eprintln!("FAILSAFE: cannot write {}: {err}", blocked_path.display());
+        } else {
+            println!("FAILSAFE: wrote truthful marker to iran_blocked.txt");
         }
     }
 
@@ -583,6 +610,21 @@ mod tests {
         let scores = std::fs::read_to_string(bridge_dir.join("bridge_scores.json")).expect("json");
         let value: Value = serde_json::from_str(&scores).expect("valid json");
         assert!(value.is_array());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn run_writes_truthful_marker_to_empty_iran_blocked() {
+        let dir = std::env::temp_dir().join(format!("fb_blocked_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        std::fs::write(bridge_dir.join("bridge_history.json"), "{}").expect("history");
+        std::fs::write(bridge_dir.join("iran_blocked.txt"), "").expect("empty fixture");
+
+        assert_eq!(run(&bridge_dir), 0);
+        let body = std::fs::read_to_string(bridge_dir.join("iran_blocked.txt")).expect("blocked file");
+        assert!(!body.is_empty(), "iran_blocked.txt must never stay 0 bytes");
+        assert!(body.starts_with("# iran_blocked"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

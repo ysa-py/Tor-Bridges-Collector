@@ -131,11 +131,33 @@ fn run(options: &Options) -> Result<usize, Box<dyn Error>> {
         scores.truncate(options.top_n);
     }
 
-    let score_values: Vec<Value> = scores.iter().map(BridgeScore::to_json).collect();
+    // Attach the Iran DPI hardening layer (uTLS profile + ALPN mutation)
+    // to every ranked bridge so downstream clients can deploy the hardened
+    // line directly. Additive — the parity field set is preserved intact.
+    let mut score_values: Vec<Value> = Vec::with_capacity(scores.len());
+    for score in &scores {
+        let mut value = score.to_json();
+        let hardening = torshield_ir_ultra::anti_ai_dpi::score_iran_dpi_hardening(&score.raw);
+        if let (Some(obj), Some(h)) = (value.as_object_mut(), hardening.as_object()) {
+            for key in [
+                "hardened_line",
+                "utls_profile",
+                "alpn",
+                "iran_dpi_hardening_score",
+            ] {
+                if let Some(entry) = h.get(key) {
+                    obj.insert(key.to_string(), entry.clone());
+                }
+            }
+        }
+        score_values.push(value);
+    }
+
     let report = json!({
         "generated_at": Utc::now().to_rfc3339(),
         "engine": "torshield-rust-smart-iran-scorer-v1",
         "censorship_level": scorer.level(),
+        "tls_hardening": "utls-rotation+alpn-mutation",
         "bridges": score_values,
         "summary": {
             "input_records": records.len(),

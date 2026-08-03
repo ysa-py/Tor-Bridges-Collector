@@ -39,6 +39,7 @@ pub mod iran_smart_anti_filter;
 pub mod iran_smart_anti_filter_v2;
 pub mod iran_smart_rotation;
 pub mod ja3_intelligence;
+pub mod mass_ingestion;
 pub mod ml_predictor;
 pub mod monitoring;
 pub mod monitoring_structured_logger;
