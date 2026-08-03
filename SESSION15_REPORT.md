@@ -73,3 +73,8 @@ never reach the commit step.
   exception, panic, or unmarshal error escapes to the runner.
 - No dependency was added (no `Cargo.lock` churn); everything uses the
   existing workspace crates (`chrono`, `serde_json`, `regex`, `reqwest`).
+
+## CI verification trigger
+
+Push `fafb1d0` was tagged `[skip ci]`, which suppresses Actions; this note re-triggers the
+pipeline so the Rust changes (fmt/clippy/tests + Stage 10) are verified on the branch.
