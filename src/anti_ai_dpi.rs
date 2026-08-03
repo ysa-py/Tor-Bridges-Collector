@@ -698,3 +698,64 @@ pub fn hardened_bridge_line(line: &str) -> (String, bool) {
     (out, true)
 }
 
+
+/// TCP-handshake-inspection evasion score (0.0–1.0). TLS/DTLS transports
+/// defeat the TCP payload heuristics; obfs4's random padding also resists
+/// first-packet classification.
+#[must_use]
+pub fn score_tcp_handshake_evasion(line: &str) -> f64 {
+    let base = match detect_transport(line) {
+        "snowflake" => 0.95,
+        "webtunnel" => 0.90,
+        "meek_lite" => 0.85,
+        "conjure" => 0.85,
+        "obfs4" => 0.80,
+        _ => 0.10,
+    };
+    if line.contains("iat-mode=2") {
+        (base + 0.05).min(1.0)
+    } else {
+        base
+    }
+}
+
+/// SNI-filtering evasion score (0.0–0.5). Domain fronting (`front=` /
+/// `fronts=`), CDN-fronted URLs and non-TorProject endpoints keep the SNI
+/// outside the DPI's Tor hostname blocklist.
+#[must_use]
+pub fn score_sni_filtering_evasion(line: &str) -> f64 {
+    let lower = line.to_lowercase();
+    let mut score = 0.0;
+    if lower.contains("front=") || lower.contains("fronts=") {
+        score += 0.35;
+    }
+    if CDN_HINT_KEYWORDS.iter().any(|kw| lower.contains(kw)) {
+        score += 0.20;
+    }
+    if lower.contains("url=https://") && !lower.contains("torproject") {
+        score += 0.15;
+    }
+    score.min(0.5)
+}
+
+/// Protocol-fingerprint-detection evasion score (0.0–0.5). uTLS imitation,
+/// ALPN mutation and iat-mode=2 all change the fingerprint the ML classifier
+/// sees on the wire.
+#[must_use]
+pub fn score_protocol_fingerprint_evasion(line: &str) -> f64 {
+    let mut score = 0.0;
+    if has_utls(line) {
+        score += 0.35;
+    }
+    if has_alpn(line) {
+        score += 0.20;
+    }
+    if line.contains("iat-mode=2") {
+        score += 0.15;
+    }
+    if TLS_TRANSPORTS.contains(&detect_transport(line)) {
+        score += 0.10;
+    }
+    score.min(0.5)
+}
+
