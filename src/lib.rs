@@ -22,7 +22,7 @@ pub mod dpi_evasion_advanced;
 pub mod dt_utils;
 pub mod ech_fingerprint_evasion;
 pub mod endpoint_validator;
-// pub mod failsafe_bridges; // BISECT-2: disabled to isolate compile error
+pub mod failsafe_bridges;
 pub mod feature_flags;
 pub mod formatter;
 pub mod generated_json_loader;
@@ -39,7 +39,7 @@ pub mod iran_smart_anti_filter;
 pub mod iran_smart_anti_filter_v2;
 pub mod iran_smart_rotation;
 pub mod ja3_intelligence;
-// pub mod mass_ingestion; // BISECT-1: disabled to isolate compile error
+pub mod mass_ingestion;
 pub mod ml_predictor;
 pub mod monitoring;
 pub mod monitoring_structured_logger;
