@@ -56,7 +56,14 @@ never reach the commit step.
 | `src/bin/ai_bridge_reranker.rs` | Ranked output enriched with `hardened_line`, `utls_profile`, `alpn`, `iran_dpi_hardening_score` (additive; parity fields preserved). |
 | `src/failsafe_bridges.rs` | `iran_blocked.txt` truthful marker when empty (+test); doc updated to the triple-placement contract. |
 | `src/lib.rs` | Registered `pub mod mass_ingestion;`. |
-| `.github/workflows/torshield-ir.yml` | Stage 1b; triple FAILSAFE; hardened Stage 10; sccache + prebuild + worker bumps; new artifact paths; timeout 50 → 60 min. |
+| `WORKFLOWS_ANTI_DPI_2026-08-03.patch` | **New** — the `.github/workflows/torshield-ir.yml` change (Stage 1b; triple FAILSAFE; hardened Stage 10 zero-byte gate; sccache + `cargo build --bins` prebuild; iran_tester 200 / bridge-probe 100 workers; new artifact paths; timeout 50 → 60 min). The session's GitHub App token lacks the `workflows` permission, so the workflow file itself cannot be pushed; the patch is committed here and applies byte-identically with `git apply WORKFLOWS_ANTI_DPI_2026-08-03.patch` (verified). Once a token with `workflows` permission is available, apply it and push. |
+
+> **Note on the workflow file:** GitHub rejects App pushes that touch `.github/workflows/`
+> without the `workflows` permission (`refusing to allow a GitHub App to create or
+> update workflow … without workflows permission`). All Rust/deliverable code is
+> committed and pushed on `arena/019fc511-tor-bridges-collector`; the workflow
+> change ships as `WORKFLOWS_ANTI_DPI_2026-08-03.patch` (byte-identical to the
+> intended file, `git apply --check` verified).
 
 ## Strict zero-error regime
 
