@@ -1,5 +1,5 @@
 diff --git a/.github/workflows/torshield-ir.yml b/.github/workflows/torshield-ir.yml
-index a97a65b..d1263b4 100644
+index a97a65b..36070b5 100644
 --- a/.github/workflows/torshield-ir.yml
 +++ b/.github/workflows/torshield-ir.yml
 @@ -27,6 +27,23 @@
@@ -39,15 +39,19 @@ index a97a65b..d1263b4 100644
  
      steps:
        - uses: actions/checkout@v5
-@@ -135,6 +158,8 @@ jobs:
-           key: ${{ runner.os }}-cargo-gate-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
-           restore-keys: ${{ runner.os }}-cargo-
- 
-+      - uses: mozilla-actions/sccache-action@v0.0.11
+@@ -132,8 +155,10 @@ jobs:
+             ~/.cargo/registry
+             ~/.cargo/git
+             target
+-          key: ${{ runner.os }}-cargo-gate-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+-          restore-keys: ${{ runner.os }}-cargo-
++          key: ${{ runner.os }}-tsir-cargo-gate-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-tsir-cargo-
 +
++      - uses: mozilla-actions/sccache-action@v0.0.11
+ 
        - name: Build quality-gate tooling (Rust)
          run: |
-           set -euo pipefail
 @@ -207,6 +232,9 @@ jobs:
      if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
      runs-on: ubuntu-latest
@@ -58,15 +62,19 @@ index a97a65b..d1263b4 100644
      steps:
        - uses: actions/checkout@v5
  
-@@ -242,6 +270,8 @@ jobs:
-           key: ${{ runner.os }}-cargo-${{ hashFiles('bridge-probe/Cargo.lock', 'bridge-probe/Cargo.toml', 'Cargo.toml', 'Cargo.lock') }}
-           restore-keys: ${{ runner.os }}-cargo-
- 
-+      - uses: mozilla-actions/sccache-action@v0.0.11
+@@ -239,8 +267,10 @@ jobs:
+             ~/.cargo/git
+             bridge-probe/target
+             target
+-          key: ${{ runner.os }}-cargo-${{ hashFiles('bridge-probe/Cargo.lock', 'bridge-probe/Cargo.toml', 'Cargo.toml', 'Cargo.lock') }}
+-          restore-keys: ${{ runner.os }}-cargo-
++          key: ${{ runner.os }}-tsir-cargo-${{ hashFiles('bridge-probe/Cargo.lock', 'bridge-probe/Cargo.toml', 'Cargo.toml', 'Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-tsir-cargo-
 +
++      - uses: mozilla-actions/sccache-action@v0.0.11
+ 
        - name: Build bridge-probe (release)
          working-directory: bridge-probe
-         env:
 @@ -280,6 +310,9 @@ jobs:
      if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
      runs-on: ubuntu-latest
@@ -77,15 +85,19 @@ index a97a65b..d1263b4 100644
      steps:
        - uses: actions/checkout@v5
  
-@@ -302,6 +335,8 @@ jobs:
-           key: ${{ runner.os }}-cargo-parity-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
-           restore-keys: ${{ runner.os }}-cargo-
- 
-+      - uses: mozilla-actions/sccache-action@v0.0.11
+@@ -299,8 +332,10 @@ jobs:
+             ~/.cargo/registry
+             ~/.cargo/git
+             target
+-          key: ${{ runner.os }}-cargo-parity-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+-          restore-keys: ${{ runner.os }}-cargo-
++          key: ${{ runner.os }}-tsir-cargo-parity-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-tsir-cargo-
 +
++      - uses: mozilla-actions/sccache-action@v0.0.11
+ 
        - name: Format check
          run: cargo fmt --all -- --check
- 
 @@ -318,7 +353,10 @@ jobs:
      # repository root (no rebuild needed).
      runs-on: ubuntu-latest
@@ -98,10 +110,15 @@ index a97a65b..d1263b4 100644
  
      steps:
        - uses: actions/checkout@v5
-@@ -343,6 +381,19 @@ jobs:
-           key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
-           restore-keys: ${{ runner.os }}-cargo-
- 
+@@ -340,8 +378,21 @@ jobs:
+             ~/.cargo/registry
+             ~/.cargo/git
+             target
+-          key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+-          restore-keys: ${{ runner.os }}-cargo-
++          key: ${{ runner.os }}-tsir-cargo-pipeline-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-tsir-cargo-
++
 +      - uses: mozilla-actions/sccache-action@v0.0.11
 +
 +      # Async acceleration: compile every non-network Rust binary up front
@@ -114,10 +131,9 @@ index a97a65b..d1263b4 100644
 +        run: |
 +          set -euo pipefail
 +          cargo build --bins
-+
+ 
        - name: Remove Vercel secrets (cleanup — additive step, Rust port)
          env:
-           GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX }}
 @@ -408,6 +459,19 @@ jobs:
            set -euo pipefail
            cargo run --quiet --features network --bin scraper
@@ -264,3 +280,14 @@ index a97a65b..d1263b4 100644
              data/nin_cut_report.json
              data/reality_report.json
              data/ai_consensus_report.json
+@@ -858,8 +963,8 @@ jobs:
+             ~/.cargo/registry
+             ~/.cargo/git
+             target
+-          key: ${{ runner.os }}-cargo-rerank-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+-          restore-keys: ${{ runner.os }}-cargo-
++          key: ${{ runner.os }}-tsir-cargo-rerank-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-tsir-cargo-
+ 
+       # Same-run artifact pull — replaces the old cross-workflow
+       # `gh run download`. Skipped in rerank_only mode or when
