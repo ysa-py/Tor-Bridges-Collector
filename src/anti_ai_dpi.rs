@@ -46,6 +46,8 @@ use regex::Regex;
 use serde_json::{json, Map, Value};
 use thiserror::Error;
 
+use chrono::Utc;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (mirrors module-level constants in anti_ai_dpi.py)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -334,6 +336,209 @@ pub fn run_pipeline(
         .collect();
 
     Ok(())
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Iran DPI hardening layer — uTLS profile rotation + TLS ALPN mutation
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// uTLS imitation profiles supported by Tor's TLS-based pluggable transports
+/// (snowflake / webtunnel / meek / conjure). Randomising the profile per
+/// bridge defeats JA3/JA4 classifier churn on the National Information
+/// Network (NIN) route.
+pub const UTLS_PROFILES: &[&str] = &[
+    "hellorandomizedalpn",
+    "hellorandomizednoalpn",
+    "hellochrome",
+    "hellofirefox",
+    "hellosafari",
+    "hellosedge",
+    "helloiossafari",
+    "hellogolang",
+];
+
+/// TLS ALPN candidate sets used for ALPN mutation. Varying the negotiated
+/// protocol list changes the ClientHello shape observed by SNI/ALPN
+/// classifiers, breaking protocol-fingerprint matching.
+pub const ALPN_SETS: &[&str] = &["h2", "h2,http/1.1", "http/1.1", "h2,h3", "h3"];
+
+/// Transports whose TLS layer can carry `utls-imitate=` / `alpn=` hardening.
+pub const TLS_TRANSPORTS: &[&str] = &[
+    "snowflake",
+    "webtunnel",
+    "meek_lite",
+    "meek-azure",
+    "conjure",
+];
+
+/// FNV-1a 64-bit hash used to derive a deterministic per-bridge mutation
+/// profile. Deterministic across runs (stable scoring) yet varied across
+/// bridges (defeats population-level fingerprint clustering).
+#[must_use]
+pub fn stable_seed(line: &str) -> u64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in line.as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    hash
+}
+
+/// Deterministically select a uTLS imitation profile for a bridge line.
+#[must_use]
+pub fn select_utls_profile(line: &str) -> &'static str {
+    let idx = (stable_seed(line) % UTLS_PROFILES.len() as u64) as usize;
+    UTLS_PROFILES[idx]
+}
+
+/// Deterministically select an ALPN set for a bridge line.
+#[must_use]
+pub fn select_alpn(line: &str) -> &'static str {
+    let idx = (stable_seed(line).rotate_left(17) % ALPN_SETS.len() as u64) as usize;
+    ALPN_SETS[idx]
+}
+
+/// True when the line already pins a uTLS imitation profile.
+#[must_use]
+pub fn has_utls(line: &str) -> bool {
+    line.to_lowercase().contains("utls-imitate=")
+}
+
+/// True when the line already pins an ALPN set.
+#[must_use]
+pub fn has_alpn(line: &str) -> bool {
+    line.to_lowercase().contains("alpn=")
+}
+
+/// Produce the TLS-hardened variant of a bridge line.
+///
+/// Appends a deterministic `utls-imitate=` profile and `alpn=` set to
+/// TLS-based transports (snowflake, webtunnel, meek_lite, conjure) that do
+/// not already pin them. Returns `(hardened_line, mutated)` — obfs4/vanilla
+/// lines are returned unchanged because their PT handshake (not TLS) already
+/// provides the obfuscation layer.
+#[must_use]
+pub fn hardened_bridge_line(line: &str) -> (String, bool) {
+    let trimmed = line.trim();
+    let transport = detect_transport(trimmed);
+    if !TLS_TRANSPORTS.contains(&transport) {
+        return (trimmed.to_string(), false);
+    }
+    let mut out = trimmed.to_string();
+    if !has_utls(&out) {
+        out.push_str(" utls-imitate=");
+        out.push_str(select_utls_profile(trimmed));
+    }
+    if !has_alpn(&out) {
+        out.push_str(" alpn=");
+        out.push_str(select_alpn(trimmed));
+    }
+    (out, true)
+}
+
+/// TCP-handshake-inspection evasion score (0.0–1.0). TLS/DTLS transports
+/// defeat the TCP payload heuristics; obfs4's random padding also resists
+/// first-packet classification.
+#[must_use]
+pub fn score_tcp_handshake_evasion(line: &str) -> f64 {
+    let base = match detect_transport(line) {
+        "snowflake" => 0.95,
+        "webtunnel" => 0.90,
+        "meek_lite" => 0.85,
+        "conjure" => 0.85,
+        "obfs4" => 0.80,
+        _ => 0.10,
+    };
+    if line.contains("iat-mode=2") {
+        (base + 0.05).min(1.0)
+    } else {
+        base
+    }
+}
+
+/// SNI-filtering evasion score (0.0–0.5). Domain fronting (`front=` /
+/// `fronts=`), CDN-fronted URLs and non-TorProject endpoints keep the SNI
+/// outside the DPI's Tor hostname blocklist.
+#[must_use]
+pub fn score_sni_filtering_evasion(line: &str) -> f64 {
+    let lower = line.to_lowercase();
+    let mut score = 0.0;
+    if lower.contains("front=") || lower.contains("fronts=") {
+        score += 0.35;
+    }
+    if CDN_HINT_KEYWORDS.iter().any(|kw| lower.contains(kw)) {
+        score += 0.20;
+    }
+    if lower.contains("url=https://") && !lower.contains("torproject") {
+        score += 0.15;
+    }
+    score.min(0.5)
+}
+
+/// Protocol-fingerprint-detection evasion score (0.0–0.5). uTLS imitation,
+/// ALPN mutation and iat-mode=2 all change the fingerprint the ML classifier
+/// sees on the wire.
+#[must_use]
+pub fn score_protocol_fingerprint_evasion(line: &str) -> f64 {
+    let mut score = 0.0;
+    if has_utls(line) {
+        score += 0.35;
+    }
+    if has_alpn(line) {
+        score += 0.20;
+    }
+    if line.contains("iat-mode=2") {
+        score += 0.15;
+    }
+    if TLS_TRANSPORTS.contains(&detect_transport(line)) {
+        score += 0.10;
+    }
+    score.min(0.5)
+}
+
+/// Composite Iran DPI hardening score for a single bridge line.
+///
+/// Weights: TCP handshake inspection 30%, SNI filtering 35%, protocol
+/// fingerprint detection 35%. Output includes the hardened line, the
+/// selected uTLS profile / ALPN set and per-mechanism sub-scores so the
+/// reranker can justify every recommendation.
+#[must_use]
+pub fn score_iran_dpi_hardening(line: &str) -> Value {
+    let trimmed = line.trim();
+    let (hardened, mutated) = hardened_bridge_line(trimmed);
+    let tcp = score_tcp_handshake_evasion(trimmed);
+    let sni = score_sni_filtering_evasion(trimmed);
+    let fp = score_protocol_fingerprint_evasion(trimmed);
+    let total = ((0.30 * tcp + 0.35 * sni + 0.35 * fp) * 1000.0).round() / 1000.0;
+
+    let mut out = Map::new();
+    out.insert("bridge_line".to_string(), json!(trimmed));
+    out.insert("transport".to_string(), json!(detect_transport(trimmed)));
+    out.insert("hardened_line".to_string(), json!(hardened));
+    out.insert("mutated".to_string(), json!(mutated));
+    out.insert(
+        "utls_profile".to_string(),
+        json!(select_utls_profile(trimmed)),
+    );
+    out.insert("alpn".to_string(), json!(select_alpn(trimmed)));
+    out.insert("iran_dpi_hardening_score".to_string(), json!(total));
+    out.insert(
+        "mechanisms".to_string(),
+        json!([
+            "tcp_handshake_inspection",
+            "sni_filtering",
+            "protocol_fingerprint_detection",
+        ]),
+    );
+    out.insert(
+        "mechanism_scores".to_string(),
+        json!({
+            "tcp_handshake_inspection": tcp,
+            "sni_filtering": sni,
+            "protocol_fingerprint_detection": fp,
+        }),
+    );
+    Value::Object(out)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
