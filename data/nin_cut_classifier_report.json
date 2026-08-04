@@ -3409,10 +3409,26 @@
       "transport": "snowflake"
     },
     {
+      "ip": "192.0.2.3",
+      "port": 80,
+      "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+      "sni": "1098762253.rsc.cdn77.org",
+      "tier": "GREEN",
+      "transport": "snowflake"
+    },
+    {
       "ip": "",
       "port": 0,
       "raw": "snowflake 192.0.2.4:1 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ fronts=snowflake-broker.torproject.net.global.prod.fastly.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478 utls-imitate=hellorandomizedalpn",
       "sni": "snowflake-broker.torproject.net",
+      "tier": "GREEN",
+      "transport": "snowflake"
+    },
+    {
+      "ip": "192.0.2.4",
+      "port": 80,
+      "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+      "sni": "1098762253.rsc.cdn77.org",
       "tier": "GREEN",
       "transport": "snowflake"
     },
@@ -5150,10 +5166,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-04T07:38:08.919143+00:00",
-  "green_count": 4,
+  "generated_at": "2026-08-04T08:14:18.028051+00:00",
+  "green_count": 6,
   "red_count": 349,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 643,
+  "total_bridges": 645,
   "yellow_count": 290
 }
