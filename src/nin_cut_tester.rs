@@ -18,6 +18,8 @@
 
 use std::net::IpAddr;
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::Mutex;
 
 use regex::Regex;
 use serde_json::{json, Value};
@@ -158,27 +160,30 @@ pub fn parse_bridge_line(line: &str) -> Option<ParsedBridge> {
     let mut transport = "vanilla".to_string();
     let mut rest = line.to_string();
 
-    // Detect pluggable transport prefix
-    let pt_re = Regex::new(r"(?i)^(obfs4|webtunnel|snowflake|meek_lite|obfs3)\s+").unwrap();
+    // Detect pluggable transport prefix. Regex construction is fallible even
+    // for literals, so malformed build-time patterns safely yield no parse.
+    let pt_re = Regex::new(r"(?i)^(obfs4|webtunnel|snowflake|meek_lite|obfs3)\s+").ok()?;
     if let Some(caps) = pt_re.captures(line) {
-        transport = caps.get(1).unwrap().as_str().to_ascii_lowercase();
-        rest = line[caps.get(0).unwrap().end()..].to_string();
+        let token = caps.get(1)?;
+        let full = caps.get(0)?;
+        transport = token.as_str().to_ascii_lowercase();
+        rest = line[full.end()..].to_string();
     }
 
-    // Try IPv4 first
-    let ipv4_re = Regex::new(r"\b(\d{1,3}(?:\.\d{1,3}){3}):(\d{2,5})\b").unwrap();
+    // Try IPv4 first.
+    let ipv4_re = Regex::new(r"\b(\d{1,3}(?:\.\d{1,3}){3}):(\d{2,5})\b").ok()?;
     let (ip_str, port_str) = if let Some(caps) = ipv4_re.captures(&rest) {
         (
-            caps.get(1).unwrap().as_str().to_string(),
-            caps.get(2).unwrap().as_str().to_string(),
+            caps.get(1)?.as_str().to_string(),
+            caps.get(2)?.as_str().to_string(),
         )
     } else {
-        // Try IPv6 [addr]:port
-        let ipv6_re = Regex::new(r"\[([0-9a-fA-F:]+)\]:(\d{2,5})").unwrap();
+        // Try IPv6 [addr]:port.
+        let ipv6_re = Regex::new(r"\[([0-9a-fA-F:]+)\]:(\d{2,5})").ok()?;
         let caps = ipv6_re.captures(&rest)?;
         (
-            caps.get(1).unwrap().as_str().to_string(),
-            caps.get(2).unwrap().as_str().to_string(),
+            caps.get(1)?.as_str().to_string(),
+            caps.get(2)?.as_str().to_string(),
         )
     };
 
@@ -231,6 +236,54 @@ fn round4(x: f64) -> f64 {
     (x * 10000.0).round() / 10000.0
 }
 
+/// Default maximum number of bridge lines that Stage 8k actively probes in one
+/// invocation. The source list can be much larger; scoring still remains
+/// deterministic, while the cap keeps a pathological all-timeout run bounded.
+pub const DEFAULT_MAX_PROBES: usize = 2_000;
+
+/// Default worker count for Stage 8k's bounded synchronous TCP pool. At the
+/// historical three-second timeout this caps a 1,584-line input at roughly 75
+/// seconds rather than the 79 minutes caused by the former sequential loop.
+pub const DEFAULT_MAX_WORKERS: usize = 64;
+
+/// Probe execution settings for the NIN-cut tester.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ProbeOptions {
+    /// Maximum concurrent blocking TCP probes.
+    pub max_workers: usize,
+    /// Maximum parsed bridge lines to probe during one run.
+    pub max_bridges: usize,
+    /// Per-socket timeout supplied to the probe implementation.
+    pub timeout_secs: f64,
+}
+
+impl ProbeOptions {
+    /// Construct resilient settings from environment overrides. Invalid values
+    /// safely fall back to defaults so a typo cannot reintroduce a stuck CI run.
+    pub fn from_env() -> Self {
+        let max_workers = positive_usize_env("NIN_CUT_MAX_WORKERS", DEFAULT_MAX_WORKERS, 512);
+        let max_bridges = positive_usize_env("NIN_CUT_MAX_BRIDGES", DEFAULT_MAX_PROBES, 20_000);
+        let timeout_secs = std::env::var("NIN_CUT_TIMEOUT_SECS")
+            .ok()
+            .and_then(|value| value.parse::<f64>().ok())
+            .filter(|value| value.is_finite() && *value > 0.0 && *value <= 60.0)
+            .unwrap_or(3.0);
+        Self {
+            max_workers,
+            max_bridges,
+            timeout_secs,
+        }
+    }
+}
+
+fn positive_usize_env(name: &str, default: usize, maximum: usize) -> usize {
+    std::env::var(name)
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| *value > 0 && *value <= maximum)
+        .unwrap_or(default)
+}
+
 /// Trait for TCP reachability probes with latency measurement.
 pub trait TcpProbe: Sync {
     /// Returns `(reachable, latency_ms)`. `latency_ms` is `None` if not reachable.
@@ -259,12 +312,25 @@ impl TcpProbe for StdTcpProbe {
     }
 }
 
-/// Mirror of `_probe_bridge(parsed)`. Probes a single bridge and returns
-/// the enriched record with `tcp_reachable`, `tcp_latency_ms`, and the
-/// TCP-reachability score bonus (+0.15, capped at 1.0).
+/// Mirror of `_probe_bridge(parsed)`. Probes a single bridge with the legacy
+/// three-second timeout and returns the enriched record with
+/// `tcp_reachable`, `tcp_latency_ms`, and the TCP-reachability score bonus
+/// (+0.15, capped at 1.0).
 pub fn probe_bridge(parsed: &ParsedBridge, table: &IranCidrTable, probe: &dyn TcpProbe) -> Value {
+    probe_bridge_with_timeout(parsed, table, probe, 3.0)
+}
+
+/// Variant of [`probe_bridge`] used by the bounded Stage 8k pool. Making the
+/// timeout explicit preserves the existing public helper while allowing CI to
+/// configure a safe upper bound via `NIN_CUT_TIMEOUT_SECS`.
+pub fn probe_bridge_with_timeout(
+    parsed: &ParsedBridge,
+    table: &IranCidrTable,
+    probe: &dyn TcpProbe,
+    timeout_secs: f64,
+) -> Value {
     let base_score = score_bridge(parsed, table);
-    let (tcp_reachable, tcp_latency_ms) = probe.probe(&parsed.ip, parsed.port, 3.0);
+    let (tcp_reachable, tcp_latency_ms) = probe.probe(&parsed.ip, parsed.port, timeout_secs);
 
     let nin_score = if tcp_reachable {
         round4((base_score + 0.15).min(1.0))
@@ -288,6 +354,13 @@ pub fn probe_bridge(parsed: &ParsedBridge, table: &IranCidrTable, probe: &dyn Tc
 }
 
 /// Mirror of `_load_bridges()`. Loads and parses bridge lines from `input_file`.
+///
+/// The production input is `bridge/bridge_list_for_testing.json`, a JSON array
+/// of strings. The old Rust port treated that array as newline-delimited text,
+/// leaving quotes/commas in every raw line and, more importantly, feeding 1,584
+/// sequential three-second probes to CI. This decoder accepts JSON arrays,
+/// `{"bridges": [...]}` objects, and legacy newline text without changing the
+/// public input path.
 pub fn load_bridges(input_file: &Path) -> Vec<ParsedBridge> {
     if !input_file.exists() {
         tracing::warn!(
@@ -298,18 +371,23 @@ pub fn load_bridges(input_file: &Path) -> Vec<ParsedBridge> {
     }
     let text = match std::fs::read_to_string(input_file) {
         Ok(t) => t,
-        Err(e) => {
-            tracing::warn!("Cannot read {input_file:?}: {e}");
+        Err(error) => {
+            tracing::warn!("Cannot read {input_file:?}: {error}");
             return Vec::new();
         }
     };
+    let lines = json_bridge_lines(&text).unwrap_or_else(|| {
+        text.lines()
+            .map(str::to_owned)
+            .collect::<Vec<String>>()
+    });
     let mut parsed = Vec::new();
-    let mut skipped = 0u32;
-    for line in text.lines() {
-        if let Some(result) = parse_bridge_line(line) {
+    let mut skipped = 0_u32;
+    for line in lines {
+        if let Some(result) = parse_bridge_line(&line) {
             parsed.push(result);
         } else if !line.trim().is_empty() && !line.starts_with('#') {
-            skipped += 1;
+            skipped = skipped.saturating_add(1);
         }
     }
     tracing::info!(
@@ -318,6 +396,21 @@ pub fn load_bridges(input_file: &Path) -> Vec<ParsedBridge> {
         input_file.display()
     );
     parsed
+}
+
+fn json_bridge_lines(text: &str) -> Option<Vec<String>> {
+    let root: Value = serde_json::from_str(text).ok()?;
+    let values = match root {
+        Value::Array(values) => values,
+        Value::Object(mut object) => object.remove("bridges")?.as_array()?.to_vec(),
+        _ => return None,
+    };
+    Some(
+        values
+            .into_iter()
+            .filter_map(|value| value.as_str().map(str::to_owned))
+            .collect(),
+    )
 }
 
 /// Mirror of `_write_outputs(results)`. Writes the JSON report and the
@@ -410,41 +503,134 @@ pub fn write_empty_outputs(
     Ok(())
 }
 
-/// Mirror of `main()`. Returns 0 on success.
+/// Mirror of `main()`. Returns 0 on success, using environment-configured
+/// bounded concurrency so CI cannot exceed its stage timeout on a large
+/// all-timeout input list.
 pub fn run_main(
     input_file: &Path,
     report_path: &Path,
     export_path: &Path,
     probe: &dyn TcpProbe,
 ) -> Result<i32, std::io::Error> {
+    run_main_with_options(
+        input_file,
+        report_path,
+        export_path,
+        probe,
+        ProbeOptions::from_env(),
+    )
+}
+
+/// Run Stage 8k with explicit options. This is public to make concurrency and
+/// cap behavior deterministic in tests and reusable by future schedulers.
+pub fn run_main_with_options(
+    input_file: &Path,
+    report_path: &Path,
+    export_path: &Path,
+    probe: &dyn TcpProbe,
+    options: ProbeOptions,
+) -> Result<i32, std::io::Error> {
     tracing::info!("═══ Stage 8k: NIN Internet-Cut Survivability Tester ════════");
 
-    let bridges = load_bridges(input_file);
+    let mut bridges = load_bridges(input_file);
     if bridges.is_empty() {
         write_empty_outputs(input_file, report_path, export_path)?;
         tracing::info!("No bridges to test — exiting cleanly.");
         return Ok(0);
     }
-
-    tracing::info!("Running TCP probes on {} bridges (no DNS)…", bridges.len());
+    let skipped_by_cap = bridges.len().saturating_sub(options.max_bridges);
+    bridges.truncate(options.max_bridges);
+    tracing::info!(
+        "Running bounded TCP probes on {} bridges (workers={}, timeout={}s, skipped_by_cap={skipped_by_cap}; no DNS)…",
+        bridges.len(),
+        options.max_workers,
+        options.timeout_secs,
+    );
     let table = IranCidrTable::new();
-    let results: Vec<Value> = bridges
-        .iter()
-        .map(|b| probe_bridge(b, &table, probe))
-        .collect();
+    let results = probe_bridges_bounded(&bridges, &table, probe, options);
 
-    write_outputs(&results, report_path, export_path)?;
+    write_outputs_with_execution_metadata(
+        &results,
+        report_path,
+        export_path,
+        options,
+        skipped_by_cap,
+    )?;
 
     let survivable = results
         .iter()
-        .filter(|r| r.get("nin_score").and_then(Value::as_f64).unwrap_or(0.0) >= 0.60)
+        .filter(|record| record.get("nin_score").and_then(Value::as_f64).unwrap_or(0.0) >= 0.60)
         .count();
     tracing::info!(
-        "═══ Stage 8k done: {}/{} bridges NIN-cut survivable ════════",
-        survivable,
+        "═══ Stage 8k done: {survivable}/{} bridges NIN-cut survivable ════════",
         results.len()
     );
     Ok(0)
+}
+
+/// Probe bridge records in a scoped thread pool while preserving input order in
+/// the emitted report. The `TcpProbe: Sync` contract permits safe shared access
+/// to the production probe and deterministic test doubles alike.
+pub fn probe_bridges_bounded(
+    bridges: &[ParsedBridge],
+    table: &IranCidrTable,
+    probe: &dyn TcpProbe,
+    options: ProbeOptions,
+) -> Vec<Value> {
+    let count = bridges.len().min(options.max_bridges);
+    if count == 0 {
+        return Vec::new();
+    }
+    let workers = options.max_workers.max(1).min(count);
+    let next = AtomicUsize::new(0);
+    let results = Mutex::new(vec![None; count]);
+
+    std::thread::scope(|scope| {
+        let mut handles = Vec::with_capacity(workers);
+        for _ in 0..workers {
+            handles.push(scope.spawn(|| loop {
+                let index = next.fetch_add(1, Ordering::Relaxed);
+                if index >= count {
+                    break;
+                }
+                let value = probe_bridge_with_timeout(&bridges[index], table, probe, options.timeout_secs);
+                let mut guard = match results.lock() {
+                    Ok(guard) => guard,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+                guard[index] = Some(value);
+            }));
+        }
+        for handle in handles {
+            if handle.join().is_err() {
+                tracing::error!("NIN-cut worker panicked; preserving completed probe records");
+            }
+        }
+    });
+
+    let guard = match results.into_inner() {
+        Ok(guard) => guard,
+        Err(poisoned) => poisoned.into_inner(),
+    };
+    guard.into_iter().flatten().collect()
+}
+
+fn write_outputs_with_execution_metadata(
+    results: &[Value],
+    report_path: &Path,
+    export_path: &Path,
+    options: ProbeOptions,
+    skipped_by_cap: usize,
+) -> Result<(), std::io::Error> {
+    write_outputs(results, report_path, export_path)?;
+    let text = std::fs::read_to_string(report_path)?;
+    let mut report: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({}));
+    if let Some(object) = report.as_object_mut() {
+        object.insert("probe_workers".to_owned(), Value::from(options.max_workers));
+        object.insert("probe_timeout_secs".to_owned(), Value::from(options.timeout_secs));
+        object.insert("skipped_by_probe_cap".to_owned(), Value::from(skipped_by_cap));
+    }
+    std::fs::write(report_path, serde_json::to_string_pretty(&report)?)
 }
 
 #[cfg(test)]
@@ -588,6 +774,46 @@ mod tests {
         let report_json: Value = serde_json::from_str(&report_text).unwrap();
         assert_eq!(report_json["total_bridges"], 0);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn json_array_input_is_decoded_as_bridge_lines_not_json_syntax() {
+        let dir = std::env::temp_dir().join(format!("nin_cut_json_test_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).expect("fixture directory");
+        let input = dir.join("bridges.json");
+        std::fs::write(
+            &input,
+            r#"["obfs4 5.22.200.1:443 cert=abc", "vanilla 1.1.1.1:9001"]"#,
+        )
+        .expect("fixture input");
+        let bridges = load_bridges(&input);
+        assert_eq!(bridges.len(), 2);
+        assert_eq!(bridges[0].transport, "obfs4");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn bounded_pool_honors_probe_cap_and_preserves_input_order() {
+        let table = IranCidrTable::new();
+        let bridges = vec![
+            parse_bridge_line("vanilla 1.1.1.1:443").expect("fixture bridge one"),
+            parse_bridge_line("obfs4 5.22.200.1:443 cert=abc").expect("fixture bridge two"),
+            parse_bridge_line("vanilla 8.8.8.8:443").expect("fixture bridge three"),
+        ];
+        let results = probe_bridges_bounded(
+            &bridges,
+            &table,
+            &AlwaysUnreachable,
+            ProbeOptions {
+                max_workers: 2,
+                max_bridges: 2,
+                timeout_secs: 0.1,
+            },
+        );
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0]["raw"], "vanilla 1.1.1.1:443");
+        assert_eq!(results[1]["raw"], "obfs4 5.22.200.1:443 cert=abc");
     }
 
     #[test]

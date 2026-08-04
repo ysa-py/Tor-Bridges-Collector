@@ -68,6 +68,9 @@ pub mod static_bridges;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
+/// Production-grade unified collector for the legacy OnionHop.py and vip.py
+/// bridge-list workflows.
+pub mod tor_collector;
 pub mod torshield_ai_gateway;
 pub mod validate_workflows;
 pub mod vercel_cleanup;

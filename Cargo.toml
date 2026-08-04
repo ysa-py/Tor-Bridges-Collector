@@ -54,14 +54,17 @@ rust-version = "1.75"
 # Punycode, and homograph domains correctly — see that file and
 # `MIGRATION_NOTES.md` for the full writeup. TODO: re-pin all of these
 # forward once this environment's rustc can move to 1.86+.
-reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json", "blocking"] }
-tokio = { version = "=1.45.1", features = ["macros", "rt-multi-thread", "time", "fs"] }
+reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json", "multipart", "blocking"] }
+tokio = { version = "=1.45.1", features = ["macros", "rt-multi-thread", "time", "fs", "io-util", "process"] }
 quinn = "=0.11.8"
 scraper = "=0.23.1"
 html5ever = "=0.29.1"
 linfa = "=0.7.1"
 ndarray = "=0.15.6"
-rustls = "=0.23.28"
+# Use Rustls' ring provider explicitly. Disabling default features prevents an
+# ambiguous aws-lc/ring process-wide provider when the collector builds its
+# controlled TLS ClientHello profiles.
+rustls = { version = "=0.23.41", default-features = false, features = ["ring", "std", "tls12"] }
 pqcrypto-kyber = "=0.8.1"
 pqcrypto-mlkem = "=0.1.1"
 hickory-dns = "=0.25.2"
@@ -107,11 +110,22 @@ tracing = { workspace = true }
 # the Python `beautifulsoup4` `_parse_html()` function. The pinned version +
 # feature set matches `[workspace.dependencies]`.
 scraper = { workspace = true }
-# `reqwest` is the production HTTP client used by the `network` feature of the
-# scraper / onionhop_collector ports. It is optional so that the default build
-# (and the parity tests, which substitute a mock client) does not pay the cost
-# of compiling it. The pinned version + feature set matches `[workspace.dependencies]`.
-reqwest = { workspace = true, optional = true }
+# `reqwest` is the production HTTP client used by the historical scraper ports
+# and the standalone Tor bridge collector.  It is intentionally available in
+# the default build: the collector is a real network binary, not a mock-only
+# library.  The pinned version + feature set matches `[workspace.dependencies]`.
+reqwest = { workspace = true }
+# Async protocol verification for the standalone collector.  The versions are
+# already present in Cargo.lock through reqwest, keeping the lockfile graph
+# deterministic while allowing direct WebSocket-over-TLS probing.
+tokio-rustls = "=0.26.4"
+rustls = { workspace = true }
+anyhow = "=1.0.103"
+base64 = "=0.22.1"
+rand = "=0.8.6"
+url = "=2.5.8"
+socket2 = "=0.5.10"
+tracing-subscriber = { workspace = true }
 # `zip` is used by `formatter.rs` to mirror Python's stdlib `zipfile` module
 # for building the Telegram-distribution `tor_bridges.zip` archive. No
 # stdlib equivalent exists in Rust, so this is a new, minimal-feature
@@ -128,7 +142,10 @@ serde_yaml = { workspace = true }
 
 [features]
 default = []
-network = ["dep:reqwest"]
+# Retained for compatibility with existing CI commands. reqwest is now a
+# default dependency because the tor-bridges-collector binary performs real
+# async collection in its normal execution path.
+network = []
 # Session 9 (directive §4): adaptive anti-filtering / anti-DPI warfare layer.
 # NON-DEFAULT by mandate — with this off, `iran_detector` behaves byte-
 # identically to the legacy Python module. Pure std + serde_json logic; the
