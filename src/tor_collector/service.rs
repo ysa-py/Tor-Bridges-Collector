@@ -11,7 +11,8 @@ use super::config::{fronted_defaults, CollectorConfig, ListSpec, Transport};
 use super::fetch::{deduplicate, SourceFetcher};
 use super::parsing::{clean_output_line, is_valid_bridge_line};
 use super::readme::{
-    build_zip, existing_zip_entries, render_readme, telegram_caption, upload_telegram, ListStats, StatsMap,
+    build_zip, existing_zip_entries, render_readme, telegram_caption, upload_telegram, ListStats,
+    StatsMap,
 };
 use super::storage::HistoryStore;
 use super::tester::{Obfs4Verification, ProbeEngine, ProbeResult};
@@ -76,14 +77,18 @@ impl CollectorService {
                 let fetched = match bridgedb {
                     Ok(lines) => lines,
                     Err(error) => {
-                        log(&format!("WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"));
+                        log(&format!(
+                            "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
+                        ));
                         Vec::new()
                     }
                 };
                 let seeded = match delta {
                     Ok(lines) => lines,
                     Err(error) => {
-                        log(&format!("WARNING: community seed {transport} ipv6={ipv6} unavailable: {error}"));
+                        log(&format!(
+                            "WARNING: community seed {transport} ipv6={ipv6} unavailable: {error}"
+                        ));
                         Vec::new()
                     }
                 };
@@ -122,7 +127,10 @@ impl CollectorService {
 
         let purged = history.cleanup(self.config.history_retention_days, now);
         if purged > 0 {
-            log(&format!("Removed {purged} history entries older than {} days", self.config.history_retention_days));
+            log(&format!(
+                "Removed {purged} history entries older than {} days",
+                self.config.history_retention_days
+            ));
         }
         if history_writable {
             staged.insert(self.config.history_path.clone(), history.to_bytes()?);
@@ -152,9 +160,13 @@ impl CollectorService {
 
         let changed_files = publish_staged(&staged, self.config.dry_run)?;
         if self.config.dry_run {
-            log(&format!("DRY RUN complete: {changed_files} file(s) would change; no output was written"));
+            log(&format!(
+                "DRY RUN complete: {changed_files} file(s) would change; no output was written"
+            ));
         } else {
-            log(&format!("Published {changed_files} changed file(s) atomically"));
+            log(&format!(
+                "Published {changed_files} changed file(s) atomically"
+            ));
         }
 
         if !self.config.dry_run && self.config.telegram_triggered_at(now.hour()) {
@@ -250,7 +262,8 @@ impl CollectorService {
         let mut tested = successful_lines(&results);
         if transport == Transport::Obfs4 && !ipv6 && !tested.is_empty() {
             let verification = self.tester.verify_obfs4_handshakes(&tested).await;
-            tested = apply_obfs4_policy(tested, verification, self.config.obfs4_verify_min_fraction);
+            tested =
+                apply_obfs4_policy(tested, verification, self.config.obfs4_verify_min_fraction);
         }
 
         let recent = archive
@@ -259,8 +272,16 @@ impl CollectorService {
             .cloned()
             .collect::<Vec<_>>();
         stage_lines(staged, archive_path, &archive);
-        stage_lines(staged, self.config.bridge_dir.join(spec.recent_name()), &recent);
-        stage_lines(staged, self.config.bridge_dir.join(spec.tested_name()), &tested);
+        stage_lines(
+            staged,
+            self.config.bridge_dir.join(spec.recent_name()),
+            &recent,
+        );
+        stage_lines(
+            staged,
+            self.config.bridge_dir.join(spec.tested_name()),
+            &tested,
+        );
         stats.insert(
             spec.archive_name(),
             ListStats {
@@ -345,13 +366,19 @@ fn stage_lines(staged: &mut BTreeMap<PathBuf, Vec<u8>>, path: PathBuf, lines: &[
 fn publish_staged(staged: &BTreeMap<PathBuf, Vec<u8>>, dry_run: bool) -> Result<usize> {
     let mut changed = 0;
     for (index, (path, bytes)) in staged.iter().enumerate() {
-        let is_changed = std::fs::read(path).map_or(true, |current| current.as_slice() != bytes.as_slice());
+        let is_changed =
+            std::fs::read(path).map_or(true, |current| current.as_slice() != bytes.as_slice());
         if !is_changed {
             continue;
         }
         changed = changed.saturating_add(1);
         if dry_run {
-            println!("[{}] DRY RUN would update {} ({} bytes)", timestamp(), path.display(), bytes.len());
+            println!(
+                "[{}] DRY RUN would update {} ({} bytes)",
+                timestamp(),
+                path.display(),
+                bytes.len()
+            );
             continue;
         }
         write_atomic(path, bytes, index)?;
@@ -370,10 +397,7 @@ fn write_atomic(path: &Path, bytes: &[u8], index: usize) -> Result<()> {
         .file_name()
         .and_then(|name| name.to_str())
         .unwrap_or("collector-output");
-    let temporary = path.with_file_name(format!(
-        ".{file_name}.tmp-{}-{index}",
-        std::process::id()
-    ));
+    let temporary = path.with_file_name(format!(".{file_name}.tmp-{}-{index}", std::process::id()));
     std::fs::write(&temporary, bytes)
         .with_context(|| format!("unable to write temporary output {}", temporary.display()))?;
     if let Err(error) = std::fs::rename(&temporary, path) {

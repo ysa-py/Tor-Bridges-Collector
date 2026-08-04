@@ -12,7 +12,10 @@ use super::service::CollectorService;
 /// named `tor-bridges-collector` binary share exactly one implementation.
 pub async fn run_from_env() -> Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
-    if args.iter().any(|argument| matches!(argument.as_str(), "--help" | "-h")) {
+    if args
+        .iter()
+        .any(|argument| matches!(argument.as_str(), "--help" | "-h"))
+    {
         println!("{}", usage());
         return Ok(());
     }
@@ -43,10 +46,14 @@ pub fn apply_arguments(config: &mut CollectorConfig, args: Vec<String>) -> Resul
                 config.readme_path = PathBuf::from(next_value(&args, &mut index, "--readme")?);
             }
             "--metrics" => {
-                config.metrics_output = Some(PathBuf::from(next_value(&args, &mut index, "--metrics")?));
+                config.metrics_output =
+                    Some(PathBuf::from(next_value(&args, &mut index, "--metrics")?));
             }
             "--max-workers" => {
-                let value = parse_usize(next_value(&args, &mut index, "--max-workers")?, "--max-workers")?;
+                let value = parse_usize(
+                    next_value(&args, &mut index, "--max-workers")?,
+                    "--max-workers",
+                )?;
                 if value == 0 || value > 1_000 {
                     return Err(anyhow!("--max-workers must be in 1..=1000"));
                 }
@@ -74,7 +81,10 @@ pub fn apply_arguments(config: &mut CollectorConfig, args: Vec<String>) -> Resul
                 config.connect_timeout_secs = value;
             }
             "--retry-count" => {
-                let value = parse_usize(next_value(&args, &mut index, "--retry-count")?, "--retry-count")?;
+                let value = parse_usize(
+                    next_value(&args, &mut index, "--retry-count")?,
+                    "--retry-count",
+                )?;
                 if value == 0 || value > 10 {
                     return Err(anyhow!("--retry-count must be in 1..=10"));
                 }

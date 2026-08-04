@@ -25,7 +25,9 @@ impl SourceFetcher {
         let client = Client::builder()
             .user_agent(USER_AGENT)
             .connect_timeout(Duration::from_secs(config.connect_timeout_secs))
-            .timeout(Duration::from_secs(config.connect_timeout_secs.saturating_mul(3)))
+            .timeout(Duration::from_secs(
+                config.connect_timeout_secs.saturating_mul(3),
+            ))
             .build()
             .context("unable to construct upstream HTTP client")?;
         Ok(Self { client, config })
@@ -73,7 +75,9 @@ impl SourceFetcher {
                 Ok(response) if response.status().is_success() => match response.text().await {
                     Ok(text) if !text.trim().is_empty() => return Ok(text),
                     Ok(_) => last_error = Some(anyhow!("upstream returned an empty body")),
-                    Err(error) => last_error = Some(anyhow!("unable to read response body: {error}")),
+                    Err(error) => {
+                        last_error = Some(anyhow!("unable to read response body: {error}"))
+                    }
                 },
                 Ok(response) => {
                     last_error = Some(anyhow!("upstream HTTP status {}", response.status()));
@@ -113,7 +117,11 @@ pub fn extract_bridgedb_lines(body: &str) -> Result<Vec<String>> {
         .collect::<Vec<_>>()
         .join("\n");
 
-    let candidate_text = if selected.trim().is_empty() { body } else { &selected };
+    let candidate_text = if selected.trim().is_empty() {
+        body
+    } else {
+        &selected
+    };
     let lines = candidate_text
         .lines()
         .map(clean_output_line)

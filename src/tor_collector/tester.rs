@@ -273,7 +273,11 @@ impl FrontCircuitBreaker {
         state.consecutive_failures = state.consecutive_failures.saturating_add(1);
         if state.consecutive_failures >= self.threshold {
             state.open_until = Some(Instant::now() + self.cooldown);
-            tracing::warn!(host, cooldown_secs = self.cooldown.as_secs(), "front-domain circuit opened");
+            tracing::warn!(
+                host,
+                cooldown_secs = self.cooldown.as_secs(),
+                "front-domain circuit opened"
+            );
         }
     }
 }
@@ -350,7 +354,9 @@ impl ProbeEngine {
             while let Some(joined) = tasks.join_next().await {
                 match joined {
                     Ok(result) => chunk_results.push(result),
-                    Err(error) => tracing::warn!(%error, "probe task ended unexpectedly; skipping candidate"),
+                    Err(error) => {
+                        tracing::warn!(%error, "probe task ended unexpectedly; skipping candidate")
+                    }
                 }
             }
             self.adaptive.record_batch(transport, &chunk_results);
@@ -401,7 +407,8 @@ impl ProbeEngine {
 
     async fn probe_once(&self, line: &str, transport: Transport, ipv6: bool) -> Result<()> {
         if transport.is_fronted() {
-            let host = extract_front_host(line).ok_or_else(|| anyhow!("fronted line has no front/broker host"))?;
+            let host = extract_front_host(line)
+                .ok_or_else(|| anyhow!("fronted line has no front/broker host"))?;
             if !self.circuit_breaker.allow(&host) {
                 return Err(anyhow!("front-domain circuit is open for {host}"));
             }
@@ -411,11 +418,13 @@ impl ProbeEngine {
         }
 
         if transport == Transport::WebTunnel {
-            let url = extract_url(line).ok_or_else(|| anyhow!("WebTunnel line has no valid url="))?;
+            let url =
+                extract_url(line).ok_or_else(|| anyhow!("WebTunnel line has no valid url="))?;
             return self.websocket_upgrade(url).await;
         }
 
-        let endpoint = extract_endpoint(line).ok_or_else(|| anyhow!("bridge line has no endpoint"))?;
+        let endpoint =
+            extract_endpoint(line).ok_or_else(|| anyhow!("bridge line has no endpoint"))?;
         // IPv4 obfs4 intentionally starts with a TCP prefilter; the service
         // subsequently invokes the real obfs4 SOCKS handshake on survivors.
         // IPv6 obfs4 remains TCP-only because CI runners commonly lack IPv6.
@@ -502,7 +511,12 @@ Sec-WebSocket-Version: 13\r\n\r\n"
         }
     }
 
-    async fn tls_connect(&self, host: &str, port: u16, websocket: bool) -> Result<TlsStream<TcpStream>> {
+    async fn tls_connect(
+        &self,
+        host: &str,
+        port: u16,
+        websocket: bool,
+    ) -> Result<TlsStream<TcpStream>> {
         let tcp = self.connect(host, port).await?;
         let server_name = ServerName::try_from(host.to_owned())
             .map_err(|_| anyhow!("invalid TLS server name"))?;
@@ -544,7 +558,11 @@ Sec-WebSocket-Version: 13\r\n\r\n"
     }
 
     async fn connect_address(&self, address: SocketAddr) -> Result<TcpStream> {
-        let domain = if address.is_ipv4() { Domain::IPV4 } else { Domain::IPV6 };
+        let domain = if address.is_ipv4() {
+            Domain::IPV4
+        } else {
+            Domain::IPV6
+        };
         let socket = Socket::new(domain, Type::STREAM, Some(Protocol::TCP))
             .context("unable to create TCP socket")?;
         // These options are best effort only on platforms that reject them;
@@ -626,7 +644,8 @@ Sec-WebSocket-Version: 13\r\n\r\n"
                 match permit {
                     Ok(permit) => {
                         let _permit = permit;
-                        let passed = obfs4_socks_connect(&socks, &endpoint, handshake_timeout).await;
+                        let passed =
+                            obfs4_socks_connect(&socks, &endpoint, handshake_timeout).await;
                         (line, passed)
                     }
                     Err(_) => (line, false),
@@ -846,7 +865,10 @@ async fn obfs4_socks_connect(
         let mut greeting = [0_u8; 2];
         stream.read_exact(&mut greeting).await?;
         if greeting != [0x05, 0x02] {
-            return Err(std::io::Error::new(std::io::ErrorKind::InvalidData, "SOCKS auth rejected"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "SOCKS auth rejected",
+            ));
         }
         let raw = endpoint.socks_args.as_bytes();
         let (username, password) = if raw.len() <= 255 {
@@ -854,10 +876,12 @@ async fn obfs4_socks_connect(
         } else {
             raw.split_at(255)
         };
-        let username_len = u8::try_from(username.len())
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "SOCKS username too long"))?;
-        let password_len = u8::try_from(password.len().min(255))
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "SOCKS password too long"))?;
+        let username_len = u8::try_from(username.len()).map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "SOCKS username too long")
+        })?;
+        let password_len = u8::try_from(password.len().min(255)).map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "SOCKS password too long")
+        })?;
         let mut auth = Vec::with_capacity(3 + username.len() + password.len().min(255));
         auth.push(0x01);
         auth.push(username_len);
@@ -868,12 +892,14 @@ async fn obfs4_socks_connect(
         let mut auth_reply = [0_u8; 2];
         stream.read_exact(&mut auth_reply).await?;
         if auth_reply != [0x01, 0x00] {
-            return Err(std::io::Error::new(std::io::ErrorKind::PermissionDenied, "SOCKS auth failed"));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::PermissionDenied,
+                "SOCKS auth failed",
+            ));
         }
-        let ipv4: std::net::Ipv4Addr = endpoint
-            .host
-            .parse()
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid obfs4 IPv4"))?;
+        let ipv4: std::net::Ipv4Addr = endpoint.host.parse().map_err(|_| {
+            std::io::Error::new(std::io::ErrorKind::InvalidInput, "invalid obfs4 IPv4")
+        })?;
         let mut connect = vec![0x05, 0x01, 0x00, 0x01];
         connect.extend_from_slice(&ipv4.octets());
         connect.extend_from_slice(&endpoint.port.to_be_bytes());

@@ -99,7 +99,9 @@ impl HistoryStore {
             object.insert("first_seen".to_owned(), Value::String(now_text.clone()));
         }
         object.insert("last_seen".to_owned(), Value::String(now_text));
-        object.entry("tcp_reachable".to_owned()).or_insert(Value::Null);
+        object
+            .entry("tcp_reachable".to_owned())
+            .or_insert(Value::Null);
         object
             .entry("probe_successes".to_owned())
             .or_insert_with(|| Value::from(0_u64));

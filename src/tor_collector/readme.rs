@@ -133,7 +133,11 @@ pub fn build_zip(entries: &BTreeMap<String, Vec<u8>>) -> Result<Vec<u8>> {
 
 /// Upload a generated archive to Telegram. A remote failure is returned for
 /// logging but is intentionally not allowed to erase local publication output.
-pub async fn upload_telegram(config: &CollectorConfig, zip_bytes: Vec<u8>, caption: String) -> Result<()> {
+pub async fn upload_telegram(
+    config: &CollectorConfig,
+    zip_bytes: Vec<u8>,
+    caption: String,
+) -> Result<()> {
     let token = config
         .telegram_bot_token
         .as_deref()
@@ -161,7 +165,10 @@ pub async fn upload_telegram(config: &CollectorConfig, zip_bytes: Vec<u8>, capti
     if response.status().is_success() {
         Ok(())
     } else {
-        Err(anyhow!("Telegram upload returned HTTP {}", response.status()))
+        Err(anyhow!(
+            "Telegram upload returned HTTP {}",
+            response.status()
+        ))
     }
 }
 
@@ -260,7 +267,8 @@ pub fn existing_zip_entries(bridge_dir: &Path) -> Result<BTreeMap<String, Vec<u8
         if name.ends_with(".txt") && name != "tor_bridges.zip" {
             entries.insert(
                 name.to_owned(),
-                std::fs::read(&path).with_context(|| format!("unable to read {}", path.display()))?,
+                std::fs::read(&path)
+                    .with_context(|| format!("unable to read {}", path.display()))?,
             );
         }
     }

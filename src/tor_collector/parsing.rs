@@ -136,7 +136,11 @@ pub fn extract_front_host(line: &str) -> Option<String> {
     }
 
     if let Some(fronts) = token_value(line, "fronts") {
-        if let Some(first) = fronts.split(',').map(str::trim).find(|host| !host.is_empty()) {
+        if let Some(first) = fronts
+            .split(',')
+            .map(str::trim)
+            .find(|host| !host.is_empty())
+        {
             return Some(first.to_owned());
         }
     }
@@ -220,7 +224,11 @@ pub fn token_value(line: &str, key: &str) -> Option<String> {
 
 fn endpoint_from_token(token: &str) -> Option<Endpoint> {
     let token = token.trim_matches(|character| matches!(character, ',' | ';' | '"'));
-    if token.is_empty() || token.contains('=') || token.starts_with("http://") || token.starts_with("https://") {
+    if token.is_empty()
+        || token.contains('=')
+        || token.starts_with("http://")
+        || token.starts_with("https://")
+    {
         return None;
     }
 
@@ -270,7 +278,9 @@ mod tests {
     fn validation_covers_ipv4_ipv6_and_url_forms() {
         assert!(is_valid_bridge_line("obfs4 1.2.3.4:443 cert=abc"));
         assert!(is_valid_bridge_line("obfs4 [2001:db8::7]:443 cert=abc"));
-        assert!(is_valid_bridge_line("webtunnel 1.2.3.4:443 url=https://example.org/x"));
+        assert!(is_valid_bridge_line(
+            "webtunnel 1.2.3.4:443 url=https://example.org/x"
+        ));
         assert!(!is_valid_bridge_line("# 1.2.3.4:443"));
         assert!(!is_valid_bridge_line("No bridges available"));
         assert!(!is_valid_bridge_line("tiny"));
@@ -311,11 +321,18 @@ mod tests {
     #[test]
     fn transport_detection_and_front_host_precedence_are_stable() {
         assert_eq!(detect_transport("obfs4 1.2.3.4:443"), Transport::Obfs4);
-        assert_eq!(detect_transport("meek_lite 1.2.3.4:80"), Transport::MeekAzure);
-        assert_eq!(detect_transport("conjure 1.2.3.4:80"), Transport::Conjure);
-        assert!(is_fronted_line("snowflake 192.0.2.3:80 url=https://broker.example"));
         assert_eq!(
-            extract_front_host("snowflake 192.0.2.3:80 url=https://broker.example/a fronts=front.example"),
+            detect_transport("meek_lite 1.2.3.4:80"),
+            Transport::MeekAzure
+        );
+        assert_eq!(detect_transport("conjure 1.2.3.4:80"), Transport::Conjure);
+        assert!(is_fronted_line(
+            "snowflake 192.0.2.3:80 url=https://broker.example"
+        ));
+        assert_eq!(
+            extract_front_host(
+                "snowflake 192.0.2.3:80 url=https://broker.example/a fronts=front.example"
+            ),
             Some("broker.example".to_owned())
         );
         assert_eq!(
@@ -328,8 +345,14 @@ mod tests {
     fn vanilla_history_prefix_is_not_written_to_raw_lists() {
         let line = "Bridge 1.2.3.4:443 AABB";
         assert_eq!(clean_output_line(line), "1.2.3.4:443 AABB");
-        assert_eq!(normalize_vanilla_for_history(line), "Bridge 1.2.3.4:443 AABB");
-        assert_eq!(history_key(line, Transport::Vanilla), "Bridge 1.2.3.4:443 AABB");
+        assert_eq!(
+            normalize_vanilla_for_history(line),
+            "Bridge 1.2.3.4:443 AABB"
+        );
+        assert_eq!(
+            history_key(line, Transport::Vanilla),
+            "Bridge 1.2.3.4:443 AABB"
+        );
     }
 
     #[test]

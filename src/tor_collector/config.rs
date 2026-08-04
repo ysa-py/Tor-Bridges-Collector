@@ -207,7 +207,10 @@ impl CollectorConfig {
     /// Load collector settings from the process environment.
     pub fn from_env() -> Result<Self> {
         let bridge_dir = PathBuf::from(env_string("BRIDGE_DIR", "bridge"));
-        let history_path = env_path("BRIDGE_HISTORY_FILE", bridge_dir.join("bridge_history.json"));
+        let history_path = env_path(
+            "BRIDGE_HISTORY_FILE",
+            bridge_dir.join("bridge_history.json"),
+        );
         let zip_path = env_path("TOR_BRIDGES_ZIP", bridge_dir.join("tor_bridges.zip"));
         let max_workers = env_usize("MAX_WORKERS", 50, 1, 1_000)?;
         let min_workers = env_usize("MIN_WORKERS", 4, 1, max_workers)?;
@@ -300,7 +303,12 @@ fn nonempty_env(name: &str) -> Option<String> {
 fn env_bool(name: &str, default: bool) -> bool {
     env::var(name)
         .ok()
-        .map(|value| matches!(value.trim().to_ascii_lowercase().as_str(), "1" | "true" | "yes" | "on"))
+        .map(|value| {
+            matches!(
+                value.trim().to_ascii_lowercase().as_str(),
+                "1" | "true" | "yes" | "on"
+            )
+        })
         .unwrap_or(default)
 }
 
@@ -364,7 +372,9 @@ fn env_fraction(name: &str, default: f64) -> Result<f64> {
         Err(_) => default,
     };
     if !value.is_finite() || !(0.0..=1.0).contains(&value) {
-        return Err(anyhow!("{name} must be a finite value in 0.0..=1.0, got {value}"));
+        return Err(anyhow!(
+            "{name} must be a finite value in 0.0..=1.0, got {value}"
+        ));
     }
     Ok(value)
 }
@@ -393,7 +403,10 @@ mod tests {
 
     #[test]
     fn transport_aliases_keep_meek_lite_token() {
-        assert_eq!(Transport::from_name("meek_lite"), Some(Transport::MeekAzure));
+        assert_eq!(
+            Transport::from_name("meek_lite"),
+            Some(Transport::MeekAzure)
+        );
         assert_eq!(Transport::MeekAzure.line_token(), "meek_lite");
         assert!(Transport::MeekAzure.is_fronted());
         assert!(Transport::Obfs4.is_pooled());

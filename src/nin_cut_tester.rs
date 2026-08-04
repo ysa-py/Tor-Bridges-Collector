@@ -376,11 +376,8 @@ pub fn load_bridges(input_file: &Path) -> Vec<ParsedBridge> {
             return Vec::new();
         }
     };
-    let lines = json_bridge_lines(&text).unwrap_or_else(|| {
-        text.lines()
-            .map(str::to_owned)
-            .collect::<Vec<String>>()
-    });
+    let lines = json_bridge_lines(&text)
+        .unwrap_or_else(|| text.lines().map(str::to_owned).collect::<Vec<String>>());
     let mut parsed = Vec::new();
     let mut skipped = 0_u32;
     for line in lines {
@@ -559,7 +556,13 @@ pub fn run_main_with_options(
 
     let survivable = results
         .iter()
-        .filter(|record| record.get("nin_score").and_then(Value::as_f64).unwrap_or(0.0) >= 0.60)
+        .filter(|record| {
+            record
+                .get("nin_score")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0)
+                >= 0.60
+        })
         .count();
     tracing::info!(
         "═══ Stage 8k done: {survivable}/{} bridges NIN-cut survivable ════════",
@@ -593,7 +596,8 @@ pub fn probe_bridges_bounded(
                 if index >= count {
                     break;
                 }
-                let value = probe_bridge_with_timeout(&bridges[index], table, probe, options.timeout_secs);
+                let value =
+                    probe_bridge_with_timeout(&bridges[index], table, probe, options.timeout_secs);
                 let mut guard = match results.lock() {
                     Ok(guard) => guard,
                     Err(poisoned) => poisoned.into_inner(),
@@ -627,8 +631,14 @@ fn write_outputs_with_execution_metadata(
     let mut report: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({}));
     if let Some(object) = report.as_object_mut() {
         object.insert("probe_workers".to_owned(), Value::from(options.max_workers));
-        object.insert("probe_timeout_secs".to_owned(), Value::from(options.timeout_secs));
-        object.insert("skipped_by_probe_cap".to_owned(), Value::from(skipped_by_cap));
+        object.insert(
+            "probe_timeout_secs".to_owned(),
+            Value::from(options.timeout_secs),
+        );
+        object.insert(
+            "skipped_by_probe_cap".to_owned(),
+            Value::from(skipped_by_cap),
+        );
     }
     std::fs::write(report_path, serde_json::to_string_pretty(&report)?)
 }
