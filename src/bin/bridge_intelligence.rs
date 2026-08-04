@@ -28,7 +28,11 @@ struct Options {
 fn parse_args() -> Result<Options, String> {
     let mut input = PathBuf::from("bridge/iran_results.json");
     let mut censorship_level = None;
-    let mut strategy_limit = 50_usize;
+    // Dynamic yield: default strategy_limit from config instead of hardcoded 50.
+    // User can override via --strategy-limit CLI flag.
+    let mut strategy_limit = torshield_ir_ultra::config::Config::from_env()
+        .map(|cfg| cfg.max_bridges_per_run as usize)
+        .unwrap_or(50);
     let mut args = std::env::args().skip(1);
 
     while let Some(arg) = args.next() {

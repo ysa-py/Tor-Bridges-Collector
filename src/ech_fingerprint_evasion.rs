@@ -62,7 +62,15 @@ pub const CDN_KEYWORDS: &[&str] = &[
 /// Default TLS probe timeout (Python `_check_ech` default = 8.0s).
 pub const DEFAULT_TLS_PROBE_TIMEOUT: f64 = 8.0;
 
-/// Maximum number of bridges scanned in one run (Python cap = 200).
+/// Legacy compile-time ceiling retained for backward compatibility with
+/// callers that do not inject a [`Config`]. New code should use
+/// [`crate::config::compute_dynamic_ceiling`] instead, which scales with
+/// upstream volume and is env-overridable via `MAX_BRIDGES_PER_RUN`.
+///
+/// The value 200 matches the original Python cap. With dynamic yield
+/// enabled (the default), this constant is only used as a fallback when
+/// `Config::from_env()` fails — the actual pipeline ceiling comes from
+/// config at runtime.
 pub const MAX_BRIDGES_PER_RUN: usize = 200;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -388,7 +396,14 @@ pub fn run_pipeline(
             ))),
         })?;
 
-    let capped: Vec<&String> = bridges.iter().take(MAX_BRIDGES_PER_RUN).collect();
+    // Dynamic yield: compute ceiling from config (env-overridable) or fall
+    // back to legacy constant if config parsing fails. This replaces the
+    // old hardcoded .take(MAX_BRIDGES_PER_RUN) with a value that scales
+    // with upstream volume.
+    let ceiling = crate::config::Config::from_env()
+        .map(|cfg| crate::config::compute_dynamic_ceiling(bridges.len(), &cfg))
+        .unwrap_or(MAX_BRIDGES_PER_RUN);
+    let capped: Vec<&String> = bridges.iter().take(ceiling).collect();
     let mut results: Vec<Value> = capped
         .iter()
         .map(|line| score_bridge_with_probe(line, probe))

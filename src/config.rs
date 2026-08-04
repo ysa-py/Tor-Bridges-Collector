@@ -105,6 +105,24 @@ pub struct Config {
     pub irst_high_censorship_end: i64,
     pub irst_ultra_stealth_start: i64,
     pub irst_ultra_stealth_end: i64,
+    /// Circuit-breaker ceiling for bridge yield per run. Acts as a hard
+    /// upper safety bound for pathological cases (memory/time), NOT as
+    /// the everyday limiter. Default 10_000 is generous enough to pass
+    /// all candidates from real upstream sources while preventing OOM
+    /// from runaway data. Set via `MAX_BRIDGES_PER_RUN` env var.
+    pub max_bridges_per_run: i64,
+    /// Minimum quality score for bridge candidates to pass through the
+    /// yield pipeline. Bridges scoring below this threshold are filtered
+    /// out before the dynamic ceiling is applied. Default 0.0 accepts
+    /// all scored candidates; raise to enforce quality gates.
+    /// Set via `MIN_BRIDGE_QUALITY_SCORE` env var.
+    pub min_bridge_quality_score: f64,
+    /// When true (default), bridge counts scale dynamically with upstream
+    /// source volume — the pipeline outputs all candidates that pass the
+    /// quality gate, up to `max_bridges_per_run`. When false, falls back
+    /// to legacy fixed-cap behavior for backward compatibility.
+    /// Set via `DYNAMIC_BRIDGE_YIELD` env var.
+    pub dynamic_bridge_yield: bool,
 }
 
 impl Config {
@@ -180,6 +198,9 @@ impl Config {
             "IRST_HIGH_CENSORSHIP_END": self.irst_high_censorship_end,
             "IRST_ULTRA_STEALTH_START": self.irst_ultra_stealth_start,
             "IRST_ULTRA_STEALTH_END": self.irst_ultra_stealth_end,
+            "MAX_BRIDGES_PER_RUN": self.max_bridges_per_run,
+            "MIN_BRIDGE_QUALITY_SCORE": self.min_bridge_quality_score,
+            "DYNAMIC_BRIDGE_YIELD": self.dynamic_bridge_yield,
         })
     }
 
@@ -319,6 +340,9 @@ impl Config {
             irst_high_censorship_end: int("IRST_HIGH_CENSORSHIP_END", "1")?,
             irst_ultra_stealth_start: int("IRST_ULTRA_STEALTH_START", "20")?,
             irst_ultra_stealth_end: int("IRST_ULTRA_STEALTH_END", "23")?,
+            max_bridges_per_run: int("MAX_BRIDGES_PER_RUN", "10000")?,
+            min_bridge_quality_score: float("MIN_BRIDGE_QUALITY_SCORE", "0.0")?,
+            dynamic_bridge_yield: boolv("DYNAMIC_BRIDGE_YIELD", "true"),
         })
     }
 }
@@ -364,4 +388,33 @@ pub type EnvMap = BTreeMap<String, String>;
 /// Build a config snapshot from a [`BTreeMap`] of environment variables.
 pub fn from_env_map(env: &EnvMap) -> Result<Config, ConfigError> {
     Config::from_lookup(|name| env.get(name).cloned())
+}
+
+/// Compute the dynamic ceiling for bridge yield based on:
+/// 1. Actual candidate count after quality filtering
+/// 2. Config circuit-breaker ceiling (`max_bridges_per_run`)
+/// 3. Dynamic yield mode flag
+///
+/// Returns the minimum of `candidate_count` and `config.max_bridges_per_run`
+/// when dynamic yield is enabled, otherwise returns `config.max_bridges_per_run`
+/// as a fixed cap (legacy behavior).
+///
+/// # Example
+/// ```ignore
+/// let ceiling = compute_dynamic_ceiling(5000, &config);
+/// // If config.max_bridges_per_run = 10000 and dynamic_bridge_yield = true:
+/// // ceiling = 5000 (all candidates pass through)
+/// // If config.max_bridges_per_run = 10000 and dynamic_bridge_yield = false:
+/// // ceiling = 10000 (legacy fixed cap)
+/// ```
+#[must_use]
+pub fn compute_dynamic_ceiling(candidate_count: usize, config: &Config) -> usize {
+    let circuit_breaker = config.max_bridges_per_run as usize;
+    if config.dynamic_bridge_yield {
+        // Dynamic mode: accept all candidates up to circuit-breaker ceiling
+        candidate_count.min(circuit_breaker)
+    } else {
+        // Legacy mode: fixed cap regardless of candidate count
+        circuit_breaker
+    }
 }

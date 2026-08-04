@@ -40,8 +40,15 @@ use crate::scraper::{HttpFetch, HttpResponse, ScraperError};
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// `(url, filename_hint, transport, ip_version)` quadruples. Mirrors Python
-/// `TARGETS` list (6 entries — obfs4/webtunnel/vanilla × ipv4/ipv6).
+/// `TARGETS` list — expanded from 6 entries (obfs4/webtunnel/vanilla × ipv4/ipv6)
+/// to cover all transport types Tor Project's BridgeDB serves. Dynamic yield
+/// mandate: source breadth must scale with what upstream actually publishes.
+///
+/// Transport types added: snowflake, conjure, meek (legacy but still deployed).
+/// Each transport × {ipv4, ipv6} = 2 entries per transport.
+/// Total: 12 entries (6 transports × 2 IP versions).
 pub const TARGETS: &[(&str, &str, &str, &str)] = &[
+    // obfs4 (IPv4 + IPv6)
     (
         "https://bridges.torproject.org/bridges?transport=obfs4",
         "obfs4.txt",
@@ -54,6 +61,7 @@ pub const TARGETS: &[(&str, &str, &str, &str)] = &[
         "obfs4",
         "ipv6",
     ),
+    // webtunnel (IPv4 + IPv6)
     (
         "https://bridges.torproject.org/bridges?transport=webtunnel",
         "webtunnel.txt",
@@ -66,6 +74,7 @@ pub const TARGETS: &[(&str, &str, &str, &str)] = &[
         "webtunnel",
         "ipv6",
     ),
+    // vanilla (IPv4 + IPv6)
     (
         "https://bridges.torproject.org/bridges?transport=vanilla",
         "vanilla.txt",
@@ -76,6 +85,45 @@ pub const TARGETS: &[(&str, &str, &str, &str)] = &[
         "https://bridges.torproject.org/bridges?transport=vanilla&ipv6=yes",
         "vanilla_ipv6.txt",
         "vanilla",
+        "ipv6",
+    ),
+    // snowflake (IPv4 + IPv6) — WebRTC-based pluggable transport
+    (
+        "https://bridges.torproject.org/bridges?transport=snowflake",
+        "snowflake.txt",
+        "snowflake",
+        "ipv4",
+    ),
+    (
+        "https://bridges.torproject.org/bridges?transport=snowflake&ipv6=yes",
+        "snowflake_ipv6.txt",
+        "snowflake",
+        "ipv6",
+    ),
+    // conjure (IPv4 + IPv6) — Refraction Networking
+    (
+        "https://bridges.torproject.org/bridges?transport=conjure",
+        "conjure.txt",
+        "conjure",
+        "ipv4",
+    ),
+    (
+        "https://bridges.torproject.org/bridges?transport=conjure&ipv6=yes",
+        "conjure_ipv6.txt",
+        "conjure",
+        "ipv6",
+    ),
+    // meek (IPv4 + IPv6) — domain-fronted transport
+    (
+        "https://bridges.torproject.org/bridges?transport=meek",
+        "meek.txt",
+        "meek",
+        "ipv4",
+    ),
+    (
+        "https://bridges.torproject.org/bridges?transport=meek&ipv6=yes",
+        "meek_ipv6.txt",
+        "meek",
         "ipv6",
     ),
 ];
@@ -281,22 +329,43 @@ pub fn fetch_one(
 /// The Rust port runs sequentially (no `asyncio`). Production callers
 /// can use `tokio::join!` to parallelize.
 pub fn fetch_all_with_client(client: &dyn HttpFetch) -> Vec<(String, String, String)> {
-    let mut results: Vec<(String, String, String)> = Vec::new();
-    for (url, _filename, transport, ip_ver) in TARGETS {
-        match fetch_one(client, url, transport, None) {
-            Ok(lines) => {
-                for line in lines {
-                    results.push((line, transport.to_string(), ip_ver.to_string()));
+    // Concurrent fetching: spawn a thread per target using std::thread::scope.
+    // This replaces the old sequential loop, reducing wall-clock time from
+    // sum(fetch_times) to max(fetch_times). Each thread fetches one target
+    // and returns its results. Failed targets are skipped (Python parity).
+    //
+    // Note: HttpFetch is a sync trait, so we use scoped threads rather than
+    // async. The client reference is shared across threads (Send + Sync).
+
+    std::thread::scope(|s| {
+        let mut handles = Vec::new();
+
+        for (url, _filename, transport, ip_ver) in TARGETS {
+            let url = *url;
+            let transport = *transport;
+            let ip_ver = *ip_ver;
+            let handle = s.spawn(|| {
+                match fetch_one(client, url, transport, None) {
+                    Ok(lines) => lines
+                        .into_iter()
+                        .map(|line| (line, transport.to_string(), ip_ver.to_string()))
+                        .collect::<Vec<_>>(),
+                    Err(_) => {
+                        // Python: `log.warning(...)` and return empty list for this target.
+                        // We silently skip and continue to the next target.
+                        Vec::new()
+                    }
                 }
-            }
-            Err(_) => {
-                // Python: `log.warning(...)` and return empty list for this target.
-                // We silently skip and continue to the next target.
-                continue;
-            }
+            });
+            handles.push(handle);
         }
-    }
-    results
+
+        // Collect results from all threads
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap_or_default())
+            .collect()
+    })
 }
 
 /// Test-only helper: parse a bridge line list from a JSON value (used by
@@ -348,17 +417,21 @@ mod tests {
     }
 
     #[test]
-    fn targets_count_is_six() {
-        assert_eq!(TARGETS.len(), 6);
+    fn targets_count_is_twelve() {
+        // Expanded from 6 to 12: obfs4/webtunnel/vanilla/snowflake/conjure/meek × ipv4/ipv6
+        assert_eq!(TARGETS.len(), 12);
     }
 
     #[test]
-    fn targets_cover_three_transports_two_ip_versions() {
+    fn targets_cover_six_transports_two_ip_versions() {
         let transports: std::collections::BTreeSet<&str> = TARGETS.iter().map(|t| t.2).collect();
         let ipvers: std::collections::BTreeSet<&str> = TARGETS.iter().map(|t| t.3).collect();
         assert!(transports.contains("obfs4"));
         assert!(transports.contains("webtunnel"));
         assert!(transports.contains("vanilla"));
+        assert!(transports.contains("snowflake"));
+        assert!(transports.contains("conjure"));
+        assert!(transports.contains("meek"));
         assert_eq!(ipvers.len(), 2);
         assert!(ipvers.contains("ipv4"));
         assert!(ipvers.contains("ipv6"));
@@ -529,13 +602,17 @@ mod tests {
         }
         let client = MockHttp { responses };
         let results = fetch_all_with_client(&client);
-        // 6 targets × 1 line each = 6 results
-        assert_eq!(results.len(), 6);
+        // 12 targets × 1 line each = 12 results (expanded from 6 to include
+        // snowflake, conjure, meek)
+        assert_eq!(results.len(), 12);
         let transports: std::collections::BTreeSet<&str> =
             results.iter().map(|(_, t, _)| t.as_str()).collect();
         assert!(transports.contains("obfs4"));
         assert!(transports.contains("webtunnel"));
         assert!(transports.contains("vanilla"));
+        assert!(transports.contains("snowflake"));
+        assert!(transports.contains("conjure"));
+        assert!(transports.contains("meek"));
     }
 
     #[test]

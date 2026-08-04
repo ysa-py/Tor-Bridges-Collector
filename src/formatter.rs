@@ -335,7 +335,13 @@ impl BridgeFormatter {
             .collect();
         std::fs::create_dir_all(export_dir).map_err(|e| io_err(export_dir, e))?;
 
-        let top = self.scorer.top_for_iran(&db, 100, 0);
+        // Dynamic yield: compute ceiling from config instead of hardcoded 100.
+        // This scales with the actual database size, bounded only by the
+        // circuit-breaker ceiling from config.
+        let ceiling = crate::config::Config::from_env()
+            .map(|cfg| crate::config::compute_dynamic_ceiling(db.len(), &cfg))
+            .unwrap_or(100);
+        let top = self.scorer.top_for_iran(&db, ceiling, 0);
         let lines: Vec<String> = top
             .iter()
             .filter_map(|r| {
