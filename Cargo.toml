@@ -210,6 +210,13 @@ path = "tests/bridge_publication.rs"
 name = "pipeline_binaries_smoke"
 path = "tests/pipeline_binaries_smoke.rs"
 
+# Phase 4 self-healing hook: runs the real `self_heal_verify` binary process
+# (injected-failure recovery suite) inside the cargo test gate, so every CI
+# parity run proves unattended end-to-end failure recovery with exit code 0.
+[[test]]
+name = "self_heal_verify_contract"
+path = "tests/self_heal_verify_contract.rs"
+
 [profile.release]
 opt-level = 3
 strip = true
