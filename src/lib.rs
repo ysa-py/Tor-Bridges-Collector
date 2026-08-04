@@ -11,10 +11,12 @@ pub mod anti_ai_dpi;
 pub mod auto_debug_system;
 pub mod autonomous;
 pub mod autonomous_anti_censorship_obfuscator;
+pub mod bridge_dedup;
 pub mod bridge_publication;
 pub mod bridge_scoring;
 pub mod censorship_fusion;
 pub mod censorship_monitor;
+pub mod censorship_scorer_fusion;
 pub mod circuit_breaker_11slot;
 pub mod collector;
 pub mod config;
@@ -62,12 +64,15 @@ pub mod security_scan;
 pub mod self_heal;
 pub mod slot_circuit_breaker;
 pub mod smart_iran_scorer;
+pub mod source_circuit_breaker;
+pub mod source_health;
 pub mod sources_extra;
 pub mod sources_torproject;
 pub mod static_bridges;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
+pub mod yield_telemetry;
 /// Production-grade unified collector for the legacy OnionHop.py and vip.py
 /// bridge-list workflows. It is excluded only from the CI-only ARMv7-musl
 /// type-check because that target has no native TLS C toolchain; ARM GNU and
