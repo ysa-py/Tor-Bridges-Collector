@@ -68,6 +68,16 @@ cargo run --release --bin tor-bridges-collector -- \
 
 The default `cargo run` entry point also starts the unified collector.
 
+### ARMv7-musl CI note
+
+The repository's `armv7-unknown-linux-musleabihf` job is a no-link Rust
+compile sentinel. Hosted runners do not provide the C cross compiler required
+by Rustls/ring. For that **CI-only target**, Cargo selects HTTP-only `reqwest`
+and builds a small collector stub, so the rest of the Rust workspace is still
+type-checked without pretending a TLS collector package was produced. Normal
+collector targets—including ARM GNU—retain the complete Rustls/ring,
+WebTunnel, and obfs4 implementation.
+
 ## Output contract
 
 For pooled transports the collector writes:
