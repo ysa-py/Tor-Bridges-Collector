@@ -417,17 +417,21 @@ mod tests {
     }
 
     #[test]
-    fn targets_count_is_six() {
-        assert_eq!(TARGETS.len(), 6);
+    fn targets_count_is_twelve() {
+        // Expanded from 6 to 12: obfs4/webtunnel/vanilla/snowflake/conjure/meek × ipv4/ipv6
+        assert_eq!(TARGETS.len(), 12);
     }
 
     #[test]
-    fn targets_cover_three_transports_two_ip_versions() {
+    fn targets_cover_six_transports_two_ip_versions() {
         let transports: std::collections::BTreeSet<&str> = TARGETS.iter().map(|t| t.2).collect();
         let ipvers: std::collections::BTreeSet<&str> = TARGETS.iter().map(|t| t.3).collect();
         assert!(transports.contains("obfs4"));
         assert!(transports.contains("webtunnel"));
         assert!(transports.contains("vanilla"));
+        assert!(transports.contains("snowflake"));
+        assert!(transports.contains("conjure"));
+        assert!(transports.contains("meek"));
         assert_eq!(ipvers.len(), 2);
         assert!(ipvers.contains("ipv4"));
         assert!(ipvers.contains("ipv6"));
@@ -598,13 +602,17 @@ mod tests {
         }
         let client = MockHttp { responses };
         let results = fetch_all_with_client(&client);
-        // 6 targets × 1 line each = 6 results
-        assert_eq!(results.len(), 6);
+        // 12 targets × 1 line each = 12 results (expanded from 6 to include
+        // snowflake, conjure, meek)
+        assert_eq!(results.len(), 12);
         let transports: std::collections::BTreeSet<&str> =
             results.iter().map(|(_, t, _)| t.as_str()).collect();
         assert!(transports.contains("obfs4"));
         assert!(transports.contains("webtunnel"));
         assert!(transports.contains("vanilla"));
+        assert!(transports.contains("snowflake"));
+        assert!(transports.contains("conjure"));
+        assert!(transports.contains("meek"));
     }
 
     #[test]
