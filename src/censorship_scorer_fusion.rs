@@ -15,7 +15,7 @@
 //! current Iranian network conditions.
 
 use std::collections::BTreeMap;
-use serde_json::{json, Map, Value};
+use serde_json::{json, Value};
 
 /// Weights for fusing different censorship signals into bridge scores.
 #[derive(Debug, Clone)]
@@ -291,10 +291,15 @@ mod tests {
 
     #[test]
     fn ooni_blocking_reduces_adjustment() {
-        let mut scorer = CensorshipFusionScorer::new();
-        scorer.set_ooni_factor("obfs4", 0.9); // 90% blocked
-        let adj = scorer.transport_adjustment("obfs4");
-        assert!(adj < 1.0, "expected <1.0 for 90% blocked, got {adj}");
+        let mut blocked = CensorshipFusionScorer::new();
+        blocked.set_ooni_factor("obfs4", 0.9); // 90% blocked
+        let neutral = CensorshipFusionScorer::new(); // no OONI data → neutral factor
+        let adj_blocked = blocked.transport_adjustment("obfs4");
+        let adj_neutral = neutral.transport_adjustment("obfs4");
+        assert!(
+            adj_blocked < adj_neutral,
+            "blocked ({adj_blocked}) should score below neutral ({adj_neutral})"
+        );
     }
 
     #[test]

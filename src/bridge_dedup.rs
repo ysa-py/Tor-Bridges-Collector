@@ -81,7 +81,7 @@ impl DedupBridge {
 }
 
 /// Fingerprint for fast duplicate detection.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct BridgeFingerprint {
     ip: Option<Ipv4Addr>,
     port: u16,

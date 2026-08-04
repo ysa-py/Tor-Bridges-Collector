@@ -104,6 +104,12 @@ impl SourceHealthRecord {
     /// - Yield: 25% (higher is better, capped at 100)
     #[must_use]
     pub fn health_score(&self) -> f64 {
+        // No observations yet: assume perfect (neutral) health so newly
+        // registered sources get the benefit of the doubt until measured.
+        if self.total_fetches == 0 {
+            return 1.0;
+        }
+
         let success_component = self.success_rate_ema * 0.5;
 
         // Latency penalty: 0ms = 1.0, 30000ms+ = 0.0

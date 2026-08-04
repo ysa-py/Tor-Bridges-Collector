@@ -14,7 +14,6 @@
 //! 6. **Circuit breaker trip** — Source fails repeatedly, triggering CB
 //! 7. **Circuit breaker recovery** — Source recovers after cooldown
 
-use std::collections::BTreeMap;
 use std::time::Duration;
 
 use serde_json::{json, Value};
@@ -259,7 +258,9 @@ fn test_partial_data_loss() -> InjectedTestResult {
 
 /// Test 6: Circuit breaker trip and recovery.
 fn test_circuit_breaker_trip_and_recovery() -> InjectedTestResult {
-    let mut mgr = SourceCircuitBreakerManager::with_defaults(2, 1, 2); // 1ms cooldown for test
+    // Note: `with_defaults` takes the cooldown in *seconds*; 0s means the
+    // Open → HalfOpen transition happens immediately (no sleep needed).
+    let mut mgr = SourceCircuitBreakerManager::with_defaults(2, 0, 2);
     mgr.register("recovering-source");
 
     // Trip the circuit
@@ -267,10 +268,7 @@ fn test_circuit_breaker_trip_and_recovery() -> InjectedTestResult {
     mgr.record_failure("recovering-source");
     let tripped = mgr.state("recovering-source") == SourceCircuitState::Open;
 
-    // Wait for cooldown
-    std::thread::sleep(Duration::from_millis(5));
-
-    // Probe should be allowed
+    // Probe should be allowed (0s cooldown → immediate HalfOpen transition)
     let probe_allowed = mgr.allow_request("recovering-source");
 
     // Successful probes should close the circuit
