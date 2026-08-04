@@ -207,7 +207,8 @@ impl YieldTelemetry {
         let failed_sources = self.source_metrics.iter().filter(|m| !m.success).count();
         let total_sources = self.source_metrics.len();
         let dedup_ratio = if self.raw_count > 0 {
-            ((self.raw_count - self.dedup_count) as f64 / self.raw_count as f64 * 100.0).round() / 100.0
+            let removed = (self.raw_count - self.dedup_count) as f64;
+            (removed / self.raw_count as f64 * 100.0).round() / 100.0
         } else {
             0.0
         };
@@ -305,7 +306,8 @@ impl TelemetryAggregator {
         // Update rolling average
         self.run_count += 1;
         let alpha = 2.0 / (self.run_count as f64 + 1.0);
-        self.rolling_avg = alpha * telemetry.exported_count as f64 + (1.0 - alpha) * self.rolling_avg;
+        self.rolling_avg =
+            alpha * telemetry.exported_count as f64 + (1.0 - alpha) * self.rolling_avg;
 
         // Update previous counts
         self.previous_source_counts = current_sources;
@@ -431,7 +433,10 @@ mod tests {
         t2.set_exported(0);
         agg.analyze(&mut t2);
 
-        assert!(t2.change_reasons.iter().any(|r| matches!(r, YieldChangeReason::SourceOutage { source } if source == "s1")));
+        assert!(t2.change_reasons.iter().any(|r| matches!(
+            r,
+            YieldChangeReason::SourceOutage { source } if source == "s1"
+        )));
     }
 
     #[test]
@@ -464,7 +469,11 @@ mod tests {
         t2.set_exported(65);
         agg.analyze(&mut t2);
 
-        assert!(t2.change_reasons.iter().any(|r| matches!(r, YieldChangeReason::UpstreamVolumeChange { source, delta } if source == "s1" && *delta == 30)));
+        assert!(t2.change_reasons.iter().any(|r| matches!(
+            r,
+            YieldChangeReason::UpstreamVolumeChange { source, delta }
+                if source == "s1" && *delta == 30
+        )));
     }
 
     #[test]

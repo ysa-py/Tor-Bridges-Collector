@@ -200,7 +200,8 @@ impl CensorshipFusionScorer {
     /// Get full status as JSON.
     #[must_use]
     pub fn status_json(&self) -> Value {
-        let adjustments: BTreeMap<String, f64> = ["obfs4", "webtunnel", "snowflake", "conjure", "meek", "vanilla"]
+        let transports = ["obfs4", "webtunnel", "snowflake", "conjure", "meek", "vanilla"];
+        let adjustments: BTreeMap<String, f64> = transports
             .iter()
             .map(|t| (t.to_string(), (self.transport_adjustment(t) * 1000.0).round() / 1000.0))
             .collect();

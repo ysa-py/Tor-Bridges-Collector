@@ -295,7 +295,10 @@ impl BridgeDeduplicator {
             "subnet_merges": self.stats.subnet_merges,
             "fuzzy_merges": self.stats.fuzzy_merges,
             "dedup_ratio": if self.stats.total_input > 0 {
-                (self.stats.duplicates_removed as f64 / self.stats.total_input as f64 * 100.0).round() / 100.0
+                let ratio = self.stats.duplicates_removed as f64
+                    / self.stats.total_input as f64
+                    * 100.0;
+                (ratio).round() / 100.0
             } else {
                 0.0
             },
@@ -512,7 +515,9 @@ mod tests {
 
     #[test]
     fn extract_fingerprint_40hex() {
-        let fp = extract_fingerprint("obfs4 1.2.3.4:443 ABCDEF1234567890ABCDEF1234567890ABCDEF12 cert=xyz");
+        let fp = extract_fingerprint(
+            "obfs4 1.2.3.4:443 ABCDEF1234567890ABCDEF1234567890ABCDEF12 cert=xyz",
+        );
         assert_eq!(fp, Some("ABCDEF1234567890ABCDEF1234567890ABCDEF12".to_string()));
     }
 

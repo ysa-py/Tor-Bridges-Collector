@@ -125,7 +125,7 @@ fn test_corrupted_payload_handling() -> InjectedTestResult {
     } else {
         InjectedTestResult::fail(
             "corrupted_payload_handling",
-            format!("Expected available=true, health<1.0; got available={available}, health={health}"),
+            format!("Expected available, health<1.0; got available={available}, health={health}"),
             json!({"health": health, "available": available}),
         )
     }
@@ -153,7 +153,7 @@ fn test_timeout_handling() -> InjectedTestResult {
     } else {
         InjectedTestResult::fail(
             "timeout_handling",
-            format!("Expected available=true, health<0.8; got available={available}, health={health}"),
+            format!("Expected available, health<0.8; got available={available}, health={health}"),
             json!({"health": health, "available": available}),
         )
     }
@@ -239,13 +239,19 @@ fn test_partial_data_loss() -> InjectedTestResult {
     if count == 3 && stats.duplicates_removed == 1 {
         InjectedTestResult::pass(
             "partial_data_loss",
-            format!("Dedup correctly handles partial data ({count} unique, {dupes} dupes)", dupes = stats.duplicates_removed),
+            format!(
+                "Dedup handles partial data ({count} unique, {} dupes)",
+                stats.duplicates_removed
+            ),
             dedup.stats_json(),
         )
     } else {
         InjectedTestResult::fail(
             "partial_data_loss",
-            format!("Expected 3 unique, 1 dupe; got {count} unique, {} dupes", stats.duplicates_removed),
+            format!(
+                "Expected 3 unique, 1 dupe; got {count} unique, {} dupes",
+                stats.duplicates_removed
+            ),
             dedup.stats_json(),
         )
     }
@@ -379,7 +385,10 @@ fn test_censorship_fusion_under_outage() -> InjectedTestResult {
         InjectedTestResult::pass(
             "censorship_fusion_under_outage",
             "Censorship fusion correctly promotes webtunnel over blocked obfs4",
-            json!({"top_transport": top_transport, "adjustments": scorer.status_json()["transport_adjustments"]}),
+            json!({
+                "top_transport": top_transport,
+                "adjustments": scorer.status_json()["transport_adjustments"],
+            }),
         )
     } else {
         InjectedTestResult::fail(
@@ -438,7 +447,11 @@ fn test_telemetry_anomaly_detection() -> InjectedTestResult {
     } else {
         InjectedTestResult::fail(
             "telemetry_anomaly_detection",
-            format!("Expected anomaly; got anomalies={}, volume_change={}", anomaly_t.anomalies.len(), has_volume_change),
+            format!(
+                "Expected anomaly; got anomalies={}, volume={}",
+                anomaly_t.anomalies.len(),
+                has_volume_change
+            ),
             json!({"anomalies": anomaly_t.anomalies}),
         )
     }
