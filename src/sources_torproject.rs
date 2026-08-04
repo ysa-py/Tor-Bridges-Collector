@@ -336,33 +336,38 @@ pub fn fetch_all_with_client(client: &dyn HttpFetch) -> Vec<(String, String, Str
     //
     // Note: HttpFetch is a sync trait, so we use scoped threads rather than
     // async. The client reference is shared across threads (Send + Sync).
-    use std::sync::Mutex;
-
-    let results: Mutex<Vec<(String, String, String)>> = Mutex::new(Vec::new());
 
     std::thread::scope(|s| {
+        let mut handles = Vec::new();
+
         for (url, _filename, transport, ip_ver) in TARGETS {
             let url = *url;
             let transport = *transport;
             let ip_ver = *ip_ver;
-            s.spawn(|| {
+            let handle = s.spawn(move || {
                 match fetch_one(client, url, transport, None) {
                     Ok(lines) => {
-                        let mut guard = results.lock().unwrap();
-                        for line in lines {
-                            guard.push((line, transport.to_string(), ip_ver.to_string()));
-                        }
+                        lines
+                            .into_iter()
+                            .map(|line| (line, transport.to_string(), ip_ver.to_string()))
+                            .collect::<Vec<_>>()
                     }
                     Err(_) => {
                         // Python: `log.warning(...)` and return empty list for this target.
                         // We silently skip and continue to the next target.
+                        Vec::new()
                     }
                 }
             });
+            handles.push(handle);
         }
-    });
 
-    results.into_inner().unwrap()
+        // Collect results from all threads
+        handles
+            .into_iter()
+            .flat_map(|h| h.join().unwrap_or_default())
+            .collect()
+    })
 }
 
 /// Test-only helper: parse a bridge line list from a JSON value (used by
