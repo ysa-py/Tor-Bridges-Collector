@@ -241,7 +241,7 @@ impl CollectorConfig {
             telegram_bot_token: nonempty_env("TELEGRAM_BOT_TOKEN"),
             telegram_chat_id: nonempty_env("TELEGRAM_CHAT_ID"),
             telegram_upload: env_bool("TELEGRAM_UPLOAD", false),
-            github_actions: env::var("GITHUB_ACTIONS").map_or(false, |v| v == "true"),
+            github_actions: env::var("GITHUB_ACTIONS").is_ok_and(|value| value == "true"),
         })
     }
 

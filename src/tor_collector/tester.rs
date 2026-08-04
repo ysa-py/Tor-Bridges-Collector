@@ -637,7 +637,7 @@ Sec-WebSocket-Version: 13\r\n\r\n"
         let semaphore = Arc::new(Semaphore::new(workers));
         for (line, endpoint) in parsed {
             let semaphore = semaphore.clone();
-            let socks = socks.clone();
+            let socks_address = socks;
             let handshake_timeout = self.config.obfs4_handshake_timeout_secs;
             tasks.spawn(async move {
                 let permit = semaphore.acquire_owned().await;
@@ -645,7 +645,7 @@ Sec-WebSocket-Version: 13\r\n\r\n"
                     Ok(permit) => {
                         let _permit = permit;
                         let passed =
-                            obfs4_socks_connect(&socks, &endpoint, handshake_timeout).await;
+                            obfs4_socks_connect(&socks_address, &endpoint, handshake_timeout).await;
                         (line, passed)
                     }
                     Err(_) => (line, false),
