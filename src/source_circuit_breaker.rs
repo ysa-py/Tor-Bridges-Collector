@@ -235,11 +235,7 @@ impl SourceCircuitBreakerManager {
 
     /// Create with custom defaults.
     #[must_use]
-    pub fn with_defaults(
-        failure_threshold: u32,
-        cooldown_secs: u64,
-        half_open_max: u32,
-    ) -> Self {
+    pub fn with_defaults(failure_threshold: u32, cooldown_secs: u64, half_open_max: u32) -> Self {
         Self {
             circuits: BTreeMap::new(),
             default_failure_threshold: failure_threshold,

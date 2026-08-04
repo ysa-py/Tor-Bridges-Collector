@@ -11,8 +11,8 @@
 //! The [`YieldTelemetry`] struct captures a single pipeline run's metrics.
 //! The [`TelemetryAggregator`] tracks run-over-run deltas and flags anomalies.
 
-use std::collections::BTreeMap;
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
 
 /// Reason for a yield change between runs.
 #[derive(Debug, Clone, PartialEq)]
@@ -53,7 +53,10 @@ impl YieldChangeReason {
                 "type": "source_recovery",
                 "source": source,
             }),
-            Self::QualityGateChange { previous_min, current_min } => json!({
+            Self::QualityGateChange {
+                previous_min,
+                current_min,
+            } => json!({
                 "type": "quality_gate_change",
                 "previous_min": previous_min,
                 "current_min": current_min,

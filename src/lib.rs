@@ -73,7 +73,6 @@ pub mod static_bridges;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
-pub mod yield_telemetry;
 /// Production-grade unified collector for the legacy OnionHop.py and vip.py
 /// bridge-list workflows. It is excluded only from the CI-only ARMv7-musl
 /// type-check because that target has no native TLS C toolchain; ARM GNU and
@@ -83,6 +82,7 @@ pub mod tor_collector;
 pub mod torshield_ai_gateway;
 pub mod validate_workflows;
 pub mod vercel_cleanup;
+pub mod yield_telemetry;
 
 /// Cargo features mirroring pytest markers used for selective test execution.
 pub const PYTEST_MARKER_FEATURES: &[&str] = &[
