@@ -655,9 +655,13 @@ impl SmartIranScorer {
         let target = path.unwrap_or(&default_path);
 
         let tier_count = |t: Tier| results.iter().filter(|r| r.tier == t).count();
+        // Dynamic yield: compute ceiling from config instead of hardcoded .take(50)
+        let top_ceiling = crate::config::Config::from_env()
+            .map(|cfg| crate::config::compute_dynamic_ceiling(results.len(), &cfg))
+            .unwrap_or(50);
         let top_50: Vec<Value> = results
             .iter()
-            .take(50)
+            .take(top_ceiling)
             .enumerate()
             .map(|(i, r)| {
                 json!({

@@ -232,12 +232,21 @@ pub fn run(
     });
 
     // 4. Write NIN pack (top 50 survivable bridges with score >= 0.70)
-    let nin_pack: Vec<String> = scored
+    // Dynamic yield: filter by quality gate (score >= 0.70), then apply
+    // dynamic ceiling from config instead of hardcoded .take(50).
+    let filtered: Vec<&Value> = scored
         .iter()
         .filter(|b| {
             let s = b["nin_score"].as_f64().unwrap_or(0.0);
             s >= 0.70
         })
+        .collect();
+    let ceiling = crate::config::Config::from_env()
+        .map(|cfg| crate::config::compute_dynamic_ceiling(filtered.len(), &cfg))
+        .unwrap_or(50);
+    let nin_pack: Vec<String> = filtered
+        .into_iter()
+        .take(ceiling)
         .filter_map(|b| {
             let line = b.get("line").and_then(Value::as_str).unwrap_or("");
             if !line.is_empty() {
@@ -246,7 +255,6 @@ pub fn run(
                 None
             }
         })
-        .take(50)
         .collect();
 
     let nin_pack_path = export_dir.join("iran_nin_pack.txt");
@@ -261,14 +269,18 @@ pub fn run(
         nin_pack_path.display()
     );
 
-    // 5. Write full analysis
+    // 5. Write full analysis — top_bridges uses dynamic ceiling instead of
+    // hardcoded .take(20), scaling with total scored count.
+    let top_bridges_ceiling = crate::config::Config::from_env()
+        .map(|cfg| crate::config::compute_dynamic_ceiling(scored.len(), &cfg))
+        .unwrap_or(20);
     let report = json!({
         "generated_at": chrono::Utc::now().to_rfc3339(),
         "nin_detected": nin_active,
         "international_ok": intl_ok,
         "total_scored": scored.len(),
         "nin_pack_size": nin_pack.len(),
-        "top_bridges": scored.iter().take(20).cloned().collect::<Vec<_>>(),
+        "top_bridges": scored.iter().take(top_bridges_ceiling).cloned().collect::<Vec<_>>(),
     });
     std::fs::write(
         data_dir.join("nin_analysis.json"),

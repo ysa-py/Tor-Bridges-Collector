@@ -762,8 +762,9 @@ pub fn write_markdown_report(
         .count();
     let ooni_unknown = total - ooni_clean - ooni_anomaly;
 
-    // Top-20 working bridges table (composite_score > 0.5).
-    let top20: Vec<&Value> = records
+    // Top working bridges table (composite_score > 0.5) — dynamic yield
+    // replaces hardcoded .take(20), scaling with filtered count.
+    let filtered: Vec<&Value> = records
         .iter()
         .filter(|r| {
             r.get("composite_score")
@@ -771,8 +772,11 @@ pub fn write_markdown_report(
                 .unwrap_or(0.0)
                 > 0.5
         })
-        .take(20)
         .collect();
+    let ceiling = crate::config::Config::from_env()
+        .map(|cfg| crate::config::compute_dynamic_ceiling(filtered.len(), &cfg))
+        .unwrap_or(20);
+    let top20: Vec<&Value> = filtered.into_iter().take(ceiling).collect();
 
     let mut rows: Vec<String> = Vec::with_capacity(top20.len());
     for r in &top20 {

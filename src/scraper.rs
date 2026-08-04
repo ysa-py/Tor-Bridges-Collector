@@ -150,7 +150,12 @@ impl HttpResponse {
 /// Production code uses [`ReqwestHttpFetch`] (gated behind the `network`
 /// Cargo feature); tests substitute a mock implementation that returns
 /// canned responses.
-pub trait HttpFetch {
+///
+/// # Thread Safety
+///
+/// Implementations must be `Send + Sync` to support concurrent fetching
+/// via scoped threads in `sources_torproject::fetch_all_with_client`.
+pub trait HttpFetch: Send + Sync {
     /// Issue a GET request with the given timeout and return the response.
     fn get(&self, url: &str, timeout: Duration) -> Result<HttpResponse, ScraperError>;
 

@@ -244,9 +244,13 @@ pub fn run_main(
 
     tracing::info!("NIN bypass scoring: {} bridges", bridges.len());
 
+    // Dynamic yield: compute ceiling from config instead of hardcoded .take(300)
+    let ceiling = crate::config::Config::from_env()
+        .map(|cfg| crate::config::compute_dynamic_ceiling(bridges.len(), &cfg))
+        .unwrap_or(300);
     let mut results: Vec<Value> = bridges
         .iter()
-        .take(300)
+        .take(ceiling)
         .map(|b| score_for_nin(b, tcp_probe))
         .collect();
     // Python: `results.sort(key=lambda x: x["nin_score"], reverse=True)`
