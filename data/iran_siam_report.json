@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-04T10:00:52.342760+00:00",
+  "generated_at": "2026-08-04T11:17:09.170396+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -5500,6 +5500,29 @@
       },
       "layers_bypassed": 5,
       "port": 6340,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 185.177.207.6:63133 EDEF8A9E6AC0E564B9AE5C43AE8CE8B6C7006A85 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_2_max_evasion"
+      ],
+      "iran_siam_score": 0.7498,
+      "layer_scores": {
+        "L1_packet_length": 0.85,
+        "L2_iat_timing": 0.92,
+        "L3_flow_features": 0.8,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.88,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 5,
+      "port": 63133,
       "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
       "transport": "obfs4"
     },
@@ -35673,11 +35696,11 @@
     "COVERT": 854,
     "DETECTED": 462,
     "PHANTOM": 6,
-    "STEALTH": 268
+    "STEALTH": 269
   },
-  "total_scored": 1590,
+  "total_scored": 1591,
   "transport_summary": {
-    "obfs4": 906,
+    "obfs4": 907,
     "snowflake": 4,
     "vanilla": 462,
     "webtunnel": 218
