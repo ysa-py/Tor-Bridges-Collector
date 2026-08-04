@@ -2,11 +2,11 @@
 
 ## Purpose
 
-`OnionHop.py` and `vip.py` remain in this repository as historical/audit
-references. Their bridge-collection responsibilities are implemented once in
-Rust by the **`tor-bridges-collector`** binary. The collector is additive: it
-does not remove the broader TorShield pipeline, existing bridge output names,
-or established publication checks.
+The legacy `OnionHop.py` and `vip.py` entry points have been retired after
+their bridge-collection responsibilities were merged into the Rust
+**`tor-bridges-collector`** binary. The collector is additive: it does not
+remove the broader TorShield pipeline, existing bridge output names, or
+established publication checks.
 
 The implementation merges the two scripts' distinct behavior:
 
