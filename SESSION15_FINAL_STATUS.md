@@ -3,7 +3,7 @@
 **Date:** 2026-08-04  
 **Branch:** arena/019fccda-tor-bridges-collector  
 **PR:** #200 (https://github.com/ysa-py/Tor-Bridges-Collector/pull/200)  
-**Status:** Phase 2 Implementation Complete, CI Debugging In Progress
+**Status:** ✅ PHASE 2 COMPLETE — ALL CI GREEN
 
 ---
 
@@ -107,38 +107,26 @@ All existing implementations (`ReqwestHttpFetch`, `MockHttp`) already satisfy `S
 
 ## CI Status
 
-### Current Failures
+### ✅ ALL GREEN — Run ID: 30914686965
 
-**Run ID:** 30913163516 (Main CI)
-
-**Failed Jobs:**
-1. **Rust parity tests** — "Parity tests" step (exit code 101)
-2. **Python tooling (3.10, 3.11, 3.12)** — "Rust test smoke" step (exit code 101)
-3. **Test (release)** — "Run Automated Tests" step (exit code 101)
-4. **autonomous-sentinel-validation** — "Validation suite" step (exit code 101)
-
-**Passed Jobs:**
-- ✅ Format check (cargo fmt)
-- ✅ Clippy (cargo clippy)
-- ✅ Cross-compile verification (armv7)
-- ✅ YAML validation
+**All 14 Jobs Passed:**
+- ✅ Security Audit (cargo-binstall + report)
+- ✅ Rust parity tests (Python→Rust migration gate)
 - ✅ Go Build & Lint
-- ✅ Security Audit
+- ✅ Shell (bash -n + shellcheck)
+- ✅ Subpackage profile scanner
+- ✅ Cross-compile verification (armv7-unknown-linux-musleabihf)
+- ✅ Python Quality Check
+- ✅ Test (release)
+- ✅ autonomous-sentinel-validation
+- ✅ YAML validation
+- ✅ Python tooling (3.12)
+- ✅ Python tooling (3.10)
+- ✅ Python tooling (3.11)
 - ✅ Anti-censorship smoke test
 
-### Root Cause Analysis
-
-**Exit code 101** indicates `cargo test` is failing (test assertion failure or panic).
-
-**Likely Causes:**
-1. Test expects specific `.take(n)` behavior that changed
-2. Test expects sequential fetch order (now concurrent)
-3. Test expects specific bridge count that's now dynamic
-
-**Debugging Blocker:**
-- GitHub Actions log API returning EOF errors
-- Cannot retrieve actual test failure messages
-- Cannot run `cargo test` locally (no Rust toolchain in sandbox)
+**Root Cause of Initial Failures:**
+Tests in `src/sources_torproject.rs` expected `TARGETS.len() == 6` and `results.len() == 6`, but TARGETS was expanded to 12 entries. Fixed by updating test assertions to expect 12.
 
 ---
 
@@ -197,9 +185,9 @@ With `DYNAMIC_BRIDGE_YIELD=true` (default) and `MAX_BRIDGES_PER_RUN=10000`:
 - [x] Every static `.take(n)` / `const MAX_*` cap identified in Phase 1 is now driven by dynamic ceiling
 - [x] Source breadth increased (6 → 12 transport×IP combinations)
 - [x] Concurrent fetch implemented (scoped threads)
-- [ ] `export/*.txt` counts before/after reported (requires CI pass + network run)
+- [x] CI verification matrix passes (run 30914686965 — all 14 jobs green)
+- [ ] `export/*.txt` counts before/after reported (requires network run on main)
 - [ ] All Phase 3 features wired (next session)
-- [ ] CI verification matrix passes (currently failing — needs log access to debug)
 - [ ] Self-heal loop demonstrated (Phase 4, next session)
 
 ---
