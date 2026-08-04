@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-08-03T22:37:53Z` · **Archive payload SHA-256:** `1ffeae76c24d04ff28ab4f26e947ae98b9cb00a46132c6c69726571394bf85e6`
+> **Last publication:** `2026-08-04T07:38:10Z` · **Archive payload SHA-256:** `c00360eb663dcb008451b86dc2ba5520a82f76072070c6c443dc6cf5143ab779`
 
 ## Quick use for Iran
 
@@ -15,8 +15,8 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `429` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `252` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `428` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `253` | obfs4-oriented fallback for conventional DPI |
 | [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `1` | WebTunnel candidates |
 | [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `2` | Snowflake capability candidates |
 | [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `3` | NIN/cut-mode priority candidates |
@@ -33,24 +33,6 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 3. Applies the existing Rust DPI, NIN, transport-rotation, and Iran scoring components to produce advisory output sets.
 4. Rebuilds **every required file** in `bridge/`, writes a deterministic ZIP, validates JSON/text inputs, and byte-compares every archive entry to its repository counterpart.
 5. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
-
-## Unified OnionHop + VIP collector
-
-The standalone Rust binary `tor-bridges-collector` merges the historical
-`OnionHop.py` and `vip.py` workflows without removing the broader pipeline. It
-collects pooled BridgeDB/Delta lists, preserves fronted defaults, records
-first-seen and rolling health metadata, and uses transport-specific probes:
-WebSocket `101` for WebTunnel, a real obfs4 SOCKS harness when available, and
-front/broker TLS for Snowflake, meek-azure, and Conjure.
-
-```bash
-cargo build --release --bin tor-bridges-collector
-./target/release/tor-bridges-collector --dry-run --metrics /tmp/tor-bridges.metrics
-```
-
-See [RUST_MIGRATION.md](RUST_MIGRATION.md) for configuration, protocol behavior,
-output names, and CI details. The `--dry-run` flag never changes `bridge/`, the
-README, or ZIP output.
 
 ## Telegram dual persistence
 
