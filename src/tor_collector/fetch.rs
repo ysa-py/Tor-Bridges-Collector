@@ -149,7 +149,7 @@ fn filter_variant(lines: Vec<String>, ipv6: bool) -> Vec<String> {
     deduplicate(
         lines
             .into_iter()
-            .map(clean_output_line)
+            .map(|line| clean_output_line(&line))
             .filter(|line| is_valid_bridge_line(line) && is_ipv6_line(line) == ipv6)
             .collect(),
     )

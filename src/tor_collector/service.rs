@@ -364,7 +364,7 @@ fn stage_lines(staged: &mut BTreeMap<PathBuf, Vec<u8>>, path: PathBuf, lines: &[
 }
 
 fn publish_staged(staged: &BTreeMap<PathBuf, Vec<u8>>, dry_run: bool) -> Result<usize> {
-    let mut changed = 0;
+    let mut changed: usize = 0;
     for (index, (path, bytes)) in staged.iter().enumerate() {
         let is_changed =
             std::fs::read(path).map_or(true, |current| current.as_slice() != bytes.as_slice());
