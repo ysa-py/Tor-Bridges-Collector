@@ -344,14 +344,12 @@ pub fn fetch_all_with_client(client: &dyn HttpFetch) -> Vec<(String, String, Str
             let url = *url;
             let transport = *transport;
             let ip_ver = *ip_ver;
-            let handle = s.spawn(move || {
+            let handle = s.spawn(|| {
                 match fetch_one(client, url, transport, None) {
-                    Ok(lines) => {
-                        lines
-                            .into_iter()
-                            .map(|line| (line, transport.to_string(), ip_ver.to_string()))
-                            .collect::<Vec<_>>()
-                    }
+                    Ok(lines) => lines
+                        .into_iter()
+                        .map(|line| (line, transport.to_string(), ip_ver.to_string()))
+                        .collect::<Vec<_>>(),
                     Err(_) => {
                         // Python: `log.warning(...)` and return empty list for this target.
                         // We silently skip and continue to the next target.
