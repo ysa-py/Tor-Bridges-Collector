@@ -258,7 +258,6 @@ impl BridgeDeduplicator {
     }
 
     /// Get all deduplicated bridges.
-    #[must_use]
     pub fn bridges(&self) -> impl Iterator<Item = &DedupBridge> {
         self.bridges.values()
     }

@@ -69,18 +69,18 @@ impl InjectedTestResult {
 /// Returns a list of test results.
 #[must_use]
 pub fn run_all_injected_tests() -> Vec<InjectedTestResult> {
-    let mut results = Vec::new();
-    results.push(test_corrupted_payload_handling());
-    results.push(test_timeout_handling());
-    results.push(test_invalid_bridge_signatures());
-    results.push(test_source_outage_circuit_breaker());
-    results.push(test_partial_data_loss());
-    results.push(test_circuit_breaker_trip_and_recovery());
-    results.push(test_source_health_quarantine_recovery());
-    results.push(test_dedup_under_mixed_sources());
-    results.push(test_censorship_fusion_under_outage());
-    results.push(test_telemetry_anomaly_detection());
-    results
+    vec![
+        test_corrupted_payload_handling(),
+        test_timeout_handling(),
+        test_invalid_bridge_signatures(),
+        test_source_outage_circuit_breaker(),
+        test_partial_data_loss(),
+        test_circuit_breaker_trip_and_recovery(),
+        test_source_health_quarantine_recovery(),
+        test_dedup_under_mixed_sources(),
+        test_censorship_fusion_under_outage(),
+        test_telemetry_anomaly_detection(),
+    ]
 }
 
 /// Generate a JSON report of all test results.
