@@ -110,16 +110,6 @@ tracing = { workspace = true }
 # the Python `beautifulsoup4` `_parse_html()` function. The pinned version +
 # feature set matches `[workspace.dependencies]`.
 scraper = { workspace = true }
-# `reqwest` is the production HTTP client used by the historical scraper ports
-# and the standalone Tor bridge collector.  It is intentionally available in
-# the default build: the collector is a real network binary, not a mock-only
-# library.  The pinned version + feature set matches `[workspace.dependencies]`.
-reqwest = { workspace = true }
-# Async protocol verification for the standalone collector.  The versions are
-# already present in Cargo.lock through reqwest, keeping the lockfile graph
-# deterministic while allowing direct WebSocket-over-TLS probing.
-tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring", "tls12"] }
-rustls = { workspace = true }
 anyhow = "=1.0.103"
 base64 = "=0.22.1"
 rand = "=0.8.6"
@@ -139,6 +129,21 @@ zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
 # via `Value::Tagged`, exactly like the old custom PyYAML loader shim. The
 # pinned version string matches `[workspace.dependencies]`.
 serde_yaml = { workspace = true }
+
+# The hosted ARMv7-musl CI job is deliberately a Rust type-check, not a
+# deployable collector build. `ring` needs a C cross compiler for that target;
+# keep protocol-TLS dependencies out of this no-link check while retaining the
+# full Rustls/ring collector on every supported runtime target (including ARM
+# GNU). Existing reqwest-based, non-TLS code remains type-checked on ARM-musl.
+[target.'cfg(not(all(target_arch = "arm", target_env = "musl")))'.dependencies]
+reqwest = { workspace = true }
+tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring", "tls12"] }
+rustls = { workspace = true }
+
+[target.'cfg(all(target_arch = "arm", target_env = "musl"))'.dependencies]
+# No TLS backend here: this avoids pulling `ring` into the CI-only ARM-musl
+# check, which has no C toolchain. HTTP-only reqwest APIs still compile.
+reqwest = { version = "=0.12.22", default-features = false, features = ["json", "multipart", "blocking"] }
 
 [features]
 default = []
