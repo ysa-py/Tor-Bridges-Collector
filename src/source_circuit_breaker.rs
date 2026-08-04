@@ -235,11 +235,7 @@ impl SourceCircuitBreakerManager {
 
     /// Create with custom defaults.
     #[must_use]
-    pub fn with_defaults(
-        failure_threshold: u32,
-        cooldown_secs: u64,
-        half_open_max: u32,
-    ) -> Self {
+    pub fn with_defaults(failure_threshold: u32, cooldown_secs: u64, half_open_max: u32) -> Self {
         Self {
             circuits: BTreeMap::new(),
             default_failure_threshold: failure_threshold,
@@ -411,7 +407,7 @@ mod tests {
         let mut circuit = SourceCircuit::with_thresholds("test", 1, Duration::from_millis(1), 2);
         circuit.record_failure();
         std::thread::sleep(Duration::from_millis(5));
-        circuit.allow_request(); // → HalfOpen
+        let _ = circuit.allow_request(); // → HalfOpen
         assert_eq!(circuit.state, SourceCircuitState::HalfOpen);
 
         circuit.record_success();
@@ -424,7 +420,7 @@ mod tests {
         let mut circuit = SourceCircuit::with_thresholds("test", 1, Duration::from_millis(1), 2);
         circuit.record_failure();
         std::thread::sleep(Duration::from_millis(5));
-        circuit.allow_request(); // → HalfOpen
+        let _ = circuit.allow_request(); // → HalfOpen
         circuit.record_failure(); // Probe failed
         assert_eq!(circuit.state, SourceCircuitState::Open);
     }
@@ -478,9 +474,9 @@ mod tests {
     #[test]
     fn success_rate_calculation() {
         let mut circuit = SourceCircuit::new("test");
-        circuit.allow_request();
+        let _ = circuit.allow_request();
         circuit.record_success();
-        circuit.allow_request();
+        let _ = circuit.allow_request();
         circuit.record_failure();
         assert!((circuit.success_rate() - 0.5).abs() < 0.01);
     }

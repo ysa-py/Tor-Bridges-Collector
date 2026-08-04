@@ -38,7 +38,10 @@ fn main() {
         std::process::exit(0);
     } else {
         eprintln!("\n✗ Some self-healing verification tests failed.");
-        eprintln!("Report: {}", serde_json::to_string_pretty(&report).unwrap_or_default());
+        eprintln!(
+            "Report: {}",
+            serde_json::to_string_pretty(&report).unwrap_or_default()
+        );
         std::process::exit(1);
     }
 }

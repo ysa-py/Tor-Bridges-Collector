@@ -72,7 +72,7 @@ etherparse = "=0.18.0"
 indicatif = "=0.17.11"
 console = "=0.15.11"
 owo-colors = "=4.2.2"
-serde_yaml = "=0.9.34+deprecated"
+serde_yaml = "=0.9.34"
 backoff = "=0.4.0"
 tracing = "=0.1.41"
 tracing-subscriber = "=0.3.20"
@@ -209,6 +209,13 @@ path = "tests/bridge_publication.rs"
 [[test]]
 name = "pipeline_binaries_smoke"
 path = "tests/pipeline_binaries_smoke.rs"
+
+# Phase 4 self-healing hook: runs the real `self_heal_verify` binary process
+# (injected-failure recovery suite) inside the cargo test gate, so every CI
+# parity run proves unattended end-to-end failure recovery with exit code 0.
+[[test]]
+name = "self_heal_verify_contract"
+path = "tests/self_heal_verify_contract.rs"
 
 [profile.release]
 opt-level = 3

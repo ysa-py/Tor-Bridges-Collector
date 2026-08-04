@@ -14,8 +14,8 @@
 //! And produces adjusted scores that favor bridges most likely to survive
 //! current Iranian network conditions.
 
+use serde_json::{json, Value};
 use std::collections::BTreeMap;
-use serde_json::{json, Map, Value};
 
 /// Weights for fusing different censorship signals into bridge scores.
 #[derive(Debug, Clone)]
@@ -85,12 +85,14 @@ impl CensorshipFusionScorer {
     /// Set OONI blocking factor for a transport type.
     /// Factor is 0.0 (not blocked) to 1.0 (fully blocked).
     pub fn set_ooni_factor(&mut self, transport: &str, factor: f64) {
-        self.ooni_factors.insert(transport.to_string(), factor.clamp(0.0, 1.0));
+        self.ooni_factors
+            .insert(transport.to_string(), factor.clamp(0.0, 1.0));
     }
 
     /// Set transport survival rate (0.0–1.0).
     pub fn set_transport_survival(&mut self, transport: &str, rate: f64) {
-        self.transport_survival.insert(transport.to_string(), rate.clamp(0.0, 1.0));
+        self.transport_survival
+            .insert(transport.to_string(), rate.clamp(0.0, 1.0));
     }
 
     /// Compute censorship adjustment factor for a transport type.
@@ -108,7 +110,11 @@ impl CensorshipFusionScorer {
         let censorship_score = self.censorship_transport_score(transport);
 
         // Survival component: historical reliability
-        let survival_score = self.transport_survival.get(transport).copied().unwrap_or(0.5);
+        let survival_score = self
+            .transport_survival
+            .get(transport)
+            .copied()
+            .unwrap_or(0.5);
 
         // Reliability component: base reliability (simplified)
         let reliability_score = 0.7;
@@ -150,10 +156,7 @@ impl CensorshipFusionScorer {
         if let Some(obj) = adjusted.as_object_mut() {
             obj.insert("final_score".to_string(), json!(adjusted_score));
             obj.insert("censorship_adjustment".to_string(), json!(adjustment));
-            obj.insert(
-                "censorship_level".to_string(),
-                json!(self.censorship_level),
-            );
+            obj.insert("censorship_level".to_string(), json!(self.censorship_level));
             obj.insert(
                 "ooni_factor".to_string(),
                 json!(self.ooni_factors.get(transport).copied().unwrap_or(0.0)),
@@ -165,6 +168,9 @@ impl CensorshipFusionScorer {
 
     /// Compute censorship-specific score for a transport.
     /// Higher censorship levels favor stealthier transports.
+    // Kept level-major to mirror the documented blocking-tier table;
+    // identical scores across levels are intentional, not copy-paste errors.
+    #[allow(clippy::match_same_arms)]
     fn censorship_transport_score(&self, transport: &str) -> f64 {
         match (self.censorship_level, transport) {
             // Level 1 (low): all transports work
@@ -200,10 +206,22 @@ impl CensorshipFusionScorer {
     /// Get full status as JSON.
     #[must_use]
     pub fn status_json(&self) -> Value {
-        let transports = ["obfs4", "webtunnel", "snowflake", "conjure", "meek", "vanilla"];
+        let transports = [
+            "obfs4",
+            "webtunnel",
+            "snowflake",
+            "conjure",
+            "meek",
+            "vanilla",
+        ];
         let adjustments: BTreeMap<String, f64> = transports
             .iter()
-            .map(|t| (t.to_string(), (self.transport_adjustment(t) * 1000.0).round() / 1000.0))
+            .map(|t| {
+                (
+                    t.to_string(),
+                    (self.transport_adjustment(t) * 1000.0).round() / 1000.0,
+                )
+            })
             .collect();
 
         json!({
@@ -291,10 +309,15 @@ mod tests {
 
     #[test]
     fn ooni_blocking_reduces_adjustment() {
-        let mut scorer = CensorshipFusionScorer::new();
-        scorer.set_ooni_factor("obfs4", 0.9); // 90% blocked
-        let adj = scorer.transport_adjustment("obfs4");
-        assert!(adj < 1.0, "expected <1.0 for 90% blocked, got {adj}");
+        let mut blocked = CensorshipFusionScorer::new();
+        blocked.set_ooni_factor("obfs4", 0.9); // 90% blocked
+        let neutral = CensorshipFusionScorer::new(); // no OONI data → neutral factor
+        let adj_blocked = blocked.transport_adjustment("obfs4");
+        let adj_neutral = neutral.transport_adjustment("obfs4");
+        assert!(
+            adj_blocked < adj_neutral,
+            "blocked ({adj_blocked}) should score below neutral ({adj_neutral})"
+        );
     }
 
     #[test]
@@ -338,7 +361,10 @@ mod tests {
 
         let adjusted = apply_fusion_scoring(&bridges, &scorer);
         // Webtunnel should rank higher after adjustment
-        let t0 = adjusted[0].get("transport").and_then(Value::as_str).unwrap();
+        let t0 = adjusted[0]
+            .get("transport")
+            .and_then(Value::as_str)
+            .unwrap();
         assert_eq!(t0, "webtunnel");
     }
 

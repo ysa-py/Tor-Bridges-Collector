@@ -14,16 +14,15 @@
 //! 6. **Circuit breaker trip** — Source fails repeatedly, triggering CB
 //! 7. **Circuit breaker recovery** — Source recovers after cooldown
 
-use std::collections::BTreeMap;
 use std::time::Duration;
 
 use serde_json::{json, Value};
 
+use crate::bridge_dedup::{BridgeDeduplicator, DedupStrategy};
+use crate::censorship_scorer_fusion::CensorshipFusionScorer;
 use crate::source_circuit_breaker::{SourceCircuitBreakerManager, SourceCircuitState};
 use crate::source_health::SourceHealthTracker;
-use crate::bridge_dedup::{BridgeDeduplicator, DedupStrategy};
-use crate::yield_telemetry::{YieldTelemetry, SourceYieldMetrics, TelemetryAggregator};
-use crate::censorship_scorer_fusion::CensorshipFusionScorer;
+use crate::yield_telemetry::{SourceYieldMetrics, TelemetryAggregator, YieldTelemetry};
 
 /// Result of an injected failure test.
 #[derive(Debug, Clone)]
@@ -70,18 +69,18 @@ impl InjectedTestResult {
 /// Returns a list of test results.
 #[must_use]
 pub fn run_all_injected_tests() -> Vec<InjectedTestResult> {
-    let mut results = Vec::new();
-    results.push(test_corrupted_payload_handling());
-    results.push(test_timeout_handling());
-    results.push(test_invalid_bridge_signatures());
-    results.push(test_source_outage_circuit_breaker());
-    results.push(test_partial_data_loss());
-    results.push(test_circuit_breaker_trip_and_recovery());
-    results.push(test_source_health_quarantine_recovery());
-    results.push(test_dedup_under_mixed_sources());
-    results.push(test_censorship_fusion_under_outage());
-    results.push(test_telemetry_anomaly_detection());
-    results
+    vec![
+        test_corrupted_payload_handling(),
+        test_timeout_handling(),
+        test_invalid_bridge_signatures(),
+        test_source_outage_circuit_breaker(),
+        test_partial_data_loss(),
+        test_circuit_breaker_trip_and_recovery(),
+        test_source_health_quarantine_recovery(),
+        test_dedup_under_mixed_sources(),
+        test_censorship_fusion_under_outage(),
+        test_telemetry_anomaly_detection(),
+    ]
 }
 
 /// Generate a JSON report of all test results.
@@ -228,7 +227,11 @@ fn test_partial_data_loss() -> InjectedTestResult {
     // Add some valid bridges
     dedup.add_bridge("obfs4 1.2.3.4:443 A cert=x", "source-a", 0.9);
     dedup.add_bridge("obfs4 5.6.7.8:443 B cert=y", "source-a", 0.8);
-    dedup.add_bridge("webtunnel [2001:db8::1]:443 C url=https://x", "source-a", 0.7);
+    dedup.add_bridge(
+        "webtunnel [2001:db8::1]:443 C url=https://x",
+        "source-a",
+        0.7,
+    );
 
     // Simulate partial loss: only 2 of 3 sources respond
     dedup.add_bridge("obfs4 1.2.3.4:443 A cert=x", "source-b", 0.85); // Duplicate
@@ -259,7 +262,9 @@ fn test_partial_data_loss() -> InjectedTestResult {
 
 /// Test 6: Circuit breaker trip and recovery.
 fn test_circuit_breaker_trip_and_recovery() -> InjectedTestResult {
-    let mut mgr = SourceCircuitBreakerManager::with_defaults(2, 1, 2); // 1ms cooldown for test
+    // Note: `with_defaults` takes the cooldown in *seconds*; 0s means the
+    // Open → HalfOpen transition happens immediately (no sleep needed).
+    let mut mgr = SourceCircuitBreakerManager::with_defaults(2, 0, 2);
     mgr.register("recovering-source");
 
     // Trip the circuit
@@ -267,10 +272,7 @@ fn test_circuit_breaker_trip_and_recovery() -> InjectedTestResult {
     mgr.record_failure("recovering-source");
     let tripped = mgr.state("recovering-source") == SourceCircuitState::Open;
 
-    // Wait for cooldown
-    std::thread::sleep(Duration::from_millis(5));
-
-    // Probe should be allowed
+    // Probe should be allowed (0s cooldown → immediate HalfOpen transition)
     let probe_allowed = mgr.allow_request("recovering-source");
 
     // Successful probes should close the circuit
@@ -435,7 +437,10 @@ fn test_telemetry_anomaly_detection() -> InjectedTestResult {
 
     let has_anomaly = !anomaly_t.anomalies.is_empty();
     let has_volume_change = anomaly_t.change_reasons.iter().any(|r| {
-        matches!(r, crate::yield_telemetry::YieldChangeReason::UpstreamVolumeChange { .. })
+        matches!(
+            r,
+            crate::yield_telemetry::YieldChangeReason::UpstreamVolumeChange { .. }
+        )
     });
 
     if has_anomaly && has_volume_change {
@@ -486,7 +491,11 @@ mod tests {
     #[test]
     fn corrupted_payload_does_not_crash() {
         let result = test_corrupted_payload_handling();
-        assert!(result.passed, "corrupted payload test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "corrupted payload test failed: {}",
+            result.description
+        );
     }
 
     #[test]
@@ -498,36 +507,60 @@ mod tests {
     #[test]
     fn invalid_signatures_do_not_crash() {
         let result = test_invalid_bridge_signatures();
-        assert!(result.passed, "invalid signatures test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "invalid signatures test failed: {}",
+            result.description
+        );
     }
 
     #[test]
     fn circuit_breaker_trips_correctly() {
         let result = test_source_outage_circuit_breaker();
-        assert!(result.passed, "circuit breaker test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "circuit breaker test failed: {}",
+            result.description
+        );
     }
 
     #[test]
     fn circuit_breaker_recovers() {
         let result = test_circuit_breaker_trip_and_recovery();
-        assert!(result.passed, "circuit breaker recovery test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "circuit breaker recovery test failed: {}",
+            result.description
+        );
     }
 
     #[test]
     fn telemetry_detects_anomalies() {
         let result = test_telemetry_anomaly_detection();
-        assert!(result.passed, "telemetry anomaly test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "telemetry anomaly test failed: {}",
+            result.description
+        );
     }
 
     #[test]
     fn dedup_handles_mixed_sources() {
         let result = test_dedup_under_mixed_sources();
-        assert!(result.passed, "dedup mixed sources test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "dedup mixed sources test failed: {}",
+            result.description
+        );
     }
 
     #[test]
     fn censorship_fusion_promotes_unblocked() {
         let result = test_censorship_fusion_under_outage();
-        assert!(result.passed, "censorship fusion test failed: {}", result.description);
+        assert!(
+            result.passed,
+            "censorship fusion test failed: {}",
+            result.description
+        );
     }
 }

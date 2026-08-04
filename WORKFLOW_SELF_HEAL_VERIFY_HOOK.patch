@@ -1,0 +1,55 @@
+From 7f3c0a1e0c1f0a5ead5c1f0a5ead5c1f0a5ead5c Mon Sep 17 00:00:00 2001
+From: arena-ai-coding-agent <bot@arena.ai>
+Date: Tue, 4 Aug 2026 17:20:00 +0330
+Subject: [PATCH] ci: dedicated self_heal_verify steps in both Rust parity gates
+
+OPTIONAL follow-up: the Phase 4 injected-failure verification is already
+enforced inside the cargo test gate by `tests/self_heal_verify_contract.rs`
+(CARGO_BIN_EXE process-level contract — zero workflow edits required).
+This patch adds explicit, self-describing workflow steps that run the
+binary standalone as well, for operators who want the gate surfaced as its
+own CI step. Apply with: git apply WORKFLOW_SELF_HEAL_VERIFY_HOOK.patch
+---
+ .github/workflows/main-ci.yml     | 8 ++++++++
+ .github/workflows/torshield-ir.yml | 7 +++++++
+ 2 files changed, 15 insertions(+)
+
+diff --git a/.github/workflows/main-ci.yml b/.github/workflows/main-ci.yml
+index 2f0031c..a1b2c3d 100644
+--- a/.github/workflows/main-ci.yml
++++ b/.github/workflows/main-ci.yml
+@@ -107,6 +107,14 @@ jobs:
+       - name: Tests (smart-detection)
+         run: cargo test --features smart-detection
+ 
++      # ── Phase 4 (Session 16): self-healing verification binary ──────────
++      # Runs the injected-failure suite (src/injected_failure_tests.rs) as a
++      # process-level gate: all 10 synthetic upstream failure modes must be
++      # transparently recovered by the source-health, circuit-breaker and
++      # telemetry layers. Exit 0 = verified, exit 1 = gate red.
++      - name: Self-heal injected-failure verification
++        run: cargo run --quiet --bin self_heal_verify
++
+   # ────────────────────────────────────────────────────────────────────────
+   # Source: enforce-profiles.yml. Previously duplicated as a step inside BOTH
+   # lint-and-format and test-release (the same script ran twice per push in
+diff --git a/.github/workflows/torshield-ir.yml b/.github/workflows/torshield-ir.yml
+index 2c2f430..d3d3f8a 100644
+--- a/.github/workflows/torshield-ir.yml
++++ b/.github/workflows/torshield-ir.yml
+@@ -312,6 +312,13 @@ jobs:
+       - name: Release build verification
+         run: cargo build --workspace --release
+ 
++      # ── Phase 4 (Session 16): self-healing verification binary ──────────
++      # Reuses the release artifacts from the previous step; exits non-zero
++      # if any injected upstream failure is not transparently recovered.
++      - name: Self-heal injected-failure verification
++        run: cargo run --quiet --release --bin self_heal_verify
++
+   # ────────────────────────────────────────────────────────────────────────────
+   scrape-and-test:
+     # Full bridge collection + testing pipeline. All stages preserved.
+-- 
+2.54.0
+

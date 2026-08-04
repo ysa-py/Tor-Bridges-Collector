@@ -104,6 +104,12 @@ impl SourceHealthRecord {
     /// - Yield: 25% (higher is better, capped at 100)
     #[must_use]
     pub fn health_score(&self) -> f64 {
+        // No observations yet: assume perfect (neutral) health so newly
+        // registered sources get the benefit of the doubt until measured.
+        if self.total_fetches == 0 {
+            return 1.0;
+        }
+
         let success_component = self.success_rate_ema * 0.5;
 
         // Latency penalty: 0ms = 1.0, 30000ms+ = 0.0
@@ -212,9 +218,9 @@ impl SourceHealthTracker {
     /// Register a source for tracking. Idempotent.
     pub fn register_source(&mut self, source_id: impl Into<String>) {
         let id = source_id.into();
-        self.records.entry(id.clone()).or_insert_with(|| {
-            SourceHealthRecord::new(id)
-        });
+        self.records
+            .entry(id.clone())
+            .or_insert_with(|| SourceHealthRecord::new(id));
     }
 
     /// Record a successful fetch for a source.
@@ -269,24 +275,14 @@ impl SourceHealthTracker {
     pub fn source_weight(&self, source_id: &str) -> f64 {
         self.records
             .get(source_id)
-            .map(|r| {
-                if r.quarantined {
-                    0.0
-                } else {
-                    r.health_score()
-                }
-            })
+            .map(|r| if r.quarantined { 0.0 } else { r.health_score() })
             .unwrap_or(1.0)
     }
 
     /// Get full status report as JSON.
     #[must_use]
     pub fn status_report(&self) -> Value {
-        let sources: Vec<Value> = self
-            .records
-            .values()
-            .map(|r| r.to_json())
-            .collect();
+        let sources: Vec<Value> = self.records.values().map(|r| r.to_json()).collect();
         let quarantined: Vec<&str> = self
             .records
             .values()

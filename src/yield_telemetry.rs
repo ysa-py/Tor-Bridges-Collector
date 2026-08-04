@@ -11,11 +11,11 @@
 //! The [`YieldTelemetry`] struct captures a single pipeline run's metrics.
 //! The [`TelemetryAggregator`] tracks run-over-run deltas and flags anomalies.
 
-use std::collections::BTreeMap;
 use serde_json::{json, Value};
+use std::collections::BTreeMap;
 
 /// Reason for a yield change between runs.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum YieldChangeReason {
     /// Upstream source returned more/fewer bridges.
     UpstreamVolumeChange { source: String, delta: i64 },
@@ -53,7 +53,10 @@ impl YieldChangeReason {
                 "type": "source_recovery",
                 "source": source,
             }),
-            Self::QualityGateChange { previous_min, current_min } => json!({
+            Self::QualityGateChange {
+                previous_min,
+                current_min,
+            } => json!({
                 "type": "quality_gate_change",
                 "previous_min": previous_min,
                 "current_min": current_min,
@@ -257,28 +260,32 @@ impl TelemetryAggregator {
     pub fn analyze(&mut self, telemetry: &mut YieldTelemetry) {
         // Detect source outages and recoveries
         let mut current_sources: BTreeMap<String, usize> = BTreeMap::new();
+        let mut new_reasons: Vec<YieldChangeReason> = Vec::new();
         for metrics in &telemetry.source_metrics {
             current_sources.insert(metrics.source_id.clone(), metrics.bridges_fetched);
 
             if !metrics.success {
                 if self.previous_source_counts.contains_key(&metrics.source_id) {
-                    telemetry.add_reason(YieldChangeReason::SourceOutage {
+                    new_reasons.push(YieldChangeReason::SourceOutage {
                         source: metrics.source_id.clone(),
                     });
                 }
             } else if let Some(&prev) = self.previous_source_counts.get(&metrics.source_id) {
                 if prev == 0 && metrics.bridges_fetched > 0 {
-                    telemetry.add_reason(YieldChangeReason::SourceRecovery {
+                    new_reasons.push(YieldChangeReason::SourceRecovery {
                         source: metrics.source_id.clone(),
                     });
                 } else if metrics.bridges_fetched as i64 != prev as i64 {
                     let delta = metrics.bridges_fetched as i64 - prev as i64;
-                    telemetry.add_reason(YieldChangeReason::UpstreamVolumeChange {
+                    new_reasons.push(YieldChangeReason::UpstreamVolumeChange {
                         source: metrics.source_id.clone(),
                         delta,
                     });
                 }
             }
+        }
+        for reason in new_reasons {
+            telemetry.add_reason(reason);
         }
 
         // Detect anomalies (exported count > 2x or < 0.5x rolling average)

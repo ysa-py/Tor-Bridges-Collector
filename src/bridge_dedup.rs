@@ -26,7 +26,7 @@ use regex::Regex;
 use serde_json::{json, Value};
 
 /// Default subnet mask for IPv4 proximity detection (/24 = 256 addresses).
-const DEFAULT_SUBNET_MASK: u8 = 24;
+pub const DEFAULT_SUBNET_MASK: u8 = 24;
 
 /// Default port similarity threshold (ports within this range are "similar").
 const DEFAULT_PORT_THRESHOLD: u16 = 10;
@@ -81,7 +81,7 @@ impl DedupBridge {
 }
 
 /// Fingerprint for fast duplicate detection.
-#[derive(Debug, Clone, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 struct BridgeFingerprint {
     ip: Option<Ipv4Addr>,
     port: u16,
@@ -142,12 +142,7 @@ impl BridgeDeduplicator {
     }
 
     /// Add a bridge line from a source. Returns true if it was a new unique bridge.
-    pub fn add_bridge(
-        &mut self,
-        bridge_line: &str,
-        source: &str,
-        quality_score: f64,
-    ) -> bool {
+    pub fn add_bridge(&mut self, bridge_line: &str, source: &str, quality_score: f64) -> bool {
         self.stats.total_input += 1;
 
         let parsed = parse_bridge_line(bridge_line);
@@ -199,7 +194,8 @@ impl BridgeDeduplicator {
 
         // New unique bridge
         let canonical = bridge_line.to_string();
-        self.exact_index.insert(fingerprint.clone(), canonical.clone());
+        self.exact_index
+            .insert(fingerprint.clone(), canonical.clone());
 
         if let Some(subnet) = fingerprint.subnet_24 {
             self.subnet_index
@@ -262,7 +258,6 @@ impl BridgeDeduplicator {
     }
 
     /// Get all deduplicated bridges.
-    #[must_use]
     pub fn bridges(&self) -> impl Iterator<Item = &DedupBridge> {
         self.bridges.values()
     }
@@ -518,7 +513,10 @@ mod tests {
         let fp = extract_fingerprint(
             "obfs4 1.2.3.4:443 ABCDEF1234567890ABCDEF1234567890ABCDEF12 cert=xyz",
         );
-        assert_eq!(fp, Some("ABCDEF1234567890ABCDEF1234567890ABCDEF12".to_string()));
+        assert_eq!(
+            fp,
+            Some("ABCDEF1234567890ABCDEF1234567890ABCDEF12".to_string())
+        );
     }
 
     #[test]

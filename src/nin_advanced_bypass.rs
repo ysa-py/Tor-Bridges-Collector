@@ -13,6 +13,7 @@
 
 use std::collections::HashSet;
 use std::path::Path;
+use std::time::{Duration, Instant};
 
 use regex::Regex;
 use serde_json::{json, Value};
@@ -137,6 +138,48 @@ impl TcpProbe for StdTcpProbe {
     }
 }
 
+/// Offline TCP probe: reports every endpoint as unreachable without any
+/// network I/O. Used when the live-probe budget (see
+/// [`probe_budget_from_env`]) is exhausted — on a slow or blackholed network
+/// every real probe would burn its full timeout — and by tests that must not
+/// touch the network. The scores it yields are identical to what live probes
+/// return on a fully filtered network, so results stay deterministic.
+pub struct NoProbe;
+
+impl TcpProbe for NoProbe {
+    fn is_reachable(&self, _host: &str, _port: u16, _timeout_secs: f64) -> bool {
+        false
+    }
+}
+
+/// Default total wall-clock budget (seconds) for live TCP probes during NIN
+/// scoring. Chosen well below the 20-minute CI step timeout so the stage
+/// always completes even when every probe times out. Override with the
+/// `NIN_ADVANCED_PROBE_BUDGET_SECS` env var; `0` disables live probing.
+pub const DEFAULT_PROBE_BUDGET_SECS: u64 = 600;
+
+/// Resolve the live-probe budget from `NIN_ADVANCED_PROBE_BUDGET_SECS`.
+/// Unset values fall back to [`DEFAULT_PROBE_BUDGET_SECS`]; unparseable
+/// values log a warning (never silently ignored) and also fall back.
+#[must_use]
+pub fn probe_budget_from_env() -> Duration {
+    let raw = match std::env::var("NIN_ADVANCED_PROBE_BUDGET_SECS") {
+        Ok(value) => value,
+        Err(_) => return Duration::from_secs(DEFAULT_PROBE_BUDGET_SECS),
+    };
+    match raw.trim().parse::<u64>() {
+        Ok(secs) => Duration::from_secs(secs),
+        Err(_) => {
+            tracing::warn!(
+                "invalid NIN_ADVANCED_PROBE_BUDGET_SECS={} — using default budget of {}s",
+                raw,
+                DEFAULT_PROBE_BUDGET_SECS,
+            );
+            Duration::from_secs(DEFAULT_PROBE_BUDGET_SECS)
+        }
+    }
+}
+
 /// Score a bridge for Iran NIN survivability. Mirrors `score_for_nin`.
 ///
 /// Returns a JSON object with keys: `bridge_line`, `transport`, `host`,
@@ -221,11 +264,36 @@ pub fn score_for_nin(bridge_line: &str, tcp_probe: &dyn TcpProbe) -> Value {
 /// `data/nin_advanced_report.json` and `export/nin_cut_bridges.txt`.
 ///
 /// I/O paths are injectable via `bridge_dir`, `data_dir`, `export_dir`.
+///
+/// Live TCP probing is bounded by a wall-clock budget (see
+/// [`probe_budget_from_env`], default [`DEFAULT_PROBE_BUDGET_SECS`] seconds)
+/// so a blackholed runner network can never stall the stage past its CI step
+/// timeout; once the budget is spent, remaining candidates are scored with
+/// the offline [`NoProbe`].
 pub fn run_main(
     bridge_dir: &Path,
     data_dir: &Path,
     export_dir: &Path,
     tcp_probe: &dyn TcpProbe,
+) -> Result<(), std::io::Error> {
+    run_main_with_probe_budget(
+        bridge_dir,
+        data_dir,
+        export_dir,
+        tcp_probe,
+        probe_budget_from_env(),
+    )
+}
+
+/// [`run_main`] with an explicit live-probe budget instead of the
+/// environment-resolved one. Used directly by tests; production code goes
+/// through [`run_main`].
+pub fn run_main_with_probe_budget(
+    bridge_dir: &Path,
+    data_dir: &Path,
+    export_dir: &Path,
+    tcp_probe: &dyn TcpProbe,
+    probe_budget: Duration,
 ) -> Result<(), std::io::Error> {
     let test_json = bridge_dir.join("bridge_list_for_testing.json");
     if !test_json.exists() {
@@ -248,11 +316,38 @@ pub fn run_main(
     let ceiling = crate::config::Config::from_env()
         .map(|cfg| crate::config::compute_dynamic_ceiling(bridges.len(), &cfg))
         .unwrap_or(300);
-    let mut results: Vec<Value> = bridges
-        .iter()
-        .take(ceiling)
-        .map(|b| score_for_nin(b, tcp_probe))
-        .collect();
+
+    // Zero-error guardrail: bound the wall-clock time spent on live TCP
+    // probes. Each probe may block up to its full timeout, so on a blackholed
+    // network a serial probe loop over hundreds of bridges can overrun the CI
+    // step timeout and get the whole job killed. Once the budget is spent,
+    // remaining candidates are scored instantly with the offline `NoProbe` —
+    // exactly what live probes would return on such a network — so the
+    // report still covers every candidate and the stage always completes.
+    let probe_start = Instant::now();
+    let offline_probe = NoProbe;
+    let mut probed_count: usize = 0;
+    let mut probe_budget_exhausted = false;
+    let mut results: Vec<Value> = Vec::with_capacity(ceiling.min(bridges.len()));
+    for bridge_line in bridges.iter().take(ceiling) {
+        if !probe_budget_exhausted && probe_start.elapsed() < probe_budget {
+            probed_count += 1;
+            results.push(score_for_nin(bridge_line, tcp_probe));
+        } else {
+            if !probe_budget_exhausted {
+                probe_budget_exhausted = true;
+                tracing::warn!(
+                    "NIN probe budget of {}s exhausted after {} live probes — scoring remaining \
+                     bridges offline (NoProbe)",
+                    probe_budget.as_secs(),
+                    probed_count,
+                );
+            }
+            results.push(score_for_nin(bridge_line, &offline_probe));
+        }
+    }
+    let candidates_scored = results.len();
+    let probe_elapsed_secs = (probe_start.elapsed().as_secs_f64() * 1000.0).round() / 1000.0;
     // Python: `results.sort(key=lambda x: x["nin_score"], reverse=True)`
     // Python's sort is stable; Rust's `sort_by` is also stable.
     results.sort_by(|a, b| {
@@ -264,7 +359,19 @@ pub fn run_main(
     std::fs::create_dir_all(data_dir)?;
     std::fs::create_dir_all(export_dir)?;
 
-    let report = json!({ "nin_bridge_scores": results });
+    // Additive metadata: probe-budget bookkeeping beside the unchanged
+    // `nin_bridge_scores` payload, so downstream consumers keep working.
+    let report = json!({
+        "nin_bridge_scores": results,
+        "nin_probe_metadata": {
+            "candidates_input": bridges.len(),
+            "candidates_scored": candidates_scored,
+            "candidates_probed": probed_count,
+            "probe_budget_secs": probe_budget.as_secs(),
+            "probe_budget_exhausted": probe_budget_exhausted,
+            "probe_elapsed_secs": probe_elapsed_secs,
+        },
+    });
     std::fs::write(
         data_dir.join("nin_advanced_report.json"),
         serde_json::to_string_pretty(&report)?,
@@ -449,5 +556,123 @@ mod tests {
         );
         // All four bonuses apply → 1.05 → clamped to 1.0
         assert_eq!(result["nin_score"], 1.0);
+    }
+
+    struct CountingProbe(std::sync::atomic::AtomicUsize);
+
+    impl TcpProbe for CountingProbe {
+        fn is_reachable(&self, _h: &str, _p: u16, _t: f64) -> bool {
+            self.0.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            true
+        }
+    }
+
+    impl CountingProbe {
+        fn count(&self) -> usize {
+            self.0.load(std::sync::atomic::Ordering::SeqCst)
+        }
+    }
+
+    fn budget_run_fixture(tag: &str) -> (std::path::PathBuf, Vec<String>) {
+        let pid = std::process::id();
+        let run_dir = std::env::temp_dir().join(format!("nin_budget_{tag}_{pid}"));
+        let bridge_dir = run_dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).unwrap();
+        let bridges: Vec<String> = (0..25)
+            .map(|i| format!("obfs4 10.0.0.{i}:443 cert=abc iat-mode=2"))
+            .collect();
+        std::fs::write(
+            bridge_dir.join("bridge_list_for_testing.json"),
+            serde_json::to_string(&bridges).unwrap(),
+        )
+        .unwrap();
+        (run_dir, bridges)
+    }
+
+    fn read_report(run_dir: &std::path::Path) -> serde_json::Value {
+        let report_path = run_dir.join("data/nin_advanced_report.json");
+        let body = std::fs::read_to_string(report_path).unwrap();
+        serde_json::from_str(&body).unwrap()
+    }
+
+    #[test]
+    fn no_probe_always_reports_unreachable() {
+        assert!(!NoProbe.is_reachable("1.2.3.4", 443, 3.0));
+    }
+
+    #[test]
+    fn probe_budget_from_env_defaults_without_override() {
+        // CI never sets NIN_ADVANCED_PROBE_BUDGET_SECS, so the default applies.
+        if std::env::var("NIN_ADVANCED_PROBE_BUDGET_SECS").is_err() {
+            assert_eq!(
+                probe_budget_from_env(),
+                Duration::from_secs(DEFAULT_PROBE_BUDGET_SECS)
+            );
+        }
+    }
+
+    #[test]
+    fn exhausted_probe_budget_still_scores_every_candidate() {
+        let (run_dir, bridges) = budget_run_fixture("zero");
+        // A zero budget forces the offline path from the very first bridge:
+        // this is the CI-resilience regression test for the stage that used
+        // to be SIGKILLed by its step timeout on a blackholed network.
+        let probe = CountingProbe(std::sync::atomic::AtomicUsize::new(0));
+        run_main_with_probe_budget(
+            &run_dir.join("bridge"),
+            &run_dir.join("data"),
+            &run_dir.join("export"),
+            &probe,
+            Duration::ZERO,
+        )
+        .unwrap();
+
+        // No live probe ever ran...
+        assert_eq!(probe.count(), 0);
+
+        // ...but every candidate was still scored, sorted, and exported.
+        let report = read_report(&run_dir);
+        let scores = report["nin_bridge_scores"].as_array().unwrap();
+        assert_eq!(scores.len(), bridges.len());
+        assert!(scores.iter().all(|r| r["nin_score"] == 0.25));
+        assert!(scores.iter().all(|r| r["tcp_reachable"] == false));
+        let meta = &report["nin_probe_metadata"];
+        assert_eq!(meta["candidates_input"], 25);
+        assert_eq!(meta["candidates_scored"], 25);
+        assert_eq!(meta["candidates_probed"], 0);
+        assert_eq!(meta["probe_budget_secs"], 0);
+        assert_eq!(meta["probe_budget_exhausted"], true);
+
+        let _ = std::fs::remove_dir_all(&run_dir);
+    }
+
+    #[test]
+    fn live_probes_used_while_budget_is_open() {
+        let (run_dir, bridges) = budget_run_fixture("open");
+        let probe = CountingProbe(std::sync::atomic::AtomicUsize::new(0));
+        run_main_with_probe_budget(
+            &run_dir.join("bridge"),
+            &run_dir.join("data"),
+            &run_dir.join("export"),
+            &probe,
+            Duration::from_secs(600),
+        )
+        .unwrap();
+
+        // Every candidate received its live probe (instant mock, budget open).
+        assert_eq!(probe.count(), bridges.len());
+
+        let report = read_report(&run_dir);
+        let scores = report["nin_bridge_scores"].as_array().unwrap();
+        assert_eq!(scores.len(), bridges.len());
+        // obfs4 (0.10) + NIN-open port 443 (0.15) + tcp_alive (0.10) = 0.35
+        assert!(scores.iter().all(|r| r["nin_score"] == 0.35));
+        assert!(scores.iter().all(|r| r["tcp_reachable"] == true));
+        let meta = &report["nin_probe_metadata"];
+        assert_eq!(meta["candidates_probed"], 25);
+        assert_eq!(meta["probe_budget_secs"], 600);
+        assert_eq!(meta["probe_budget_exhausted"], false);
+
+        let _ = std::fs::remove_dir_all(&run_dir);
     }
 }
