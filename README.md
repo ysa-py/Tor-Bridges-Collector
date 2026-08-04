@@ -34,6 +34,24 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 4. Rebuilds **every required file** in `bridge/`, writes a deterministic ZIP, validates JSON/text inputs, and byte-compares every archive entry to its repository counterpart.
 5. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
 
+## Unified OnionHop + VIP collector
+
+The standalone Rust binary `tor-bridges-collector` merges the historical
+`OnionHop.py` and `vip.py` workflows without removing the broader pipeline. It
+collects pooled BridgeDB/Delta lists, preserves fronted defaults, records
+first-seen and rolling health metadata, and uses transport-specific probes:
+WebSocket `101` for WebTunnel, a real obfs4 SOCKS harness when available, and
+front/broker TLS for Snowflake, meek-azure, and Conjure.
+
+```bash
+cargo build --release --bin tor-bridges-collector
+./target/release/tor-bridges-collector --dry-run --metrics /tmp/tor-bridges.metrics
+```
+
+See [RUST_MIGRATION.md](RUST_MIGRATION.md) for configuration, protocol behavior,
+output names, and CI details. The `--dry-run` flag never changes `bridge/`, the
+README, or ZIP output.
+
 ## Telegram dual persistence
 
 Telegram delivery uses a bot token and distributes a bridge inventory outside GitHub, so it requires explicit configuration; once configured it is fully automatic.

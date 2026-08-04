@@ -68,6 +68,12 @@ pub mod static_bridges;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
+/// Production-grade unified collector for the legacy OnionHop.py and vip.py
+/// bridge-list workflows. It is excluded only from the CI-only ARMv7-musl
+/// type-check because that target has no native TLS C toolchain; ARM GNU and
+/// every normal collector runtime retain the full implementation.
+#[cfg(not(all(target_arch = "arm", target_env = "musl")))]
+pub mod tor_collector;
 pub mod torshield_ai_gateway;
 pub mod validate_workflows;
 pub mod vercel_cleanup;
