@@ -1,2 +1,16 @@
 # Workspace Cargo configuration intentionally applies no global lint caps.
 # CI runs Clippy with `-D warnings`, so warnings remain visible and blocking.
+#
+# `ring` (used by Rustls and reqwest) compiles a small C/assembly component.
+# GitHub's ARMv7 *check* runner has a Rust std target but no
+# `arm-linux-musleabihf-gcc`; use the hosted runner's clang/llvm tools for that
+# no-link validation. The variables are target-specific, so native builds keep
+# their normal system compiler.
+[target.armv7-unknown-linux-musleabihf]
+linker = "clang"
+ar = "llvm-ar"
+
+[env]
+CC_armv7_unknown_linux_musleabihf = { value = "clang" }
+AR_armv7_unknown_linux_musleabihf = { value = "llvm-ar" }
+CFLAGS_armv7_unknown_linux_musleabihf = { value = "--target=armv7-unknown-linux-musleabihf" }
