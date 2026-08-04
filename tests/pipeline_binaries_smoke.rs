@@ -136,6 +136,39 @@ fn unified_collector_dry_run_never_writes_publication_files() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// A real-network smoke run. Every source and protocol failure is recoverable
+/// by design, so this asserts process resilience rather than assuming a public
+/// bridge stays reachable from every CI region. It proves the standalone binary
+/// actually performs its live BridgeDB/Delta/front-domain code paths while
+/// `--dry-run` protects repository output.
+#[test]
+fn unified_collector_live_network_dry_run_completes() {
+    let dir = scratch("unified-collector-live-network");
+    let output = Command::new(env!("CARGO_BIN_EXE_tor-bridges-collector"))
+        .current_dir(&dir)
+        .env("BRIDGEDB_BASE_URL", "https://bridges.torproject.org/bridges")
+        .env(
+            "DELTA_RAW_BASE_URL",
+            "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge",
+        )
+        .env("CONNECT_TIMEOUT", "2")
+        .env("MAX_RETRIES", "1")
+        .env("FETCH_RETRIES", "1")
+        .args([
+            "--dry-run",
+            "--timeout-seconds",
+            "2",
+            "--retry-count",
+            "1",
+            "--max-test-per-list",
+            "1",
+        ])
+        .output()
+        .unwrap_or_else(|error| panic!("failed to spawn live unified collector: {error}"));
+    assert_success("tor-bridges-collector live --dry-run", &output);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[test]
 fn pipeline_lists_every_stage() {
     let dir = scratch("list");
