@@ -18,7 +18,7 @@
 //!
 //! [`BridgeDeduplicator`] is `Send + Sync` and can be shared via `Arc<Mutex<_>>`.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeMap, BTreeSet};
 use std::net::Ipv4Addr;
 use std::sync::{Arc, Mutex};
 
