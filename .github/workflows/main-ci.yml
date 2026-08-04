@@ -441,12 +441,21 @@ jobs:
       - name: Restore/build Rust cache (Swatinem)
         uses: Swatinem/rust-cache@v2
 
-      - name: Add ARMv7 target
+      # ring/rustls compile a small C/assembly component even for `cargo
+      # check`; installing the ARM compiler fixes the old false assertion that
+      # no linker/C toolchain was needed. We still do not link a runnable ARM
+      # executable, so this remains a deterministic type/build verification.
+      - name: Add ARMv7 target and C compiler for ring
         run: |
           set -euo pipefail
           rustup target add armv7-unknown-linux-musleabihf
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-linux-gnueabihf
 
       - name: Run deterministic ARMv7 cargo check
+        env:
+          CC_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-gcc
+          AR_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-ar
         run: |
           set -euo pipefail
           cargo check --target armv7-unknown-linux-musleabihf --workspace --release
