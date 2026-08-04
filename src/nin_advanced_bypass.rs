@@ -604,7 +604,10 @@ mod tests {
     fn probe_budget_from_env_defaults_without_override() {
         // CI never sets NIN_ADVANCED_PROBE_BUDGET_SECS, so the default applies.
         if std::env::var("NIN_ADVANCED_PROBE_BUDGET_SECS").is_err() {
-            assert_eq!(probe_budget_from_env(), Duration::from_secs(DEFAULT_PROBE_BUDGET_SECS));
+            assert_eq!(
+                probe_budget_from_env(),
+                Duration::from_secs(DEFAULT_PROBE_BUDGET_SECS)
+            );
         }
     }
 
