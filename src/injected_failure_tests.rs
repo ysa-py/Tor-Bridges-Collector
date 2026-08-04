@@ -501,11 +501,7 @@ mod tests {
     #[test]
     fn timeout_does_not_crash() {
         let result = test_timeout_handling();
-        assert!(
-            result.passed,
-            "timeout test failed: {}",
-            result.description
-        );
+        assert!(result.passed, "timeout test failed: {}", result.description);
     }
 
     #[test]
