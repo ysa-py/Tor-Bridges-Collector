@@ -1,8 +1,8 @@
 diff --git a/.github/workflows/main-ci.yml b/.github/workflows/main-ci.yml
-index 3cdcb07..0ef6cc8 100644
+index 3cdcb07..212b2fd 100644
 --- a/.github/workflows/main-ci.yml
 +++ b/.github/workflows/main-ci.yml
-@@ -441,12 +441,21 @@ jobs:
+@@ -441,12 +441,23 @@ jobs:
        - name: Restore/build Rust cache (Swatinem)
          uses: Swatinem/rust-cache@v2
  
@@ -22,6 +22,8 @@ index 3cdcb07..0ef6cc8 100644
 +        env:
 +          CC_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-gcc
 +          AR_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-ar
++          # Override the local clang-only fallback flag from .cargo/config.toml.
++          CFLAGS_armv7_unknown_linux_musleabihf: ''
          run: |
            set -euo pipefail
            cargo check --target armv7-unknown-linux-musleabihf --workspace --release
