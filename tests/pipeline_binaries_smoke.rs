@@ -146,7 +146,10 @@ fn unified_collector_live_network_dry_run_completes() {
     let dir = scratch("unified-collector-live-network");
     let output = Command::new(env!("CARGO_BIN_EXE_tor-bridges-collector"))
         .current_dir(&dir)
-        .env("BRIDGEDB_BASE_URL", "https://bridges.torproject.org/bridges")
+        .env(
+            "BRIDGEDB_BASE_URL",
+            "https://bridges.torproject.org/bridges",
+        )
         .env(
             "DELTA_RAW_BASE_URL",
             "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge",
