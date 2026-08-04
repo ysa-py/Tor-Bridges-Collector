@@ -90,6 +90,53 @@ fn assert_success(label: &str, output: &std::process::Output) {
 }
 
 #[test]
+fn unified_collector_help_exits_cleanly() {
+    let dir = scratch("unified-collector-help");
+    let output = run(
+        env!("CARGO_BIN_EXE_tor-bridges-collector"),
+        &dir,
+        &["--help"],
+    );
+    assert_success("tor-bridges-collector --help", &output);
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("--dry-run"));
+    assert!(stdout.contains("--metrics"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unified_collector_dry_run_never_writes_publication_files() {
+    let dir = scratch("unified-collector-dry-run");
+    let output = Command::new(env!("CARGO_BIN_EXE_tor-bridges-collector"))
+        .current_dir(&dir)
+        // Unreachable local endpoints make this deterministic while still
+        // exercising the async fetch/retry, history, test, README, ZIP, and
+        // dry-run orchestration paths. Fronted probes are bounded to one
+        // second and all per-list probes are capped at one candidate.
+        .env("BRIDGEDB_BASE_URL", "http://127.0.0.1:9/bridges")
+        .env("DELTA_RAW_BASE_URL", "http://127.0.0.1:9/bridge")
+        .env("CONNECT_TIMEOUT", "1")
+        .env("MAX_RETRIES", "1")
+        .env("FETCH_RETRIES", "1")
+        .args([
+            "--dry-run",
+            "--timeout-seconds",
+            "1",
+            "--retry-count",
+            "1",
+            "--max-test-per-list",
+            "1",
+        ])
+        .output()
+        .unwrap_or_else(|error| panic!("failed to spawn unified collector: {error}"));
+    assert_success("tor-bridges-collector --dry-run", &output);
+    assert!(!dir.join("README.md").exists());
+    assert!(!dir.join("bridge/bridge_history.json").exists());
+    assert!(!dir.join("bridge/tor_bridges.zip").exists());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn pipeline_lists_every_stage() {
     let dir = scratch("list");
     let output = run(env!("CARGO_BIN_EXE_pipeline"), &dir, &["--list"]);
