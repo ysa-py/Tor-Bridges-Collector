@@ -60,7 +60,10 @@ impl SourceFetcher {
                     if !lines.is_empty() {
                         return Ok(lines);
                     }
-                    last_error = Some(anyhow!("BridgeDB returned no {transport} {ip} lines", ip = if ipv6 { "IPv6" } else { "IPv4" }));
+                    last_error = Some(anyhow!(
+                        "BridgeDB returned no {transport} {ip} lines",
+                        ip = if ipv6 { "IPv6" } else { "IPv4" }
+                    ));
                 }
                 Err(error) => last_error = Some(error),
             }

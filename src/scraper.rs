@@ -842,15 +842,15 @@ fn collect_moat_values(
             if let Some(bridges) = object.get("bridges") {
                 collect_moat_values(bridges, hint, results, seen);
             }
-            let explicit_type = object
-                .get("type")
-                .and_then(Value::as_str)
-                .or(hint);
+            let explicit_type = object.get("type").and_then(Value::as_str).or(hint);
             if let Some(lines) = object.get("bridge_strings") {
                 collect_moat_values(lines, explicit_type, results, seen);
             }
             for (key, child) in object {
-                if matches!(key.as_str(), "settings" | "bridges" | "bridge_strings" | "type") {
+                if matches!(
+                    key.as_str(),
+                    "settings" | "bridges" | "bridge_strings" | "type"
+                ) {
                     continue;
                 }
                 // Top-level transport maps (`obfs4`, `webTunnel`, `meek`)
