@@ -281,6 +281,14 @@
       "transport": "vanilla"
     },
     {
+      "ip": "150.241.65.244",
+      "port": 8443,
+      "raw": "Bridge 150.241.65.244:8443 8A6F30BED9218B953490402394FCAD3837115795",
+      "sni": "",
+      "tier": "RED",
+      "transport": "vanilla"
+    },
+    {
       "ip": "152.53.129.122",
       "port": 465,
       "raw": "Bridge 152.53.129.122:465 9F4A20F8061AE2C1B76A01B616A115F84F7AE0B5",
@@ -697,6 +705,14 @@
       "transport": "vanilla"
     },
     {
+      "ip": "212.58.118.125",
+      "port": 7878,
+      "raw": "Bridge 212.58.118.125:7878 B51D2F7D306DE3031C7B6D649B5DDBE65BD49A24",
+      "sni": "",
+      "tier": "RED",
+      "transport": "vanilla"
+    },
+    {
       "ip": "213.199.35.150",
       "port": 993,
       "raw": "Bridge 213.199.35.150:993 503868C118AB3582C643D6D0DEC0044254DAE0AC",
@@ -844,6 +860,14 @@
       "ip": "45.77.204.114",
       "port": 9090,
       "raw": "Bridge 45.77.204.114:9090 B81618128521C5444C7482C7E2653E9C3DE72984",
+      "sni": "",
+      "tier": "RED",
+      "transport": "vanilla"
+    },
+    {
+      "ip": "45.84.59.11",
+      "port": 18082,
+      "raw": "Bridge 45.84.59.11:18082 D912F551C1551D9A309AB8EB77A7E7F9C585FB57",
       "sni": "",
       "tier": "RED",
       "transport": "vanilla"
@@ -2633,14 +2657,6 @@
       "transport": "obfs4"
     },
     {
-      "ip": "5.83.147.191",
-      "port": 8080,
-      "raw": "obfs4 5.83.147.191:8080 84DE70C3735D1F2D3D8142AAAD785521750310D2 cert=1EAtrN2FDSjOvdC/kznspxRnQegwZGnJ4Wk74L9Zs/wU/KRclyNn/Et10UGNC+fv0wGCUQ iat-mode=0",
-      "sni": "",
-      "tier": "YELLOW",
-      "transport": "obfs4"
-    },
-    {
       "ip": "51.159.59.157",
       "port": 9003,
       "raw": "obfs4 51.159.59.157:9003 85794367DBECF3B3933312C6E0641AA344FA0651 cert=9hrd0JIpvg7e1c6dJY/FAJAi3f1D8SGJFyU/dAVUM7wGVkfYdDQrNqn4UfjDTqh3/xU0Ig iat-mode=0",
@@ -2836,6 +2852,14 @@
       "ip": "73.24.147.174",
       "port": 37399,
       "raw": "obfs4 73.24.147.174:37399 82107A65941E4719DD7C2CD7B56CB4A47A8D7FFC cert=oVfaidTXXkNzLwGqyp1nOw8cZTwYe1uuE6AWcckOEnVoojU9l+ot+ujko81dKzOfS5wkbw iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
+      "ip": "74.208.183.104",
+      "port": 46396,
+      "raw": "obfs4 74.208.183.104:46396 836E0FBF30228326555C6D483CE05FF2C9DBDB0C cert=GVzYnaq/9YmAkZJzkFeoBg2St6sQ0uogucBUT+ZE22Ad/FaABbqunulB5FmTb6reevP8SA iat-mode=0",
       "sni": "",
       "tier": "RED",
       "transport": "obfs4"
@@ -3427,16 +3451,16 @@
     {
       "ip": "",
       "port": 0,
-      "raw": "webtunnel DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
-      "sni": "coellen.xyz",
+      "raw": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+      "sni": "vika7.space",
       "tier": "YELLOW",
       "transport": "webtunnel"
     },
     {
       "ip": "",
       "port": 0,
-      "raw": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
-      "sni": "vika7.space",
+      "raw": "webtunnel 88C9B6F63D50B63FC5E1DE2F5423FCDA2C0AC5EB url=https://vault.005184.xyz/e3QD38jnqsG3jzcfa8NA6ar9 ver=0.0.3",
+      "sni": "vault.005184.xyz",
       "tier": "YELLOW",
       "transport": "webtunnel"
     },
@@ -3451,8 +3475,8 @@
     {
       "ip": "",
       "port": 0,
-      "raw": "webtunnel 88C9B6F63D50B63FC5E1DE2F5423FCDA2C0AC5EB url=https://vault.005184.xyz/e3QD38jnqsG3jzcfa8NA6ar9 ver=0.0.3",
-      "sni": "vault.005184.xyz",
+      "raw": "webtunnel DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
+      "sni": "coellen.xyz",
       "tier": "YELLOW",
       "transport": "webtunnel"
     },
@@ -5206,10 +5230,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-05T17:08:40.038148+00:00",
+  "generated_at": "2026-08-05T17:49:02.268949+00:00",
   "green_count": 5,
-  "red_count": 349,
+  "red_count": 353,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 650,
-  "yellow_count": 296
+  "total_bridges": 653,
+  "yellow_count": 295
 }
