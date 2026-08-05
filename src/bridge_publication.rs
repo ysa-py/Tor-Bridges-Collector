@@ -488,7 +488,9 @@ fn record_publication_fallback(
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
         .filter(Value::is_object)
         .unwrap_or_else(|| json!({"activations": []}));
-    let Some(object) = document.as_object_mut() else { return };
+    let Some(object) = document.as_object_mut() else {
+        return;
+    };
     let list = object
         .entry("activations")
         .or_insert_with(|| Value::Array(Vec::new()));

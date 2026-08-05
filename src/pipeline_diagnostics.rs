@@ -485,21 +485,13 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
             || lower.contains("empty_200")
             || lower.contains("no bridge lines"))
     {
-        return Some((
-            AnomalyKind::MoatEmpty,
-            Severity::Error,
-            trimmed.to_string(),
-        ));
+        return Some((AnomalyKind::MoatEmpty, Severity::Error, trimmed.to_string()));
     }
     if lower.contains("no usable source")
         || lower.contains("source discovery gap")
         || lower.contains("source outage")
     {
-        return Some((
-            AnomalyKind::SourceGap,
-            Severity::Error,
-            trimmed.to_string(),
-        ));
+        return Some((AnomalyKind::SourceGap, Severity::Error, trimmed.to_string()));
     }
     if lower.contains("digest mismatch")
         || lower.contains("sha256 mismatch")
@@ -538,11 +530,7 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("timeout")
         || lower.contains("deadline exceeded")
     {
-        return Some((
-            AnomalyKind::Timeout,
-            Severity::Error,
-            trimmed.to_string(),
-        ));
+        return Some((AnomalyKind::Timeout, Severity::Error, trimmed.to_string()));
     }
     if lower.contains("dns")
         || lower.contains("tls handshake failed")

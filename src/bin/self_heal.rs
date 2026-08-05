@@ -36,15 +36,14 @@ fn parse_args() -> Result<Options, String> {
             "--heal" => options.heal = true,
             "--strict" => options.strict = true,
             "--log" | "--job-log" => {
-                options.log = Some(PathBuf::from(
-                    args.next().ok_or("--log requires a path")?,
-                ));
+                options.log = Some(PathBuf::from(args.next().ok_or("--log requires a path")?));
             }
             "--output" | "--report" => {
                 options.output = PathBuf::from(args.next().ok_or("--output requires a path")?);
             }
             "--repo-root" => {
-                options.repo_root = PathBuf::from(args.next().ok_or("--repo-root requires a path")?);
+                options.repo_root =
+                    PathBuf::from(args.next().ok_or("--repo-root requires a path")?);
             }
             "--help" | "-h" => {
                 println!(
@@ -112,7 +111,10 @@ fn write_wrapper(
     body.push(b'\n');
     let temporary = output.with_file_name(format!(
         ".{}.tmp-{}",
-        output.file_name().and_then(|name| name.to_str()).unwrap_or("report"),
+        output
+            .file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("report"),
         std::process::id()
     ));
     std::fs::write(&temporary, body)?;
@@ -165,9 +167,9 @@ fn main() {
     // compatibility. Callers that need a health gate use --strict.
     if options.strict {
         let preflight_bad = preflight["status"] != "healthy";
-        let diagnostics_bad = diagnostics
-            .as_ref()
-            .is_some_and(|report| report.errors > 0 || report.warnings > 0 || report.unresolved > 0);
+        let diagnostics_bad = diagnostics.as_ref().is_some_and(|report| {
+            report.errors > 0 || report.warnings > 0 || report.unresolved > 0
+        });
         if preflight_bad || diagnostics_bad || diagnostics.is_none() && options.log.is_some() {
             std::process::exit(1);
         }

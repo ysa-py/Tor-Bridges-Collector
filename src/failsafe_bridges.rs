@@ -121,12 +121,7 @@ fn static_fallback_lines() -> Vec<String> {
 /// Append a structured FAILSAFE activation record. This is intentionally
 /// best-effort: failure to write telemetry must never corrupt a bridge file,
 /// but it is reported on stderr so the workflow diagnostics can classify it.
-fn record_failsafe_activation(
-    bridge_dir: &Path,
-    file_name: &str,
-    line_count: usize,
-    reason: &str,
-) {
+fn record_failsafe_activation(bridge_dir: &Path, file_name: &str, line_count: usize, reason: &str) {
     let root_dir = bridge_dir.parent().unwrap_or_else(|| Path::new("."));
     let path = root_dir.join("data/failsafe_activations.json");
     let mut root = fs::read_to_string(&path)
@@ -134,7 +129,9 @@ fn record_failsafe_activation(
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
         .filter(Value::is_object)
         .unwrap_or_else(|| serde_json::json!({"activations": []}));
-    let Some(object) = root.as_object_mut() else { return };
+    let Some(object) = root.as_object_mut() else {
+        return;
+    };
     let activations = object
         .entry("activations")
         .or_insert_with(|| Value::Array(Vec::new()));

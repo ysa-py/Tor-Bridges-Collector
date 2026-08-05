@@ -729,8 +729,15 @@ pub fn fetch_torproject(client: &dyn HttpFetch) -> Vec<(String, String, String)>
                 Err(err) => last_error = err.to_string(),
             }
             if attempt + 1 < retries {
-                let delay = rand::thread_rng().gen_range(0..=250_u64.saturating_mul(1_u64 << attempt.min(6)));
-                tracing::warn!(url, attempt = attempt + 1, retries, delay_ms = delay, "Tor Project source failed; retrying");
+                let delay = rand::thread_rng()
+                    .gen_range(0..=250_u64.saturating_mul(1_u64 << attempt.min(6)));
+                tracing::warn!(
+                    url,
+                    attempt = attempt + 1,
+                    retries,
+                    delay_ms = delay,
+                    "Tor Project source failed; retrying"
+                );
                 std::thread::sleep(Duration::from_millis(delay));
             }
         }
