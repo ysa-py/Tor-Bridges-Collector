@@ -375,7 +375,7 @@ fn build_remediation_plan(events: &[DiagnosticEvent]) -> Vec<RemediationAction> 
             AnomalyKind::RateLimit | AnomalyKind::Timeout | AnomalyKind::DnsTlsError => (
                 "retry_with_backoff",
                 format!(
-                    "rerun affected stage '{}' with bounded jittered retries",
+                    "rerun affected stage '{}' with exponential backoff and jittered retries",
                     event.step
                 ),
             ),

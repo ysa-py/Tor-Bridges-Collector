@@ -2023,7 +2023,7 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
     fn parse_moat_response_accepts_live_top_level_schema() {
         let data = json!({
             "obfs4": ["obfs4 198.51.100.10:443 0123456789ABCDEF0123456789ABCDEF01234567"],
-            "webTunnel": ["webtunnel url=https://example.com/live abcdef0123456789"],
+            "webTunnel": ["webtunnel 192.0.2.10:443 abcdef0123456789"],
             "meek": ["meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com abcdef0123456789"],
         });
         let pairs = parse_moat_response(&data).unwrap();
