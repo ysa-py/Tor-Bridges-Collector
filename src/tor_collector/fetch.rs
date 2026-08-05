@@ -109,7 +109,7 @@ impl SourceFetcher {
         let mut failures = Vec::new();
         while let Some(joined) = tasks.join_next().await {
             match joined {
-                Ok((_url, Ok(body))) => fetched.extend(body.lines().map(clean_output_line)),,
+                Ok((_url, Ok(body))) => fetched.extend(body.lines().map(clean_output_line)),
                 Ok((url, Err(error))) => failures.push(format!("{url}: {error}")),
                 Err(error) => failures.push(format!("source task failed: {error}")),
             }
