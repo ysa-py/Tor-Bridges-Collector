@@ -874,18 +874,18 @@ fn moat_transport_name(hint: Option<&str>, line: &str) -> String {
     let candidate = hint.unwrap_or(first);
     let lower = candidate.to_ascii_lowercase();
     match lower.as_str() {
-        "obfs4" => "obfs4",
-        "webtunnel" | "web-tunnel" => "webtunnel",
-        "snowflake" => "snowflake",
-        "meek" | "meek_lite" | "meek-lite" | "meek-azure" => "meek_lite",
-        "conjure" => "conjure",
+        "obfs4" => "obfs4".to_string(),
+        "webtunnel" | "web-tunnel" => "webtunnel".to_string(),
+        "snowflake" => "snowflake".to_string(),
+        "meek" | "meek_lite" | "meek-lite" | "meek-azure" => "meek_lite".to_string(),
+        "conjure" => "conjure".to_string(),
         _ => match first.to_ascii_lowercase().as_str() {
-            "obfs4" => "obfs4",
-            "webtunnel" => "webtunnel",
-            "snowflake" => "snowflake",
-            "meek" | "meek_lite" | "meek-azure" => "meek_lite",
-            "conjure" => "conjure",
-            _ => "unknown",
+            "obfs4" => "obfs4".to_string(),
+            "webtunnel" => "webtunnel".to_string(),
+            "snowflake" => "snowflake".to_string(),
+            "meek" | "meek_lite" | "meek-azure" => "meek_lite".to_string(),
+            "conjure" => "conjure".to_string(),
+            _ => "unknown".to_string(),
         },
     }
 }
