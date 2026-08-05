@@ -8,6 +8,7 @@ use anyhow::{anyhow, Context, Result};
 use rand::Rng;
 use reqwest::Client;
 use scraper::{Html, Selector};
+use tokio::task::JoinSet;
 use tokio::time::sleep;
 
 use super::config::{CollectorConfig, Transport, COMMUNITY_SOURCE_BASES, USER_AGENT};
@@ -95,12 +96,22 @@ impl SourceFetcher {
         ipv6: bool,
     ) -> Result<Vec<String>> {
         let urls = self.source_urls(transport, ipv6);
+        let mut tasks = JoinSet::new();
+        for url in urls {
+            let fetcher = self.clone();
+            tasks.spawn(async move {
+                let result = fetcher.fetch_text(&url).await;
+                (url, result)
+            });
+        }
+
         let mut fetched = Vec::new();
         let mut failures = Vec::new();
-        for url in urls {
-            match self.fetch_text(&url).await {
-                Ok(body) => fetched.extend(body.lines().map(clean_output_line)),
-                Err(error) => failures.push(format!("{url}: {error}")),
+        while let Some(joined) = tasks.join_next().await {
+            match joined {
+                Ok((url, Ok(body))) => fetched.extend(body.lines().map(clean_output_line)),
+                Ok((url, Err(error))) => failures.push(format!("{url}: {error}")),
+                Err(error) => failures.push(format!("source task failed: {error}")),
             }
         }
         let filtered = filter_variant(fetched, ipv6);
