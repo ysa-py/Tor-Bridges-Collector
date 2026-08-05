@@ -102,7 +102,10 @@ impl SourceFetcher {
         }
         let filtered = filter_variant(fetched, ipv6);
         if filtered.is_empty() && !failures.is_empty() {
-            return Err(anyhow!("all community mirrors failed: {}", failures.join("; ")));
+            return Err(anyhow!(
+                "all community mirrors failed: {}",
+                failures.join("; ")
+            ));
         }
         Ok(filtered)
     }

@@ -268,7 +268,10 @@ pub fn analyze_log_file(path: &Path) -> Result<DiagnosticReport, std::io::Error>
 
 /// Serialize a report with an atomic replace. A partially written report must
 /// never be mistaken for a healthy report by a later workflow step.
-pub fn write_report(path: &Path, report: &DiagnosticReport) -> Result<(), Box<dyn std::error::Error>> {
+pub fn write_report(
+    path: &Path,
+    report: &DiagnosticReport,
+) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(parent) = path.parent() {
         if !parent.as_os_str().is_empty() {
             fs::create_dir_all(parent)?;
@@ -278,7 +281,9 @@ pub fn write_report(path: &Path, report: &DiagnosticReport) -> Result<(), Box<dy
     bytes.push(b'\n');
     let temporary = path.with_file_name(format!(
         ".{}.tmp-{}",
-        path.file_name().and_then(|name| name.to_str()).unwrap_or("report"),
+        path.file_name()
+            .and_then(|name| name.to_str())
+            .unwrap_or("report"),
         std::process::id()
     ));
     fs::write(&temporary, bytes)?;
@@ -309,7 +314,9 @@ pub fn safe_repairs(repo_root: &Path, report: &DiagnosticReport) -> Vec<RepairRe
             if path.extension().and_then(|ext| ext.to_str()) != Some("json") {
                 continue;
             }
-            let Ok(metadata) = fs::metadata(&path) else { continue };
+            let Ok(metadata) = fs::metadata(&path) else {
+                continue;
+            };
             if metadata.len() != 0 {
                 continue;
             }
@@ -324,7 +331,11 @@ pub fn safe_repairs(repo_root: &Path, report: &DiagnosticReport) -> Vec<RepairRe
         }
     }
 
-    if report.events.iter().any(|event| event.kind == AnomalyKind::StaleCache) {
+    if report
+        .events
+        .iter()
+        .any(|event| event.kind == AnomalyKind::StaleCache)
+    {
         // Do not delete caches automatically. Removing a shared Cargo cache
         // can make a transient outage worse; emit an explicit plan instead.
         results.push(RepairResult {
@@ -363,7 +374,10 @@ fn build_remediation_plan(events: &[DiagnosticEvent]) -> Vec<RemediationAction> 
         let (kind, command) = match event.kind {
             AnomalyKind::RateLimit | AnomalyKind::Timeout | AnomalyKind::DnsTlsError => (
                 "retry_with_backoff",
-                format!("rerun affected stage '{}' with bounded jittered retries", event.step),
+                format!(
+                    "rerun affected stage '{}' with bounded jittered retries",
+                    event.step
+                ),
             ),
             AnomalyKind::FailsafeFallback | AnomalyKind::SourceGap | AnomalyKind::MoatEmpty => (
                 "alternate_source_then_replay",
@@ -371,7 +385,10 @@ fn build_remediation_plan(events: &[DiagnosticEvent]) -> Vec<RemediationAction> 
             ),
             AnomalyKind::HandshakeFailure => (
                 "revalidate_probe_toolchain",
-                format!("verify obfs4proxy/lyrebird and replay only '{}'", event.step),
+                format!(
+                    "verify obfs4proxy/lyrebird and replay only '{}'",
+                    event.step
+                ),
             ),
             AnomalyKind::SkippedStage => (
                 "restore_required_toolchain",
@@ -379,7 +396,10 @@ fn build_remediation_plan(events: &[DiagnosticEvent]) -> Vec<RemediationAction> 
             ),
             AnomalyKind::ArtifactDigestMismatch => (
                 "rebuild_artifact",
-                format!("invalidate the affected artifact and rebuild '{}'", event.step),
+                format!(
+                    "invalidate the affected artifact and rebuild '{}'",
+                    event.step
+                ),
             ),
             AnomalyKind::StaleCache => (
                 "invalidate_stage_cache",
@@ -404,14 +424,26 @@ fn build_remediation_plan(events: &[DiagnosticEvent]) -> Vec<RemediationAction> 
 
 fn remediation_text(kind: AnomalyKind) -> &'static str {
     match kind {
-        AnomalyKind::FailsafeFallback => "retry alternate sources; do not count static fallback as live yield",
-        AnomalyKind::HandshakeFailure => "verify the PT harness and report transport verification separately",
-        AnomalyKind::MoatEmpty => "accept top-level MOAT and settings bridge_strings schemas, then retry",
+        AnomalyKind::FailsafeFallback => {
+            "retry alternate sources; do not count static fallback as live yield"
+        }
+        AnomalyKind::HandshakeFailure => {
+            "verify the PT harness and report transport verification separately"
+        }
+        AnomalyKind::MoatEmpty => {
+            "accept top-level MOAT and settings bridge_strings schemas, then retry"
+        }
         AnomalyKind::SourceGap => "try redundant sources and retain the previous non-empty archive",
         AnomalyKind::SkippedStage => "install the required toolchain and replay this stage",
-        AnomalyKind::ArtifactDigestMismatch => "rebuild the affected artifact and verify its digest",
-        AnomalyKind::StaleCache => "invalidate only the affected cache key and refetch dependencies",
-        AnomalyKind::RateLimit | AnomalyKind::Timeout | AnomalyKind::DnsTlsError => "retry with exponential backoff and a bounded alternate endpoint",
+        AnomalyKind::ArtifactDigestMismatch => {
+            "rebuild the affected artifact and verify its digest"
+        }
+        AnomalyKind::StaleCache => {
+            "invalidate only the affected cache key and refetch dependencies"
+        }
+        AnomalyKind::RateLimit | AnomalyKind::Timeout | AnomalyKind::DnsTlsError => {
+            "retry with exponential backoff and a bounded alternate endpoint"
+        }
         _ => "fail the health gate or replay the affected stage after diagnosis",
     }
 }
@@ -453,13 +485,21 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
             || lower.contains("empty_200")
             || lower.contains("no bridge lines"))
     {
-        return Some((AnomalyKind::MoatEmpty, Severity::Error, trimmed.to_string()));
+        return Some((
+            AnomalyKind::MoatEmpty,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("no usable source")
         || lower.contains("source discovery gap")
         || lower.contains("source outage")
     {
-        return Some((AnomalyKind::SourceGap, Severity::Error, trimmed.to_string()));
+        return Some((
+            AnomalyKind::SourceGap,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("digest mismatch")
         || lower.contains("sha256 mismatch")
@@ -477,20 +517,32 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
             || lower.contains("invalid")
             || lower.contains("mismatch"))
     {
-        return Some((AnomalyKind::StaleCache, Severity::Warning, trimmed.to_string()));
+        return Some((
+            AnomalyKind::StaleCache,
+            Severity::Warning,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("rate limit")
         || lower.contains("rate-limit")
         || lower.contains("http 429")
         || lower.contains("too many requests")
     {
-        return Some((AnomalyKind::RateLimit, Severity::Warning, trimmed.to_string()));
+        return Some((
+            AnomalyKind::RateLimit,
+            Severity::Warning,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("timed out")
         || lower.contains("timeout")
         || lower.contains("deadline exceeded")
     {
-        return Some((AnomalyKind::Timeout, Severity::Error, trimmed.to_string()));
+        return Some((
+            AnomalyKind::Timeout,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("dns")
         || lower.contains("tls handshake failed")
@@ -498,7 +550,11 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("certificate verify")
         || lower.contains("connection refused")
     {
-        return Some((AnomalyKind::DnsTlsError, Severity::Warning, trimmed.to_string()));
+        return Some((
+            AnomalyKind::DnsTlsError,
+            Severity::Warning,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("zig not available")
         || lower.contains("skipping stage")
@@ -516,7 +572,11 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("0 bridges fetched")
         || lower.contains("0 bridges")
     {
-        return Some((AnomalyKind::EmptyOutput, Severity::Error, trimmed.to_string()));
+        return Some((
+            AnomalyKind::EmptyOutput,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("short output")
         || lower.contains("below minimum")
@@ -526,7 +586,11 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("only 3 bridges")
         || lower.contains("only 4 bridges")
     {
-        return Some((AnomalyKind::ShortOutput, Severity::Error, trimmed.to_string()));
+        return Some((
+            AnomalyKind::ShortOutput,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
 
     if let Some(code) = parse_exit_code(&lower) {
@@ -544,21 +608,31 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("panic")
         || lower.contains("fatal:")
     {
-        return Some((AnomalyKind::HardFailure, Severity::Error, trimmed.to_string()));
+        return Some((
+            AnomalyKind::HardFailure,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
     if lower.contains("warning")
         || lower.contains("unavailable")
         || lower.contains("fallback")
         || lower.contains("failed")
     {
-        return Some((AnomalyKind::HardFailure, Severity::Warning, trimmed.to_string()));
+        return Some((
+            AnomalyKind::HardFailure,
+            Severity::Warning,
+            trimmed.to_string(),
+        ));
     }
     None
 }
 
 fn parse_exit_code(line: &str) -> Option<i64> {
     for marker in ["exit code", "exit_code", "status code"] {
-        let Some(start) = line.find(marker) else { continue };
+        let Some(start) = line.find(marker) else {
+            continue;
+        };
         let tail = &line[start + marker.len()..];
         let digits: String = tail
             .chars()
@@ -677,5 +751,8 @@ mod tests {
         assert!(report.events.is_empty());
         assert_eq!(report.status, "degraded");
         assert!(!report.required_stages_missing.is_empty());
+    }
+}
+t.required_stages_missing.is_empty());
     }
 }

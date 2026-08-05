@@ -154,13 +154,11 @@ fn main() {
         None => None,
     };
 
-    if let Err(error) = write_wrapper(
-        &options.output,
-        &preflight,
-        diagnostics.as_ref(),
-        &repairs,
-    ) {
-        eprintln!("self_heal: cannot write {}: {error}", options.output.display());
+    if let Err(error) = write_wrapper(&options.output, &preflight, diagnostics.as_ref(), &repairs) {
+        eprintln!(
+            "self_heal: cannot write {}: {error}",
+            options.output.display()
+        );
         std::process::exit(1);
     }
     // Keep the existing Stage 00 invocation advisory for backwards

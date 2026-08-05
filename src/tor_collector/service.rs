@@ -634,7 +634,10 @@ mod tests {
             },
             0.2,
         );
-        assert!(output.is_empty(), "failed handshakes must not be published as tested");
+        assert!(
+            output.is_empty(),
+            "failed handshakes must not be published as tested"
+        );
     }
 
     #[test]

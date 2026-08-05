@@ -506,7 +506,10 @@ fn record_publication_fallback(
             items.drain(0..drop_count);
         }
     }
-    object.insert("generated_at".to_string(), Value::String(Utc::now().to_rfc3339()));
+    object.insert(
+        "generated_at".to_string(),
+        Value::String(Utc::now().to_rfc3339()),
+    );
     if let Some(parent) = path.parent() {
         if fs::create_dir_all(parent).is_ok() {
             if let Ok(bytes) = serde_json::to_vec_pretty(&document) {

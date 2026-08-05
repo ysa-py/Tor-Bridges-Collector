@@ -910,7 +910,13 @@ fn moat_post_with_retry(
         if attempt + 1 < retries {
             let ceiling = 250_u64.saturating_mul(1_u64 << (attempt.min(6) as u32));
             let delay = rand::thread_rng().gen_range(0..=ceiling.min(10_000));
-            tracing::warn!(url, attempt = attempt + 1, retries, delay_ms = delay, "MOAT request failed; retrying");
+            tracing::warn!(
+                url,
+                attempt = attempt + 1,
+                retries,
+                delay_ms = delay,
+                "MOAT request failed; retrying"
+            );
             std::thread::sleep(Duration::from_millis(delay));
         }
     }

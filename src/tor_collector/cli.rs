@@ -66,7 +66,9 @@ pub fn apply_arguments(config: &mut CollectorConfig, args: Vec<String>) -> Resul
                     "--max-test-per-list",
                 )?;
                 if value > 100_000 {
-                    return Err(anyhow!("--max-test-per-list must be in 0..=100000 (0 = adaptive/unbounded)"));
+                    return Err(anyhow!(
+                        "--max-test-per-list must be in 0..=100000 (0 = adaptive/unbounded)"
+                    ));
                 }
                 config.max_test_per_list = value;
             }
