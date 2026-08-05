@@ -110,15 +110,16 @@ impl CollectorService {
                 ));
                 Vec::new()
             });
-            let defaults = if transport.is_fronted() && fetched.is_empty() && seeded.is_empty() && !ipv6 {
-                fronted_defaults(transport)
-                    .iter()
-                    .map(|line| clean_output_line(line))
-                    .filter(|line| is_valid_bridge_line(line))
-                    .collect()
-            } else {
-                Vec::new()
-            };
+            let defaults =
+                if transport.is_fronted() && fetched.is_empty() && seeded.is_empty() && !ipv6 {
+                    fronted_defaults(transport)
+                        .iter()
+                        .map(|line| clean_output_line(line))
+                        .filter(|line| is_valid_bridge_line(line))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
             self.process_list(
                 transport,
                 ipv6,
