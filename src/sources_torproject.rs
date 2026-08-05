@@ -532,6 +532,7 @@ mod tests {
             "https://bridges.torproject.org/bridges?transport=obfs4".to_string(),
             HttpResponse {
                 status: 200,
+                headers: Vec::new(),
                 text: r#"<html><body><div id="bridgelines">obfs4 1.2.3.4:443 cert=abc</div></body></html>"#.to_string(),
             },
         );
@@ -572,6 +573,7 @@ mod tests {
             "https://example.com/x".to_string(),
             HttpResponse {
                 status: 500,
+                headers: Vec::new(),
                 text: "Internal Server Error".to_string(),
             },
         );
@@ -593,6 +595,7 @@ mod tests {
                 url.to_string(),
                 HttpResponse {
                     status: 200,
+                    headers: Vec::new(),
                     text: format!(
                         r#"<html><body><div id="bridgelines">{} 1.2.3.4:443 cert=abc</div></body></html>"#,
                         transport
@@ -624,6 +627,7 @@ mod tests {
             TARGETS[0].0.to_string(),
             HttpResponse {
                 status: 200,
+                headers: Vec::new(),
                 text: r#"<html><body><div id="bridgelines">obfs4 1.2.3.4:443 cert=abc</div></body></html>"#.to_string(),
             },
         );

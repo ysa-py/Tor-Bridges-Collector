@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-08-05T15:37:48Z` · **Archive payload SHA-256:** `0694235440268d4f027bd8b464074a58c241242875da5e7a2c6ba2179c4c1829`
+> **Last publication:** `2026-08-05T05:26:17Z` · **Archive payload SHA-256:** `064bf7839fc40400f7b831ebc045a4969667df0b9cde0998ad5be84c46538d9e`
 
 ## Quick use for Iran
 
@@ -15,8 +15,8 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `432` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `254` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `433` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `255` | obfs4-oriented fallback for conventional DPI |
 | [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `1` | WebTunnel candidates |
 | [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `4` | Snowflake capability candidates |
 | [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `5` | NIN/cut-mode priority candidates |
@@ -130,3 +130,25 @@ cargo run --release --bin sync_bridge_outputs -- \
 ```
 
 The authoritative machine-readable inventory is [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json). Consumers should validate its SHA-256 entries after downloading bridge files.
+
+## Bridge supply, plateau behavior, and optional sources
+
+Total bridge count reflects real, deduplicated availability from all enabled legitimate sources at the time of each run. Growth is expected to plateau once available upstream supply is exhausted — this is correct, intentional behavior consistent with Tor's own anti-enumeration protections, not a defect. The pipeline will never fabricate, farm beyond legitimate rate limits, or count placeholder/non-functional entries toward this total.
+
+### Telegram source activation
+
+Telegram bridge ingestion is credential-gated at runtime. It is enabled automatically when both of these GitHub Actions secrets are configured:
+
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_CHAT_ID`
+
+If either secret is absent, the source is skipped with a structured `telegram_source_skipped: missing credentials` diagnostic instead of a silent hardcoded `false` path.
+
+### Structured diagnostics artifacts
+
+Each CI run now emits or preserves machine-readable diagnostics for source visibility and safe fallback auditing:
+
+- `data/moat_diagnostics.json` — MOAT session probe, HTTP status, headers, response body prefix, and parser/empty-response reasons.
+- `data/failsafe_activations.json` — non-empty only when a source exhausts retries and alternate acquisition before failsafe data is used.
+- `data/precondition_diagnostics.json` — stage input validation and deterministic artifact regeneration attempts.
+- `bridge/bridge_history.json` `_summary.sources` and `data/stage6a_score_report.json` `summary.sources` — per-source attempted/fetched/new/duplicate/failure/timeout/parser/retry/fallback counters.

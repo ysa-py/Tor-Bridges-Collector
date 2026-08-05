@@ -140,11 +140,11 @@ source .env
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `MAX_WORKERS` | Optional | `150` | Maximum concurrent workers |
+| `MAX_WORKERS` | Optional | dynamic | Optional override; worker count otherwise derives from candidate pool and CPU. |
 | `CONNECTION_TIMEOUT` | Optional | `8` | Connection timeout (seconds) |
 | `SSL_TIMEOUT` | Optional | `6` | SSL handshake timeout (seconds) |
 | `MAX_RETRIES` | Optional | `2` | Maximum retry attempts |
-| `MAX_TEST_PER_TYPE` | Optional | `1000` | Max bridges to test per transport type |
+| `MAX_TEST_PER_TYPE` | Optional | dynamic | Optional safety override; real candidates are not silently discarded by default. |
 
 ### Time Windows
 
@@ -167,7 +167,7 @@ source .env
 | `USE_TORPROJECT_SCRAPER` | Optional | `true` | Enable bridges.torproject.org scraper |
 | `USE_MOAT_API` | Optional | `true` | Enable MOAT API collector |
 | `USE_BRIDGEDB_API` | Optional | `true` | Enable BridgeDB API collector |
-| `USE_TELEGRAM_SOURCES` | Optional | `false` | Enable Telegram bridge channels |
+| `USE_TELEGRAM_SOURCES` | Optional | auto | Enabled automatically when `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` are configured. |
 | `USE_STATIC_BRIDGES` | Optional | `true` | Enable static bridge list |
 
 ### Proxy Configuration

@@ -260,6 +260,7 @@ obfs4 5.6.7.8:443 cert=def
         url.to_string(),
         HttpResponse {
             status: 200,
+            headers: Vec::new(),
             text: html.to_string(),
         },
     );
@@ -355,6 +356,7 @@ print(json.dumps(lines))
         url.to_string(),
         HttpResponse {
             status: 500,
+            headers: Vec::new(),
             text: html.to_string(),
         },
     );

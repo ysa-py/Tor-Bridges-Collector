@@ -37,9 +37,9 @@ fn offline_dpi_pipelines_generate_ranked_reports_and_exports() {
     let ech_report = root.join("ech.json");
     let ech_export = root.join("ech.txt");
     let bridges = json!([
-        "snowflake 192.0.2.10:443 FINGERPRINT fronts=www.google.com",
-        "obfs4 198.51.100.7:443 FINGERPRINT cert=abc iat-mode=2",
-        "203.0.113.9:9001 FINGERPRINT"
+        "snowflake 1.2.3.10:443 FINGERPRINT fronts=www.google.com",
+        "obfs4 1.2.3.7:443 FINGERPRINT cert=abc iat-mode=2",
+        "1.2.3.9:9001 FINGERPRINT"
     ]);
     std::fs::write(&input, serde_json::to_vec_pretty(&bridges).unwrap()).unwrap();
 
@@ -63,14 +63,14 @@ fn adaptive_iran_engines_compose_without_an_external_client() {
         Map::from_iter([
             (
                 "raw".to_string(),
-                json!("snowflake 192.0.2.10:443 FINGERPRINT fronts=www.google.com"),
+                json!("snowflake 1.2.3.10:443 FINGERPRINT fronts=www.google.com"),
             ),
             ("test_pass".to_string(), json!(true)),
         ]),
         Map::from_iter([
             (
                 "raw".to_string(),
-                json!("obfs4 198.51.100.7:443 FINGERPRINT cert=abc iat-mode=2"),
+                json!("obfs4 1.2.3.7:443 FINGERPRINT cert=abc iat-mode=2"),
             ),
             ("test_pass".to_string(), json!(true)),
         ]),
@@ -145,7 +145,7 @@ fn result_writer_preserves_all_bridge_output_capabilities() {
     let root = sandbox("writer");
     let records = vec![
         json!({
-            "line": "obfs4 198.51.100.7:443 FINGERPRINT cert=abc iat-mode=2",
+            "line": "obfs4 1.2.3.7:443 FINGERPRINT cert=abc iat-mode=2",
             "transport": "obfs4",
             "iran_status": "iran_likely_working",
             "tcp_reachable": true

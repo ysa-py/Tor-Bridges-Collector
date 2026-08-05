@@ -219,9 +219,24 @@ impl Config {
         };
         let get_trimmed =
             |name: &'static str, default: &'static str| get(name, default).trim().to_string();
-        let int = |name: &'static str, default: &'static str| parse_int(name, &get(name, default));
-        let float =
-            |name: &'static str, default: &'static str| parse_float(name, &get(name, default));
+        let int = |name: &'static str, default: &'static str| {
+            let value = get(name, default);
+            let value = if value.trim().is_empty() {
+                default
+            } else {
+                &value
+            };
+            parse_int(name, value)
+        };
+        let float = |name: &'static str, default: &'static str| {
+            let value = get(name, default);
+            let value = if value.trim().is_empty() {
+                default
+            } else {
+                &value
+            };
+            parse_float(name, value)
+        };
         let boolv =
             |name: &'static str, default: &'static str| get(name, default).to_lowercase() == "true";
 
@@ -284,7 +299,9 @@ impl Config {
             use_torproject_scraper: boolv("USE_TORPROJECT_SCRAPER", "true"),
             use_moat_api: boolv("USE_MOAT_API", "true"),
             use_bridgedb_api: boolv("USE_BRIDGEDB_API", "true"),
-            use_telegram_sources: boolv("USE_TELEGRAM_SOURCES", "false"),
+            use_telegram_sources: boolv("USE_TELEGRAM_SOURCES", "false")
+                || (!get("TELEGRAM_BOT_TOKEN", "").trim().is_empty()
+                    && !get("TELEGRAM_CHAT_ID", "").trim().is_empty()),
             use_static_bridges: boolv("USE_STATIC_BRIDGES", "true"),
             use_github_sources: boolv("USE_GITHUB_SOURCES", "true"),
             deep_test: boolv("DEEP_TEST", "false"),

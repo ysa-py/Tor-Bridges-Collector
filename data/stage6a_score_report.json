@@ -1,23 +1,23 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-08-05T15:26:02.763767133+00:00",
+  "generated_at": "2026-08-05T05:14:32.000769019+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "metadata": {
           "blocked": 0,
-          "samples": 432,
+          "samples": 433,
           "status": "sklearn_required",
-          "trained_at": "2026-08-05T15:26:02.605776723+00:00",
+          "trained_at": "2026-08-05T05:14:31.842068289+00:00",
           "version": 1,
-          "working": 432
+          "working": 433
         },
-        "records_updated": 1595
+        "records_updated": 1593
       },
       "required": false,
       "stage": "ml",
-      "started_at": "2026-08-05T15:26:02.605773778+00:00",
+      "started_at": "2026-08-05T05:14:31.842062779+00:00",
       "status": "ok"
     },
     {
@@ -28,13 +28,63 @@
       },
       "required": false,
       "stage": "rotation",
-      "started_at": "2026-08-05T15:26:02.734284531+00:00",
+      "started_at": "2026-08-05T05:14:31.970749655+00:00",
       "status": "ok"
     }
   ],
   "summary": {
     "failed": 0,
     "ok": 2,
-    "skipped": 0
+    "skipped": 0,
+    "sources": {
+      "GitHubMirrors": {
+        "attempted": 1,
+        "duplicate": 0,
+        "failed": 0,
+        "fallback_used": false,
+        "fetched": 1593,
+        "last_success_ts": "2026-08-05T05:04:11Z",
+        "new": 0,
+        "parser_errors": 0,
+        "retry_count": 0,
+        "timeouts": 0
+      },
+      "MOAT": {
+        "attempted": 2,
+        "duplicate": 0,
+        "failed": 0,
+        "fallback_used": false,
+        "fetched": 0,
+        "last_success_ts": null,
+        "new": 0,
+        "parser_errors": 0,
+        "retry_count": 0,
+        "timeouts": 0
+      },
+      "StaticSeedList": {
+        "attempted": 0,
+        "duplicate": 0,
+        "failed": 0,
+        "fallback_used": false,
+        "fetched": 0,
+        "last_success_ts": null,
+        "new": 0,
+        "parser_errors": 0,
+        "retry_count": 0,
+        "timeouts": 0
+      },
+      "Telegram": {
+        "attempted": 0,
+        "duplicate": 0,
+        "failed": 0,
+        "fallback_used": false,
+        "fetched": 0,
+        "last_success_ts": null,
+        "new": 0,
+        "parser_errors": 0,
+        "retry_count": 0,
+        "timeouts": 0
+      }
+    }
   }
 }

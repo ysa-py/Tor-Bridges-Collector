@@ -1,0 +1,136 @@
+commit 7b55bd920355727fed293b0c5563fac6bdd11987
+Author: ysa-py <245350990+ysa-py@users.noreply.github.com>
+Date:   Wed Aug 5 07:41:10 2026 +0000
+
+    fix(pipeline): reject placeholder bridges and harden self-healing
+    
+    Co-authored-by: arena-agent <297053741+arena-agent@users.noreply.github.com>
+
+diff --git a/.github/workflows/ai_self_healing.yml b/.github/workflows/ai_self_healing.yml
+index a9e1705..b507d08 100644
+--- a/.github/workflows/ai_self_healing.yml
++++ b/.github/workflows/ai_self_healing.yml
+@@ -59,13 +59,15 @@ env:
+     # on any workflow_run event firing.
+     - cron: '0 */6 * * *'
+   push:
+-    # Merged from self-heal.yml
+-    branches: ["main", "master"]
++    # Run on every branch so repair behavior is validated before merge.
++    branches: ["**"]
+   workflow_dispatch:
+ 
+ permissions:
+   actions: write
+   contents: write
++  pull-requests: write
++  issues: write
+ 
+ jobs:
+   auto-diagnose-and-fix:
+@@ -125,7 +127,14 @@ jobs:
+           # (category / is_fixable / should_run_autodebug), identical
+           # data/failure_categorization.json schema. Built with the `network`
+           # feature so it can pull the parent run's logs from the GitHub API.
+-          cargo run --quiet --features network --bin ai_workflow_tools -- categorize-failure
++          if ! cargo run --quiet --features network --bin ai_workflow_tools -- categorize-failure; then
++            echo "::warning::categorize-failure failed; falling back to non-fixable unknown classification"
++            echo "category=unknown" >> "$GITHUB_OUTPUT"
++            echo "is_fixable=false" >> "$GITHUB_OUTPUT"
++            echo "should_run_autodebug=false" >> "$GITHUB_OUTPUT"
++            mkdir -p data
++            printf '%s\n' '{"category":"unknown","is_fixable":false,"should_run_autodebug":false,"error":"categorize-failure command failed"}' > data/failure_categorization.json
++          fi
+ 
+       - name: Display Failure Category
+         run: |
+@@ -140,6 +149,53 @@ jobs:
+             echo "  ⏭ Skipping AutoDebugEngine — no repair needed"
+           fi
+ 
++      - name: Bounded deterministic autofix loop
++        if: steps.categorize-failure.outputs.should_run_autodebug == 'true'
++        env:
++          MAX_AUTOFIX_ATTEMPTS: '5'
++        run: |
++          set -euo pipefail
++          git config user.name "torshield-self-heal"
++          git config user.email "actions@users.noreply.github.com"
++          base_ref="$(git rev-parse HEAD)"
++          mkdir -p data diagnostics
++          attempt=1
++          success=0
++          while [ "${attempt}" -le "${MAX_AUTOFIX_ATTEMPTS}" ]; do
++            echo "::group::self-heal attempt ${attempt}/${MAX_AUTOFIX_ATTEMPTS}"
++            if bash scripts/autofix_entrypoint.sh; then
++              if cargo fmt --all -- --check \
++                && cargo clippy --workspace --all-targets -- -D warnings \
++                && cargo test --workspace; then
++                success=1
++                echo "attempt ${attempt} passed local verification"
++                echo "::endgroup::"
++                break
++              fi
++            fi
++            git reset --hard "${base_ref}"
++            sleep $((attempt * 10))
++            attempt=$((attempt + 1))
++            echo "::endgroup::"
++          done
++          jq -n --arg status "$([ "${success}" -eq 1 ] && echo success || echo failed)" \
++                --argjson attempts "$((attempt <= MAX_AUTOFIX_ATTEMPTS ? attempt : MAX_AUTOFIX_ATTEMPTS))" \
++                '{status:$status, attempts:$attempts, max_attempts:env.MAX_AUTOFIX_ATTEMPTS|tonumber}' \
++                > data/self_heal_loop_summary.json
++          if [ "${success}" -ne 1 ]; then
++            echo "::error::Self-healing failed after ${MAX_AUTOFIX_ATTEMPTS} bounded attempts"
++            if command -v gh >/dev/null 2>&1; then
++              gh issue create --title "Self-healing CI escalation: ${{ github.workflow }} run ${{ github.run_id }}" \
++                --body-file data/self_heal_loop_summary.json || true
++            fi
++            exit 1
++          fi
++          if ! git diff --quiet; then
++            git add .
++            git commit -m "fix(ci): auto-resolve ${{ steps.categorize-failure.outputs.category }}"
++            git push
++          fi
++
+       - name: Run AutoDebugEngine
+         if: steps.categorize-failure.outputs.should_run_autodebug == 'true'
+         env:
+diff --git a/.github/workflows/torshield-ir.yml b/.github/workflows/torshield-ir.yml
+index edef3f2..472c3f9 100644
+--- a/.github/workflows/torshield-ir.yml
++++ b/.github/workflows/torshield-ir.yml
+@@ -442,9 +442,18 @@ jobs:
+           RUST_LOG: info
+         run: |
+           set -euo pipefail
++          candidate_count=$(jq 'length' bridge/bridge_list_for_testing.json 2>/dev/null || echo 0)
++          cpu_count=$(nproc 2>/dev/null || echo 2)
++          dynamic_workers=$(( cpu_count * 16 ))
++          if [ "${candidate_count}" -gt 0 ] && [ "${dynamic_workers}" -gt "${candidate_count}" ]; then
++            dynamic_workers="${candidate_count}"
++          fi
++          if [ "${dynamic_workers}" -lt 1 ]; then dynamic_workers=1; fi
++          dynamic_limit="${candidate_count}"
++          if [ "${dynamic_limit}" -lt 1 ]; then dynamic_limit=1; fi
+           ./target/release/tor-bridges-collector \
+-            --max-workers "${MAX_WORKERS:-50}" \
+-            --max-test-per-list "${MAX_TEST_PER_LIST:-600}"
++            --max-workers "${MAX_WORKERS:-${dynamic_workers}}" \
++            --max-test-per-list "${MAX_TEST_PER_LIST:-${dynamic_limit}}"
+ 
+       # Kept as a separate broad-source enrichment pass: it consumes the
+       # collector's output and contributes pipeline-specific sources, but no
+@@ -899,6 +908,10 @@ jobs:
+             data/warp_status.json
+             data/dpi_intelligence.json
+             data/next_gen_bridges.json
++            data/moat_diagnostics.json
++            data/failsafe_activations.json
++            data/precondition_diagnostics.json
++            data/stage6a_score_report.json
+             data/ech_report.json
+             data/nin_advanced_report.json
+             data/anti_ai_dpi_report.json

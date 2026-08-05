@@ -25,6 +25,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -148,6 +149,156 @@ func normalizeSchedulerResults(results any) []MergedResult {
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
 
+type preconditionReport struct {
+	GeneratedAt string   `json:"generated_at"`
+	Stage       string   `json:"stage"`
+	Input       string   `json:"input"`
+	Status      string   `json:"status"`
+	Actions     []string `json:"actions"`
+	Error       string   `json:"error,omitempty"`
+}
+
+func writePreconditionReport(report preconditionReport) {
+	if err := os.MkdirAll("data", 0755); err != nil {
+		log.Printf("precondition report directory error: %v", err)
+		return
+	}
+	out, err := json.MarshalIndent(report, "", "  ")
+	if err != nil {
+		log.Printf("precondition report marshal error: %v", err)
+		return
+	}
+	if err := os.WriteFile("data/precondition_diagnostics.json", out, 0644); err != nil {
+		log.Printf("precondition report write error: %v", err)
+	}
+}
+
+func ensureIranBridgeArtifact(path string) error {
+	report := preconditionReport{
+		GeneratedAt: time.Now().UTC().Format(time.RFC3339),
+		Stage:       "probe_scheduler",
+		Input:       path,
+		Status:      "checking",
+		Actions:     []string{},
+	}
+	if records, err := readIranBridges(path); err == nil && len(records) > 0 {
+		report.Status = "ok"
+		report.Actions = append(report.Actions, fmt.Sprintf("validated %d records", len(records)))
+		writePreconditionReport(report)
+		return nil
+	}
+	if _, err := os.Stat(path); err == nil {
+		report.Status = "failed"
+		report.Error = "artifact exists but is empty or schema-invalid"
+		writePreconditionReport(report)
+		return fmt.Errorf("precondition failed: %s exists but is empty or schema-invalid", path)
+	}
+	report.Actions = append(report.Actions, "missing input; attempting regeneration from nearest upstream artifact")
+	candidates := []string{"data/iran_results.json", "bridge/iran_results.json"}
+	var lastErr error
+	for _, candidate := range candidates {
+		if err := regenerateIranBridges(path, candidate); err != nil {
+			lastErr = err
+			report.Actions = append(report.Actions, fmt.Sprintf("regeneration from %s failed: %v", candidate, err))
+			continue
+		}
+		records, err := readIranBridges(path)
+		if err == nil && len(records) > 0 {
+			report.Status = "regenerated"
+			report.Actions = append(report.Actions, fmt.Sprintf("regenerated %d records from %s", len(records), candidate))
+			writePreconditionReport(report)
+			return nil
+		}
+		lastErr = fmt.Errorf("regenerated artifact from %s was empty or invalid", candidate)
+	}
+	report.Status = "failed"
+	if lastErr != nil {
+		report.Error = lastErr.Error()
+	} else {
+		report.Error = "no regeneration source found"
+	}
+	writePreconditionReport(report)
+	return fmt.Errorf("precondition failed: %s missing and regeneration impossible: %v", path, lastErr)
+}
+
+func regenerateIranBridges(outputPath, sourcePath string) error {
+	data, err := os.ReadFile(sourcePath)
+	if err != nil {
+		return err
+	}
+	var root any
+	if err := json.Unmarshal(data, &root); err != nil {
+		return fmt.Errorf("parse %s: %w", sourcePath, err)
+	}
+	items := extractBridgeItems(root)
+	if len(items) == 0 {
+		return fmt.Errorf("%s contained no bridge records", sourcePath)
+	}
+	records := make([]IranBridgeRecord, 0, len(items))
+	seen := map[string]bool{}
+	for _, item := range items {
+		line := strings.TrimSpace(firstString(item, "bridge_line", "line", "bridge", "raw"))
+		if line == "" || seen[line] {
+			continue
+		}
+		seen[line] = true
+		records = append(records, IranBridgeRecord{
+			Type:          firstString(item, "type", "transport"),
+			BridgeLine:    line,
+			LastKnownGood: firstString(item, "last_known_good", "last_seen", "generated_at"),
+			ASNBlocked:    []string{},
+			Source:        defaultString(firstString(item, "source"), "regenerated:"+sourcePath),
+		})
+	}
+	if len(records) == 0 {
+		return fmt.Errorf("%s contained no usable bridge_line values", sourcePath)
+	}
+	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
+		return err
+	}
+	out, err := json.MarshalIndent(records, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(outputPath, out, 0644)
+}
+
+func extractBridgeItems(root any) []map[string]any {
+	switch v := root.(type) {
+	case []any:
+		out := make([]map[string]any, 0, len(v))
+		for _, item := range v {
+			if m, ok := item.(map[string]any); ok {
+				out = append(out, m)
+			}
+		}
+		return out
+	case map[string]any:
+		for _, key := range []string{"bridges", "results", "records"} {
+			if arr, ok := v[key].([]any); ok {
+				return extractBridgeItems(arr)
+			}
+		}
+	}
+	return nil
+}
+
+func firstString(item map[string]any, keys ...string) string {
+	for _, key := range keys {
+		if value, ok := item[key].(string); ok && strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func defaultString(value, fallback string) string {
+	if strings.TrimSpace(value) == "" {
+		return fallback
+	}
+	return value
+}
+
 func readIranBridges(path string) ([]IranBridgeRecord, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -234,6 +385,9 @@ func main() {
 	portFlag := flag.Int("port", 8742, "HTTP results port")
 	flag.Parse()
 	if err := validatePort(*portFlag); err != nil {
+		log.Fatal(err)
+	}
+	if err := ensureIranBridgeArtifact(*bridgesFlag); err != nil {
 		log.Fatal(err)
 	}
 
