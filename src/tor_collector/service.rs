@@ -119,11 +119,15 @@ impl CollectorService {
                     self.fetcher.fetch_community_sources(transport, ipv6),
                 );
                 let fetched = bridgedb.unwrap_or_else(|error| {
-                    log(&format!("WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"));
+                    log(&format!(
+                        "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
+                    ));
                     Vec::new()
                 });
                 let seeded = community.unwrap_or_else(|error| {
-                    log(&format!("WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"));
+                    log(&format!(
+                        "WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"
+                    ));
                     Vec::new()
                 });
                 let defaults = if fetched.is_empty() && seeded.is_empty() && !ipv6 {
@@ -507,10 +511,7 @@ fn write_yield_dashboard(
                 .get("transports")
                 .and_then(|items| items.get(transport))
                 .and_then(|item| {
-                    Some(
-                        item.get("archive_ipv4")?.as_u64()?
-                            + item.get("archive_ipv6")?.as_u64()?,
-                    )
+                    Some(item.get("archive_ipv4")?.as_u64()? + item.get("archive_ipv6")?.as_u64()?)
                 })
             {
                 previous.push(value as f64);
@@ -562,7 +563,10 @@ fn write_yield_dashboard(
     fs::write(&trend_path, trend_bytes)?;
     let mut bytes = serde_json::to_vec_pretty(&report)?;
     bytes.push(b'\n');
-    let temporary = data_dir.join(format!(".collector_yield_report.tmp-{}", std::process::id()));
+    let temporary = data_dir.join(format!(
+        ".collector_yield_report.tmp-{}",
+        std::process::id()
+    ));
     fs::write(&temporary, bytes)?;
     fs::rename(&temporary, data_dir.join("collector_yield_report.json"))?;
 
@@ -579,7 +583,11 @@ fn write_yield_dashboard(
             .unwrap_or_default();
         summary.push_str(&format!(
             "| {} | {} | {} | {} | {} |\n",
-            transport.file_name(), ipv4.archive, ipv6.archive, ipv4.tested, ipv6.tested
+            transport.file_name(),
+            ipv4.archive,
+            ipv6.archive,
+            ipv4.tested,
+            ipv6.tested
         ));
     }
     fs::write(data_dir.join("collector_yield_summary.md"), summary)?;
