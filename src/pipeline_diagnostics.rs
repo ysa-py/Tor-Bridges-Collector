@@ -753,6 +753,3 @@ mod tests {
         assert!(!report.required_stages_missing.is_empty());
     }
 }
-t.required_stages_missing.is_empty());
-    }
-}
