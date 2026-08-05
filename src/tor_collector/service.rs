@@ -8,6 +8,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use chrono::{Timelike, Utc};
 use serde_json::{json, Value};
+use tokio::task::JoinSet;
 
 use super::config::{fronted_defaults, CollectorConfig, ListSpec, Transport};
 use super::fetch::{deduplicate, SourceFetcher};
@@ -70,101 +71,77 @@ impl CollectorService {
         let mut staged = BTreeMap::new();
         let mut stats = StatsMap::new();
 
-        for transport in Transport::POOLED {
+        // Acquire every transport/IP source concurrently. The previous nested
+        // loops fetched six pooled lists and six fronted lists serially; with
+        // three retries and a blackholed mirror that could consume most of the
+        // job budget before probing even began.
+        let mut acquisition_tasks = JoinSet::new();
+        for transport in Transport::POOLED.into_iter().chain(Transport::FRONTED) {
             for ipv6 in [false, true] {
-                let (bridgedb, delta) = tokio::join!(
-                    self.fetcher.fetch_bridgedb(transport, ipv6),
-                    self.fetcher.fetch_community_sources(transport, ipv6),
-                );
-                let fetched = match bridgedb {
-                    Ok(lines) => lines,
-                    Err(error) => {
-                        log(&format!(
-                            "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
-                        ));
-                        Vec::new()
-                    }
-                };
-                let seeded = match delta {
-                    Ok(lines) => lines,
-                    Err(error) => {
-                        log(&format!(
-                            "WARNING: community seed {transport} ipv6={ipv6} unavailable: {error}"
-                        ));
-                        Vec::new()
-                    }
-                };
-                self.process_list(
-                    transport,
-                    ipv6,
-                    fetched,
-                    seeded,
-                    &mut history,
-                    &mut staged,
-                    &mut stats,
-                    now,
-                )
-                .await?;
+                let fetcher = self.fetcher.clone();
+                acquisition_tasks.spawn(async move {
+                    let (bridgedb, community) = tokio::join!(
+                        fetcher.fetch_bridgedb(transport, ipv6),
+                        fetcher.fetch_community_sources(transport, ipv6),
+                    );
+                    (transport, ipv6, bridgedb, community)
+                });
             }
         }
 
-        // Fronted transports also have live BridgeDB/MOAT/community entries;
-        // compiled defaults are only an additive last resort. Keep both IP
-        // projections so an IPv6 source response cannot be discarded merely
-        // because the old publisher only tested IPv4 defaults.
-        for transport in Transport::FRONTED {
-            for ipv6 in [false, true] {
-                let (bridgedb, community) = tokio::join!(
-                    self.fetcher.fetch_bridgedb(transport, ipv6),
-                    self.fetcher.fetch_community_sources(transport, ipv6),
-                );
-                let fetched = bridgedb.unwrap_or_else(|error| {
-                    log(&format!(
-                        "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
-                    ));
-                    Vec::new()
-                });
-                let seeded = community.unwrap_or_else(|error| {
-                    log(&format!(
-                        "WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"
-                    ));
-                    Vec::new()
-                });
-                let defaults = if fetched.is_empty() && seeded.is_empty() && !ipv6 {
-                    fronted_defaults(transport)
-                        .iter()
-                        .map(|line| clean_output_line(line))
-                        .filter(|line| is_valid_bridge_line(line))
-                        .collect()
-                } else {
-                    Vec::new()
-                };
+        let mut acquired = Vec::new();
+        while let Some(joined) = acquisition_tasks.join_next().await {
+            match joined {
+                Ok(item) => acquired.push(item),
+                Err(error) => log(&format!("WARNING: source acquisition task failed: {error}")),
+            }
+        }
+
+        for (transport, ipv6, bridgedb, community) in acquired {
+            let fetched = bridgedb.unwrap_or_else(|error| {
+                log(&format!(
+                    "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
+                ));
+                Vec::new()
+            });
+            let seeded = community.unwrap_or_else(|error| {
+                log(&format!(
+                    "WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"
+                ));
+                Vec::new()
+            });
+            let defaults = if transport.is_fronted() && fetched.is_empty() && seeded.is_empty() && !ipv6 {
+                fronted_defaults(transport)
+                    .iter()
+                    .map(|line| clean_output_line(line))
+                    .filter(|line| is_valid_bridge_line(line))
+                    .collect()
+            } else {
+                Vec::new()
+            };
+            self.process_list(
+                transport,
+                ipv6,
+                fetched,
+                seeded,
+                &mut history,
+                &mut staged,
+                &mut stats,
+                now,
+            )
+            .await?;
+            if !defaults.is_empty() {
                 self.process_list(
                     transport,
-                    ipv6,
-                    fetched,
-                    seeded,
+                    false,
+                    Vec::new(),
+                    defaults,
                     &mut history,
                     &mut staged,
                     &mut stats,
                     now,
                 )
                 .await?;
-                if !defaults.is_empty() {
-                    // Defaults are processed in a second additive pass so
-                    // live lines remain visible in the archive and telemetry.
-                    self.process_list(
-                        transport,
-                        false,
-                        Vec::new(),
-                        defaults,
-                        &mut history,
-                        &mut staged,
-                        &mut stats,
-                        now,
-                    )
-                    .await?;
-                }
             }
         }
 
