@@ -163,14 +163,17 @@ fn main() {
         );
         std::process::exit(1);
     }
-    // Keep the existing Stage 00 invocation advisory for backwards
-    // compatibility. Callers that need a health gate use --strict.
+    // A missing required repository file is always fatal, preserving the
+    // original Stage 00 contract. Full log anomalies become fatal when the
+    // caller requests the strict health gate.
+    if preflight["status"] != "healthy" {
+        std::process::exit(1);
+    }
     if options.strict {
-        let preflight_bad = preflight["status"] != "healthy";
         let diagnostics_bad = diagnostics.as_ref().is_some_and(|report| {
             report.errors > 0 || report.warnings > 0 || report.unresolved > 0
         });
-        if preflight_bad || diagnostics_bad || diagnostics.is_none() && options.log.is_some() {
+        if diagnostics_bad || diagnostics.is_none() && options.log.is_some() {
             std::process::exit(1);
         }
     }
