@@ -263,20 +263,20 @@ impl CollectorConfig {
     }
 }
 
-/// Tor Browser default lines for fronted transports. The literal addresses are
-/// documentation placeholders; verification deliberately targets `url=`,
-/// `fronts=`, or `front=` hosts instead.
+/// Tor Browser default metadata for fronted transports. Documentation-range
+/// endpoint placeholders are omitted; verification targets `url=`, `fronts=`,
+/// or `front=` hosts instead.
 pub fn fronted_defaults(transport: Transport) -> &'static [&'static str] {
     match transport {
         Transport::Snowflake => &[
-            "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
-            "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+            "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+            "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
         ],
         Transport::MeekAzure => &[
-            "meek_lite 192.0.2.20:80 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+            "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
         ],
         Transport::Conjure => &[
-            "conjure 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
+            "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
         ],
         _ => &[],
     }
@@ -314,6 +314,7 @@ fn env_bool(name: &str, default: bool) -> bool {
 
 fn env_usize(name: &str, default: usize, min: usize, max: usize) -> Result<usize> {
     let value = match env::var(name) {
+        Ok(raw) if raw.trim().is_empty() => default,
         Ok(raw) => raw
             .parse::<usize>()
             .map_err(|_| anyhow!("{name} must be an integer, got {raw:?}"))?,
@@ -327,6 +328,7 @@ fn env_usize(name: &str, default: usize, min: usize, max: usize) -> Result<usize
 
 fn env_u64(name: &str, default: u64, min: u64, max: u64) -> Result<u64> {
     let value = match env::var(name) {
+        Ok(raw) if raw.trim().is_empty() => default,
         Ok(raw) => raw
             .parse::<u64>()
             .map_err(|_| anyhow!("{name} must be an integer, got {raw:?}"))?,
@@ -340,6 +342,7 @@ fn env_u64(name: &str, default: u64, min: u64, max: u64) -> Result<u64> {
 
 fn env_u32(name: &str, default: u32, min: u32, max: u32) -> Result<u32> {
     let value = match env::var(name) {
+        Ok(raw) if raw.trim().is_empty() => default,
         Ok(raw) => raw
             .parse::<u32>()
             .map_err(|_| anyhow!("{name} must be an integer, got {raw:?}"))?,

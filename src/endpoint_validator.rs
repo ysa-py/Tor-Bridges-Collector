@@ -404,10 +404,10 @@ impl EndpointValidator {
         } else {
             &recommended_url
         };
-        #[cfg(feature = "network")]
+        #[cfg(all(feature = "network", not(test)))]
         let (is_reachable, probe_latency) =
             probe_endpoint(probe_target, api_token, self.probe_timeout);
-        #[cfg(not(feature = "network"))]
+        #[cfg(any(not(feature = "network"), test))]
         let (is_reachable, probe_latency): (bool, f64) = {
             let _ = (probe_target, api_token, self.probe_timeout);
             (false, 0.0)

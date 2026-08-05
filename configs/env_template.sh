@@ -103,11 +103,11 @@ GH_REPO_NAME=""                        # [SELF-HEAL] Repository name
 # NETWORK / TESTING CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 # Bridge collection and testing parameters
-MAX_WORKERS="150"                      # Maximum concurrent workers
+MAX_WORKERS="150"                      # Optional override; runtime can still scale down to candidate pool
 CONNECTION_TIMEOUT="8"                 # Connection timeout in seconds
 SSL_TIMEOUT="6"                        # SSL handshake timeout in seconds
 MAX_RETRIES="2"                        # Maximum retry attempts
-MAX_TEST_PER_TYPE="1000"               # Maximum bridges to test per transport type
+MAX_TEST_PER_TYPE="10000"              # Optional safety bound; default is above current legitimate pool
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TIME WINDOWS
@@ -148,7 +148,7 @@ HTTPS_PROXY=""                         # HTTPS proxy URL
 USE_TORPROJECT_SCRAPER="true"          # Enable bridges.torproject.org scraper
 USE_MOAT_API="true"                    # Enable MOAT API bridge collector
 USE_BRIDGEDB_API="true"               # Enable BridgeDB API collector
-USE_TELEGRAM_SOURCES="false"           # Enable Telegram bridge channels
+USE_TELEGRAM_SOURCES="auto"            # Auto-enabled when TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID are set
 USE_STATIC_BRIDGES="true"             # Enable static bridge list
 
 # ─────────────────────────────────────────────────────────────────────────────

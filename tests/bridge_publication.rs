@@ -31,8 +31,8 @@ fn write_fixture(root: &std::path::Path) {
     let bridge = root.join("bridge");
     let now = "2026-08-01T23:30:00Z";
     let history = json!({
-        "obfs4 198.51.100.10:443 FINGERPRINT cert=test iat-mode=0": {
-            "raw": "obfs4 198.51.100.10:443 FINGERPRINT cert=test iat-mode=0",
+        "obfs4 1.2.3.10:443 FINGERPRINT cert=test iat-mode=0": {
+            "raw": "obfs4 1.2.3.10:443 FINGERPRINT cert=test iat-mode=0",
             "transport": "obfs4",
             "ip_version": "ipv4",
             "first_seen": now,
@@ -40,8 +40,8 @@ fn write_fixture(root: &std::path::Path) {
             "score": 88.0,
             "test_pass": false
         },
-        "webtunnel 203.0.113.20:443 FINGERPRINT url=https://cdn.example.invalid/": {
-            "raw": "webtunnel 203.0.113.20:443 FINGERPRINT url=https://cdn.example.invalid/",
+        "webtunnel 1.2.3.20:443 FINGERPRINT url=https://cdn.example.invalid/": {
+            "raw": "webtunnel 1.2.3.20:443 FINGERPRINT url=https://cdn.example.invalid/",
             "transport": "webtunnel",
             "ip_version": "ipv4",
             "first_seen": now,
@@ -50,7 +50,7 @@ fn write_fixture(root: &std::path::Path) {
             "test_pass": false
         },
         "snowflake capability": {
-            "raw": "snowflake 192.0.2.3:1 FINGERPRINT url=https://snowflake.example.invalid/",
+            "raw": "snowflake 1.2.3.3:1 FINGERPRINT url=https://snowflake.example.invalid/",
             "transport": "snowflake",
             "ip_version": "ipv4",
             "first_seen": now,
@@ -58,8 +58,8 @@ fn write_fixture(root: &std::path::Path) {
             "score": 95.0,
             "test_pass": false
         },
-        "vanilla [2001:db8::4]:443 FINGERPRINT": {
-            "raw": "[2001:db8::4]:443 FINGERPRINT",
+        "vanilla [2001:4860:4860::8844]:443 FINGERPRINT": {
+            "raw": "[2001:4860:4860::8844]:443 FINGERPRINT",
             "transport": "vanilla",
             "ip_version": "ipv6",
             "first_seen": now,
@@ -67,8 +67,8 @@ fn write_fixture(root: &std::path::Path) {
             "score": 55.0,
             "test_pass": false
         },
-        "conjure 192.0.2.9:443": {
-            "raw": "conjure 192.0.2.9:443 FINGERPRINT",
+        "conjure 1.2.3.9:443": {
+            "raw": "conjure 1.2.3.9:443 FINGERPRINT",
             "transport": "conjure",
             "ip_version": "ipv4",
             "first_seen": now,
@@ -76,8 +76,8 @@ fn write_fixture(root: &std::path::Path) {
             "score": 70.0,
             "test_pass": true
         },
-        "meek-azure 192.0.2.10:443": {
-            "raw": "meek-azure 192.0.2.10:443 FINGERPRINT",
+        "meek-azure 1.2.3.10:443": {
+            "raw": "meek-azure 1.2.3.10:443 FINGERPRINT",
             "transport": "meek-azure",
             "ip_version": "ipv4",
             "first_seen": now,
@@ -89,7 +89,7 @@ fn write_fixture(root: &std::path::Path) {
     let results = json!({
         "bridges": [
             {
-                "line": "obfs4 198.51.100.10:443 FINGERPRINT cert=test iat-mode=0",
+                "line": "obfs4 1.2.3.10:443 FINGERPRINT cert=test iat-mode=0",
                 "transport": "obfs4",
                 "tcp_reachable": true,
                 "transport_capable": false,
@@ -97,7 +97,7 @@ fn write_fixture(root: &std::path::Path) {
                 "composite_score": 0.8
             },
             {
-                "line": "webtunnel 203.0.113.20:443 FINGERPRINT url=https://cdn.example.invalid/",
+                "line": "webtunnel 1.2.3.20:443 FINGERPRINT url=https://cdn.example.invalid/",
                 "transport": "webtunnel",
                 "tcp_reachable": true,
                 "transport_capable": false,
@@ -105,7 +105,7 @@ fn write_fixture(root: &std::path::Path) {
                 "composite_score": 0.9
             },
             {
-                "line": "snowflake 192.0.2.3:1 FINGERPRINT url=https://snowflake.example.invalid/",
+                "line": "snowflake 1.2.3.3:1 FINGERPRINT url=https://snowflake.example.invalid/",
                 "transport": "snowflake",
                 "tcp_reachable": false,
                 "transport_capable": true,
@@ -113,7 +113,7 @@ fn write_fixture(root: &std::path::Path) {
                 "composite_score": 0.55
             },
             {
-                "line": "[2001:db8::4]:443 FINGERPRINT",
+                "line": "[2001:4860:4860::8844]:443 FINGERPRINT",
                 "transport": "vanilla",
                 "tcp_reachable": false,
                 "transport_capable": false,

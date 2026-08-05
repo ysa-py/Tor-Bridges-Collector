@@ -24,6 +24,7 @@ import (
 	"log"
 	"net"
 	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -308,15 +309,32 @@ func validateWorkers(workers int) error {
 	return nil
 }
 
+func dynamicWorkerCount(requested, candidates int) int {
+	if requested > 0 {
+		if candidates > 0 && requested > candidates {
+			return candidates
+		}
+		return requested
+	}
+	if candidates <= 1 {
+		return 1
+	}
+	cpuScaled := runtime.NumCPU() * 16
+	if cpuScaled < 16 {
+		cpuScaled = 16
+	}
+	if cpuScaled > candidates {
+		return candidates
+	}
+	return cpuScaled
+}
+
 func main() {
 	inputFlag := flag.String("input", "bridge/bridge_list_for_testing.json", "JSON array of bridge strings")
 	outputFlag := flag.String("output", "bridge/iran_results.json", "Output JSON report path")
-	workersFlag := flag.Int("workers", 100, "Parallel worker count")
+	workersFlag := flag.Int("workers", 0, "Parallel worker count (0 = dynamic from candidate pool and CPU)")
 	timeoutFlag := flag.Duration("timeout", 8*time.Second, "Per-bridge TCP timeout")
 	flag.Parse()
-	if err := validateWorkers(*workersFlag); err != nil {
-		log.Fatal(err)
-	}
 
 	// ── Read input ────────────────────────────────────────────────────────
 	data, err := os.ReadFile(*inputFlag)
@@ -327,8 +345,12 @@ func main() {
 	if err := json.Unmarshal(data, &bridgeLines); err != nil {
 		log.Fatalf("parse input JSON: %v", err)
 	}
+	workers := dynamicWorkerCount(*workersFlag, len(bridgeLines))
+	if err := validateWorkers(workers); err != nil {
+		log.Fatal(err)
+	}
 	log.Printf("Loaded %d bridges for testing (workers=%d, timeout=%s)",
-		len(bridgeLines), *workersFlag, *timeoutFlag)
+		len(bridgeLines), workers, *timeoutFlag)
 
 	// ── Shared clients ────────────────────────────────────────────────────
 	ipClient := ipinfo.New()
@@ -336,7 +358,7 @@ func main() {
 	defer ooniClient.Close()
 
 	// ── Parallel classification ───────────────────────────────────────────
-	sem := make(chan struct{}, *workersFlag)
+	sem := make(chan struct{}, workers)
 	results := make(chan BridgeResult, len(bridgeLines))
 	var wg sync.WaitGroup
 	ctx := context.Background()

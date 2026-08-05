@@ -5,13 +5,11 @@
 //! collector always has working bridges even when external APIs are
 //! unreachable (critical during Iranian internet cuts).
 //!
-//! The four constants below are byte-identical to the Python source — each
-//! Python fragment uses parenthesized implicit string concatenation, and
-//! the Rust port reproduces the resulting string via `\`-continued string
-//! literals (which strip the newline and any leading whitespace on the
-//! following line while preserving the trailing space before `\`).
+//! Documentation-range endpoint placeholders have been removed from every
+//! production/static data path; fronted transports keep only their legitimate
+//! broker/front metadata and are not counted as direct IP bridges.
 //!
-//! Beyond the Python-parity constants, this module also provides static
+//! Beyond the sanitized static constants, this module also provides static
 //! fallback lines for every published transport (webtunnel, vanilla,
 //! conjure, meek-azure included) via [`fallback_lines`] and [`fallback_all`].
 //! The exporter and the pre-publication FAILSAFE use those helpers to
@@ -27,34 +25,34 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Snowflake — WebRTC + CDN fronting. Extremely hard to block. Best for Iran.
-// The 192.0.2.x IPs are documentation placeholders; routing is via broker URL.
+// Direct TEST-NET endpoints were purged; routing is via broker/front metadata.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Built-in Snowflake bridge lines. Length: 4.
 pub const SNOWFLAKE_BRIDGES: &[&str] = &[
     // Primary — Fastly CDN front (googlevideo.com)
-    "snowflake 192.0.2.3:1 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+    "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ \
 fronts=ftls.googlevideo.com \
 ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.voip.blackberry.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478 \
 utls-imitate=hellorandomizedalpn",
     // Secondary — direct torproject.net with Fastly front
-    "snowflake 192.0.2.4:1 8838024498816A039FCBBAB14E6F40A0843051FA \
+    "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA \
 fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA \
 url=https://snowflake-broker.torproject.net/ \
 fronts=snowflake-broker.torproject.net.global.prod.fastly.net \
 ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.voip.blackberry.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478 \
 utls-imitate=hellorandomizedalpn",
     // AMP CDN — via ampproject.org (Google AMP CDN, harder to block in Iran)
-    "snowflake 192.0.2.5:1 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+    "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ \
 fronts=www.gstatic.com \
 ice=stun:stun.l.google.com:19302,stun:stun.ekiga.net:3478,stun:stun.ideasip.com:3478,stun:stun.rixtelecom.se:3478,stun:stun.schlund.de:3478,stun:stun.stunprotocol.org:3478 \
 utls-imitate=hellorandomizedalphv2",
     // Backup — hellorandomizednoalpn imitation
-    "snowflake 192.0.2.6:1 8838024498816A039FCBBAB14E6F40A0843051FA \
+    "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA \
 fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA \
 url=https://snowflake-broker.torproject.net/ \
 fronts=snowflake-broker.torproject.net.global.prod.fastly.net \
@@ -69,13 +67,13 @@ utls-imitate=hellorandomizednoalpn",
 /// Built-in meek-lite bridge lines. Length: 3.
 pub const MEEK_BRIDGES: &[&str] = &[
     // meek-azure — Microsoft Azure CDN (very high availability)
-    "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 \
+    "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 \
 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
     // meek-amazon — AWS CloudFront
-    "meek_lite 192.0.2.16:80 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 \
+    "meek_lite 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 \
 url=https://a0.awsstatic.com/ front=a0.awsstatic.com",
     // meek-azure alternate (CDN endpoint B)
-    "meek_lite 192.0.2.19:80 BE776A53492E1E044A26F17306E1BC46A55A1625 \
+    "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 \
 url=https://meek.azureedge.net/ front=cloudflightcdn.azureedge.net",
 ];
 
@@ -119,16 +117,16 @@ iat-mode=2",
 
 /// Built-in WebTunnel bridge lines (public pool, IPv6-first). Length: 4.
 pub const WEBTUNNEL_BRIDGES: &[&str] = &[
-    "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 \
+    "webtunnel \
 DF343521735ABE129910A998817B3A93AA2390FE \
 url=https://coellen.xyz ver=0.0.3",
-    "webtunnel [2001:db8:135d:123e:527a:c63b:5eb0:b322]:443 \
+    "webtunnel \
 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 \
 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
-    "webtunnel [2001:db8:157f:b0b0:4ee2:b754:ee1e:76d1]:443 \
+    "webtunnel \
 96E16DE2F8DA38060D93A554DC56C90A681F6FE4 \
 url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3",
-    "webtunnel [2001:db8:15ff:dc41:12c5:ce54:2bfa:ab3e]:443 \
+    "webtunnel \
 88C9B6F63D50B63FC5E1DE2F5423FCDA2C0AC5EB \
 url=https://vault.005184.xyz/e3QD38jnqsG3jzcfa8NA6ar9 ver=0.0.3",
 ];
@@ -153,11 +151,9 @@ pub const VANILLA_BRIDGES: &[&str] = &[
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Built-in conjure bridge lines. Length: 1.
-pub const CONJURE_BRIDGES: &[&str] = &[
-    "conjure 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+pub const CONJURE_BRIDGES: &[&str] = &["conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 url=https://registration.refraction.network/api \
-fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
-];
+fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // meek-azure — Azure CDN domain fronting. Same line as
@@ -165,22 +161,20 @@ fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Built-in meek-azure bridge lines. Length: 1.
-pub const MEEK_AZURE_BRIDGES: &[&str] = &[
-    "meek_lite 192.0.2.20:80 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
-url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
-];
+pub const MEEK_AZURE_BRIDGES: &[&str] = &["meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
+url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public interface
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Return the list of `(bridge_line, transport, ip_version)` tuples for all
-/// built-in bridges, in the same order as the Python `get_all()`:
+/// built-in bridges in stable transport order:
 /// snowflake×4, meek_lite×3, obfs4×5 (12 tuples total).
 ///
-/// This function is the byte-for-byte parity surface with the Python source
-/// and is intentionally NOT extended; the transport families added for the
-/// publication FAILSAFE live in [`fallback_lines`] / [`fallback_all`].
+/// This function intentionally excludes documentation/reserved endpoints; the
+/// transport families added for the publication FAILSAFE live in
+/// [`fallback_lines`] / [`fallback_all`].
 pub fn get_all() -> Vec<(&'static str, &'static str, &'static str)> {
     let mut results: Vec<(&'static str, &'static str, &'static str)> = Vec::new();
     for line in SNOWFLAKE_BRIDGES {
@@ -237,17 +231,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn snowflake_bridge_count_matches_python() {
+    fn snowflake_bridge_count_preserved() {
         assert_eq!(SNOWFLAKE_BRIDGES.len(), 4);
     }
 
     #[test]
-    fn meek_bridge_count_matches_python() {
+    fn meek_bridge_count_preserved() {
         assert_eq!(MEEK_BRIDGES.len(), 3);
     }
 
     #[test]
-    fn obfs4_bridge_count_matches_python() {
+    fn obfs4_bridge_count_preserved() {
         assert_eq!(OBFS4_BRIDGES.len(), 5);
     }
 

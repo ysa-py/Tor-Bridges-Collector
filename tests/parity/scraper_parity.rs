@@ -223,6 +223,7 @@ impl MockHttpFetch {
             url.to_string(),
             HttpResponse {
                 status,
+                headers: Vec::new(),
                 text: text.to_string(),
             },
         );
@@ -234,6 +235,7 @@ impl MockHttpFetch {
             url.to_string(),
             HttpResponse {
                 status,
+                headers: Vec::new(),
                 text: text.to_string(),
             },
         );
@@ -245,6 +247,7 @@ impl HttpFetch for MockHttpFetch {
     fn get(&self, url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
         Ok(self.gets.get(url).cloned().unwrap_or(HttpResponse {
             status: 404,
+            headers: Vec::new(),
             text: String::new(),
         }))
     }
@@ -258,6 +261,7 @@ impl HttpFetch for MockHttpFetch {
     ) -> Result<HttpResponse, ScraperError> {
         Ok(self.posts.get(url).cloned().unwrap_or(HttpResponse {
             status: 404,
+            headers: Vec::new(),
             text: String::new(),
         }))
     }

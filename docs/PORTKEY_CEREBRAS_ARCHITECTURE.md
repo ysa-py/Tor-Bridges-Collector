@@ -165,7 +165,7 @@ All 15 failing: exit 0, write failure log, pipeline continues.
    providers) as the correct solution. Do NOT create multiple
    accounts to bypass rate limits — this violates ToS and risks
    all accounts being suspended. The waterfall approach provides
-   effectively unlimited capacity by distributing across providers.
+   elastic capacity by distributing across configured providers.
 ```
 
 ---
@@ -196,7 +196,7 @@ All 15 failing: exit 0, write failure log, pipeline continues.
 ### 4. Rate Limit Strategy (Legitimate Approach)
 
 Instead of creating multiple accounts (ToS violation), use this
-multi-layer approach that provides effectively unlimited capacity:
+multi-layer approach that provides elastic configured capacity:
 
 Layer 1: Portkey handles rate-limit retry and rotation automatically
 Layer 2: 15-provider waterfall ensures no single-provider dependency

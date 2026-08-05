@@ -41,6 +41,7 @@
 
 use std::collections::BTreeSet;
 use std::fs;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::time::Duration;
 
@@ -131,6 +132,8 @@ pub enum ScraperError {
 pub struct HttpResponse {
     /// HTTP status code (e.g. 200, 404).
     pub status: u16,
+    /// Response headers captured as UTF-8 lossy name/value pairs for diagnostics.
+    pub headers: Vec<(String, String)>,
     /// Response body decoded as UTF-8 text.
     pub text: String,
 }
@@ -254,6 +257,88 @@ pub fn is_valid_line(line: &str) -> bool {
     valid_line_re().is_match(line)
 }
 
+/// Return true when `ip` is a documentation, benchmarking, or otherwise
+/// reserved/non-routable address that must never be counted as a production
+/// bridge candidate.
+#[must_use]
+pub fn is_documentation_or_reserved_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(v4) => is_documentation_or_reserved_ipv4(v4),
+        IpAddr::V6(v6) => is_documentation_or_reserved_ipv6(v6),
+    }
+}
+
+fn is_documentation_or_reserved_ipv4(ip: Ipv4Addr) -> bool {
+    let o = ip.octets();
+    ip.is_private()
+        || ip.is_loopback()
+        || ip.is_link_local()
+        || ip.is_multicast()
+        || ip.is_broadcast()
+        || ip.is_unspecified()
+        || o[0] == 0
+        || o[0] == 10
+        || o[0] == 127
+        || (o[0] == 100 && (64..=127).contains(&o[1]))
+        || (o[0] == 169 && o[1] == 254)
+        || (o[0] == 172 && (16..=31).contains(&o[1]))
+        || (o[0] == 192 && o[1] == 0 && o[2] == 0)
+        || (o[0] == 192 && o[1] == 0 && o[2] == 2)
+        || (o[0] == 192 && o[1] == 88 && o[2] == 99)
+        || (o[0] == 192 && o[1] == 168)
+        || (o[0] == 198 && (18..=19).contains(&o[1]))
+        || (o[0] == 198 && o[1] == 51 && o[2] == 100)
+        || (o[0] == 203 && o[1] == 0 && o[2] == 113)
+        || o[0] >= 224
+}
+
+fn is_documentation_or_reserved_ipv6(ip: Ipv6Addr) -> bool {
+    let seg = ip.segments();
+    ip.is_unspecified()
+        || ip.is_loopback()
+        || (seg[0] & 0xffc0) == 0xfe80
+        || (seg[0] & 0xfe00) == 0xfc00
+        || (seg[0] & 0xff00) == 0xff00
+        || seg[0] == 0x2001 && seg[1] == 0x0db8
+}
+
+/// Extract the first bridge endpoint address and reject known placeholder or
+/// reserved ranges. Lines without a direct IP endpoint (for example Snowflake
+/// broker-only lines or URL-fronted WebTunnel entries) are allowed through.
+#[must_use]
+pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
+    if let Some(caps) = ip4_port_re().captures(line) {
+        if let Some(host) = caps.get(1).map(|m| m.as_str()) {
+            if let Ok(ip) = host.parse::<Ipv4Addr>() {
+                return is_documentation_or_reserved_ip(IpAddr::V4(ip));
+            }
+        }
+    }
+    if let Some(caps) = ipv6_bracket_re().captures(line) {
+        let raw = caps.get(0).map(|m| m.as_str()).unwrap_or("");
+        let host = raw.trim_start_matches('[').trim_end_matches(']');
+        if let Ok(ip) = host.parse::<Ipv6Addr>() {
+            return is_documentation_or_reserved_ip(IpAddr::V6(ip));
+        }
+    }
+    false
+}
+
+fn accept_ingested_bridge(line: &str, source: &str, transport: &str) -> bool {
+    if contains_documentation_or_reserved_endpoint(line) {
+        tracing::warn!(
+            target: "bridge_ingest",
+            event = "rejected_placeholder_range",
+            source = source,
+            transport = transport,
+            bridge_line = line,
+            "rejected_placeholder_range"
+        );
+        return false;
+    }
+    true
+}
+
 /// Mirror of `_infer_transport(key)`.
 pub fn infer_transport(key: &str) -> String {
     let low = key.to_lowercase();
@@ -302,6 +387,7 @@ pub fn parse_bridgelines_html(html: &str) -> Vec<String> {
     raw.split('\n')
         .map(|l| l.trim())
         .filter(|l| is_valid_line(l))
+        .filter(|l| accept_ingested_bridge(l, "torproject_html", &infer_transport(l)))
         .map(|l| l.to_string())
         .collect()
 }
@@ -707,7 +793,7 @@ pub fn parse_moat_response(data: &Value) -> Result<Vec<(String, String)>, Scrape
         if let Some(arr) = bridge_list.as_array() {
             for line in arr {
                 if let Some(s) = line.as_str() {
-                    if is_valid_line(s) {
+                    if is_valid_line(s) && accept_ingested_bridge(s, "moat", &transport) {
                         results.push((s.trim().to_string(), transport.clone()));
                     }
                 }
@@ -724,34 +810,153 @@ pub fn parse_moat_response(data: &Value) -> Result<Vec<(String, String)>, Scrape
 /// `"ipv6"` when the line contains `[`, else `"ipv4"`.
 pub fn fetch_moat(client: &dyn HttpFetch) -> Vec<(String, String, String)> {
     let timeout = Duration::from_secs(30);
-    let payload = json!({
-        "version": "0.1.0",
-        "transports": ["obfs4", "webTunnel", "snowflake"],
-        "country": "ir",
-    });
+    let payloads = [
+        json!({
+            "version": "0.1.0",
+            "transports": ["obfs4", "webTunnel", "snowflake"],
+            "country": "ir",
+        }),
+        json!({"country": "ir"}),
+    ];
     let headers = moat_headers();
     let mut results = Vec::new();
+    let mut diagnostics = Vec::new();
+
+    let countries_url = "https://bridges.torproject.org/moat/circumvention/countries";
+    match client.get(countries_url, timeout) {
+        Ok(resp) => diagnostics.push(moat_diag(countries_url, "session_probe", &resp, None, 0)),
+        Err(err) => diagnostics.push(json!({
+            "url": countries_url,
+            "phase": "session_probe",
+            "error": err.to_string(),
+            "timestamp": Utc::now().to_rfc3339(),
+        })),
+    }
+
     for url in [MOAT_BUILTIN_URL, MOAT_SETTINGS_URL] {
-        match client.post_json(url, &payload, &headers, timeout) {
-            Ok(resp) if resp.status == 200 => match resp.json() {
-                Ok(data) => match parse_moat_response(&data) {
-                    Ok(pairs) => {
-                        let label = url.rsplit('/').next().unwrap_or(url);
-                        tracing::info!("MOAT [{}]: {} bridges", label, pairs.len());
-                        for (line, transport) in pairs {
-                            let ip_ver = if line.contains('[') { "ipv6" } else { "ipv4" };
-                            results.push((line, transport, ip_ver.to_string()));
+        let mut endpoint_total = 0usize;
+        for payload in &payloads {
+            match client.post_json(url, payload, &headers, timeout) {
+                Ok(resp) if resp.status == 200 => match resp.json() {
+                    Ok(data) => match parse_moat_response(&data) {
+                        Ok(pairs) => {
+                            let label = url.rsplit('/').next().unwrap_or(url);
+                            if pairs.is_empty() {
+                                diagnostics.push(moat_diag(
+                                    url,
+                                    "empty_200",
+                                    &resp,
+                                    Some("HTTP 200 response contained no bridge lines"),
+                                    payload.to_string().len(),
+                                ));
+                            }
+                            tracing::info!("MOAT [{}]: {} bridges", label, pairs.len());
+                            endpoint_total += pairs.len();
+                            for (line, transport) in pairs {
+                                let ip_ver = if line.contains('[') { "ipv6" } else { "ipv4" };
+                                results.push((line, transport, ip_ver.to_string()));
+                            }
                         }
+                        Err(err) => {
+                            diagnostics.push(moat_diag(
+                                url,
+                                "parser_error",
+                                &resp,
+                                Some(&err.to_string()),
+                                payload.to_string().len(),
+                            ));
+                            tracing::warn!("MOAT [{}]: {}", url, err);
+                        }
+                    },
+                    Err(err) => {
+                        diagnostics.push(moat_diag(
+                            url,
+                            "invalid_json",
+                            &resp,
+                            Some(&err.to_string()),
+                            payload.to_string().len(),
+                        ));
+                        tracing::warn!("MOAT [{}]: {}", url, err);
                     }
-                    Err(err) => tracing::warn!("MOAT [{}]: {}", url, err),
                 },
-                Err(err) => tracing::warn!("MOAT [{}]: {}", url, err),
-            },
-            Ok(resp) => tracing::debug!("MOAT [{}]: HTTP {}", url, resp.status),
-            Err(err) => tracing::warn!("MOAT [{}]: {}", url, err),
+                Ok(resp) => {
+                    diagnostics.push(moat_diag(
+                        url,
+                        "non_200",
+                        &resp,
+                        Some(&format!("HTTP {}", resp.status)),
+                        payload.to_string().len(),
+                    ));
+                    tracing::warn!("MOAT [{}]: HTTP {}", url, resp.status);
+                }
+                Err(err) => {
+                    diagnostics.push(json!({
+                        "url": url,
+                        "phase": "request_error",
+                        "payload_bytes": payload.to_string().len(),
+                        "error": err.to_string(),
+                        "timestamp": Utc::now().to_rfc3339(),
+                    }));
+                    tracing::warn!("MOAT [{}]: {}", url, err);
+                }
+            }
+        }
+        if endpoint_total == 0 {
+            tracing::warn!(
+                target: "bridge_ingest",
+                event = "moat_unavailable_this_run",
+                url = url,
+                "MOAT endpoint yielded no usable bridges after session probe and schema variants"
+            );
         }
     }
+    write_moat_diagnostics(&diagnostics);
     results
+}
+
+fn moat_diag(
+    url: &str,
+    phase: &str,
+    resp: &HttpResponse,
+    reason: Option<&str>,
+    payload_bytes: usize,
+) -> Value {
+    json!({
+        "url": url,
+        "phase": phase,
+        "status": resp.status,
+        "headers": resp
+            .headers
+            .iter()
+            .map(|(k, v)| json!({"name": k, "value": v}))
+            .collect::<Vec<_>>(),
+        "body_prefix": resp.text.chars().take(500).collect::<String>(),
+        "payload_bytes": payload_bytes,
+        "reason": reason,
+        "timestamp": Utc::now().to_rfc3339(),
+    })
+}
+
+fn write_moat_diagnostics(records: &[Value]) {
+    let payload = json!({
+        "generated_at": Utc::now().to_rfc3339(),
+        "records": records,
+    });
+    if let Err(err) = fs::create_dir_all("data") {
+        tracing::warn!(
+            "could not create data directory for moat diagnostics: {}",
+            err
+        );
+        return;
+    }
+    match serde_json::to_vec_pretty(&payload) {
+        Ok(buf) => {
+            if let Err(err) = fs::write("data/moat_diagnostics.json", buf) {
+                tracing::warn!("could not write data/moat_diagnostics.json: {}", err);
+            }
+        }
+        Err(err) => tracing::warn!("could not serialize moat diagnostics: {}", err),
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -761,42 +966,14 @@ pub fn fetch_moat(client: &dyn HttpFetch) -> Vec<(String, String, String)> {
 /// Mirror of `_STATIC_BRIDGES` in `scraper.py`. Each entry is
 /// `(bridge_line, transport)`.
 pub fn static_bridges() -> &'static [(&'static str, &'static str)] {
-    &[
-        (
-            "snowflake 192.0.2.3:1 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
-fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
-url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ \
-fronts=ftls.googlevideo.com \
-ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478 \
-utls-imitate=hellorandomizedalpn",
-            "snowflake",
-        ),
-        (
-            "snowflake 192.0.2.4:1 8838024498816A039FCBBAB14E6F40A0843051FA \
-fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA \
-url=https://snowflake-broker.torproject.net/ \
-fronts=snowflake-broker.torproject.net.global.prod.fastly.net \
-ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478 \
-utls-imitate=hellorandomizedalpn",
-            "snowflake",
-        ),
-        (
-            "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 \
-url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
-            "meek_lite",
-        ),
-        (
-            "meek_lite 192.0.2.16:80 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 \
-url=https://a0.awsstatic.com/ front=a0.awsstatic.com",
-            "meek_lite",
-        ),
-    ]
+    &[]
 }
 
 /// Mirror of `get_static()`. Returns `(line, transport, "ipv4")` tuples.
 pub fn get_static() -> Vec<(&'static str, &'static str, &'static str)> {
     static_bridges()
         .iter()
+        .filter(|(line, transport)| accept_ingested_bridge(line, "static", transport))
         .map(|(line, transport)| (*line, *transport, "ipv4"))
         .collect()
 }
@@ -1247,6 +1424,12 @@ fn selected_lines(
         .iter()
         .copied()
         .filter(|v| filter(v))
+        .filter(|v| {
+            v.get("raw")
+                .and_then(Value::as_str)
+                .map(|raw| !contains_documentation_or_reserved_endpoint(raw))
+                .unwrap_or(true)
+        })
         .filter_map(|v| {
             v.get("raw")
                 .and_then(Value::as_str)
@@ -1284,7 +1467,15 @@ pub fn write_testing_json(
 ) -> Result<usize, ScraperError> {
     let items: Vec<(String, Value)> = history
         .as_object()
-        .map(|m| m.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+        .map(|m| {
+            m.iter()
+                .filter(|(k, v)| {
+                    let raw = v.get("raw").and_then(Value::as_str).unwrap_or(k.as_str());
+                    !contains_documentation_or_reserved_endpoint(raw)
+                })
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect()
+        })
         .unwrap_or_default();
     let all_lines: Vec<String> = selector
         .select(&items)
@@ -1500,10 +1691,15 @@ impl HttpFetch for ReqwestHttpFetch {
                 message: err.to_string(),
             })?;
         let status = resp.status().as_u16();
+        let headers = response_headers(resp.headers());
         let text = resp.text().map_err(|_| ScraperError::HttpNotUtf8 {
             url: url.to_string(),
         })?;
-        Ok(HttpResponse { status, text })
+        Ok(HttpResponse {
+            status,
+            headers,
+            text,
+        })
     }
 
     fn post_json(
@@ -1534,11 +1730,29 @@ impl HttpFetch for ReqwestHttpFetch {
             message: err.to_string(),
         })?;
         let status = resp.status().as_u16();
+        let headers = response_headers(resp.headers());
         let text = resp.text().map_err(|_| ScraperError::HttpNotUtf8 {
             url: url.to_string(),
         })?;
-        Ok(HttpResponse { status, text })
+        Ok(HttpResponse {
+            status,
+            headers,
+            text,
+        })
     }
+}
+
+#[cfg(feature = "network")]
+fn response_headers(headers: &reqwest::header::HeaderMap) -> Vec<(String, String)> {
+    headers
+        .iter()
+        .map(|(name, value)| {
+            (
+                name.as_str().to_string(),
+                value.to_str().unwrap_or("<non-utf8>").to_string(),
+            )
+        })
+        .collect()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1669,21 +1883,28 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
             }
         });
         let pairs = parse_moat_response(&data).unwrap();
-        assert_eq!(pairs.len(), 3);
-        // serde_json::Map iterates in BTreeMap-sorted key order, so the
-        // resulting transport labels are: obfs4, snowflake, webtunnel.
+        assert_eq!(pairs.len(), 2);
+        // The snowflake entry uses an RFC 5737 TEST-NET endpoint and is rejected.
         let transports: Vec<&str> = pairs.iter().map(|(_, t)| t.as_str()).collect();
-        assert_eq!(transports, vec!["obfs4", "snowflake", "webtunnel"]);
+        assert_eq!(transports, vec!["obfs4", "webtunnel"]);
     }
 
     #[test]
-    fn get_static_returns_four_entries() {
+    fn get_static_excludes_placeholder_documentation_entries() {
         let s = get_static();
-        assert_eq!(s.len(), 4);
-        assert_eq!(s[0].1, "snowflake");
-        assert_eq!(s[1].1, "snowflake");
-        assert_eq!(s[2].1, "meek_lite");
-        assert_eq!(s[3].1, "meek_lite");
+        assert!(s.is_empty());
+        assert!(contains_documentation_or_reserved_endpoint(
+            "obfs4 192.0.2.1:443 cert=abc"
+        ));
+        assert!(contains_documentation_or_reserved_endpoint(
+            "obfs4 198.51.100.1:443 cert=abc"
+        ));
+        assert!(contains_documentation_or_reserved_endpoint(
+            "obfs4 203.0.113.1:443 cert=abc"
+        ));
+        assert!(contains_documentation_or_reserved_endpoint(
+            "obfs4 [2001:db8::1]:443 cert=abc"
+        ));
     }
 
     #[test]

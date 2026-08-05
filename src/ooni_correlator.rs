@@ -949,6 +949,13 @@ pub struct PipelineOutcome {
     pub passed: bool,
 }
 
+fn record_has_placeholder_endpoint(record: &Value) -> bool {
+    ["line", "bridge_line", "bridge", "raw"]
+        .iter()
+        .filter_map(|field| record.get(*field).and_then(Value::as_str))
+        .any(crate::scraper::contains_documentation_or_reserved_endpoint)
+}
+
 /// Compute the quality-gate decision for a list of records.
 ///
 /// Returns `(total, above_threshold, pass_rate, passed)` where:
@@ -957,8 +964,12 @@ pub struct PipelineOutcome {
 /// * `pass_rate = above_threshold / total` (or `0.0` when `total == 0`)
 /// * `passed = pass_rate >= PASS_THRESHOLD`
 pub fn quality_gate(records: &[Value]) -> (usize, usize, f64, bool) {
-    let total = records.len();
-    let above_threshold = records
+    let eligible: Vec<&Value> = records
+        .iter()
+        .filter(|record| !record_has_placeholder_endpoint(record))
+        .collect();
+    let total = eligible.len();
+    let above_threshold = eligible
         .iter()
         .filter(|r| {
             r.get("composite_score")

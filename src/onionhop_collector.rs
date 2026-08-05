@@ -41,8 +41,8 @@
 //!   (`concurrent.futures.ThreadPoolExecutor`). The Rust port
 //!   ([`test_many_with_probes`]) runs probes sequentially because the
 //!   injectable [`ReachabilityProbe`] trait is `Sync`-bounded and the
-//!   capping/clamping behavior (MAX_TEST_PER_LIST, MAX_WORKERS) is preserved
-//!   exactly. Production callers that want parallelism can wrap the probe
+//!   candidate pool is no longer truncated by MAX_TEST_PER_LIST; production
+//!   callers that want parallelism can wrap the probe
 //!   in their own thread pool.
 
 use std::fs;
@@ -67,8 +67,8 @@ pub const RECENT_HOURS: i64 = 72;
 /// Default history retention in days. Mirrors `HISTORY_RETENTION_DAYS`.
 pub const HISTORY_RETENTION_DAYS: i64 = 30;
 
-/// Maximum number of bridges per list that get a reachability test.
-/// Mirrors `MAX_TEST_PER_LIST`.
+/// Historical compatibility value for external callers that still read the
+/// old environment variable. It is no longer used as a runtime truncation cap.
 pub const MAX_TEST_PER_LIST: usize = 600;
 
 /// Maximum number of concurrent worker threads for reachability tests.
@@ -398,16 +398,12 @@ pub fn is_reachable_with_probe(bridge_line: &str, probe: &dyn ReachabilityProbe)
 
 /// Mirror of `_test_many(bridges)` using an injectable [`ReachabilityProbe`].
 ///
-/// Caps the input at [`MAX_TEST_PER_LIST`] candidates. Returns the subset
-/// of candidates (in input order) that pass [`is_reachable_with_probe`].
+/// Tests every supplied candidate and returns the subset (in input order)
+/// that passes [`is_reachable_with_probe`].
 /// Exceptions in individual probes are swallowed (matching the Python
 /// `try/except Exception: pass` around `fut.result()`).
 pub fn test_many_with_probes(bridges: &[String], probe: &dyn ReachabilityProbe) -> Vec<String> {
-    let candidates: &[String] = if bridges.len() > MAX_TEST_PER_LIST {
-        &bridges[..MAX_TEST_PER_LIST]
-    } else {
-        bridges
-    };
+    let candidates: &[String] = bridges;
     if candidates.is_empty() {
         return Vec::new();
     }
@@ -815,14 +811,14 @@ pub fn fronted_bridges() -> Vec<(&'static str, Vec<&'static str>)> {
 /// Mirror of `FRONTED_BRIDGES["snowflake"]`.
 pub fn fronted_snowflake() -> Vec<&'static str> {
     vec![
-        "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+        "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 url=https://1098762253.rsc.cdn77.org/ \
 fronts=www.cdn77.com,www.phpmyadmin.net \
 ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,\
 stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,\
 stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
-        "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA \
+        "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA \
 fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA \
 url=https://1098762253.rsc.cdn77.org/ \
 fronts=www.cdn77.com,www.phpmyadmin.net \
@@ -835,7 +831,7 @@ stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
 /// Mirror of `FRONTED_BRIDGES["meek-azure"]`.
 pub fn fronted_meek_azure() -> Vec<&'static str> {
     vec![
-        "meek_lite 192.0.2.20:80 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
+        "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
     ]
 }
@@ -843,7 +839,7 @@ url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
 /// Mirror of `FRONTED_BRIDGES["conjure"]`.
 pub fn fronted_conjure() -> Vec<&'static str> {
     vec![
-        "conjure 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+        "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 url=https://registration.refraction.network/api \
 fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
     ]
@@ -1113,7 +1109,7 @@ mod tests {
 
     #[test]
     fn detect_transport_matches_python_branches() {
-        assert_eq!(detect_transport("snowflake 192.0.2.3:80 ABC"), "snowflake");
+        assert_eq!(detect_transport("snowflake ABC"), "snowflake");
         assert_eq!(
             detect_transport("webtunnel url=https://example.com/"),
             "webtunnel"
@@ -1124,7 +1120,7 @@ mod tests {
         // `webtunnel` by the Python original (the `url=https` check fires
         // before the `conjure` check). Use a synthetic conjure line without
         // `url=https` to exercise the conjure branch.
-        assert_eq!(detect_transport("conjure 192.0.2.3:80 ABC"), "conjure");
+        assert_eq!(detect_transport("conjure ABC"), "conjure");
         assert_eq!(detect_transport("1.2.3.4:443 ABC"), "vanilla");
     }
 
@@ -1258,7 +1254,7 @@ mod tests {
     }
 
     #[test]
-    fn test_many_with_probes_caps_at_max_test_per_list() {
+    fn test_many_with_probes_tests_all_candidates() {
         struct AlwaysTrue;
         impl ReachabilityProbe for AlwaysTrue {
             fn test_tcp(&self, _host: &str, _port: u16) -> bool {
@@ -1273,7 +1269,7 @@ mod tests {
             .map(|i| format!("obfs4 1.2.3.{}:443 ABC", i % 256))
             .collect();
         let result = test_many_with_probes(&bridges, &probe);
-        assert_eq!(result.len(), MAX_TEST_PER_LIST);
+        assert_eq!(result.len(), bridges.len());
         // Sanity: works with empty input.
         bridges.clear();
         let empty = test_many_with_probes(&bridges, &probe);
@@ -1302,7 +1298,7 @@ mod tests {
         };
         // Fronted bridge → TLS probe of the front host.
         assert!(is_reachable_with_probe(
-            "snowflake 192.0.2.3:80 ABC url=https://example.com/x",
+            "snowflake ABC url=https://example.com/x",
             &probe
         ));
         assert_eq!(*probe.tls_calls.lock().unwrap(), 1);

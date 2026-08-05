@@ -188,6 +188,7 @@ impl MockHttpFetch {
             url.to_string(),
             HttpResponse {
                 status,
+                headers: Vec::new(),
                 text: text.to_string(),
             },
         );
@@ -199,6 +200,7 @@ impl HttpFetch for MockHttpFetch {
     fn get(&self, url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
         Ok(self.gets.get(url).cloned().unwrap_or(HttpResponse {
             status: 404,
+            headers: Vec::new(),
             text: String::new(),
         }))
     }
@@ -212,6 +214,7 @@ impl HttpFetch for MockHttpFetch {
     ) -> Result<HttpResponse, ScraperError> {
         Ok(HttpResponse {
             status: 404,
+            headers: Vec::new(),
             text: String::new(),
         })
     }
@@ -642,7 +645,7 @@ fn fetch_delta_with_404_returns_empty_set() {
 }
 
 #[test]
-fn test_many_with_probes_caps_at_max_test_per_list() {
+fn test_many_with_probes_accepts_full_candidate_pool() {
     let probe = MockProbe {
         reachable_set: std::collections::BTreeSet::new(),
     };
@@ -650,9 +653,7 @@ fn test_many_with_probes_caps_at_max_test_per_list() {
         .map(|i| format!("obfs4 1.2.3.{}:443 ABC", i % 256))
         .collect();
     let result = test_many_with_probes(&bridges, &probe);
-    assert_eq!(result.len(), 0); // nothing reachable
-                                 // Even though we feed MAX_TEST_PER_LIST + 5 bridges, the function only
-                                 // probes the first MAX_TEST_PER_LIST. The implementation never panics.
+    assert_eq!(result.len(), 0); // nothing reachable; all candidates are considered.
     bridges.clear();
     let empty = test_many_with_probes(&bridges, &probe);
     assert!(empty.is_empty());
