@@ -371,14 +371,13 @@ jobs:
         run: cargo build --release --bin tor-bridges-collector
 
       - name: Stage 00 — Autonomous self-heal pipeline diagnostics
-        continue-on-error: true
         timeout-minutes: 5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-        run: cargo run --quiet --bin self_heal -- --heal --output diagnostics/torshield_ir_self_heal.json
+        run: cargo run --quiet --bin self_heal -- --heal --strict --output diagnostics/torshield_ir_self_heal.json
 
       - uses: actions/download-artifact@v8
         with:
@@ -442,9 +441,12 @@ jobs:
           RUST_LOG: info
         run: |
           set -euo pipefail
+          DETECTED_WORKERS=$(( $(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) * 8 ))
+          [ "$DETECTED_WORKERS" -lt 16 ] && DETECTED_WORKERS=16
+          [ "$DETECTED_WORKERS" -gt 512 ] && DETECTED_WORKERS=512
           ./target/release/tor-bridges-collector \
-            --max-workers "${MAX_WORKERS:-50}" \
-            --max-test-per-list "${MAX_TEST_PER_LIST:-600}"
+            --max-workers "${MAX_WORKERS:-$DETECTED_WORKERS}" \
+            --max-test-per-list "${MAX_TEST_PER_LIST:-0}"
 
       # Kept as a separate broad-source enrichment pass: it consumes the
       # collector's output and contributes pipeline-specific sources, but no
@@ -651,20 +653,27 @@ jobs:
         timeout-minutes: 6
         run: cargo run --quiet --bin pipeline -- --stage nin-classify --report data/nin_classify_pipeline_report.json
 
+      # Install Zig explicitly instead of silently skipping Stage 8q. The
+      # setup action is cached by the runner and the version is pinned so a
+      # toolchain drift cannot produce a false-green omission.
+      - name: Install Zig toolchain for Stage 8q
+        uses: mlugg/setup-zig@v2
+        with:
+          version: 0.14.0
+
       - name: Stage 8q — Zig ultra-fast TCP bridge pre-screener
-        continue-on-error: true
         timeout-minutes: 6
         run: |
-          set +e
-          if command -v zig &>/dev/null && [[ -d zig-scanner ]]; then
-            cd zig-scanner && zig build -Doptimize=ReleaseFast 2>&1 || true
-            if [[ -f zig-out/bin/zig-scanner ]]; then
-              ./zig-out/bin/zig-scanner ../data/latest-results.json 2>&1 || true
-            fi
-            cd ..
-          else
-            echo "Zig not available — skipping Stage 8q"
-          fi
+          set -euo pipefail
+          test -d zig-scanner || { echo "::error::zig-scanner source is missing"; exit 1; }
+          command -v zig >/dev/null || { echo "::error::Zig toolchain installation failed"; exit 1; }
+          cd zig-scanner
+          zig version
+          zig build -Doptimize=ReleaseFast
+          test -x zig-out/bin/zig-scanner || { echo "::error::zig-scanner binary was not built"; exit 1; }
+          ./zig-out/bin/zig-scanner ../data/latest-results.json
+          cd ..
+          test -s data/zig_scan.json || { echo "::error::Stage 8q produced no scan report"; exit 1; }
 
       # Stage 8r scores every bridge against Iran's 8-layer SIAM DPI pipeline
       # and outputs PHANTOM + STEALTH tier bridges for maximum evasion.
@@ -749,7 +758,6 @@ jobs:
           # ── Explicit per-transport audit + last-resort repopulation ──────
           mkdir -p bridge
           FALLBACK_SRC="bridge/iran_likely_working_all.txt"
-          PLACEHOLDER="Bridge 0.0.0.0:0 reserved-fallback-placeholder"
           REPOP=0
           for glob in 'bridge/obfs4*.txt' 'bridge/vanilla*.txt' \
                       'bridge/webtunnel*.txt' 'bridge/conjure*.txt' \
@@ -762,7 +770,8 @@ jobs:
                 if [ -s "$FALLBACK_SRC" ]; then
                   cp "$FALLBACK_SRC" "$f"
                 else
-                  printf '%s\n' "$PLACEHOLDER" > "$f"
+                  echo "::error::Rust FAILSAFE produced no valid fallback source; refusing to invent a placeholder bridge"
+                  exit 1
                 fi
                 REPOP=$((REPOP + 1))
               fi
@@ -923,6 +932,11 @@ jobs:
             data/ja3_rotation_report.md
             data/ct_monitor_report.json
             data/zig_scan.json
+            data/collector_yield_report.json
+            data/collector_yield_summary.md
+            data/collector_yield_history.json
+            data/failsafe_activations.json
+            diagnostics/torshield_ir_self_heal.json
             export/nin_cut_survivable.txt
             export/reality_configs.json
             export/nin_recommended_transport.json
