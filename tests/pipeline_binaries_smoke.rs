@@ -71,6 +71,7 @@ fn scratch(name: &str) -> PathBuf {
     std::fs::write(dir.join("Cargo.toml"), "[package]\nname = \"scratch\"\n").unwrap();
     std::fs::write(dir.join("Cargo.lock"), "version = 3\n").unwrap();
     std::fs::write(dir.join("src/lib.rs"), "").unwrap();
+    std::fs::write(dir.join("src/pipeline_diagnostics.rs"), "").unwrap();
     std::fs::write(dir.join("scripts/self_heal.sh"), "#!/usr/bin/env bash\n").unwrap();
     std::fs::write(dir.join("scripts/self_heal.ps1"), "").unwrap();
 
