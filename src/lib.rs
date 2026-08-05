@@ -53,6 +53,7 @@ pub mod nin_survival_pack;
 pub mod notifier;
 pub mod onionhop_collector;
 pub mod ooni_correlator;
+pub mod pipeline_diagnostics;
 pub mod quality_gate;
 pub mod quarantine_manager;
 pub mod recovery;

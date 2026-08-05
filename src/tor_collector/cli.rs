@@ -65,8 +65,8 @@ pub fn apply_arguments(config: &mut CollectorConfig, args: Vec<String>) -> Resul
                     next_value(&args, &mut index, "--max-test-per-list")?,
                     "--max-test-per-list",
                 )?;
-                if value == 0 || value > 20_000 {
-                    return Err(anyhow!("--max-test-per-list must be in 1..=20000"));
+                if value > 100_000 {
+                    return Err(anyhow!("--max-test-per-list must be in 0..=100000 (0 = adaptive/unbounded)"));
                 }
                 config.max_test_per_list = value;
             }
@@ -111,7 +111,7 @@ Options:\n\
   --readme PATH                Override README output path\n\
   --metrics PATH               Write Prometheus text exposition to PATH\n\
   --max-workers N              Override adaptive-concurrency ceiling\n\
-  --max-test-per-list N        Cap tests for each transport/IP list\n\
+  --max-test-per-list N        Test pool ceiling; 0 adapts to all source lines\n\
   --timeout-seconds N          Connect/TLS/WebSocket timeout (1..=120)\n\
   --retry-count N              Per-probe retry count (1..=10)\n\
   --verbose, -v                Request verbose diagnostics\n\

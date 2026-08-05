@@ -217,6 +217,12 @@ path = "tests/pipeline_binaries_smoke.rs"
 name = "self_heal_verify_contract"
 path = "tests/self_heal_verify_contract.rs"
 
+# Whole-run diagnostics regression guard: silent fallbacks and swallowed
+# collection defects must never be classified as a healthy run.
+[[test]]
+name = "pipeline_diagnostics"
+path = "tests/pipeline_diagnostics.rs"
+
 [profile.release]
 opt-level = 3
 strip = true

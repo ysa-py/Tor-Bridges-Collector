@@ -103,7 +103,9 @@ GH_REPO_NAME=""                        # [SELF-HEAL] Repository name
 # NETWORK / TESTING CONFIGURATION
 # ─────────────────────────────────────────────────────────────────────────────
 # Bridge collection and testing parameters
-MAX_WORKERS="150"                      # Optional override; runtime can still scale down to candidate pool
+MAX_WORKERS=""                        # Empty = derive from runner parallelism; adaptive controller scales per transport
+MIN_WORKERS=""                        # Empty = derive a safe lower bound from MAX_WORKERS
+MAX_TEST_PER_LIST="0"                  # 0 = test the complete deduplicated source pool; positive values are explicit safety ceilings
 CONNECTION_TIMEOUT="8"                 # Connection timeout in seconds
 SSL_TIMEOUT="6"                        # SSL handshake timeout in seconds
 MAX_RETRIES="2"                        # Maximum retry attempts
