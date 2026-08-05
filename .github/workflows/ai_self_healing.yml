@@ -75,7 +75,7 @@ jobs:
     # workspace-diagnostics job below and were never meant to also fire
     # this job — its steps read github.event.workflow_run.* throughout,
     # which is empty on schedule/push events.
-    if: github.event_name == 'workflow_run' || github.event_name == 'workflow_dispatch'
+    if: (github.event_name == 'workflow_run' && github.event.workflow_run.name != github.workflow) || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     outputs:
@@ -99,7 +99,38 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Ensure output dirs
-        run: mkdir -p data
+        run: mkdir -p data diagnostics
+
+      # Download the complete parent-run log, not only the first failing job
+      # excerpt. The Rust classifier reads every line and records swallowed
+      # fallbacks, empty source results, skipped toolchains, and non-zero exits.
+      - name: Whole-run detect diagnose repair verify
+        if: github.event_name == 'workflow_run'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARENT_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          set +e
+          gh run view "$PARENT_RUN_ID" --repo "$GITHUB_REPOSITORY" --log > data/parent_run.log
+          FETCH_STATUS=$?
+          if [ "$FETCH_STATUS" -ne 0 ] || [ ! -s data/parent_run.log ]; then
+            echo "::warning::complete parent log could not be downloaded (status=$FETCH_STATUS)"
+            printf 'parent log unavailable; GitHub API fetch failed with status %s\n' "$FETCH_STATUS" > data/parent_run.log
+          fi
+          cargo run --quiet --bin self_heal -- \
+            --log data/parent_run.log \
+            --heal \
+            --output data/whole_run_diagnostics.json
+          DIAGNOSTIC_STATUS=$?
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -s data/whole_run_diagnostics.json ]; then
+            {
+              echo "## Whole-run diagnostics"
+              jq -r '.diagnostics // {} | "status=\(.status // \"unavailable\") errors=\(.errors // 0) warnings=\(.warnings // 0) failsafe_triggers=\(.failsafe_triggers // 0) unresolved=\(.unresolved // 0) total_lines=\(.total_lines // 0)"' data/whole_run_diagnostics.json
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "whole-run diagnostics exit status: $DIAGNOSTIC_STATUS"
+          exit 0
 
       # ════════════════════════════════════════════════════════════════════════
       # FAILURE CATEGORIZATION: Classify the failure type before attempting
@@ -168,7 +199,6 @@ jobs:
           CF_AI_GATEWAY_URL_5: ${{ secrets.CF_AI_GATEWAY_URL_5 }}
           CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
           CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
-          CF_AI_GATEWAY_URL_6: ${{ secrets.CF_AI_GATEWAY_URL_6 }}
           CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
           CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
           CF_AI_GATEWAY_URL_7: ${{ secrets.CF_AI_GATEWAY_URL_7 }}
@@ -219,7 +249,9 @@ jobs:
         uses: actions/upload-artifact@v6
         with:
           name: failure-categorization-${{ github.run_id }}
-          path: data/failure_categorization.json
+          path: |
+            data/failure_categorization.json
+            data/whole_run_diagnostics.json
           retention-days: 7
           if-no-files-found: ignore
 
@@ -233,7 +265,7 @@ jobs:
     # MERGED from self-heal.yml (2026-08-01). Original condition, unchanged:
     # always run on schedule/push; on workflow_run, only when the upstream
     # workflow actually failed.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure'
+    if: (github.event_name != 'workflow_run' || github.event.workflow_run.name != github.workflow)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
