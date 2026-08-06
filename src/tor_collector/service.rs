@@ -33,7 +33,21 @@ pub struct RunSummary {
     pub history_entries: usize,
 }
 
+/// Results of one transport/IP list after its probes complete.  Acquisition
+/// and list probing are kept separate so every list can be tested concurrently
+/// without allowing parallel tasks to mutate the shared history/publication
+/// state.
+struct ListOutcome {
+    transport: Transport,
+    ipv6: bool,
+    archive: Vec<String>,
+    source_lines: Vec<String>,
+    results: Vec<ProbeResult>,
+    tested: Vec<String>,
+}
+
 /// Unified OnionHop/vip collection service.
+#[derive(Clone)]
 pub struct CollectorService {
     config: CollectorConfig,
     fetcher: SourceFetcher,
@@ -97,6 +111,11 @@ impl CollectorService {
             }
         }
 
+        // Convert the acquired source results into independent list jobs. The
+        // old implementation probed these lists one after another, so an
+        // adaptive/unbounded pool of slow endpoints could exhaust Stage 0b's
+        // 12-minute budget even though acquisition itself was concurrent.
+        let mut list_inputs = Vec::new();
         for (transport, ipv6, bridgedb, community) in acquired {
             let fetched = bridgedb.unwrap_or_else(|error| {
                 log(&format!(
@@ -120,30 +139,97 @@ impl CollectorService {
                 } else {
                     Vec::new()
                 };
-            self.process_list(
-                transport,
-                ipv6,
-                fetched,
-                seeded,
-                &mut history,
-                &mut staged,
-                &mut stats,
-                now,
-            )
-            .await?;
+            list_inputs.push((transport, ipv6, fetched, seeded));
             if !defaults.is_empty() {
-                self.process_list(
-                    transport,
-                    false,
-                    Vec::new(),
-                    defaults,
-                    &mut history,
-                    &mut staged,
-                    &mut stats,
-                    now,
-                )
-                .await?;
+                list_inputs.push((transport, false, Vec::new(), defaults));
             }
+        }
+
+        // Each worker receives a read-only snapshot for health-aware ordering.
+        // Outcomes are merged below in stable transport order, which keeps
+        // publication deterministic while allowing all protocol probes to
+        // share the ProbeEngine's adaptive concurrency state.
+        let history_snapshot = history.clone();
+        let mut list_tasks = JoinSet::new();
+        for (transport, ipv6, fetched, seeded) in list_inputs {
+            let service = self.clone();
+            let list_history = history_snapshot.clone();
+            list_tasks.spawn(async move {
+                service
+                    .collect_list(transport, ipv6, fetched, seeded, list_history)
+                    .await
+            });
+        }
+
+        let mut outcomes = Vec::new();
+        while let Some(joined) = list_tasks.join_next().await {
+            match joined {
+                Ok(Ok(Some(outcome))) => outcomes.push(outcome),
+                Ok(Ok(None)) => {}
+                Ok(Err(error)) => return Err(error),
+                Err(error) => return Err(error.into()),
+            }
+        }
+        outcomes.sort_by(|left, right| {
+            left.transport
+                .cmp(&right.transport)
+                .then_with(|| left.ipv6.cmp(&right.ipv6))
+        });
+
+        for outcome in outcomes {
+            for line in &outcome.source_lines {
+                history.observe_discovered(line, outcome.transport, outcome.ipv6, now);
+            }
+            for result in &outcome.results {
+                history.record_probe(
+                    &result.line,
+                    outcome.transport,
+                    outcome.ipv6,
+                    result.reachable,
+                    result.latency_ms,
+                    now,
+                );
+            }
+
+            let spec = ListSpec {
+                transport: outcome.transport,
+                ipv6: outcome.ipv6,
+            };
+            let archive_path = self.config.bridge_dir.join(spec.archive_name());
+            let recent = outcome
+                .archive
+                .iter()
+                .filter(|line| history.is_recent(line, self.config.recent_hours, now))
+                .cloned()
+                .collect::<Vec<_>>();
+            stage_lines(&mut staged, archive_path, &outcome.archive);
+            stage_lines(
+                &mut staged,
+                self.config.bridge_dir.join(spec.recent_name()),
+                &recent,
+            );
+            stage_lines(
+                &mut staged,
+                self.config.bridge_dir.join(spec.tested_name()),
+                &outcome.tested,
+            );
+            stats.insert(
+                spec.archive_name(),
+                ListStats {
+                    archive: outcome.archive.len(),
+                    recent: recent.len(),
+                    tested: outcome.tested.len(),
+                },
+            );
+            log(&format!(
+                "{} ipv6={}: archive={} fresh72h={} tested={} candidates={}",
+                outcome.transport,
+                outcome.ipv6,
+                outcome.archive.len(),
+                recent.len(),
+                outcome.tested.len(),
+                outcome.results.len(),
+            ));
         }
 
         let purged = history.cleanup(self.config.history_retention_days, now);
@@ -211,18 +297,14 @@ impl CollectorService {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    async fn process_list(
+    async fn collect_list(
         &self,
         transport: Transport,
         ipv6: bool,
         fetched: Vec<String>,
         seeded: Vec<String>,
-        history: &mut HistoryStore,
-        staged: &mut BTreeMap<PathBuf, Vec<u8>>,
-        stats: &mut StatsMap,
-        now: chrono::DateTime<Utc>,
-    ) -> Result<()> {
+        history: HistoryStore,
+    ) -> Result<Option<ListOutcome>> {
         let spec = ListSpec { transport, ipv6 };
         let archive_path = self.config.bridge_dir.join(spec.archive_name());
         let existing = match read_existing_archive(&archive_path) {
@@ -232,7 +314,7 @@ impl CollectorService {
                     "WARNING: unable to read {} ({error}); leaving this archive untouched",
                     archive_path.display()
                 ));
-                return Ok(());
+                return Ok(None);
             }
         };
         let source_lines = deduplicate(
@@ -256,11 +338,7 @@ impl CollectorService {
             log(&format!(
                 "WARNING: {transport} ipv6={ipv6} has no usable source or existing lines; retaining prior files"
             ));
-            return Ok(());
-        }
-
-        for line in &source_lines {
-            history.observe_discovered(line, transport, ipv6, now);
+            return Ok(None);
         }
 
         let mut candidates = archive.clone();
@@ -279,16 +357,6 @@ impl CollectorService {
             candidates.truncate(self.config.max_test_per_list);
         }
         let results = self.tester.test_many(candidates, transport, ipv6).await;
-        for result in &results {
-            history.record_probe(
-                &result.line,
-                transport,
-                ipv6,
-                result.reachable,
-                result.latency_ms,
-                now,
-            );
-        }
         let mut tested = successful_lines(&results);
         if transport == Transport::Obfs4 && !ipv6 && !tested.is_empty() {
             let verification = self.tester.verify_obfs4_handshakes(&tested).await;
@@ -296,38 +364,14 @@ impl CollectorService {
                 apply_obfs4_policy(tested, verification, self.config.obfs4_verify_min_fraction);
         }
 
-        let recent = archive
-            .iter()
-            .filter(|line| history.is_recent(line, self.config.recent_hours, now))
-            .cloned()
-            .collect::<Vec<_>>();
-        stage_lines(staged, archive_path, &archive);
-        stage_lines(
-            staged,
-            self.config.bridge_dir.join(spec.recent_name()),
-            &recent,
-        );
-        stage_lines(
-            staged,
-            self.config.bridge_dir.join(spec.tested_name()),
-            &tested,
-        );
-        stats.insert(
-            spec.archive_name(),
-            ListStats {
-                archive: archive.len(),
-                recent: recent.len(),
-                tested: tested.len(),
-            },
-        );
-        log(&format!(
-            "{transport} ipv6={ipv6}: archive={} fresh72h={} tested={} candidates={}",
-            archive.len(),
-            recent.len(),
-            tested.len(),
-            results.len(),
-        ));
-        Ok(())
+        Ok(Some(ListOutcome {
+            transport,
+            ipv6,
+            archive,
+            source_lines,
+            results,
+            tested,
+        }))
     }
 }
 

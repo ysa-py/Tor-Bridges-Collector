@@ -18,7 +18,7 @@ const Atomic = std.atomic.Value;
 
 const CONNECT_TIMEOUT_MS: u64 = 3000;
 const MAX_THREADS: usize = 64;
-const OUTPUT_PATH = "data/zig_scan.json";
+const OUTPUT_FILE = "zig_scan.json";
 
 const ScanResult = struct {
     address: []const u8,
@@ -192,6 +192,19 @@ fn parseInputFile(allocator: std.mem.Allocator, path: []const u8) ![]WorkQueue.B
     return bridges.toOwnedSlice();
 }
 
+/// Resolve the repository-level output directory from either invocation form.
+///
+/// CI builds in `zig-scanner/` and runs the binary with `../data/latest-results.json`,
+/// while local invocations commonly run from the repository root.  A fixed
+/// `data/zig_scan.json` path therefore wrote into `zig-scanner/data/` in CI and
+/// left the required root-level report absent even when scanning succeeded.
+fn outputPath(input_path: []const u8) []const u8 {
+    if (mem.startsWith(u8, input_path, "../")) {
+        return "../data/" ++ OUTPUT_FILE;
+    }
+    return "data/" ++ OUTPUT_FILE;
+}
+
 pub fn main() !void {
     // Zig 0.14+ renamed GeneralPurposeAllocator to DebugAllocator.
     var gpa = std.heap.DebugAllocator(.{}){};
@@ -238,9 +251,13 @@ pub fn main() !void {
         for (threads) |t| t.join();
     }
 
-    // Write JSON output
-    try fs.cwd().makePath("data");
-    const out_file = try fs.cwd().createFile(OUTPUT_PATH, .{});
+    // Write JSON output. `outputPath` keeps the report in the repository-level
+    // data/ directory whether the executable is launched from the checkout
+    // root or from zig-scanner/ (the CI invocation).
+    const output_path = outputPath(input_path);
+    const output_dir = if (mem.startsWith(u8, output_path, "../")) "../data" else "data";
+    try fs.cwd().makePath(output_dir);
+    const out_file = try fs.cwd().createFile(output_path, .{});
     defer out_file.close();
 
     var bw = std.io.bufferedWriter(out_file.writer());
@@ -267,6 +284,6 @@ pub fn main() !void {
     };
 
     std.log.info("Scan complete: {}/{} bridges reachable. Output: {s}", .{
-        reachable_count, g_results.items.len, OUTPUT_PATH,
+        reachable_count, g_results.items.len, output_path,
     });
 }
