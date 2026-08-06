@@ -1,7 +1,3 @@
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 ---
 # ══════════════════════════════════════════════════════════════════════════
 # ⚠ STATUS UNCONFIRMED (flagged during 2026-08-01 consolidation)
@@ -49,6 +45,12 @@ concurrency:
 # Triggers on ANY workflow failure. Diagnoses + patches automatically.
 # Additive-only policy enforced in AutoDebugEngine.apply_patch_to_repo().
 name: AI Self-Healing Engine
+
+# Serialize diagnosis per upstream ref while allowing independent branches to
+# heal concurrently; cancel obsolete callbacks to avoid queue amplification.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch || github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
