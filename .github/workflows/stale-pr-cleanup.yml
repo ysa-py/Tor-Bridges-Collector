@@ -1,3 +1,7 @@
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 name: Stale PR Cleanup
 
 # اجرای خودکار هر شب ساعت ۰۳:۰۰ UTC + امکان اجرای دستی از تب Actions
