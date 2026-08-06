@@ -745,24 +745,27 @@ jobs:
       #   1. The Rust failsafe_bridges engine force-populates every missing or
       #      0-byte transport *.txt from the compiled-in static fallback lines
       #      of its family, and re-initialises any empty *.json to a valid [].
-      #   2. The explicit audit loop below re-checks EVERY transport projection
-      #      (obfs4*, vanilla*, webtunnel*, conjure*, meek*, meek-azure*,
-      #      snowflake* .txt) and every *.json and, as a true last-resort,
-      #      force-writes a valid fallback / [] if a file is still 0 bytes — so
-      #      Stage 10 can never observe a "0 lines (0 bytes)" file.
+      #   2. The explicit audit loop below re-checks every projection that has
+      #      a valid static fallback. WebTunnel is intentionally omitted:
+      #      URL-only metadata cannot be converted into a client bridge, so its
+      #      projection may remain empty when no literal endpoint exists.
+      #      Empty JSON files are still repaired to valid [] documents.
+      #
+      #      Stage 10 permits an empty WebTunnel projection and reports it as
+      #      an advisory warning rather than fabricating a bridge line.
+
       - name: FAILSAFE — post-execution pre-publication guarantee (Rust port)
         timeout-minutes: 3
         run: |
           set -euo pipefail
           cargo run --quiet --bin failsafe_bridges
-          # ── Explicit per-transport audit + last-resort repopulation ──────
+          # ── Explicit audit + last-resort repopulation for valid fallbacks ──
           mkdir -p bridge
           FALLBACK_SRC="bridge/iran_likely_working_all.txt"
           REPOP=0
           for glob in 'bridge/obfs4*.txt' 'bridge/vanilla*.txt' \
-                      'bridge/webtunnel*.txt' 'bridge/conjure*.txt' \
-                      'bridge/meek*.txt' 'bridge/meek-azure*.txt' \
-                      'bridge/snowflake*.txt'; do
+                      'bridge/conjure*.txt' 'bridge/meek*.txt' \
+                      'bridge/meek-azure*.txt' 'bridge/snowflake*.txt'; do
             for f in $glob; do
               [ -e "$f" ] || continue
               if [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -eq 0 ]; then

@@ -5,7 +5,9 @@
 //! Contract preserved byte-for-byte from the Python original:
 //!
 //!   1. Read `bridge/bridge_history.json` (tolerating a missing/corrupt file
-//!      with a `WARNING:` line), collect `raw` bridge lines per transport.
+//!      with a `WARNING:` line), collect valid `raw` bridge lines per
+//!      transport. URL-only WebTunnel metadata is not copied into client
+//!      projections.
 //!   2. For each transport in the fixed order obfs4, snowflake, meek_lite,
 //!      webtunnel, vanilla, conjure, meek-azure: if `bridge/<transport>.txt`
 //!      is missing or empty, rewrite it from history (`FAILSAFE: wrote ...`),
@@ -23,13 +25,15 @@
 //! Hardening added on top of the Python original (strict zero-error
 //! publication contract):
 //!
-//!   5. **Force-populate every protocol projection.** Any `bridge/*.txt`
+//!   5. **Force-populate supported protocol projections.** Any `bridge/*.txt`
 //!      protocol/advisory file (all `_72h` / `_ipv6` / `_tested` variants,
 //!      `iran_likely_working_*`, `tested_global_*`, `conjure*`, `meek-azure*`)
 //!      that is missing or 0 bytes is written from the compiled-in static
-//!      fallback lines of its transport family, so Stage 10 can never observe
-//!      a `0 lines (0 bytes)` protocol file. `iran_blocked.txt` is the single
-//!      intentional exception: an empty blocked list is truthful evidence.
+//!      fallback lines of its transport family. A projection is left empty
+//!      when its family has no complete static client bridge lines; this is
+//!      required for URL-only WebTunnel metadata because an endpoint must not
+//!      be fabricated. `iran_blocked.txt` is also intentionally allowed to be
+//!      empty: an empty blocked list is truthful evidence.
 //!   6. **Empty JSON repair.** Any 0-byte `bridge/*.json` file is rewritten
 //!      as a valid empty JSON array `[]` so downstream parsers never fail.
 //!
@@ -91,8 +95,11 @@ pub fn transport_map(history: &serde_json::Map<String, Value>) -> Vec<(&'static 
             .unwrap_or_default();
         let raw = obj.get("raw").and_then(Value::as_str).unwrap_or_default();
         if let Some((_, bridges)) = map.iter_mut().find(|(t, _)| *t == transport) {
-            if !raw.is_empty() {
-                bridges.push(raw.trim().to_string());
+            let raw = raw.trim();
+            if !raw.is_empty()
+                && (transport != "webtunnel" || has_literal_webtunnel_endpoint(raw))
+            {
+                bridges.push(raw.to_string());
             }
         }
     }
@@ -105,10 +112,39 @@ pub fn all_raw_bridges(history: &serde_json::Map<String, Value>) -> Vec<String> 
     history
         .values()
         .filter_map(|v| v.as_object())
-        .filter_map(|obj| obj.get("raw").and_then(Value::as_str))
-        .filter(|raw| !raw.is_empty())
-        .map(str::to_string)
+        .filter_map(|obj| {
+            let raw = obj.get("raw").and_then(Value::as_str)?.trim();
+            if raw.is_empty() {
+                return None;
+            }
+            let transport = obj
+                .get("transport")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            if transport == "webtunnel" && !has_literal_webtunnel_endpoint(raw) {
+                return None;
+            }
+            Some(raw.to_string())
+        })
         .collect()
+}
+
+fn has_literal_webtunnel_endpoint(line: &str) -> bool {
+    line.split_whitespace().skip(1).any(|token| {
+        let token = token.trim_matches(|character| matches!(character, ',' | ';' | '"'));
+        if let Some(rest) = token.strip_prefix('[') {
+            let Some((host, port)) = rest.split_once("]:") else {
+                return false;
+            };
+            return host.parse::<std::net::Ipv6Addr>().is_ok()
+                && port.parse::<u16>().is_ok_and(|value| value != 0);
+        }
+        let Some((host, port)) = token.rsplit_once(':') else {
+            return false;
+        };
+        host.parse::<std::net::Ipv4Addr>().is_ok()
+            && port.parse::<u16>().is_ok_and(|value| value != 0)
+    })
 }
 
 fn static_fallback_lines() -> Vec<String> {
@@ -195,9 +231,10 @@ pub fn transport_for_filename(name: &str) -> Option<&'static str> {
     }
 }
 
-/// Every `bridge/` `.txt` name that must never be 0 bytes, derived from the
-/// transport families and advisory projections of the publication contract
-/// (`src/bridge_publication.rs::REQUIRED_FILES`).
+/// Every `bridge/` `.txt` name eligible for static force-population, derived
+/// from the transport families and advisory projections of the publication
+/// contract (`src/bridge_publication.rs::REQUIRED_FILES`). Families without
+/// complete static client bridge lines may still remain empty.
 pub fn required_protocol_txt_names() -> Vec<String> {
     let mut names = Vec::new();
     for (transport, stem) in [
@@ -370,8 +407,8 @@ pub fn run(bridge_dir: &Path) -> i32 {
 
     // 2) Force-populate any missing or 0-byte protocol/advisory .txt file
     //    (all _72h / _ipv6 / _tested variants and transports absent from
-    //    history) with static fallback lines so Stage 10 never sees a
-    //    `0 lines (0 bytes)` protocol file.
+    //    history) when that family has complete static fallback lines. Do
+    //    not turn URL-only metadata into a client bridge line.
     total += force_populate_empty_txt(bridge_dir);
 
     // 3) Any 0-byte .json file is rewritten as a valid empty JSON array so
@@ -442,7 +479,8 @@ mod tests {
             "c": {"transport": "webtunnel", "raw": "webtunnel 9.9.9.9:443 url=x"},
             "d": {"transport": "unknown", "raw": "ignored"},
             "e": "not-a-dict",
-            "f": {"transport": "obfs4", "raw": ""}
+            "f": {"transport": "obfs4", "raw": ""},
+            "g": {"transport": "webtunnel", "raw": "webtunnel FINGER url=https://metadata.example/path"}
         })
         .as_object()
         .cloned()
@@ -477,13 +515,13 @@ mod tests {
     fn all_raw_bridges_skips_non_dicts_and_empty() {
         let all = all_raw_bridges(&history_fixture());
         // All four dict entries with a non-empty `raw` are collected —
-        // `all_raw_bridges` deliberately does NOT filter by transport
-        // (mirroring the Python original, which also keeps unknown
-        // transports when rebuilding bridge_list_for_testing.json); only the
-        // "not-a-dict" value and the empty-raw entry are skipped.
+        // Unknown transports remain compatible with the historical rebuild,
+        // while URL-only WebTunnel metadata is excluded from client testing
+        // inputs because it lacks a literal socket endpoint.
         assert_eq!(all.len(), 4);
         assert!(all.contains(&"webtunnel 9.9.9.9:443 url=x".to_string()));
         assert!(all.contains(&"ignored".to_string()));
+        assert!(!all.iter().any(|line| line.starts_with("webtunnel FINGER")));
     }
 
     #[test]
@@ -593,8 +631,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fb_variants_{}", std::process::id()));
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
-        // Empty history + deliberately empty protocol projections + a 0-byte
-        // JSON file: the failsafe must force-populate every one of them.
+        // Empty history + deliberately empty supported protocol projections
+        // + a 0-byte JSON file: the failsafe must force-populate every
+        // projection for which a complete static fallback exists. URL-only
+        // WebTunnel projections must remain empty rather than fabricate an
+        // endpoint.
         std::fs::write(bridge_dir.join("bridge_history.json"), "{}").expect("history");
         for name in [
             "obfs4.txt",
@@ -609,10 +650,10 @@ mod tests {
             "webtunnel_72h.txt",
             "webtunnel_ipv6.txt",
             "webtunnel_tested.txt",
+            "iran_likely_working_webtunnel.txt",
             "conjure.txt",
             "meek-azure.txt",
             "iran_likely_working_obfs4.txt",
-            "iran_likely_working_webtunnel.txt",
             "tested_global_obfs4.txt",
             "bridge_scores.json",
         ] {
@@ -629,14 +670,9 @@ mod tests {
             "vanilla_72h.txt",
             "vanilla_ipv6.txt",
             "vanilla_tested.txt",
-            "webtunnel.txt",
-            "webtunnel_72h.txt",
-            "webtunnel_ipv6.txt",
-            "webtunnel_tested.txt",
             "conjure.txt",
             "meek-azure.txt",
             "iran_likely_working_obfs4.txt",
-            "iran_likely_working_webtunnel.txt",
             "tested_global_obfs4.txt",
         ] {
             let path = bridge_dir.join(name);
@@ -645,6 +681,19 @@ mod tests {
                 body.lines().count() > 0,
                 "{name} must be force-populated ({} bytes)",
                 body.len()
+            );
+        }
+        for name in [
+            "webtunnel.txt",
+            "webtunnel_72h.txt",
+            "webtunnel_ipv6.txt",
+            "webtunnel_tested.txt",
+            "iran_likely_working_webtunnel.txt",
+        ] {
+            assert_eq!(
+                std::fs::metadata(bridge_dir.join(name)).expect("webtunnel projection").len(),
+                0,
+                "{name} must stay empty when only URL metadata is available"
             );
         }
         let scores = std::fs::read_to_string(bridge_dir.join("bridge_scores.json")).expect("json");
