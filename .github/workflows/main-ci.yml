@@ -23,6 +23,12 @@
 # ══════════════════════════════════════════════════════════════════════════
 name: Main CI
 
+# Keep only the newest run for a given branch or pull request ref. This
+# releases runner capacity without removing or weakening any CI gate.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 'on':
   push:
     # Union of ci.yml (branches: ["**"]) and autonomous-sentinel.yml
