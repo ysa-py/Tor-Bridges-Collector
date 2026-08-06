@@ -3,6 +3,42 @@
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
+## [Session 18] — 2026-08-06 — Dynamic multi-mirror pool + AI error visibility + Anti-DPI elite export
+
+- **Dynamic multi-mirror bridge seeding (`scripts/refresh_bridge_seed.sh`):**
+  - Now fetches from MULTIPLE public mirrors (with `BRIDGE_MIRRORS_REPO` as a
+    space-separated override/extender) instead of a single mirror.
+  - Expanded transport coverage from 6 to 11 projections: added `snowflake`,
+    `snowflake_ipv6`, `meek`, `meek-azure`, `conjure` alongside the existing
+    `obfs4` / `vanilla` / `webtunnel` (+`_ipv6`) sets.
+  - Redundancy-first merge: every mirror is polled and all unique lines are
+    merged (deduped by canonical line) into `bridge/bridge_history.json`,
+    which the publisher projects into every `bridge/*.txt`. The published
+    bridge count therefore grows automatically and dynamically.
+  - Mirrors that do not serve the expected files are skipped non-fatally.
+- **AI Bridge Re-Ranker error visibility (`.github/workflows/torshield-ir.yml`):**
+  - Removed the `|| true` error-swallowing in the `ai-rerank` job. A real
+    re-ranker failure now fails the job loudly so the AI Self-Healing workflow
+    can categorise and repair it (fixes the "AI never reports an error" gap).
+  - Re-ranker now runs in **dynamic mode by default** (`--top-n 0`) in both
+    the collection stage and the AI re-rank job, ranking/publishing the whole
+    deduplicated pool instead of only the first 20 bridges. Cap via
+    `AI_RERANK_TOP_N` repo variable when a ceiling is desired.
+- **Advanced anti-DPI for Iran — Stage 8s Anti-DPI Elite fusion**
+  (`.github/workflows/torshield-ir.yml`):
+  - New stage fuses the anti-AI-DPI report, the SIAM evasion tier, and the
+    Smart-Iran AI score into a single deduplicated DPI-hardened bridge list:
+    `export/iran_anti_dpi_elite.txt` (+ `export/iran_anti_dpi_elite.json`
+    summary). Output is dynamic (whole surviving pool) unless
+    `AI_ANTI_DPI_TOP_N` caps it.
+  - Implementation is a base64-embedded python3 helper (single-line YAML
+    scalar), avoiding YAML block-scalar / bash-heredoc indentation pitfalls;
+    it adds only a new `export/` artifact and never changes the 55-file
+    `bridge/` publication contract. Both new files are uploaded in the
+    `bridge-intelligence-report` artifact.
+- No existing feature was removed; all stages 0→11 and the publication
+  contract are preserved.
+
 ## [Session 12] — 2026-07-13 — Automated parity run (incomplete)
 
 - Purpose: Autonomous parity verification run to produce byte-for-byte differential artifacts between legacy Python oracles and Rust ports.
