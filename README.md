@@ -34,6 +34,37 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 4. Rebuilds **every required file** in `bridge/`, writes a deterministic ZIP, validates JSON/text inputs, and byte-compares every archive entry to its repository counterpart.
 5. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
 
+## Autonomous diagnostics, retries, and dynamic yield
+
+Every retained workflow run is audited by the Rust whole-run self-healing engine.
+It reads the complete parent job log—not only the red step—and classifies non-zero
+exits, empty/short source results, MOAT schema/HTTP failures, rate limits,
+DNS/TLS errors, stale caches, artifact digest mismatches, skipped toolchains,
+transport handshake failures, and every static FAILSAFE activation.
+
+Safe repairs are idempotent: output directories are restored, empty JSON
+artifacts are made valid, and the report emits an affected-stage retry plan with
+jittered backoff/alternate-source actions. The engine never invents a bridge or
+writes a credential. Use `--strict` when the report must gate a deployment:
+
+```bash
+cargo run --bin self_heal -- --log complete-job.log --heal --strict \
+  --output data/whole_run_diagnostics.json
+```
+
+Collection uses adaptive source breadth and concurrency. BridgeDB query variants,
+MOAT's top-level and `settings[].bridges.bridge_strings` schemas, community
+mirrors, and filename aliases are merged and deduplicated. `MAX_TEST_PER_LIST=0`
+(the default) means the complete source/archive pool is tested; a positive value
+is an explicit operator safety ceiling. `data/collector_yield_report.json`,
+`data/collector_yield_summary.md`, `data/collector_yield_history.json`, and
+`data/failsafe_activations.json` expose per-transport archive/fresh/tested
+counts, trailing-run trends, and fallback rates. A fallback is a
+compatibility last resort, not evidence of a live handshake.
+
+Stage 8q installs a pinned Zig toolchain and fails loudly if its scanner or
+report is missing; it is no longer silently skipped.
+
 ## Telegram dual persistence
 
 Telegram delivery uses a bot token and distributes a bridge inventory outside GitHub, so it requires explicit configuration; once configured it is fully automatic.

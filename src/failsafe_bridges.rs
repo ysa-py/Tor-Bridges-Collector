@@ -118,6 +118,61 @@ fn static_fallback_lines() -> Vec<String> {
         .collect()
 }
 
+/// Append a structured FAILSAFE activation record. This is intentionally
+/// best-effort: failure to write telemetry must never corrupt a bridge file,
+/// but it is reported on stderr so the workflow diagnostics can classify it.
+fn record_failsafe_activation(bridge_dir: &Path, file_name: &str, line_count: usize, reason: &str) {
+    let root_dir = bridge_dir.parent().unwrap_or_else(|| Path::new("."));
+    let path = root_dir.join("data/failsafe_activations.json");
+    let mut root = fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| serde_json::json!({"activations": []}));
+    let Some(object) = root.as_object_mut() else {
+        return;
+    };
+    let activations = object
+        .entry("activations")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if let Some(items) = activations.as_array_mut() {
+        items.push(serde_json::json!({
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "file": file_name,
+            "transport": transport_for_filename(file_name).unwrap_or("aggregate"),
+            "lines": line_count,
+            "reason": reason,
+        }));
+        // Keep telemetry bounded while retaining enough history for trend
+        // analysis. The count is a metric, not a reason to discard outputs.
+        if items.len() > 500 {
+            let drop_count = items.len() - 500;
+            items.drain(0..drop_count);
+        }
+    }
+    object.insert(
+        "generated_at".to_string(),
+        Value::String(chrono::Utc::now().to_rfc3339()),
+    );
+    object.insert(
+        "note".to_string(),
+        Value::String("Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data.".to_string()),
+    );
+    let write_result = (|| {
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(
+            &path,
+            serde_json::to_vec_pretty(&root).unwrap_or_else(|_| b"{}".to_vec()),
+        )?;
+        Ok::<(), std::io::Error>(())
+    })();
+    if let Err(error) = write_result {
+        eprintln!("FAILSAFE: unable to record telemetry: {error}");
+    }
+}
+
 /// Infer the transport family for a `bridge/` `.txt` filename, or `None`
 /// when the file is not a protocol/advisory projection.
 pub fn transport_for_filename(name: &str) -> Option<&'static str> {
@@ -256,6 +311,12 @@ pub fn force_populate_empty_txt(bridge_dir: &Path) -> u64 {
             "FAILSAFE: force-populated {name} with {} static fallback lines",
             clean.len()
         );
+        record_failsafe_activation(
+            bridge_dir,
+            &name,
+            clean.len(),
+            "empty_or_missing_projection",
+        );
         written += clean.len() as u64;
     }
     written
@@ -289,6 +350,12 @@ pub fn run(bridge_dir: &Path) -> i32 {
                     continue;
                 }
                 println!("FAILSAFE: wrote {} {transport} bridges", bridges.len());
+                record_failsafe_activation(
+                    bridge_dir,
+                    &format!("{transport}.txt"),
+                    bridges.len(),
+                    "empty_projection_recovered_from_history",
+                );
                 total += bridges.len() as u64;
             }
         } else {

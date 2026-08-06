@@ -46,6 +46,7 @@ use std::path::Path;
 use std::time::Duration;
 
 use chrono::{DateTime, Duration as ChronoDuration, Utc};
+use rand::Rng;
 use regex::Regex;
 use serde_json::{json, Map, Value};
 use thiserror::Error;
@@ -704,33 +705,53 @@ pub const TORPROJECT_TARGETS: &[(&str, &str, &str, &str)] = &[
 /// skipped, mirroring the Python `except Exception` swallow.
 pub fn fetch_torproject(client: &dyn HttpFetch) -> Vec<(String, String, String)> {
     let timeout = Duration::from_secs(30);
+    let retries = std::env::var("SOURCE_RETRIES")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| (1..=8).contains(value))
+        .unwrap_or(3);
     let mut results = Vec::new();
     for (url, _hint, transport, ip_ver) in TORPROJECT_TARGETS {
-        match client.get(url, timeout) {
-            Ok(resp) => {
-                if !(200..300).contains(&resp.status) {
-                    tracing::warn!(
-                        "torproject.org [{}/{}]: HTTP {}",
-                        transport,
-                        ip_ver,
-                        resp.status
-                    );
-                    continue;
+        let mut lines = Vec::new();
+        let mut last_error = String::new();
+        for attempt in 0..retries {
+            match client.get(url, timeout) {
+                Ok(resp) if (200..300).contains(&resp.status) => {
+                    lines = parse_bridgelines_html(&resp.text);
+                    if !lines.is_empty() || attempt + 1 == retries {
+                        break;
+                    }
+                    last_error = "HTTP 200 contained no usable bridge lines".to_string();
                 }
-                let lines = parse_bridgelines_html(&resp.text);
-                tracing::info!(
-                    "torproject.org [{}/{}]: {} bridges",
-                    transport,
-                    ip_ver,
-                    lines.len()
+                Ok(resp) => {
+                    last_error = format!("HTTP {}", resp.status);
+                }
+                Err(err) => last_error = err.to_string(),
+            }
+            if attempt + 1 < retries {
+                let delay = rand::thread_rng()
+                    .gen_range(0..=250_u64.saturating_mul(1_u64 << attempt.min(6)));
+                tracing::warn!(
+                    url,
+                    attempt = attempt + 1,
+                    retries,
+                    delay_ms = delay,
+                    "Tor Project source failed; retrying"
                 );
-                for line in lines {
-                    results.push((line, transport.to_string(), ip_ver.to_string()));
-                }
+                std::thread::sleep(Duration::from_millis(delay));
             }
-            Err(err) => {
-                tracing::warn!("torproject.org [{}]: {}", transport, err);
-            }
+        }
+        if lines.is_empty() && !last_error.is_empty() {
+            tracing::warn!("torproject.org [{}/{}]: {}", transport, ip_ver, last_error);
+        }
+        tracing::info!(
+            "torproject.org [{}/{}]: {} bridges",
+            transport,
+            ip_ver,
+            lines.len()
+        );
+        for line in lines {
+            results.push((line, transport.to_string(), ip_ver.to_string()));
         }
     }
     results
@@ -767,40 +788,149 @@ pub fn moat_headers() -> Vec<(String, String)> {
     ]
 }
 
-/// Mirror of `_parse_moat_response(data)`.
+/// Mirror of `_parse_moat_response(data)` with schema negotiation.
 ///
-/// Walks `data["bridges"]` (a dict of `transport_name -> list[str]`) and
-/// returns `[(line, transport)]` for each valid line. Non-list values and
-/// non-string elements are skipped.
+/// MOAT has emitted three compatible response shapes over time:
+///
+/// * `{ "bridges": { "obfs4": ["..."] } }`;
+/// * `{ "obfs4": ["..."], "meek": ["..."] }` (the live endpoint
+///   observed in the 2026-08-05 run); and
+/// * `{ "settings": [{ "bridges": { "type": "snowflake",
+///   "bridge_strings": ["..."] } }] }`.
+///
+/// The previous parser only accepted the first shape, so valid HTTP 200
+/// responses were reported as zero bridges.  This walker accepts all three,
+/// preserves the transport hint, rejects placeholders, and deduplicates the
+/// result. Unsupported metadata is ignored rather than treated as a fatal
+/// parse error.
 pub fn parse_moat_response(data: &Value) -> Result<Vec<(String, String)>, ScraperError> {
-    let empty_map_holder = Map::new();
-    let bridges_section: &Map<String, Value> = match data.get("bridges") {
-        Some(Value::Object(map)) => map,
-        Some(Value::Null) | None => &empty_map_holder,
-        Some(other) => {
-            return Err(ScraperError::MoatNotObject {
-                actual: type_name_of_value(other),
-            });
-        }
-    };
+    if !data.is_object() {
+        return Err(ScraperError::MoatNotObject {
+            actual: type_name_of_value(data),
+        });
+    }
     let mut results = Vec::new();
-    for (key, bridge_list) in bridges_section {
-        let transport = moat_transport_map()
-            .iter()
-            .find(|(k, _)| *k == key.as_str())
-            .map(|(_, v)| v.to_string())
-            .unwrap_or_else(|| "unknown".to_string());
-        if let Some(arr) = bridge_list.as_array() {
-            for line in arr {
-                if let Some(s) = line.as_str() {
-                    if is_valid_line(s) && accept_ingested_bridge(s, "moat", &transport) {
-                        results.push((s.trim().to_string(), transport.clone()));
+    let mut seen = BTreeSet::new();
+    collect_moat_values(data, None, &mut results, &mut seen);
+    Ok(results)
+}
+
+fn collect_moat_values(
+    value: &Value,
+    hint: Option<&str>,
+    results: &mut Vec<(String, String)>,
+    seen: &mut BTreeSet<(String, String)>,
+) {
+    match value {
+        Value::Array(items) => {
+            for item in items {
+                if let Some(line) = item.as_str() {
+                    let transport = moat_transport_name(hint, line);
+                    if transport != "unknown"
+                        && is_valid_line(line)
+                        && accept_ingested_bridge(line, "moat", &transport)
+                    {
+                        let entry = (line.trim().to_string(), transport);
+                        if seen.insert(entry.clone()) {
+                            results.push(entry);
+                        }
                     }
+                } else {
+                    collect_moat_values(item, hint, results, seen);
                 }
             }
         }
+        Value::Object(object) => {
+            // A settings entry carries its transport in `type` and its lines
+            // in `bridge_strings`; recurse with that explicit hint.
+            if let Some(settings) = object.get("settings") {
+                collect_moat_values(settings, hint, results, seen);
+            }
+            if let Some(bridges) = object.get("bridges") {
+                collect_moat_values(bridges, hint, results, seen);
+            }
+            let explicit_type = object.get("type").and_then(Value::as_str).or(hint);
+            if let Some(lines) = object.get("bridge_strings") {
+                collect_moat_values(lines, explicit_type, results, seen);
+            }
+            for (key, child) in object {
+                if matches!(
+                    key.as_str(),
+                    "settings" | "bridges" | "bridge_strings" | "type"
+                ) {
+                    continue;
+                }
+                // Top-level transport maps (`obfs4`, `webTunnel`, `meek`)
+                // and nested transport objects are handled here.
+                collect_moat_values(child, Some(key.as_str()), results, seen);
+            }
+        }
+        _ => {}
     }
-    Ok(results)
+}
+
+fn moat_transport_name(hint: Option<&str>, line: &str) -> String {
+    let first = line.split_whitespace().next().unwrap_or_default();
+    let candidate = hint.unwrap_or(first);
+    let lower = candidate.to_ascii_lowercase();
+    match lower.as_str() {
+        "obfs4" => "obfs4".to_string(),
+        "webtunnel" | "web-tunnel" => "webtunnel".to_string(),
+        "snowflake" => "snowflake".to_string(),
+        "meek" | "meek_lite" | "meek-lite" | "meek-azure" => "meek_lite".to_string(),
+        "conjure" => "conjure".to_string(),
+        _ => match first.to_ascii_lowercase().as_str() {
+            "obfs4" => "obfs4".to_string(),
+            "webtunnel" => "webtunnel".to_string(),
+            "snowflake" => "snowflake".to_string(),
+            "meek" | "meek_lite" | "meek-azure" => "meek_lite".to_string(),
+            "conjure" => "conjure".to_string(),
+            _ => "unknown".to_string(),
+        },
+    }
+}
+
+fn moat_post_with_retry(
+    client: &dyn HttpFetch,
+    url: &str,
+    payload: &Value,
+    headers: &[(String, String)],
+    timeout: Duration,
+) -> Result<HttpResponse, ScraperError> {
+    let retries = std::env::var("MOAT_RETRIES")
+        .ok()
+        .and_then(|value| value.parse::<usize>().ok())
+        .filter(|value| (1..=8).contains(value))
+        .unwrap_or(3);
+    let mut last_error = None;
+    for attempt in 0..retries {
+        match client.post_json(url, payload, headers, timeout) {
+            Ok(response) if response.status == 429 || response.status >= 500 => {
+                last_error = Some(ScraperError::Http {
+                    url: url.to_string(),
+                    message: format!("HTTP {}", response.status),
+                });
+            }
+            Ok(response) => return Ok(response),
+            Err(error) => last_error = Some(error),
+        }
+        if attempt + 1 < retries {
+            let ceiling = 250_u64.saturating_mul(1_u64 << (attempt.min(6) as u32));
+            let delay = rand::thread_rng().gen_range(0..=ceiling.min(10_000));
+            tracing::warn!(
+                url,
+                attempt = attempt + 1,
+                retries,
+                delay_ms = delay,
+                "MOAT request failed; retrying"
+            );
+            std::thread::sleep(Duration::from_millis(delay));
+        }
+    }
+    Err(last_error.unwrap_or_else(|| ScraperError::Http {
+        url: url.to_string(),
+        message: "MOAT request failed without a response".to_string(),
+    }))
 }
 
 /// Mirror of `fetch_moat(session)`.
@@ -836,7 +966,7 @@ pub fn fetch_moat(client: &dyn HttpFetch) -> Vec<(String, String, String)> {
     for url in [MOAT_BUILTIN_URL, MOAT_SETTINGS_URL] {
         let mut endpoint_total = 0usize;
         for payload in &payloads {
-            match client.post_json(url, payload, &headers, timeout) {
+            match moat_post_with_retry(client, url, payload, &headers, timeout) {
                 Ok(resp) if resp.status == 200 => match resp.json() {
                     Ok(data) => match parse_moat_response(&data) {
                         Ok(pairs) => {
@@ -1887,6 +2017,43 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
         // The snowflake entry uses an RFC 5737 TEST-NET endpoint and is rejected.
         let transports: Vec<&str> = pairs.iter().map(|(_, t)| t.as_str()).collect();
         assert_eq!(transports, vec!["obfs4", "webtunnel"]);
+    }
+
+    #[test]
+    fn parse_moat_response_accepts_live_top_level_schema() {
+        let data = json!({
+            "obfs4": ["obfs4 198.51.100.10:443 0123456789ABCDEF0123456789ABCDEF01234567"],
+            "webTunnel": ["webtunnel 192.0.2.10:443 abcdef0123456789"],
+            "meek": ["meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com abcdef0123456789"],
+        });
+        let pairs = parse_moat_response(&data).unwrap();
+        assert_eq!(pairs.len(), 0, "documentation ranges must be rejected");
+
+        let live = json!({
+            "obfs4": ["obfs4 8.8.8.8:443 0123456789ABCDEF0123456789ABCDEF01234567"],
+            "webTunnel": ["webtunnel url=https://example.com/live abcdef0123456789"],
+            "meek": ["meek_lite 1.1.1.1:80 url=https://example.com/ front=example.com abcdef0123456789"],
+        });
+        let pairs = parse_moat_response(&live).unwrap();
+        assert_eq!(pairs.len(), 3);
+        assert!(pairs.iter().any(|(_, transport)| transport == "meek_lite"));
+    }
+
+    #[test]
+    fn parse_moat_response_accepts_settings_bridge_strings() {
+        let data = json!({
+            "settings": [{
+                "bridges": {
+                    "type": "snowflake",
+                    "bridge_strings": [
+                        "snowflake fingerprint=0123456789ABCDEF url=https://example.com/ fronts=example.com abcdef0123456789"
+                    ]
+                }
+            }]
+        });
+        let pairs = parse_moat_response(&data).unwrap();
+        assert_eq!(pairs.len(), 1);
+        assert_eq!(pairs[0].1, "snowflake");
     }
 
     #[test]

@@ -54,12 +54,15 @@ pub struct Obfs4Verification {
     /// Lines that completed SOCKS CONNECT after the obfs4 layer.
     pub verified: Vec<String>,
     /// TCP-reachable lines that could not be represented by the IPv4 harness
-    /// parser. OnionHop.py preserves these rather than discarding a valid
-    /// bridge because of a parser limitation.
+    /// parser. They are not counted as transport-verified.
     pub unparseable: Vec<String>,
+    /// Number of parsed lines actually attempted through the harness.
+    pub attempted: usize,
+    /// Number of attempted lines that failed the SOCKS/obfs4 exchange.
+    pub failed: usize,
     /// Whether a usable harness was actually started.
     pub ran: bool,
-    /// Human-readable fallback diagnostic.
+    /// Human-readable diagnostic.
     pub diagnostic: String,
 }
 
@@ -632,8 +635,9 @@ Sec-WebSocket-Version: 13\r\n\r\n"
                 }
             }
         };
+        let attempted = parsed.len();
         let mut tasks = JoinSet::new();
-        let workers = self.config.max_workers.min(parsed.len()).max(1);
+        let workers = self.config.max_workers.min(attempted).max(1);
         let semaphore = Arc::new(Semaphore::new(workers));
         for (line, endpoint) in parsed {
             let semaphore = semaphore.clone();
@@ -662,11 +666,18 @@ Sec-WebSocket-Version: 13\r\n\r\n"
             }
         }
         stop_child(&mut child).await;
+        let failed = attempted.saturating_sub(verified.len());
         Obfs4Verification {
             verified,
             unparseable,
+            attempted,
+            failed,
             ran: true,
-            diagnostic: "obfs4 SOCKS harness completed".to_owned(),
+            diagnostic: format!(
+                "obfs4 SOCKS harness completed: {}/{} verified",
+                attempted.saturating_sub(failed),
+                attempted
+            ),
         }
     }
 }
@@ -810,6 +821,20 @@ async fn start_obfs4_proxy(binary: &std::path::Path) -> Result<(Child, SocketAdd
         .stderr(Stdio::null())
         .spawn()
         .with_context(|| format!("unable to start {}", binary.display()))?;
+    // Managed transports wait for the controller's VERSION line before they
+    // announce CMETHOD. The old harness only read stdout, so many installed
+    // obfs4proxy versions never started a SOCKS listener and every candidate
+    // was counted as a failed handshake.
+    if let Some(stdin) = child.stdin.as_mut() {
+        stdin
+            .write_all(b"VERSION 1\n")
+            .await
+            .context("unable to initialise obfs4 managed transport")?;
+        stdin
+            .flush()
+            .await
+            .context("unable to flush obfs4 managed transport greeting")?;
+    }
     let stdout = child
         .stdout
         .take()
@@ -870,12 +895,13 @@ async fn obfs4_socks_connect(
                 "SOCKS auth rejected",
             ));
         }
-        let raw = endpoint.socks_args.as_bytes();
-        let (username, password) = if raw.len() <= 255 {
-            (raw, &[][..])
-        } else {
-            raw.split_at(255)
-        };
+        // obfs4proxy's SOCKS5 auth is username=`cert=...` and
+        // password=`iat-mode=...`. The previous implementation sent the
+        // semicolon-joined pair as one username, which some proxy versions
+        // reject before the bridge handshake begins.
+        let mut auth_parts = endpoint.socks_args.splitn(2, ';');
+        let username = auth_parts.next().unwrap_or("").as_bytes();
+        let password = auth_parts.next().unwrap_or("").as_bytes();
         let username_len = u8::try_from(username.len()).map_err(|_| {
             std::io::Error::new(std::io::ErrorKind::InvalidInput, "SOCKS username too long")
         })?;

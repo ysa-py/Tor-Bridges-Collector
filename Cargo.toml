@@ -210,12 +210,24 @@ path = "tests/bridge_publication.rs"
 name = "pipeline_binaries_smoke"
 path = "tests/pipeline_binaries_smoke.rs"
 
+# Regression contract for the GitHub Actions environment adapter: empty proxy
+# defaults must not reach Node-based installers such as setup-zig.
+[[test]]
+name = "github_actions_env_bootstrap"
+path = "tests/github_actions_env_bootstrap.rs"
+
 # Phase 4 self-healing hook: runs the real `self_heal_verify` binary process
 # (injected-failure recovery suite) inside the cargo test gate, so every CI
 # parity run proves unattended end-to-end failure recovery with exit code 0.
 [[test]]
 name = "self_heal_verify_contract"
 path = "tests/self_heal_verify_contract.rs"
+
+# Whole-run diagnostics regression guard: silent fallbacks and swallowed
+# collection defects must never be classified as a healthy run.
+[[test]]
+name = "pipeline_diagnostics"
+path = "tests/pipeline_diagnostics.rs"
 
 [profile.release]
 opt-level = 3

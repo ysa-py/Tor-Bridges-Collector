@@ -20,6 +20,12 @@ pub const DELTA_RAW_BASE_URL: &str =
 pub const DEFAULT_RAW_REPO_URL: &str =
     "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge";
 
+/// Redundant public community mirrors. The collector treats these as
+/// opportunistic sources; a mirror can fail without erasing the prior
+/// non-empty archive. Additional bases may be supplied through
+/// `BRIDGE_SOURCE_BASES` as a comma-separated list.
+pub const COMMUNITY_SOURCE_BASES: &[&str] = &[DELTA_RAW_BASE_URL, DEFAULT_RAW_REPO_URL];
+
 /// Transport families published by the collector.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Transport {
@@ -173,7 +179,9 @@ pub struct CollectorConfig {
     pub max_workers: usize,
     /// Lower bound selected by the adaptive concurrency controller.
     pub min_workers: usize,
-    /// Maximum candidates tested for each output list.
+    /// Maximum candidates tested for each output list. Zero means adaptive
+    /// mode: test the complete deduplicated source/archive pool. A positive
+    /// value remains available as an explicit operational safety ceiling.
     pub max_test_per_list: usize,
     /// Number of hours in the recent/fresh window.
     pub recent_hours: i64,
@@ -212,8 +220,11 @@ impl CollectorConfig {
             bridge_dir.join("bridge_history.json"),
         );
         let zip_path = env_path("TOR_BRIDGES_ZIP", bridge_dir.join("tor_bridges.zip"));
-        let max_workers = env_usize("MAX_WORKERS", 50, 1, 1_000)?;
-        let min_workers = env_usize("MIN_WORKERS", 4, 1, max_workers)?;
+        let detected_workers = std::thread::available_parallelism()
+            .map(|parallelism| parallelism.get().saturating_mul(8).clamp(16, 512))
+            .unwrap_or(64);
+        let max_workers = env_usize("MAX_WORKERS", detected_workers, 1, 1_000)?;
+        let min_workers = env_usize("MIN_WORKERS", (max_workers / 8).max(2), 1, max_workers)?;
 
         Ok(Self {
             bridge_dir,
@@ -228,7 +239,7 @@ impl CollectorConfig {
             max_retries: env_usize("MAX_RETRIES", 2, 1, 10)?,
             max_workers,
             min_workers,
-            max_test_per_list: env_usize("MAX_TEST_PER_LIST", 600, 1, 20_000)?,
+            max_test_per_list: env_usize("MAX_TEST_PER_LIST", 0, 0, 100_000)?,
             recent_hours: env_i64("RECENT_HOURS", 72, 1, 24 * 30)?,
             history_retention_days: env_i64("HISTORY_RETENTION_DAYS", 30, 1, 365)?,
             obfs4_verify_min_fraction: env_fraction("OBFS4_VERIFY_MIN_FRACTION", 0.2)?,

@@ -474,6 +474,53 @@ fn write_scores(path: &Path, candidates: &[Candidate]) -> Result<(), Box<dyn std
     write_json_atomic(path, &Value::Object(scores))
 }
 
+fn record_publication_fallback(
+    bridge_dir: &Path,
+    file_name: &str,
+    transport: &str,
+    line_count: usize,
+    reason: &str,
+) {
+    let root = bridge_dir.parent().unwrap_or_else(|| Path::new("."));
+    let path = root.join("data/failsafe_activations.json");
+    let mut document = fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| json!({"activations": []}));
+    let Some(object) = document.as_object_mut() else {
+        return;
+    };
+    let list = object
+        .entry("activations")
+        .or_insert_with(|| Value::Array(Vec::new()));
+    if let Some(items) = list.as_array_mut() {
+        items.push(json!({
+            "timestamp": Utc::now().to_rfc3339(),
+            "file": file_name,
+            "transport": transport,
+            "lines": line_count,
+            "reason": reason,
+            "producer": "bridge_publication",
+        }));
+        if items.len() > 500 {
+            let drop_count = items.len() - 500;
+            items.drain(0..drop_count);
+        }
+    }
+    object.insert(
+        "generated_at".to_string(),
+        Value::String(Utc::now().to_rfc3339()),
+    );
+    if let Some(parent) = path.parent() {
+        if fs::create_dir_all(parent).is_ok() {
+            if let Ok(bytes) = serde_json::to_vec_pretty(&document) {
+                let _ = fs::write(&path, bytes);
+            }
+        }
+    }
+}
+
 fn family_lines(
     candidates: &[Candidate],
     transport: &str,
@@ -518,7 +565,15 @@ fn write_transport_family(
     for (name, ipv6, fresh, tested) in standard {
         let mut lines = family_lines(candidates, transport, ipv6, fresh, tested);
         if lines.is_empty() {
-            lines = fallback();
+            let fallback_lines = fallback();
+            record_publication_fallback(
+                bridge_dir,
+                &name,
+                transport,
+                fallback_lines.len(),
+                "empty_transport_projection",
+            );
+            lines = fallback_lines;
         }
         let count = write_lines(&bridge_dir.join(&name), lines)?;
         counts.insert(name, count);
@@ -533,7 +588,15 @@ fn write_transport_family(
         for (name, fresh, tested) in ipv6_outputs {
             let mut lines = family_lines(candidates, transport, true, fresh, tested);
             if lines.is_empty() {
-                lines = fallback();
+                let fallback_lines = fallback();
+                record_publication_fallback(
+                    bridge_dir,
+                    &name,
+                    transport,
+                    fallback_lines.len(),
+                    "empty_transport_ipv6_projection",
+                );
+                lines = fallback_lines;
             }
             let count = write_lines(&bridge_dir.join(&name), lines)?;
             counts.insert(name, count);
@@ -545,7 +608,15 @@ fn write_transport_family(
             let alias = format!("{stem}_ipv6_72h.txt");
             let mut lines = family_lines(candidates, transport, true, true, false);
             if lines.is_empty() {
-                lines = fallback();
+                let fallback_lines = fallback();
+                record_publication_fallback(
+                    bridge_dir,
+                    &alias,
+                    transport,
+                    fallback_lines.len(),
+                    "empty_transport_ipv6_alias",
+                );
+                lines = fallback_lines;
             }
             let count = write_lines(&bridge_dir.join(&alias), lines)?;
             counts.insert(alias, count);
@@ -630,10 +701,18 @@ fn write_iran_projections(
         // With no probe evidence for this transport, fall back to the
         // compiled-in static lines (documented in the manifest evidence scope).
         if lines.is_empty() {
-            lines = static_bridges::fallback_lines(transport)
+            let fallback_lines = static_bridges::fallback_lines(transport)
                 .into_iter()
                 .map(str::to_string)
-                .collect();
+                .collect::<Vec<_>>();
+            record_publication_fallback(
+                bridge_dir,
+                &format!("iran_likely_working_{transport}.txt"),
+                transport,
+                fallback_lines.len(),
+                "empty_iran_working_projection",
+            );
+            lines = fallback_lines;
         }
         if matches!(*transport, "snowflake" | "webtunnel" | "meek_lite") {
             nin.extend(lines.iter().cloned());
@@ -657,12 +736,26 @@ fn write_iran_projections(
                 .chain(static_bridges::fallback_lines("webtunnel"))
                 .map(str::to_string),
         );
+        record_publication_fallback(
+            bridge_dir,
+            "iran_likely_working_nin.txt",
+            "aggregate",
+            nin.len(),
+            "no_nin_evidence",
+        );
     }
     if all_working.is_empty() {
         all_working = static_bridges::fallback_all()
             .into_iter()
             .map(str::to_string)
             .collect();
+        record_publication_fallback(
+            bridge_dir,
+            "iran_likely_working_all.txt",
+            "aggregate",
+            all_working.len(),
+            "no_iran_working_evidence",
+        );
     }
     let all_count = write_lines(&bridge_dir.join("iran_likely_working_all.txt"), all_working)?;
     counts.insert("iran_likely_working_all.txt".to_string(), all_count);
@@ -682,10 +775,18 @@ fn write_iran_projections(
         let mut lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
         // Same zero-error guarantee for the global tested projections.
         if lines.is_empty() {
-            lines = static_bridges::fallback_lines(transport)
+            let fallback_lines = static_bridges::fallback_lines(transport)
                 .into_iter()
                 .map(str::to_string)
-                .collect();
+                .collect::<Vec<_>>();
+            record_publication_fallback(
+                bridge_dir,
+                &format!("tested_global_{transport}.txt"),
+                transport,
+                fallback_lines.len(),
+                "empty_global_tested_projection",
+            );
+            lines = fallback_lines;
         }
         let name = format!("tested_global_{transport}.txt");
         let count = write_lines(&bridge_dir.join(&name), lines)?;
@@ -937,6 +1038,12 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 3. Applies the existing Rust DPI, NIN, transport-rotation, and Iran scoring components to produce advisory output sets.
 4. Rebuilds **every required file** in `bridge/`, writes a deterministic ZIP, validates JSON/text inputs, and byte-compares every archive entry to its repository counterpart.
 5. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
+
+## Autonomous diagnostics and dynamic yield
+
+The Rust whole-run self-healing engine audits every retained job-log line for swallowed errors, empty/short source responses, MOAT schema failures, rate limits, handshake failures, stale caches, artifact mismatches, skipped toolchains, and static FAILSAFE use. It emits affected-stage retry plans and records idempotent safe repairs without fabricating bridge data.
+
+BridgeDB query variants, MOAT top-level/settings schemas, and redundant community mirrors are merged with adaptive concurrency. `MAX_TEST_PER_LIST=0` tests the complete deduplicated source pool; a positive value is an explicit safety ceiling. See `data/collector_yield_report.json`, `data/collector_yield_summary.md`, `data/collector_yield_history.json`, and `data/failsafe_activations.json` for per-transport yield trends and fallback telemetry. Stage 8q installs and verifies its pinned Zig toolchain instead of silently skipping.
 
 ## Telegram dual persistence
 

@@ -2,10 +2,13 @@
 
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
+use std::fs;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 use chrono::{Timelike, Utc};
+use serde_json::{json, Value};
+use tokio::task::JoinSet;
 
 use super::config::{fronted_defaults, CollectorConfig, ListSpec, Transport};
 use super::fetch::{deduplicate, SourceFetcher};
@@ -30,7 +33,21 @@ pub struct RunSummary {
     pub history_entries: usize,
 }
 
+/// Results of one transport/IP list after its probes complete.  Acquisition
+/// and list probing are kept separate so every list can be tested concurrently
+/// without allowing parallel tasks to mutate the shared history/publication
+/// state.
+struct ListOutcome {
+    transport: Transport,
+    ipv6: bool,
+    archive: Vec<String>,
+    source_lines: Vec<String>,
+    results: Vec<ProbeResult>,
+    tested: Vec<String>,
+}
+
 /// Unified OnionHop/vip collection service.
+#[derive(Clone)]
 pub struct CollectorService {
     config: CollectorConfig,
     fetcher: SourceFetcher,
@@ -68,61 +85,151 @@ impl CollectorService {
         let mut staged = BTreeMap::new();
         let mut stats = StatsMap::new();
 
-        for transport in Transport::POOLED {
+        // Acquire every transport/IP source concurrently. The previous nested
+        // loops fetched six pooled lists and six fronted lists serially; with
+        // three retries and a blackholed mirror that could consume most of the
+        // job budget before probing even began.
+        let mut acquisition_tasks = JoinSet::new();
+        for transport in Transport::POOLED.into_iter().chain(Transport::FRONTED) {
             for ipv6 in [false, true] {
-                let (bridgedb, delta) = tokio::join!(
-                    self.fetcher.fetch_bridgedb(transport, ipv6),
-                    self.fetcher.fetch_delta(transport, ipv6),
-                );
-                let fetched = match bridgedb {
-                    Ok(lines) => lines,
-                    Err(error) => {
-                        log(&format!(
-                            "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
-                        ));
-                        Vec::new()
-                    }
-                };
-                let seeded = match delta {
-                    Ok(lines) => lines,
-                    Err(error) => {
-                        log(&format!(
-                            "WARNING: community seed {transport} ipv6={ipv6} unavailable: {error}"
-                        ));
-                        Vec::new()
-                    }
-                };
-                self.process_list(
-                    transport,
-                    ipv6,
-                    fetched,
-                    seeded,
-                    &mut history,
-                    &mut staged,
-                    &mut stats,
-                    now,
-                )
-                .await?;
+                let fetcher = self.fetcher.clone();
+                acquisition_tasks.spawn(async move {
+                    let (bridgedb, community) = tokio::join!(
+                        fetcher.fetch_bridgedb(transport, ipv6),
+                        fetcher.fetch_community_sources(transport, ipv6),
+                    );
+                    (transport, ipv6, bridgedb, community)
+                });
             }
         }
 
-        for transport in Transport::FRONTED {
-            let defaults = fronted_defaults(transport)
+        let mut acquired = Vec::new();
+        while let Some(joined) = acquisition_tasks.join_next().await {
+            match joined {
+                Ok(item) => acquired.push(item),
+                Err(error) => log(&format!("WARNING: source acquisition task failed: {error}")),
+            }
+        }
+
+        // Convert the acquired source results into independent list jobs. The
+        // old implementation probed these lists one after another, so an
+        // adaptive/unbounded pool of slow endpoints could exhaust Stage 0b's
+        // 12-minute budget even though acquisition itself was concurrent.
+        let mut list_inputs = Vec::new();
+        for (transport, ipv6, bridgedb, community) in acquired {
+            let fetched = bridgedb.unwrap_or_else(|error| {
+                log(&format!(
+                    "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
+                ));
+                Vec::new()
+            });
+            let seeded = community.unwrap_or_else(|error| {
+                log(&format!(
+                    "WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"
+                ));
+                Vec::new()
+            });
+            let defaults =
+                if transport.is_fronted() && fetched.is_empty() && seeded.is_empty() && !ipv6 {
+                    fronted_defaults(transport)
+                        .iter()
+                        .map(|line| clean_output_line(line))
+                        .filter(|line| is_valid_bridge_line(line))
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+            list_inputs.push((transport, ipv6, fetched, seeded));
+            if !defaults.is_empty() {
+                list_inputs.push((transport, false, Vec::new(), defaults));
+            }
+        }
+
+        // Each worker receives a read-only snapshot for health-aware ordering.
+        // Outcomes are merged below in stable transport order, which keeps
+        // publication deterministic while allowing all protocol probes to
+        // share the ProbeEngine's adaptive concurrency state.
+        let history_snapshot = history.clone();
+        let mut list_tasks = JoinSet::new();
+        for (transport, ipv6, fetched, seeded) in list_inputs {
+            let service = self.clone();
+            let list_history = history_snapshot.clone();
+            list_tasks.spawn(async move {
+                service
+                    .collect_list(transport, ipv6, fetched, seeded, list_history)
+                    .await
+            });
+        }
+
+        let mut outcomes = Vec::new();
+        while let Some(joined) = list_tasks.join_next().await {
+            match joined {
+                Ok(Ok(Some(outcome))) => outcomes.push(outcome),
+                Ok(Ok(None)) => {}
+                Ok(Err(error)) => return Err(error),
+                Err(error) => return Err(error.into()),
+            }
+        }
+        outcomes.sort_by(|left, right| {
+            left.transport
+                .cmp(&right.transport)
+                .then_with(|| left.ipv6.cmp(&right.ipv6))
+        });
+
+        for outcome in outcomes {
+            for line in &outcome.source_lines {
+                history.observe_discovered(line, outcome.transport, outcome.ipv6, now);
+            }
+            for result in &outcome.results {
+                history.record_probe(
+                    &result.line,
+                    outcome.transport,
+                    outcome.ipv6,
+                    result.reachable,
+                    result.latency_ms,
+                    now,
+                );
+            }
+
+            let spec = ListSpec {
+                transport: outcome.transport,
+                ipv6: outcome.ipv6,
+            };
+            let archive_path = self.config.bridge_dir.join(spec.archive_name());
+            let recent = outcome
+                .archive
                 .iter()
-                .map(|line| clean_output_line(line))
-                .filter(|line| is_valid_bridge_line(line))
+                .filter(|line| history.is_recent(line, self.config.recent_hours, now))
+                .cloned()
                 .collect::<Vec<_>>();
-            self.process_list(
-                transport,
-                false,
-                Vec::new(),
-                defaults,
-                &mut history,
+            stage_lines(&mut staged, archive_path, &outcome.archive);
+            stage_lines(
                 &mut staged,
-                &mut stats,
-                now,
-            )
-            .await?;
+                self.config.bridge_dir.join(spec.recent_name()),
+                &recent,
+            );
+            stage_lines(
+                &mut staged,
+                self.config.bridge_dir.join(spec.tested_name()),
+                &outcome.tested,
+            );
+            stats.insert(
+                spec.archive_name(),
+                ListStats {
+                    archive: outcome.archive.len(),
+                    recent: recent.len(),
+                    tested: outcome.tested.len(),
+                },
+            );
+            log(&format!(
+                "{} ipv6={}: archive={} fresh72h={} tested={} candidates={}",
+                outcome.transport,
+                outcome.ipv6,
+                outcome.archive.len(),
+                recent.len(),
+                outcome.tested.len(),
+                outcome.results.len(),
+            ));
         }
 
         let purged = history.cleanup(self.config.history_retention_days, now);
@@ -157,6 +264,9 @@ impl CollectorService {
         if let Some(path) = &self.config.metrics_output {
             staged.insert(path.clone(), self.tester.metrics().render().into_bytes());
         }
+        if !self.config.dry_run {
+            write_yield_dashboard(&self.config, &stats, history.len())?;
+        }
 
         let changed_files = publish_staged(&staged, self.config.dry_run)?;
         if self.config.dry_run {
@@ -187,18 +297,14 @@ impl CollectorService {
         })
     }
 
-    #[allow(clippy::too_many_arguments)]
-    async fn process_list(
+    async fn collect_list(
         &self,
         transport: Transport,
         ipv6: bool,
         fetched: Vec<String>,
         seeded: Vec<String>,
-        history: &mut HistoryStore,
-        staged: &mut BTreeMap<PathBuf, Vec<u8>>,
-        stats: &mut StatsMap,
-        now: chrono::DateTime<Utc>,
-    ) -> Result<()> {
+        history: HistoryStore,
+    ) -> Result<Option<ListOutcome>> {
         let spec = ListSpec { transport, ipv6 };
         let archive_path = self.config.bridge_dir.join(spec.archive_name());
         let existing = match read_existing_archive(&archive_path) {
@@ -208,7 +314,7 @@ impl CollectorService {
                     "WARNING: unable to read {} ({error}); leaving this archive untouched",
                     archive_path.display()
                 ));
-                return Ok(());
+                return Ok(None);
             }
         };
         let source_lines = deduplicate(
@@ -232,11 +338,7 @@ impl CollectorService {
             log(&format!(
                 "WARNING: {transport} ipv6={ipv6} has no usable source or existing lines; retaining prior files"
             ));
-            return Ok(());
-        }
-
-        for line in &source_lines {
-            history.observe_discovered(line, transport, ipv6, now);
+            return Ok(None);
         }
 
         let mut candidates = archive.clone();
@@ -247,18 +349,14 @@ impl CollectorService {
                 .unwrap_or(Ordering::Equal)
                 .then_with(|| left.cmp(right))
         });
-        candidates.truncate(self.config.max_test_per_list);
-        let results = self.tester.test_many(candidates, transport, ipv6).await;
-        for result in &results {
-            history.record_probe(
-                &result.line,
-                transport,
-                ipv6,
-                result.reachable,
-                result.latency_ms,
-                now,
-            );
+        // A zero ceiling is the default adaptive mode: never discard source
+        // lines merely because they arrived after an old fixed top-N limit.
+        // Operators can still set a positive ceiling as an explicit safety
+        // valve for constrained runners.
+        if self.config.max_test_per_list > 0 {
+            candidates.truncate(self.config.max_test_per_list);
         }
+        let results = self.tester.test_many(candidates, transport, ipv6).await;
         let mut tested = successful_lines(&results);
         if transport == Transport::Obfs4 && !ipv6 && !tested.is_empty() {
             let verification = self.tester.verify_obfs4_handshakes(&tested).await;
@@ -266,38 +364,14 @@ impl CollectorService {
                 apply_obfs4_policy(tested, verification, self.config.obfs4_verify_min_fraction);
         }
 
-        let recent = archive
-            .iter()
-            .filter(|line| history.is_recent(line, self.config.recent_hours, now))
-            .cloned()
-            .collect::<Vec<_>>();
-        stage_lines(staged, archive_path, &archive);
-        stage_lines(
-            staged,
-            self.config.bridge_dir.join(spec.recent_name()),
-            &recent,
-        );
-        stage_lines(
-            staged,
-            self.config.bridge_dir.join(spec.tested_name()),
-            &tested,
-        );
-        stats.insert(
-            spec.archive_name(),
-            ListStats {
-                archive: archive.len(),
-                recent: recent.len(),
-                tested: tested.len(),
-            },
-        );
-        log(&format!(
-            "{transport} ipv6={ipv6}: archive={} fresh72h={} tested={} candidates={}",
-            archive.len(),
-            recent.len(),
-            tested.len(),
-            results.len(),
-        ));
-        Ok(())
+        Ok(Some(ListOutcome {
+            transport,
+            ipv6,
+            archive,
+            source_lines,
+            results,
+            tested,
+        }))
     }
 }
 
@@ -317,28 +391,35 @@ fn apply_obfs4_policy(
     minimum_fraction: f64,
 ) -> Vec<String> {
     if !verification.ran {
-        log(&format!("obfs4 verify: {}", verification.diagnostic));
+        // No harness means transport-level verification was not attempted. A
+        // TCP prefilter remains useful for the archive, but it is explicitly
+        // labelled as unverified rather than silently reported as a success.
+        log(&format!(
+            "WARNING: obfs4 verify unavailable for {} TCP candidates: {}; retaining TCP set as unverified",
+            tcp_reachable.len(),
+            verification.diagnostic
+        ));
         return tcp_reachable;
     }
-    let threshold = ((tcp_reachable.len() as f64) * minimum_fraction).ceil() as usize;
+    let threshold = ((verification.attempted as f64) * minimum_fraction).ceil() as usize;
     let threshold = threshold.max(1);
-    if verification.verified.len() >= threshold {
+    if verification.verified.len() < threshold {
+        // Never convert a failed real handshake into a successful-looking
+        // tested line. This was the source of the misleading 0/255 fallback
+        // signal in the incident run.
+        log(&format!(
+            "ERROR: obfs4 verify only {}/{} handshakes (minimum {threshold}); publishing verified subset only",
+            verification.verified.len(),
+            verification.attempted
+        ));
+    } else {
         log(&format!(
             "obfs4 verify: {}/{} completed an obfs4 SOCKS handshake",
             verification.verified.len(),
-            tcp_reachable.len()
+            verification.attempted
         ));
-        let mut retained = verification.verified;
-        retained.extend(verification.unparseable);
-        deduplicate(retained)
-    } else {
-        log(&format!(
-            "obfs4 verify: only {}/{} handshakes (minimum {threshold}); retaining TCP-reachable set",
-            verification.verified.len(),
-            tcp_reachable.len()
-        ));
-        tcp_reachable
     }
+    deduplicate(verification.verified)
 }
 
 fn read_existing_archive(path: &Path) -> Result<Vec<String>> {
@@ -408,6 +489,133 @@ fn write_atomic(path: &Path, bytes: &[u8], index: usize) -> Result<()> {
     Ok(())
 }
 
+fn write_yield_dashboard(
+    config: &CollectorConfig,
+    stats: &StatsMap,
+    history_entries: usize,
+) -> Result<()> {
+    let mut transports = serde_json::Map::new();
+    for transport in Transport::POOLED.into_iter().chain(Transport::FRONTED) {
+        let ipv4 = stats
+            .get(&format!("{}.txt", transport.file_name()))
+            .copied()
+            .unwrap_or_default();
+        let ipv6 = stats
+            .get(&format!("{}_ipv6.txt", transport.file_name()))
+            .copied()
+            .unwrap_or_default();
+        transports.insert(
+            transport.file_name().to_string(),
+            json!({
+                "archive_ipv4": ipv4.archive,
+                "archive_ipv6": ipv6.archive,
+                "fresh_ipv4": ipv4.recent,
+                "fresh_ipv6": ipv6.recent,
+                "tested_ipv4": ipv4.tested,
+                "tested_ipv6": ipv6.tested,
+                "dynamic_pool": config.max_test_per_list == 0,
+            }),
+        );
+    }
+    let generated_at = Utc::now().to_rfc3339();
+    let data_dir = PathBuf::from("data");
+    let trend_path = data_dir.join("collector_yield_history.json");
+    let mut trend_history = fs::read_to_string(&trend_path)
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    let mut trends = serde_json::Map::new();
+    for (transport, current) in &transports {
+        let mut previous = Vec::new();
+        for snapshot in trend_history.iter().rev().take(7) {
+            if let Some(value) = snapshot
+                .get("transports")
+                .and_then(|items| items.get(transport))
+                .and_then(|item| {
+                    Some(item.get("archive_ipv4")?.as_u64()? + item.get("archive_ipv6")?.as_u64()?)
+                })
+            {
+                previous.push(value as f64);
+            }
+        }
+        let average = if previous.is_empty() {
+            0.0
+        } else {
+            previous.iter().sum::<f64>() / previous.len() as f64
+        };
+        let current_count = current
+            .get("archive_ipv4")
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+            + current
+                .get("archive_ipv6")
+                .and_then(Value::as_u64)
+                .unwrap_or(0);
+        trends.insert(
+            transport.clone(),
+            json!({
+                "current_archive_count": current_count,
+                "trailing_7_run_average": average,
+                "below_trailing_7_run_average": !previous.is_empty() && (current_count as f64) < average,
+            }),
+        );
+    }
+    let snapshot = json!({"generated_at": generated_at.clone(), "transports": transports.clone()});
+    trend_history.push(snapshot);
+    if trend_history.len() > 90 {
+        let drop_count = trend_history.len() - 90;
+        trend_history.drain(0..drop_count);
+    }
+    let report = json!({
+        "schema_version": 1,
+        "generated_at": generated_at,
+        "engine": "torshield-rust-adaptive-collector-v2",
+        "history_entries": history_entries,
+        "max_workers": config.max_workers,
+        "max_test_per_list": config.max_test_per_list,
+        "dynamic_pool_mode": config.max_test_per_list == 0,
+        "transports": transports,
+        "trends": trends,
+        "failsafe_telemetry": "data/failsafe_activations.json",
+    });
+    fs::create_dir_all(&data_dir).context("unable to create data dashboard directory")?;
+    let mut trend_bytes = serde_json::to_vec_pretty(&Value::Array(trend_history))?;
+    trend_bytes.push(b'\n');
+    fs::write(&trend_path, trend_bytes)?;
+    let mut bytes = serde_json::to_vec_pretty(&report)?;
+    bytes.push(b'\n');
+    let temporary = data_dir.join(format!(
+        ".collector_yield_report.tmp-{}",
+        std::process::id()
+    ));
+    fs::write(&temporary, bytes)?;
+    fs::rename(&temporary, data_dir.join("collector_yield_report.json"))?;
+
+    let mut summary = String::from("# Adaptive collector yield\n\n");
+    summary.push_str("| Transport | IPv4 archive | IPv6 archive | IPv4 tested | IPv6 tested |\n|---|---:|---:|---:|---:|\n");
+    for transport in Transport::POOLED.into_iter().chain(Transport::FRONTED) {
+        let ipv4 = stats
+            .get(&format!("{}.txt", transport.file_name()))
+            .copied()
+            .unwrap_or_default();
+        let ipv6 = stats
+            .get(&format!("{}_ipv6.txt", transport.file_name()))
+            .copied()
+            .unwrap_or_default();
+        summary.push_str(&format!(
+            "| {} | {} | {} | {} | {} |\n",
+            transport.file_name(),
+            ipv4.archive,
+            ipv6.archive,
+            ipv4.tested,
+            ipv6.tested
+        ));
+    }
+    fs::write(data_dir.join("collector_yield_summary.md"), summary)?;
+    Ok(())
+}
+
 /// Print timestamps on stdout to retain compatibility with existing CI log
 /// scraping, while structured `tracing` events are emitted by subcomponents.
 pub fn log(message: &str) {
@@ -439,22 +647,27 @@ mod tests {
     }
 
     #[test]
-    fn obfs4_policy_requires_minimum_fraction_before_replacing_tcp_set() {
+    fn obfs4_policy_does_not_mask_failed_real_handshakes() {
         let lines = vec![
             "obfs4 1.2.3.4:443 FINGER cert=x".to_owned(),
             "obfs4 5.6.7.8:443 FINGER cert=x".to_owned(),
         ];
         let output = apply_obfs4_policy(
-            lines.clone(),
+            lines,
             Obfs4Verification {
                 verified: Vec::new(),
                 unparseable: Vec::new(),
+                attempted: 2,
+                failed: 2,
                 ran: true,
                 diagnostic: "ran".to_owned(),
             },
             0.2,
         );
-        assert_eq!(output, lines);
+        assert!(
+            output.is_empty(),
+            "failed handshakes must not be published as tested"
+        );
     }
 
     #[test]

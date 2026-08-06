@@ -54,6 +54,16 @@ while IFS= read -r line; do
             # while keeping arbitrary template code from being sourced.
             decoded_value=""
             eval "decoded_value=$encoded_value"
+
+            # Do not materialise empty proxy variables into GITHUB_ENV. Some
+            # Node-based actions (notably Zig/toolchain installers) interpret
+            # the mere presence of an empty HTTP(S)_PROXY value as a proxy URL
+            # and fail with HttpProxyMissingHost. An unset variable lets the
+            # runner's valid proxy configuration—or direct networking—work.
+            if [[ "$key" == "HTTP_PROXY" || "$key" == "HTTPS_PROXY" || "$key" == "http_proxy" || "$key" == "https_proxy" ]] && [[ -z "$decoded_value" ]]; then
+                continue
+            fi
+
             append_github_env "$key" "$decoded_value"
             exported=$((exported + 1))
             ;;
