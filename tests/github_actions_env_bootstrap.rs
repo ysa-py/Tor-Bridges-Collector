@@ -43,7 +43,10 @@ fn empty_proxy_defaults_are_not_exported_to_github_env() {
         ))
         .arg(&env_file)
         .arg(&template)
-        .current_dir(&root)
+        // The adapter intentionally follows the repository's relative
+        // `scripts/circleci_env_bootstrap.sh` path, so execute it from the
+        // checkout while keeping every generated fixture outside the tree.
+        .current_dir(env!("CARGO_MANIFEST_DIR"))
         .env("GITHUB_ENV", &github_env)
         // Do not let a runner-level proxy turn the template defaults into
         // Context overrides; this test is specifically about empty defaults.
