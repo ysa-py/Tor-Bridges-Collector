@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-08-05T17:49:04Z` · **Archive payload SHA-256:** `c39ad446b7ed3c03d1f34c0bada11161ad7b3075166fe6fd8fb6cb27b650cced`
+> **Last publication:** `2026-08-06T04:27:30Z` · **Archive payload SHA-256:** `accbb7a43ceba7de654ce399f8f91c424138d578ab1eeeb1e26f0d62c1e68de1`
 
 ## Quick use for Iran
 
@@ -15,8 +15,8 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `435` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `255` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `440` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `261` | obfs4-oriented fallback for conventional DPI |
 | [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `4` | WebTunnel candidates |
 | [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `2` | Snowflake capability candidates |
 | [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `6` | NIN/cut-mode priority candidates |
@@ -34,36 +34,11 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 4. Rebuilds **every required file** in `bridge/`, writes a deterministic ZIP, validates JSON/text inputs, and byte-compares every archive entry to its repository counterpart.
 5. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
 
-## Autonomous diagnostics, retries, and dynamic yield
+## Autonomous diagnostics and dynamic yield
 
-Every retained workflow run is audited by the Rust whole-run self-healing engine.
-It reads the complete parent job log—not only the red step—and classifies non-zero
-exits, empty/short source results, MOAT schema/HTTP failures, rate limits,
-DNS/TLS errors, stale caches, artifact digest mismatches, skipped toolchains,
-transport handshake failures, and every static FAILSAFE activation.
+The Rust whole-run self-healing engine audits every retained job-log line for swallowed errors, empty/short source responses, MOAT schema failures, rate limits, handshake failures, stale caches, artifact mismatches, skipped toolchains, and static FAILSAFE use. It emits affected-stage retry plans and records idempotent safe repairs without fabricating bridge data.
 
-Safe repairs are idempotent: output directories are restored, empty JSON
-artifacts are made valid, and the report emits an affected-stage retry plan with
-jittered backoff/alternate-source actions. The engine never invents a bridge or
-writes a credential. Use `--strict` when the report must gate a deployment:
-
-```bash
-cargo run --bin self_heal -- --log complete-job.log --heal --strict \
-  --output data/whole_run_diagnostics.json
-```
-
-Collection uses adaptive source breadth and concurrency. BridgeDB query variants,
-MOAT's top-level and `settings[].bridges.bridge_strings` schemas, community
-mirrors, and filename aliases are merged and deduplicated. `MAX_TEST_PER_LIST=0`
-(the default) means the complete source/archive pool is tested; a positive value
-is an explicit operator safety ceiling. `data/collector_yield_report.json`,
-`data/collector_yield_summary.md`, `data/collector_yield_history.json`, and
-`data/failsafe_activations.json` expose per-transport archive/fresh/tested
-counts, trailing-run trends, and fallback rates. A fallback is a
-compatibility last resort, not evidence of a live handshake.
-
-Stage 8q installs a pinned Zig toolchain and fails loudly if its scanner or
-report is missing; it is no longer silently skipped.
+BridgeDB query variants, MOAT top-level/settings schemas, and redundant community mirrors are merged with adaptive concurrency. `MAX_TEST_PER_LIST=0` tests the complete deduplicated source pool; a positive value is an explicit safety ceiling. See `data/collector_yield_report.json`, `data/collector_yield_summary.md`, `data/collector_yield_history.json`, and `data/failsafe_activations.json` for per-transport yield trends and fallback telemetry. Stage 8q installs and verifies its pinned Zig toolchain instead of silently skipping.
 
 ## Telegram dual persistence
 
