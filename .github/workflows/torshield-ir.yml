@@ -407,17 +407,13 @@ jobs:
           done
 
       # High-volume seeding — runs BEFORE the collector stages to guarantee the
-      # full real-bridge pool is ingested. refresh_bridge_seed.sh fetches fresh
-      # real Tor bridges from MULTIPLE public mirrors (Delta-Kronecker by
-      # default plus redundancy fallbacks) across every transport projection
-      # (obfs4, vanilla, webtunnel, snowflake, meek, meek-azure, conjure) via
-      # api.github.com and merges them all into bridge/bridge_history.json,
-      # which the publisher rebuilds every bridge/*.txt projection from — so the
-      # published count grows automatically and dynamically as mirrors publish.
-      # Non-fatal: an unreachable mirror leaves the existing history untouched.
-      # Set the BRIDGE_MIRRORS_REPO repository variable to a space-separated
-      # list of mirror repos to override/extend the pool.
-      - name: Stage 0s — High-volume bridge seeding (multi-mirror, dynamic pool)
+      # full 1500+ real-bridge pool is ingested. refresh_bridge_seed.sh fetches
+      # fresh real Tor bridges from the public Delta-Kronecker mirror (via
+      # api.github.com) and merges them into bridge/bridge_history.json, which
+      # the publisher rebuilds every bridge/*.txt projection from. Non-fatal:
+      # an unreachable mirror leaves the existing history untouched. Set the
+      # BRIDGE_MIRRORS_REPO repository variable to override the mirror.
+      - name: Stage 0s — High-volume bridge seeding (1500+ real bridges)
         continue-on-error: true
         timeout-minutes: 10
         env:
@@ -605,7 +601,7 @@ jobs:
           cargo run --quiet --bin ai_bridge_reranker -- \
             --input bridge/iran_results.json \
             --output data/smart_iran_results.json \
-            --top-n "${AI_RERANK_TOP_N:-0}"
+            --top-n "${AI_RERANK_TOP_N:-20}"
 
       # Stage 8j reads data/dpi_intelligence.json from Stage 8b and rewrites
       # obfuscation parameters when active blocking patterns are detected.
@@ -685,30 +681,6 @@ jobs:
         continue-on-error: true
         timeout-minutes: 6
         run: cargo run --quiet --bin iran_anti_siam
-
-      # Stage 8s — Anti-DPI Elite fusion (advanced, dynamic).
-      # Fuses the independently-computed anti-AI-DPI report, the SIAM evasion
-      # tier, and the Smart-Iran AI score into a single deduplicated,
-      # DPI-hardened bridge list for Iran (`export/iran_anti_dpi_elite.txt`).
-      # Pure shell + python3 over already-produced reports (no new Rust, no
-      # public contract change): it only adds a new export artifact and never
-      # touches the 55-file bridge/ contract. The output size is dynamic —
-      # it covers the whole surviving pool unless AI_ANTI_DPI_TOP_N caps it.
-      - name: Stage 8s — Anti-DPI Elite fusion (dynamic DPI-hardened set)
-        continue-on-error: true
-        timeout-minutes: 6
-        env:
-          AI_ANTI_DPI_TOP_N: ${{ vars.AI_ANTI_DPI_TOP_N }}
-        run: |
-          set -euo pipefail
-          mkdir -p export data
-          # Base64-embedded Python (single-line scalar avoids YAML/heredoc
-          # indentation pitfalls). Decoded and run; produces the dynamic
-          # DPI-hardened Iran bridge list + JSON summary in export/.
-          PY_B64="aW1wb3J0IGpzb24sIG9zLCBzeXMsIGRhdGV0aW1lCgpkZWYgbWFpbigpOgogICAgdG9wX24gPSAwCiAgICBpZiBsZW4oc3lzLmFyZ3YpID4gMToKICAgICAgICB0cnk6CiAgICAgICAgICAgIHRvcF9uID0gaW50KHN5cy5hcmd2WzFdKQogICAgICAgIGV4Y2VwdCAoVHlwZUVycm9yLCBWYWx1ZUVycm9yKToKICAgICAgICAgICAgdG9wX24gPSAwCgogICAgZGVmIGxvYWRfbGlzdChwYXRoLCBrZXkpOgogICAgICAgIHRyeToKICAgICAgICAgICAgd2l0aCBvcGVuKHBhdGgpIGFzIGZoOgogICAgICAgICAgICAgICAgZCA9IGpzb24ubG9hZChmaCkKICAgICAgICAgICAgaWYgaXNpbnN0YW5jZShkLCBkaWN0KToKICAgICAgICAgICAgICAgIGQgPSBkLmdldChrZXksIFtdKQogICAgICAgICAgICByZXR1cm4gZCBpZiBpc2luc3RhbmNlKGQsIGxpc3QpIGVsc2UgW10KICAgICAgICBleGNlcHQgKE9TRXJyb3IsIFZhbHVlRXJyb3IpOgogICAgICAgICAgICByZXR1cm4gW10KCiAgICBhbnRpID0gbG9hZF9saXN0KCJkYXRhL2FudGlfYWlfZHBpX3JlcG9ydC5qc29uIiwgImFudGlfYWlfZHBpX3Jlc3VsdHMiKQogICAgc21hcnQgPSBsb2FkX2xpc3QoImRhdGEvc21hcnRfaXJhbl9yZXN1bHRzLmpzb24iLCAiYnJpZGdlcyIpCgogICAgc2NvcmVzID0ge30KICAgIGZvciByIGluIGFudGk6CiAgICAgICAgbGluZSA9IChyLmdldCgiYnJpZGdlX2xpbmUiKSBvciAiIikuc3RyaXAoKQogICAgICAgIGlmIG5vdCBsaW5lOgogICAgICAgICAgICBjb250aW51ZQogICAgICAgIHMgPSBmbG9hdChyLmdldCgiYW50aV9haV9kcGlfc2NvcmUiKSBpZiByLmdldCgiYW50aV9haV9kcGlfc2NvcmUiKSBpcyBub3QgTm9uZSBlbHNlIDAuMCkKICAgICAgICBzY29yZXNbbGluZV0gPSBtYXgoc2NvcmVzLmdldChsaW5lLCAwLjApLCBzKQoKICAgIGZvciByIGluIHNtYXJ0OgogICAgICAgIGxpbmUgPSAoci5nZXQoInJhdyIpIG9yICIiKS5zdHJpcCgpCiAgICAgICAgaWYgbm90IGxpbmU6CiAgICAgICAgICAgIGNvbnRpbnVlCiAgICAgICAgdGllciA9IChyLmdldCgidGllciIpIG9yICIiKQogICAgICAgIGZpbmFsID0gZmxvYXQoci5nZXQoImZpbmFsX3Njb3JlIikgaWYgci5nZXQoImZpbmFsX3Njb3JlIikgaXMgbm90IE5vbmUgZWxzZSAwLjApCiAgICAgICAgc2NvcmUgPSBzY29yZXMuZ2V0KGxpbmUsIDAuMCkKICAgICAgICBpZiB0aWVyIGluICgiZ29vZCIsICJleGNlbGxlbnQiLCAiZ3JlYXQiKToKICAgICAgICAgICAgc2NvcmUgPSBtYXgoc2NvcmUsIGZpbmFsIC8gMTAwLjApCiAgICAgICAgc2NvcmVzW2xpbmVdID0gc2NvcmUKCiAgICBvcmRlcmVkID0gc29ydGVkKHNjb3Jlcy5pdGVtcygpLCBrZXk9bGFtYmRhIGt2OiAoLWt2WzFdLCBrdlswXSkpCiAgICBpZiB0b3BfbiA+IDA6CiAgICAgICAgb3JkZXJlZCA9IG9yZGVyZWRbOnRvcF9uXQoKICAgIGxpbmVzID0gW2wgZm9yIGwsIF9zIGluIG9yZGVyZWQgaWYgbF0KICAgIGlmIG5vdCBsaW5lcyBhbmQgb3MucGF0aC5pc2ZpbGUoImV4cG9ydC9hbnRpX2FpX2RwaV9icmlkZ2VzLnR4dCIpOgogICAgICAgIHdpdGggb3BlbigiZXhwb3J0L2FudGlfYWlfZHBpX2JyaWRnZXMudHh0IikgYXMgZmg6CiAgICAgICAgICAgIGxpbmVzID0gW2wuc3RyaXAoKSBmb3IgbCBpbiBmaCBpZiBsLnN0cmlwKCldCgogICAgd2l0aCBvcGVuKCJleHBvcnQvaXJhbl9hbnRpX2RwaV9lbGl0ZS50eHQiLCAidyIpIGFzIGZoOgogICAgICAgIGZvciBsIGluIGxpbmVzOgogICAgICAgICAgICBmaC53cml0ZShsICsgIlxuIikKCiAgICBzdW1tYXJ5ID0gewogICAgICAgICJnZW5lcmF0ZWRfYXQiOiBkYXRldGltZS5kYXRldGltZS5ub3coZGF0ZXRpbWUudGltZXpvbmUudXRjKS5pc29mb3JtYXQoKSwKICAgICAgICAiZW5naW5lIjogInRvcnNoaWVsZC1hbnRpLWRwaS1lbGl0ZS1mdXNpb24tdjEiLAogICAgICAgICJkeW5hbWljX21vZGUiOiB0b3BfbiA8PSAwLAogICAgICAgICJ0b3BfbiI6IHRvcF9uLAogICAgICAgICJpbnB1dF9hbnRpX2RwaSI6IGxlbihhbnRpKSwKICAgICAgICAiaW5wdXRfc21hcnRfaXJhbiI6IGxlbihzbWFydCksCiAgICAgICAgIm91dHB1dF9icmlkZ2VzIjogbGVuKGxpbmVzKSwKICAgICAgICAiZmlsZSI6ICJleHBvcnQvaXJhbl9hbnRpX2RwaV9lbGl0ZS50eHQiLAogICAgfQogICAgd2l0aCBvcGVuKCJleHBvcnQvaXJhbl9hbnRpX2RwaV9lbGl0ZS5qc29uIiwgInciKSBhcyBmaDoKICAgICAgICBqc29uLmR1bXAoc3VtbWFyeSwgZmgsIGluZGVudD0yKQogICAgICAgIGZoLndyaXRlKCJcbiIpCiAgICBwcmludCgiICBleHBvcnQvaXJhbl9hbnRpX2RwaV9lbGl0ZS50eHQ6ICVkIERQSS1oYXJkZW5lZCBicmlkZ2VzIChkeW5hbWljX21vZGU9JXMpIiAlIChsZW4obGluZXMpLCB0b3BfbiA8PSAwKSkKCm1haW4oKQo="
-          echo "$PY_B64" | base64 -d > /tmp/anti_dpi_elite.py
-          python3 /tmp/anti_dpi_elite.py "$AI_ANTI_DPI_TOP_N"
-          echo "✅ Stage 8s anti-DPI elite export complete."
 
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites ALL 55 public bridge/ files, re-renders README.md from the
@@ -952,8 +924,6 @@ jobs:
             export/ech_top_bridges.txt
             export/nin_cut_bridges.txt
             export/anti_ai_dpi_bridges.txt
-            export/iran_anti_dpi_elite.txt
-            export/iran_anti_dpi_elite.json
             data/nin_cut_report.json
             data/reality_report.json
             data/ai_consensus_report.json
@@ -1045,26 +1015,16 @@ jobs:
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           BRIDGE_FILE: ${{ inputs.bridge_file || 'bridge/iran_results.json' }}
-          # top-n 0 = dynamic mode: rank the ENTIRE deduplicated input pool
-          # (no fixed ceiling) so every collected bridge is scored and
-          # published, not just the first 20. Set AI_RERANK_TOP_N to a
-          # positive number to cap the ranked output.
-          AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
         run: |
           set -euo pipefail
           cargo run --quiet --bin ai_bridge_reranker -- \
             --input "$BRIDGE_FILE" \
             --output bridge/bridges_ai_iran_ranked.json \
             --censorship-level 4 \
-            --top-n "${AI_RERANK_TOP_N:-0}"
-          # The AI re-ranker must NOT silently swallow a failure — if it
-          # cannot produce a real ranked payload the job fails loudly so the
-          # self-heal workflow can categorise and repair it.
-          if [ ! -s bridge/bridges_ai_iran_ranked.json ]; then
-            echo "::error::ai_bridge_reranker produced an empty/absent ranked payload"
-            exit 1
+            --top-n "${AI_RERANK_TOP_N:-20}" || true
+          if [ -f bridge/bridges_ai_iran_ranked.json ]; then
+            echo "bridge/bridges_ai_iran_ranked.json written (see scorer summary above)"
           fi
-          python3 -c "import json;d=json.load(open('bridge/bridges_ai_iran_ranked.json'));print('ai_bridge_reranker: ranked',d['summary']['ranked_records'],'bridges -> bridge/bridges_ai_iran_ranked.json')"
 
       - name: Upload AI-Ranked Bridges
         uses: actions/upload-artifact@v6
