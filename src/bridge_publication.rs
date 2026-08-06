@@ -546,10 +546,10 @@ fn write_transport_family(
     with_ipv6: bool,
     counts: &mut BTreeMap<String, usize>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // Strict zero-error publication: when live collection produced no
-    // candidates for a transport (offline run, empty history, new transport
-    // family), the projection falls back to the compiled-in static lines so
-    // no `bridge/<stem>*.txt` protocol file is ever truncated to 0 bytes.
+    // When live collection produces no candidates, use compiled-in static
+    // lines only when they contain a valid client endpoint. WebTunnel's
+    // bundled metadata is URL-only, so its empty projections remain empty
+    // until a source supplies a literal IP:PORT or [IPv6]:PORT.
     let fallback = || -> Vec<String> {
         static_bridges::fallback_lines(transport)
             .into_iter()
@@ -697,9 +697,9 @@ fn write_iran_projections(
                 .then_with(|| left.1.cmp(&right.1))
         });
         let mut lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
-        // Zero-error publication: never publish an empty advisory projection.
-        // With no probe evidence for this transport, fall back to the
-        // compiled-in static lines (documented in the manifest evidence scope).
+        // With no probe evidence, use a compiled-in fallback only when it is
+        // a complete client line. URL-only WebTunnel metadata is deliberately
+        // not emitted as a bridge and therefore remains empty here.
         if lines.is_empty() {
             let fallback_lines = static_bridges::fallback_lines(transport)
                 .into_iter()
@@ -773,7 +773,8 @@ fn write_iran_projections(
                 .then_with(|| left.1.cmp(&right.1))
         });
         let mut lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
-        // Same zero-error guarantee for the global tested projections.
+        // Apply the same validated-fallback policy to global tested
+        // projections; URL-only WebTunnel metadata is not emitted.
         if lines.is_empty() {
             let fallback_lines = static_bridges::fallback_lines(transport)
                 .into_iter()
@@ -1419,22 +1420,32 @@ mod tests {
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let mut counts = BTreeMap::new();
-        // Empty candidates AND empty probes -> advisory projections must be
-        // populated from static fallbacks (blocked stays empty: no evidence).
+        // Empty candidates AND empty probes -> projections use validated
+        // static fallbacks where available. WebTunnel remains empty because
+        // its bundled metadata has no direct client endpoint; blocked stays
+        // empty because there is no evidence.
         write_iran_projections(&bridge_dir, &[], &[], &mut counts).expect("write projections");
         for name in [
             "iran_likely_working_obfs4.txt",
-            "iran_likely_working_webtunnel.txt",
             "iran_likely_working_vanilla.txt",
             "iran_likely_working_snowflake.txt",
             "iran_likely_working_all.txt",
             "iran_likely_working_nin.txt",
             "tested_global_obfs4.txt",
             "tested_global_vanilla.txt",
-            "tested_global_webtunnel.txt",
         ] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
             assert!(body.lines().count() > 0, "{name} must not be empty");
+        }
+        for name in [
+            "iran_likely_working_webtunnel.txt",
+            "tested_global_webtunnel.txt",
+        ] {
+            let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
+            assert!(
+                body.trim().is_empty(),
+                "{name} must not contain URL-only WebTunnel metadata"
+            );
         }
         let blocked = std::fs::read_to_string(bridge_dir.join("iran_blocked.txt")).expect("file");
         assert!(

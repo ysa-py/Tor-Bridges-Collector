@@ -10,11 +10,10 @@
 //! broker/front metadata and are not counted as direct IP bridges.
 //!
 //! Beyond the sanitized static constants, this module also provides static
-//! fallback lines for every published transport (webtunnel, vanilla,
-//! conjure, meek-azure included) via [`fallback_lines`] and [`fallback_all`].
-//! The exporter and the pre-publication FAILSAFE use those helpers to
-//! force-populate any `bridge/*.txt` that would otherwise be 0 bytes when
-//! live collection and testing produced no candidates for a transport.
+//! fallback lines for published transports whose bundled entries are complete
+//! client bridge lines (vanilla, snowflake, obfs4, conjure, and meek variants)
+//! via [`fallback_lines`] and [`fallback_all`]. URL-only WebTunnel metadata is
+//! retained for reference but is never emitted as a client bridge fallback.
 //!
 //! Sources:
 //! - Tor Browser source: tor-browser/src/app/tor-browser.git (torrc.defaults)
@@ -191,16 +190,21 @@ pub fn get_all() -> Vec<(&'static str, &'static str, &'static str)> {
 
 /// Static fallback lines for a single transport family.
 ///
-/// Used by the exporter (`bridge_publication`) and the FAILSAFE to guarantee
-/// that no published `bridge/*.txt` protocol file is ever 0 bytes, even when
-/// live collection/probing produced no candidates for that transport.
-/// Returns an empty vector for unknown transports.
+/// Used by the exporter (`bridge_publication`) and the FAILSAFE when live
+/// collection/probing produces no candidates. Returns only complete client
+/// bridge lines; URL-only WebTunnel metadata intentionally yields an empty
+/// vector until a source supplies a literal endpoint. Unknown transports also
+/// return an empty vector.
 pub fn fallback_lines(transport: &str) -> Vec<&'static str> {
     match transport {
         "snowflake" => SNOWFLAKE_BRIDGES.to_vec(),
         "meek_lite" => MEEK_BRIDGES.to_vec(),
         "obfs4" => OBFS4_BRIDGES.to_vec(),
-        "webtunnel" => WEBTUNNEL_BRIDGES.to_vec(),
+        // The bundled WebTunnel metadata is URL-only and therefore cannot be
+        // emitted as a client bridge line: no endpoint may be fabricated.
+        // Return no fallback until a source supplies a literal IP:PORT or
+        // [IPv6]:PORT record.
+        "webtunnel" => Vec::new(),
         "vanilla" => VANILLA_BRIDGES.to_vec(),
         "conjure" => CONJURE_BRIDGES.to_vec(),
         "meek-azure" => MEEK_AZURE_BRIDGES.to_vec(),
@@ -208,8 +212,9 @@ pub fn fallback_lines(transport: &str) -> Vec<&'static str> {
     }
 }
 
-/// Static fallback lines across every published transport, in a fixed order,
-/// used for aggregate files such as `iran_likely_working_all.txt`.
+/// Static fallback lines across supported transports, in a fixed order, used
+/// for aggregate files such as `iran_likely_working_all.txt`. URL-only
+/// WebTunnel metadata is excluded.
 pub fn fallback_all() -> Vec<&'static str> {
     let mut lines = Vec::new();
     for transport in [
@@ -275,7 +280,6 @@ mod tests {
     fn fallback_lines_cover_every_published_transport() {
         for transport in [
             "obfs4",
-            "webtunnel",
             "vanilla",
             "snowflake",
             "meek_lite",

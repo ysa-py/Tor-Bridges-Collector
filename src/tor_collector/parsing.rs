@@ -46,6 +46,10 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         return false;
     }
 
+    if transport_token(trimmed) == "webtunnel" && !has_webtunnel_endpoint(trimmed) {
+        return false;
+    }
+
     Regex::new(r"\d+\.\d+\.\d+\.\d+|\[[0-9A-Fa-f:]+\]|https?://")
         .map(|regex| regex.is_match(trimmed))
         .unwrap_or(false)
@@ -148,23 +152,26 @@ pub fn extract_front_host(line: &str) -> Option<String> {
     token_value(line, "front").filter(|host| !host.trim().is_empty())
 }
 
-/// Extract a host and port from URL, bracketed IPv6, IPv4, or hostname tokens.
+/// Extract a host and port from a literal endpoint or URL.
+///
+/// A literal `IP:PORT` token wins over the `url=` host. This is required for
+/// WebTunnel, where `url=` identifies the registration/WebSocket route while
+/// the preceding socket endpoint is the address a client must contact.
 /// URL endpoints default to port 443; raw endpoints must include an explicit
 /// valid port, as they do in bridge descriptors.
 pub fn extract_endpoint(line: &str) -> Option<Endpoint> {
-    if let Some(url) = extract_url(line) {
-        let host = url.host_str()?.to_owned();
-        let port = url.port_or_known_default().unwrap_or(443);
-        return Some(Endpoint { host, port });
-    }
-
     let raw = strip_bridge_prefix(line);
     for token in raw.split_whitespace() {
         if let Some(endpoint) = endpoint_from_token(token) {
             return Some(endpoint);
         }
     }
-    None
+
+    extract_url(line).and_then(|url| {
+        let host = url.host_str()?.to_owned();
+        let port = url.port_or_known_default().unwrap_or(443);
+        Some(Endpoint { host, port })
+    })
 }
 
 /// Return `true` when a bridge line's direct endpoint is IPv6.
@@ -220,6 +227,13 @@ pub fn token_value(line: &str, key: &str) -> Option<String> {
                 None
             }
         })
+}
+
+fn has_webtunnel_endpoint(line: &str) -> bool {
+    strip_bridge_prefix(line)
+        .split_whitespace()
+        .filter_map(endpoint_from_token)
+        .any(|endpoint| endpoint.host.parse::<IpAddr>().is_ok())
 }
 
 fn endpoint_from_token(token: &str) -> Option<Endpoint> {
@@ -281,6 +295,10 @@ mod tests {
         assert!(is_valid_bridge_line(
             "webtunnel 1.2.3.4:443 url=https://example.org/x"
         ));
+        assert!(is_valid_bridge_line(
+            "webtunnel [2001:db8::7]:443 FINGER url=https://example.org/x ver=0.0.4"
+        ));
+        assert!(!is_valid_bridge_line("webtunnel FINGER url=https://example.org/x"));
         assert!(!is_valid_bridge_line("# 1.2.3.4:443"));
         assert!(!is_valid_bridge_line("No bridges available"));
         assert!(!is_valid_bridge_line("tiny"));
@@ -305,7 +323,14 @@ mod tests {
         assert_eq!(
             extract_endpoint("webtunnel 1.2.3.4:443 url=https://example.org/path"),
             Some(Endpoint {
-                host: "example.org".to_owned(),
+                host: "1.2.3.4".to_owned(),
+                port: 443,
+            })
+        );
+        assert_eq!(
+            extract_endpoint("webtunnel [2001:db8::1]:443 url=https://example.org/path"),
+            Some(Endpoint {
+                host: "2001:db8::1".to_owned(),
                 port: 443,
             })
         );

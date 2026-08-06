@@ -193,7 +193,33 @@ pub fn is_valid_line(line: &str) -> bool {
     if line.contains("No bridges available") || line.starts_with('#') {
         return false;
     }
+    if line
+        .split_whitespace()
+        .next()
+        .is_some_and(|token| token.eq_ignore_ascii_case("webtunnel"))
+        && !has_literal_webtunnel_endpoint(line)
+    {
+        return false;
+    }
     bridge_line_re().is_match(line)
+}
+
+fn has_literal_webtunnel_endpoint(line: &str) -> bool {
+    line.split_whitespace().any(|token| {
+        let token = token.trim_matches(|character| matches!(character, ',' | ';' | '"'));
+        if let Some(rest) = token.strip_prefix('[') {
+            let Some((host, port)) = rest.split_once("]:") else {
+                return false;
+            };
+            return host.parse::<std::net::Ipv6Addr>().is_ok()
+                && port.parse::<u16>().is_ok_and(|value| value != 0);
+        }
+        let Some((host, port)) = token.rsplit_once(':') else {
+            return false;
+        };
+        host.parse::<std::net::Ipv4Addr>().is_ok()
+            && port.parse::<u16>().is_ok_and(|value| value != 0)
+    })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -470,8 +496,14 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_line_accepts_https_url() {
-        assert!(is_valid_line("webtunnel url=https://example.com/path"));
+    fn is_valid_line_rejects_url_only_webtunnel() {
+        assert!(!is_valid_line("webtunnel url=https://example.com/path"));
+        assert!(is_valid_line(
+            "webtunnel 192.0.2.4:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
+        ));
+        assert!(is_valid_line(
+            "webtunnel [2001:db8::4]:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
+        ));
     }
 
     #[test]
@@ -510,12 +542,26 @@ mod tests {
         let html = r#"
         <html><body>
             <code>
-                webtunnel url=https://example.com/x
+                webtunnel 192.0.2.4:443 FINGERPRINT url=https://example.com/x ver=0.0.4
             </code>
         </body></html>
         "#;
         let lines = parse_html(html);
         assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("192.0.2.4:443"));
+    }
+
+    #[test]
+    fn parse_html_rejects_url_only_webtunnel_code_block() {
+        let html = r#"
+        <html><body>
+            <code>
+                webtunnel url=https://example.com/x
+            </code>
+        </body></html>
+        "#;
+        let lines = parse_html(html);
+        assert!(lines.is_empty());
     }
 
     #[test]
