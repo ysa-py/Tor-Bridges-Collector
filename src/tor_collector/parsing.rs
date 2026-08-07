@@ -53,7 +53,9 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
     }
 
     if transport_token(trimmed) == "webtunnel" {
-        if token_value(trimmed, "ver").as_deref() != Some("0.0.4") {
+        // Accept any ver= version (0.0.1 through 0.0.4+), not just 0.0.4.
+        let ver = token_value(trimmed, "ver");
+        if ver.is_none() {
             return false;
         }
         if !has_webtunnel_literal_endpoint(trimmed) {

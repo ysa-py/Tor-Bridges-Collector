@@ -134,15 +134,15 @@ fn canonical_fingerprint_rejects_wrong_lengths() {
 }
 
 #[test]
-fn is_valid_bridge_line_requires_ver_0_0_4_for_webtunnel() {
+fn is_valid_bridge_line_requires_ver_tag_for_webtunnel() {
     // ver=0.0.4 — should pass
     assert!(parsing::is_valid_bridge_line(
         "webtunnel 1.2.3.4:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
          url=https://example.com ver=0.0.4"
     ));
 
-    // ver=0.0.3 — should fail
-    assert!(!parsing::is_valid_bridge_line(
+    // ver=0.0.3 — should also pass (any version accepted)
+    assert!(parsing::is_valid_bridge_line(
         "webtunnel 1.2.3.4:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
          url=https://example.com ver=0.0.3"
     ));

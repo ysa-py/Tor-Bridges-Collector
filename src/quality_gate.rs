@@ -251,11 +251,11 @@ pub fn report(root: &Path) -> i32 {
 
 const USAGE: &str = "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check> [path]";
 
-/// Subcommand: validate WebTunnel v0.0.4 bridge lines under `root`.
+/// Subcommand: validate WebTunnel bridge lines under `root`.
 ///
 /// Scans all bridge/*.txt files for WebTunnel lines and verifies:
-/// - version is exactly `ver=0.0.4`
-/// - literal IPv4 or IPv6 endpoint is present
+/// - version is present (any ver= tag is accepted; not just 0.0.4)
+/// - literal IPv4, IPv6, or DNS endpoint is present
 /// - fingerprint is a canonical 40- or 64-char hex string
 ///
 /// Follows standard banner formatting, ✓/✗ status output, ::error:: GitHub
@@ -314,23 +314,19 @@ pub fn webtunnel_check(root: &Path) -> i32 {
 
             let mut line_fail = false;
 
-            // 1. ver=0.0.4 enforcement
-            let ver_ok = lower.split_whitespace().any(|t| t == "ver=0.0.4");
+            // 1. ver= presence (any version accepted)
+            let ver_ok = lower.split_whitespace().any(|t| t.starts_with("ver="));
             if !ver_ok {
                 let detail = format!(
-                    "{}:{} — missing or non-0.0.4 ver= (found {:?})",
+                    "{}:{} — missing ver= tag",
                     name,
                     line_no + 1,
-                    lower
-                        .split_whitespace()
-                        .find(|t| t.starts_with("ver="))
-                        .unwrap_or("<none>")
                 );
                 fail_details.push(detail);
                 line_fail = true;
             }
 
-            // 2. literal endpoint required
+            // 2. literal endpoint required (IPv4, IPv6, or DNS hostname)
             let has_literal = lower.split_whitespace().any(|t| {
                 (t.contains('.') && t.contains(':') && !t.starts_with("http")
                     && !t.contains('='))
@@ -494,13 +490,13 @@ mod tests {
         .expect("write");
         assert_eq!(webtunnel_check(&dir), 0);
 
-        // Invalid: ver=0.0.3
+        // Valid: ver=0.0.3 (any version accepted)
         std::fs::write(
             bridge_dir.join("webtunnel.txt"),
             "webtunnel 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.3\n",
         )
         .expect("write");
-        assert_eq!(webtunnel_check(&dir), 1);
+        assert_eq!(webtunnel_check(&dir), 0);
 
         // Invalid: no literal endpoint
         std::fs::write(
