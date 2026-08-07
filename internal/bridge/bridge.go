@@ -5,7 +5,6 @@ package bridge
 import (
 	"fmt"
 	"net"
-	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
