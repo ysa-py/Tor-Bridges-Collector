@@ -363,19 +363,8 @@ pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
 
 pub fn is_canonical_fingerprint(value: &str) -> bool {
     let cleaned = value.trim().trim_matches(|c| matches!(c, ',' | ';' | '"'));
-    if cleaned.len() == 40 {
-        return Regex::new(r"\b[A-Fa-f0-9]{40}\b")
-            .ok()
-            .and_then(|re| re.is_match(cleaned).then_some(()))
-            .is_some();
-    }
-    if cleaned.len() == 64 {
-        return Regex::new(r"\b[A-Fa-f0-9]{64}\b")
-            .ok()
-            .and_then(|re| re.is_match(cleaned).then_some(()))
-            .is_some();
-    }
-    false
+    (cleaned.len() == 40 || cleaned.len() == 64)
+        && cleaned.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 fn first_fingerprint_like_token(line: &str) -> Option<String> {

@@ -39,10 +39,13 @@ pub fn parse_line(line: &str) -> Option<WebTunnelV2Info> {
     let mut info = WebTunnelV2Info::default();
     info.version = "0.0.4".to_string();
 
+    let mut found_endpoint = false;
     for token in normalized.split_whitespace() {
         if token.starts_with("url=") {
             info.url = Some(token.trim_start_matches("url=").trim_matches('"').to_string());
-        } else if token.contains(':') && !token.contains('=') {
+        } else if token.starts_with("ver=") {
+            info.version = token.trim_start_matches("ver=").trim_matches('"').to_string();
+        } else if !found_endpoint && token.contains(':') && !token.contains('=') {
             let (host, port) = token.rsplit_once(':')?;
             if !host.is_empty() && port.parse::<u16>().ok().is_some() {
                 info.host = host.trim_matches(|c| c == '[' || c == ']').to_string();
@@ -54,7 +57,7 @@ pub fn parse_line(line: &str) -> Option<WebTunnelV2Info> {
                 } else {
                     info.family = "dns".to_string();
                 }
-                break;
+                found_endpoint = true;
             }
         }
     }
