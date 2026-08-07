@@ -294,11 +294,18 @@ fn endpoint_from_token(token: &str) -> Option<Endpoint> {
     if host.is_empty() || host.contains(':') || host.contains('/') {
         return None;
     }
-    if host.parse::<std::net::Ipv4Addr>().is_ok() || is_dns_name(host) {
+    if host.parse::<std::net::Ipv4Addr>().is_ok() {
         return Some(Endpoint {
             host: host.to_owned(),
             port,
             address_family: "ipv4".to_owned(),
+        });
+    }
+    if is_dns_name(host) {
+        return Some(Endpoint {
+            host: host.to_owned(),
+            port,
+            address_family: "dns".to_owned(),
         });
     }
     None
