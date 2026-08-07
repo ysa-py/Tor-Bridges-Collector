@@ -42,7 +42,12 @@ pub fn parse_line(line: &str) -> Option<WebTunnelV2Info> {
     let mut found_endpoint = false;
     for token in normalized.split_whitespace() {
         if token.starts_with("url=") {
-            info.url = Some(token.trim_start_matches("url=").trim_matches('"').to_string());
+            info.url = Some(
+                token
+                    .trim_start_matches("url=")
+                    .trim_matches('"')
+                    .to_string(),
+            );
         } else if token.starts_with("ver=") {
             info.version = token.trim_start_matches("ver=").trim_matches('"').to_string();
         } else if !found_endpoint && token.contains(':') && !token.contains('=') {
@@ -82,8 +87,9 @@ mod tests {
 
     #[test]
     fn parses_v0_0_4_dual_stack_payload() {
-        let info = parse_line("webtunnel [2001:db8::4]:443 FINGERPRINT url=https://example.com ver=0.0.4")
-            .expect("expected parse");
+        let info =
+            parse_line("webtunnel [2001:db8::4]:443 FINGERPRINT url=https://example.com ver=0.0.4")
+                .expect("expected parse");
         assert_eq!(info.family, "ipv6");
         assert_eq!(info.port, 443);
         assert_eq!(info.version, "0.0.4");

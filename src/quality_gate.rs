@@ -249,7 +249,8 @@ pub fn report(root: &Path) -> i32 {
     0
 }
 
-const USAGE: &str = "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check> [path]";
+const USAGE: &str =
+    "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check> [path]";
 
 /// Subcommand: validate WebTunnel bridge lines under `root`.
 ///
@@ -317,19 +318,14 @@ pub fn webtunnel_check(root: &Path) -> i32 {
             // 1. ver= presence (any version accepted)
             let ver_ok = lower.split_whitespace().any(|t| t.starts_with("ver="));
             if !ver_ok {
-                let detail = format!(
-                    "{}:{} — missing ver= tag",
-                    name,
-                    line_no + 1,
-                );
+                let detail = format!("{}:{} — missing ver= tag", name, line_no + 1);
                 fail_details.push(detail);
                 line_fail = true;
             }
 
             // 2. literal endpoint required (IPv4, IPv6, or DNS hostname)
             let has_literal = lower.split_whitespace().any(|t| {
-                (t.contains('.') && t.contains(':') && !t.starts_with("http")
-                    && !t.contains('='))
+                (t.contains('.') && t.contains(':') && !t.starts_with("http") && !t.contains('='))
                     || (t.starts_with('[') && t.contains("]:"))
             });
             if !has_literal {

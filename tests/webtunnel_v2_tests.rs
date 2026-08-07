@@ -90,8 +90,7 @@ fn webtunnel_v2_serialization_roundtrips() {
 
     // Re-parse from JSON
     let json_str = serde_json::to_string(&json).unwrap();
-    let parsed_back: serde_json::Value =
-        serde_json::from_str(&json_str).unwrap();
+    let parsed_back: serde_json::Value = serde_json::from_str(&json_str).unwrap();
     assert_eq!(parsed_back["host"], "192.0.2.1");
 }
 

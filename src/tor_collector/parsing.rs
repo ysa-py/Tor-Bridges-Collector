@@ -365,16 +365,16 @@ pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
 
 pub fn is_canonical_fingerprint(value: &str) -> bool {
     let cleaned = value.trim().trim_matches(|c| matches!(c, ',' | ';' | '"'));
-    (cleaned.len() == 40 || cleaned.len() == 64)
-        && cleaned.bytes().all(|b| b.is_ascii_hexdigit())
+    (cleaned.len() == 40 || cleaned.len() == 64) && cleaned.bytes().all(|b| b.is_ascii_hexdigit())
 }
 
 fn first_fingerprint_like_token(line: &str) -> Option<String> {
-    strip_bridge_prefix(line).split_whitespace().find_map(|token| {
-        let cleaned = token.trim_matches(|c| matches!(c, ',' | ';' | '"'));
-        (cleaned.len() == 40 || cleaned.len() == 64)
-            .then(|| cleaned.to_owned())
-    })
+    strip_bridge_prefix(line)
+        .split_whitespace()
+        .find_map(|token| {
+            let cleaned = token.trim_matches(|c| matches!(c, ',' | ';' | '"'));
+            (cleaned.len() == 40 || cleaned.len() == 64).then(|| cleaned.to_owned())
+        })
 }
 
 fn is_dns_name(host: &str) -> bool {
@@ -391,14 +391,18 @@ mod tests {
     #[test]
     fn validation_covers_ipv4_ipv6_and_url_forms() {
         assert!(is_valid_bridge_line("obfs4 1.2.3.4:443 cert=abc"));
-        assert!(is_valid_bridge_line("obfs4 [2606:4700:4700::1111]:443 cert=abc"));
+        assert!(is_valid_bridge_line(
+            "obfs4 [2606:4700:4700::1111]:443 cert=abc"
+        ));
         assert!(is_valid_bridge_line(
             "webtunnel 1.2.3.4:443 FINGER url=https://example.org/x ver=0.0.4"
         ));
         assert!(is_valid_bridge_line(
             "webtunnel [2606:4700:4700::1111]:443 FINGER url=https://example.org/x ver=0.0.4"
         ));
-        assert!(!is_valid_bridge_line("webtunnel FINGER url=https://example.org/x"));
+        assert!(!is_valid_bridge_line(
+            "webtunnel FINGER url=https://example.org/x"
+        ));
         assert!(!is_valid_bridge_line("# 1.2.3.4:443"));
         assert!(!is_valid_bridge_line("No bridges available"));
         assert!(!is_valid_bridge_line("tiny"));
