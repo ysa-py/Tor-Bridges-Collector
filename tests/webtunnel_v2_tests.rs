@@ -101,7 +101,7 @@ fn canonical_fingerprint_accepts_40_char_sha1() {
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     ));
     assert!(parsing::is_canonical_fingerprint(
-        "abcdefABCDEF1234567890abcdefABCDEF12345678"
+        "abcdefABCDEF1234567890abcdefABCDEF123456"
     ));
 }
 
@@ -111,7 +111,7 @@ fn canonical_fingerprint_accepts_64_char_sha256() {
         "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
     ));
     assert!(parsing::is_canonical_fingerprint(
-        "abcdefABCDEF1234567890abcdefABCDEF12345678abcdefABCDEF1234567890abcd"
+        "abcdefABCDEF1234567890abcdefABCDEF1234567890abcdefABCDEF12345678"
     ));
 }
 
