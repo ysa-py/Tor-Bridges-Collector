@@ -131,26 +131,13 @@ func parseWebTransport(raw string) (*Transport, error) {
 		}
 	}
 
-	// If no literal endpoint found, try extracting from url= parameter.
+	// If no literal endpoint found, reject the line.
+	// URL-only WebTunnel lines are not valid — a literal IP:PORT endpoint
+	// is mandatory (matching the Rust collector's is_valid_bridge_line behavior).
 	if !foundEndpoint {
-		rawURL, ok := t.Params["url"]
-		if !ok || rawURL == "" {
+		if _, ok := t.Params["url"]; !ok {
 			return nil, fmt.Errorf("WebTunnel line has no literal endpoint and no url= parameter")
 		}
-		u, err := url.Parse(rawURL)
-		if err != nil {
-			return nil, fmt.Errorf("invalid url= in WebTunnel line: %w", err)
-		}
-		host := u.Hostname()
-		portStr := u.Port()
-		port := uint16(443)
-		if portStr != "" {
-			if p, err := strconv.ParseUint(portStr, 10, 16); err == nil && p != 0 {
-				port = uint16(p)
-			}
-		}
-		// Reject URL-only WebTunnel lines — literal endpoint is mandatory.
-		// (This matches the Rust collector's is_valid_bridge_line behavior.)
 		return nil, fmt.Errorf("WebTunnel line has no literal IP:PORT endpoint (url= host is not sufficient)")
 	}
 

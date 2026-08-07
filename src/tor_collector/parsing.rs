@@ -421,6 +421,7 @@ mod tests {
             Some(Endpoint {
                 host: "2001:db8::1".to_owned(),
                 port: 443,
+                address_family: "ipv6".to_owned(),
             })
         );
         assert_eq!(
@@ -436,6 +437,7 @@ mod tests {
             Some(Endpoint {
                 host: "2001:db8::1".to_owned(),
                 port: 443,
+                address_family: "ipv6".to_owned(),
             })
         );
         assert_eq!(

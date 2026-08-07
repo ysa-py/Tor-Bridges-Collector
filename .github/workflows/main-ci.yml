@@ -198,7 +198,7 @@ jobs:
           key: ${{ runner.os }}-cargo-pkg-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-pkg-
       - name: Build final package
-        run: cargo build --release --bin tor-bridges-collector --bin bridge-probe
+        run: cargo build --release --bin tor-bridges-collector && cargo build --release -p bridge-probe
       - name: Package artifacts
         run: |
           mkdir -p dist
