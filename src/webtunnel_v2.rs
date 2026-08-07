@@ -36,8 +36,10 @@ pub fn parse_line(line: &str) -> Option<WebTunnelV2Info> {
         return None;
     }
 
-    let mut info = WebTunnelV2Info::default();
-    info.version = "0.0.4".to_string();
+    let mut info = WebTunnelV2Info {
+        version: "0.0.4".to_string(),
+        ..Default::default()
+    };
 
     let mut found_endpoint = false;
     for token in normalized.split_whitespace() {

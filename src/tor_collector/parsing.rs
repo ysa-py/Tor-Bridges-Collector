@@ -58,10 +58,8 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         if ver.is_none() {
             return false;
         }
-        if !has_webtunnel_literal_endpoint(trimmed) {
-            if extract_url(trimmed).is_some() {
-                return false;
-            }
+        if !has_webtunnel_literal_endpoint(trimmed) && extract_url(trimmed).is_some() {
+            return false;
         }
     }
 
