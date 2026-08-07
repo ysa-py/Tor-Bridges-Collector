@@ -327,10 +327,10 @@ jobs:
         uses: actions/checkout@v5
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
       - name: Run cargo audit
-        uses: actions-rs/audit-check@v1
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+        run: cargo audit
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 13: python-tests matrix (preserved for migration parity)
@@ -384,7 +384,7 @@ jobs:
           key: ${{ runner.os }}-cargo-sentinel-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-sentinel-
       - name: Run unified workspace checks
-        run: sh scripts/run_workspace_checks.sh
+        run: bash scripts/run_workspace_checks.sh
       - name: Validate self-heal recovery
         run: cargo test --test self_heal_verify_contract
       - name: Validate pipeline diagnostics
