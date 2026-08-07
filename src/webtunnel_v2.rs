@@ -49,7 +49,10 @@ pub fn parse_line(line: &str) -> Option<WebTunnelV2Info> {
                     .to_string(),
             );
         } else if token.starts_with("ver=") {
-            info.version = token.trim_start_matches("ver=").trim_matches('"').to_string();
+            info.version = token
+                .trim_start_matches("ver=")
+                .trim_matches('"')
+                .to_string();
         } else if !found_endpoint && token.contains(':') && !token.contains('=') {
             let (host, port) = token.rsplit_once(':')?;
             if !host.is_empty() && port.parse::<u16>().ok().is_some() {
