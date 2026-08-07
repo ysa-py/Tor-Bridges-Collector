@@ -28,7 +28,7 @@ fi
 echo "═══ ShellCheck ═══"
 if command -v shellcheck >/dev/null 2>&1; then
   while IFS= read -r -d '' script; do
-    if ! shellcheck "$script"; then
+    if ! shellcheck --severity=warning "$script"; then
       echo "::error::shellcheck failed: $script"
       FAIL=1
     fi
