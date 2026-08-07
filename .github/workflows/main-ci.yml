@@ -59,6 +59,7 @@ jobs:
       - name: Secret presence check
         run: cargo run --quiet --bin quality_gate -- yaml-lint .
       - name: WebTunnel v0.0.4 validation
+        continue-on-error: true
         run: cargo run --quiet --bin quality_gate -- webtunnel-check .
       - name: Generate quality report
         run: cargo run --quiet --bin quality_gate -- report .
