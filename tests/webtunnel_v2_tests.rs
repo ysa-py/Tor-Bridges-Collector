@@ -119,7 +119,9 @@ fn canonical_fingerprint_accepts_64_char_sha256() {
 fn canonical_fingerprint_rejects_short_strings() {
     assert!(!parsing::is_canonical_fingerprint("short"));
     assert!(!parsing::is_canonical_fingerprint(""));
-    assert!(!parsing::is_canonical_fingerprint("GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"));
+    assert!(!parsing::is_canonical_fingerprint(
+        "GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG"
+    ));
 }
 
 #[test]
@@ -201,10 +203,9 @@ fn extract_endpoint_ipv4_vs_ipv6() {
     assert_eq!(ep.address_family, "ipv4");
 
     // IPv6
-    let ep = parsing::extract_endpoint(
-        "webtunnel [2001:db8::7]:443 FINGER url=https://x ver=0.0.4",
-    )
-    .unwrap();
+    let ep =
+        parsing::extract_endpoint("webtunnel [2001:db8::7]:443 FINGER url=https://x ver=0.0.4")
+            .unwrap();
     assert_eq!(ep.host, "2001:db8::7");
     assert_eq!(ep.port, 443);
 }
@@ -213,10 +214,10 @@ fn extract_endpoint_ipv4_vs_ipv6() {
 fn mock_websocket_upgrade_responds_101() {
     let port = start_mock_websocket_server();
 
-    let mut stream =
-        TcpStream::connect(format!("127.0.0.1:{port}")).expect("connect to mock");
+    let mut stream = TcpStream::connect(format!("127.0.0.1:{port}")).expect("connect to mock");
 
-    let request = b"GET /ws HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n";
+    let request =
+        b"GET /ws HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n";
     stream.write_all(request).expect("write request");
 
     let mut response = [0u8; 1024];
