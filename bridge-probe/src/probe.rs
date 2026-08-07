@@ -433,7 +433,7 @@ pub fn build_client_hello(sni_host: &str) -> Vec<u8> {
     sv_ext.extend_from_slice(&sv_data);
 
     // Cipher suites: GREASE + standard Chrome 120 suites
-    let ciphers: [u8; 22] = [
+    let ciphers: [u8; 20] = [
         0x1A, 0x1A, // GREASE
         0x13, 0x01, // TLS_AES_128_GCM_SHA256
         0x13, 0x02, // TLS_AES_256_GCM_SHA384
@@ -492,7 +492,7 @@ pub async fn probe_with_protocol_hop(
     probe_timeout: Duration,
     sni: Option<&str>,
     enable_fragmentation: bool,
-    censorship_level: u32,
+    _censorship_level: u32,
 ) -> (ProbeStatus, Option<String>) {
     // Ordered protocol hop list: WebTunnel → ShadowTLS → VLESS Reality
     let hops: [(&str, Option<&str>); 3] = [

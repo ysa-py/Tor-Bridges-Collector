@@ -368,7 +368,7 @@ impl TrafficObfuscator {
         seed: u64,
     ) -> Vec<u8> {
         use std::collections::hash_map::DefaultHasher;
-        use std::hash::{Hash, Hasher};
+        use std::hash::Hasher;
 
         let chosen_sni: &[u8] = sni.unwrap_or(CDN_HOSTS[0]);
 
