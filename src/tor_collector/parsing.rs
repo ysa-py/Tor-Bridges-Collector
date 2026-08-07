@@ -63,7 +63,7 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         }
     }
 
-    if let Some(token) = first_fingerprint_like_token(trimmed) {
+    if let Some(ref token) = first_fingerprint_like_token(trimmed) {
         if !is_canonical_fingerprint(token) {
             return false;
         }

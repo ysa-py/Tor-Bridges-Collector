@@ -249,7 +249,138 @@ pub fn report(root: &Path) -> i32 {
     0
 }
 
-const USAGE: &str = "Usage: quality_gate <yaml-lint|requirements|py-check|report> [path]";
+const USAGE: &str = "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check> [path]";
+
+/// Subcommand: validate WebTunnel v0.0.4 bridge lines under `root`.
+///
+/// Scans all bridge/*.txt files for WebTunnel lines and verifies:
+/// - version is exactly `ver=0.0.4`
+/// - literal IPv4 or IPv6 endpoint is present
+/// - fingerprint is a canonical 40- or 64-char hex string
+///
+/// Follows standard banner formatting, ✓/✗ status output, ::error:: GitHub
+/// annotations, and non-zero exit on failure.
+pub fn webtunnel_check(root: &Path) -> i32 {
+    println!("═══ WebTunnel v0.0.4 Validation ═══");
+    let bridge_dir = root.join("bridge");
+    if !bridge_dir.is_dir() {
+        println!("  ✗ bridge/ directory not found under {}", root.display());
+        println!("::error::bridge/ directory missing — cannot validate WebTunnel lines");
+        return 1;
+    }
+
+    let mut pass = 0_u64;
+    let mut fail = 0_u64;
+    let mut fail_details: Vec<String> = Vec::new();
+
+    let rd = match std::fs::read_dir(&bridge_dir) {
+        Ok(rd) => rd,
+        Err(e) => {
+            println!("  ✗ cannot read {}: {e}", bridge_dir.display());
+            return 1;
+        }
+    };
+
+    for entry in rd.flatten() {
+        let path = entry.path();
+        if !path.is_file() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|n| n.to_str()) else {
+            continue;
+        };
+        if !name.ends_with(".txt") {
+            continue;
+        }
+
+        let content = match std::fs::read_to_string(&path) {
+            Ok(c) => c,
+            Err(e) => {
+                println!("  ✗ cannot read {}: {e}", path.display());
+                fail += 1;
+                continue;
+            }
+        };
+
+        for (line_no, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() || trimmed.starts_with('#') {
+                continue;
+            }
+            let lower = trimmed.to_ascii_lowercase();
+            if !lower.contains("webtunnel") {
+                continue;
+            }
+
+            let mut line_fail = false;
+
+            // 1. ver=0.0.4 enforcement
+            let ver_ok = lower.split_whitespace().any(|t| t == "ver=0.0.4");
+            if !ver_ok {
+                let detail = format!(
+                    "{}:{} — missing or non-0.0.4 ver= (found {:?})",
+                    name,
+                    line_no + 1,
+                    lower
+                        .split_whitespace()
+                        .find(|t| t.starts_with("ver="))
+                        .unwrap_or("<none>")
+                );
+                fail_details.push(detail);
+                line_fail = true;
+            }
+
+            // 2. literal endpoint required
+            let has_literal = lower.split_whitespace().any(|t| {
+                (t.contains('.') && t.contains(':') && !t.starts_with("http")
+                    && !t.contains('='))
+                    || (t.starts_with('[') && t.contains("]:"))
+            });
+            if !has_literal {
+                let detail = format!(
+                    "{}:{} — no literal IP:PORT or [IPv6]:PORT endpoint",
+                    name,
+                    line_no + 1
+                );
+                fail_details.push(detail);
+                line_fail = true;
+            }
+
+            // 3. canonical fingerprint
+            let fp_ok = lower.split_whitespace().any(|t| {
+                let t = t.trim_matches(|c: char| matches!(c, ',' | ';' | '"'));
+                let hex_only = t.chars().all(|c| c.is_ascii_hexdigit());
+                hex_only && (t.len() == 40 || t.len() == 64)
+            });
+            if !fp_ok {
+                let detail = format!(
+                    "{}:{} — invalid or missing canonical fingerprint (needs 40 or 64 hex chars)",
+                    name,
+                    line_no + 1
+                );
+                fail_details.push(detail);
+                line_fail = true;
+            }
+
+            if line_fail {
+                fail += 1;
+            } else {
+                pass += 1;
+            }
+        }
+    }
+
+    println!("  ✓ Passed: {pass}  ✗ Failed: {fail}");
+    if fail > 0 {
+        for detail in &fail_details {
+            println!("::error::{detail}");
+        }
+        println!("::error::{fail} WebTunnel v0.0.4 validation error(s) found");
+        return 1;
+    }
+    println!("  ✓ All WebTunnel v0.0.4 bridge lines pass validation");
+    0
+}
 
 /// CLI entry point; returns the process exit code.
 pub fn entry(args: &[String]) -> i32 {
@@ -269,6 +400,7 @@ pub fn entry(args: &[String]) -> i32 {
         "requirements" => requirements(&target),
         "py-check" => py_check(&target),
         "report" => report(&target),
+        "webtunnel-check" => webtunnel_check(&target),
         "--help" | "-h" => {
             println!("{USAGE}");
             0
@@ -345,6 +477,56 @@ mod tests {
         assert_eq!(py_check(&dir), 0);
         std::fs::write(dir.join("leftover.py"), "x = 1\n").expect("write");
         assert_eq!(py_check(&dir), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn webtunnel_check_validates_v0_0_4_lines() {
+        let dir = std::env::temp_dir().join(format!("qg_wt_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("create bridge dir");
+
+        // Valid WebTunnel v0.0.4 line
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.4\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 0);
+
+        // Invalid: ver=0.0.3
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.3\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 1);
+
+        // Invalid: no literal endpoint
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.4\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 1);
+
+        // Valid IPv6 line
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel [2001:db8::1]:443 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB url=https://example.com ver=0.0.4\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 0);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn webtunnel_check_missing_bridge_dir() {
+        let dir = std::env::temp_dir().join(format!("qg_wt_missing_{}", std::process::id()));
+        // Don't create bridge/ subdirectory
+        std::fs::create_dir_all(&dir).expect("create dir");
+        assert_eq!(webtunnel_check(&dir), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

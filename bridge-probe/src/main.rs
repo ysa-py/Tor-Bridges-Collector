@@ -30,8 +30,8 @@ use tracing::info;
 mod probe;
 mod transport;
 
-use probe::{probe, ProbeStatus};
-use transport::parse_endpoint;
+use probe::{probe, probe_with_protocol_hop, ProbeStatus};
+use transport::{parse_endpoint, Transport};
 
 /// TorShield-IR pluggable-transport bridge prober — Iran-optimised.
 #[derive(Parser, Debug)]
@@ -99,9 +99,48 @@ async fn main() -> Result<()> {
 
         let sem = semaphore.clone();
         let timeout = probe_timeout;
+        let enable_hopping = matches!(
+            ep.transport,
+            Transport::WebTunnel | Transport::ShadowTls | Transport::VlessReality
+        );
         join_set.spawn(async move {
             let _permit = sem.acquire().await.expect("semaphore closed");
-            probe(&ep, timeout).await
+            if enable_hopping {
+                let (status, winning_transport) = probe_with_protocol_hop(
+                    &ep.host,
+                    ep.port,
+                    timeout,
+                    ep.sni.as_deref(),
+                    true,  // enable_fragmentation
+                    3,     // censorship_level (3 = high, small fragments)
+                )
+                .await;
+
+                // Build result with protocol-hop fields populated.
+                let mut result = probe::ProbeResult {
+                    bridge: ep.raw.clone(),
+                    status,
+                    latency_ms: 0,
+                    pt_type: ep.transport.to_string(),
+                    nin_survivable: ep.transport.survives_nin(),
+                    dpi_tier: format!("{:?}", ep.transport.dpi_tier()),
+                    probe_layer: "tls".to_string(),
+                    probe_sni: ep.sni.clone(),
+                    preferred_stack: None,
+                    ipv4_rtt_ms: None,
+                    ipv6_rtt_ms: None,
+                    final_transport: winning_transport,
+                };
+                // If hopping found a different transport, record it.
+                if let Some(ref ft) = result.final_transport {
+                    if ft != "webtunnel" {
+                        result.pt_type = ft.clone();
+                    }
+                }
+                result
+            } else {
+                probe(&ep, timeout).await
+            }
         });
     }
 

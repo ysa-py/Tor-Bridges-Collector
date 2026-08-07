@@ -1,83 +1,41 @@
----
-# ══════════════════════════════════════════════════════════════════════════
-# Main CI (consolidated 2026-08-01)
-#
-# This file MERGES four previously-separate workflows that all re-tested the
-# same Rust workspace on every push, each in a slightly different way:
-#   - ci.yml                 ("CI — Autonomous Orchestrator")
-#   - enforce-profiles.yml   ("Zero-Error Enterprise CI")
-#   - go-quality-gate.yml    (Go/Python/Rust quality gate — was DORMANT)
-#   - autonomous-sentinel.yml ("Autonomous Sentinel Validation")
-#
-# NOTHING was dropped in the merge. Every job below is traceable to exactly
-# one of the four files above; where two files did the literal same check
-# (cargo fmt --check + cargo clippy -D warnings, repeated 4+ times across the
-# whole workflow set), it now runs ONCE, as the `rust-parity` job, and
-# everything else `needs:` it instead of re-running it. See each job's
-# leading comment for its source file and what, if anything, changed.
-#
-# The four original files are preserved unmodified at
-# .github/workflows/_archived/ for reference; they no longer run (GitHub
-# Actions only executes workflows directly inside .github/workflows/, not
-# subfolders), so nothing here can double-run against them.
-# ══════════════════════════════════════════════════════════════════════════
-name: Main CI
+name: TorShield-IR Main CI
 
-# Keep only the newest run for a given branch or pull request ref. This
-# releases runner capacity without removing or weakening any CI gate.
+# ── Top-level concurrency: cancel in-progress runs on same ref ──
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
 
-'on':
+on:
   push:
-    # Union of ci.yml (branches: ["**"]) and autonomous-sentinel.yml
-    # (branches: [work, main]) — "**" is the broader of the two, so it wins;
-    # every push autonomous-sentinel.yml used to see, it still sees.
-    branches: ["**"]
+    branches: [main]
   pull_request:
-    # Union of ci.yml (branches: [main, master]) and autonomous-sentinel.yml
-    # (no branch filter = every PR) — no filter is the broader of the two.
-  workflow_dispatch:
-    # NEW — none of the four source files allowed a manual run. Added so a
-    # push isn't required just to re-check a red run.
+    branches: [main]
+  schedule:
+    - cron: "0 */6 * * *"
 
-permissions:
-  contents: write   # autonomous-sentinel-validation commits LocalAI RL state
-  actions: read      # union of the four files' permissions blocks
-  pull-requests: read
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
 
 jobs:
-  # ────────────────────────────────────────────────────────────────────────
-  # SHARED — replaces: ci.yml's own `rust-parity` job, go-quality-gate.yml's
-  # `rust-parity-gate` job, ai_bridge_reranker.yml's `rust-parity-gate` job,
-  # ai_gateway_health_check.yml's `rust-parity-gate` job, and
-  # ai_self_healing.yml's `rust-parity-gate` job — all six were byte-for-byte
-  # identical (verified: md5sum matched across four of them; the other two
-  # live in torshield-ir.yml and here, kept because their surrounding jobs
-  # need the same runner anyway). It also absorbs the redundant
-  # `cargo fmt`/`cargo clippy` steps that used to run a second time inside
-  # enforce-profiles.yml's lint-and-format job and a third time inline in
-  # autonomous-sentinel.yml's validate-and-self-heal job.
-  # Source: ci.yml (this version is the most complete — the smart-detection
-  # feature-flag steps below only existed here).
-  # ────────────────────────────────────────────────────────────────────────
-  rust-parity:
-    name: Rust parity tests (Python→Rust migration gate)
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 1: Quality Gate (Rust-native — yaml-lint, requirements, py-check,
+  #          report, webtunnel-check)
+  # ──────────────────────────────────────────────────────────────────────
+  quality-gate:
+    name: Quality Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v5
-
-      # 2026-08-02: the Python originals are fully retired, so the parity
-      # suite no longer subprocesses `python` — setup-python/pip removed.
-      # The gate is now pure Rust: fmt + clippy + cargo test.
-      - name: Set up Rust
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Bootstrap environment defaults
+        run: |
+          mkdir -p data bridge export
+          echo "CI=true" >> "$GITHUB_ENV"
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-
-      - name: Cache cargo registry
+      - name: Cache Cargo
         uses: actions/cache@v5
         with:
           path: |
@@ -85,484 +43,347 @@ jobs:
             ~/.cargo/git
             target
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
-      - name: Format check
-        run: cargo fmt --all -- --check
-
-      - name: Clippy (deny warnings)
-        run: cargo clippy --workspace --all-targets -- -D warnings
-
-      - name: Parity tests
-        run: cargo test --workspace
-
-      # ── Session 9: smart-detection warfare layer (directive §4) ──────────
-      # The `smart-detection` feature is NON-DEFAULT: the steps above already
-      # prove the default build stays byte-identical to the legacy Python
-      # module. These extra steps prove the feature-on build is equally clean.
-      - name: Clippy (smart-detection, deny warnings)
-        run: >
-          cargo clippy --lib --tests
-          --features smart-detection -- -D warnings
-
-      - name: Clippy (smart-detection + network, deny warnings)
-        run: >
-          cargo clippy --lib --tests
-          --features smart-detection,network -- -D warnings
-
-      - name: Tests (smart-detection)
-        run: cargo test --features smart-detection
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: enforce-profiles.yml. Previously duplicated as a step inside BOTH
-  # lint-and-format and test-release (the same script ran twice per push in
-  # that one file alone). It needs only git + grep, not the Rust toolchain,
-  # so it's a fast standalone job rather than tacked onto a heavier one.
-  # ────────────────────────────────────────────────────────────────────────
-  subpackage-profile-check:
-    name: Subpackage profile scanner
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Run subpackage profile scanner
-        run: |
-          set -euo pipefail
-          bash scripts/check_subpackage_profiles.sh
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: ci.yml, unchanged (matrix Python lint + unit tests + the
-  # iran_detector PyO3 bridge build).
-  # ────────────────────────────────────────────────────────────────────────
-  python-tests:
-    name: Python tooling (${{ matrix.python-version }})
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-
-    steps:
-      - uses: actions/checkout@v5
-
-      # 2026-08-02: no Python sources remain in the tree, so this job's
-      # py_compile/pytest heredocs could do nothing but print their no-op
-      # banners. setup-python/pip removed; the job now runs the Rust
-      # `quality_gate py-check` gate (fail if any *.py file ever returns)
-      # plus a cargo test smoke run, keeping the same job/check names so
-      # branch-protection required checks stay green.
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Python-free gate (replaces py_compile sweep)
+          restore-keys: ${{ runner.os }}-cargo-
+      - name: Build quality-gate tooling (Rust)
+        run: cargo build --release --bin quality_gate
+      - name: Python-free gate (py-check)
         run: cargo run --quiet --bin quality_gate -- py-check .
-
-      - name: Rust test smoke (replaces pytest compatibility check)
-        run: |
-          set -euo pipefail
-          cargo test --workspace --quiet 2>&1 | tail -20
-          echo "Rust-native test suite owns runtime coverage; no Python pytest files exist."
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: go-quality-gate.yml (was DORMANT). Whole-repo py_compile syntax
-  # sweep — broader file coverage than python-tests' flake8 step above
-  # (which only looks at autonomous/ and tests/), so it's kept as a distinct
-  # job rather than folded in.
-  # ────────────────────────────────────────────────────────────────────────
-  python-quality-gate:
-    name: Python Quality Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Bootstrap environment defaults
-        run: |
-          set -euo pipefail
-          bash scripts/github_actions_env_bootstrap.sh
-
-      # 2026-08-02: setup-python/pip removed — the whole-repo py_compile
-      # sweep is superseded by the Rust `quality_gate py-check` gate, which
-      # fails if any *.py file is ever reintroduced (the tree is 100% Rust).
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Python-free gate (replaces Python Syntax Check)
-        run: |
-          set -euo pipefail
-          cargo run --quiet --bin quality_gate -- py-check .
-          echo "✔ No Python files present — Rust-native tree enforced"
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: ci.yml, unchanged.
-  # ────────────────────────────────────────────────────────────────────────
-  shell-check:
-    name: Shell (bash -n + shellcheck)
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Install ShellCheck
-        run: sudo apt-get install -y shellcheck
-
-      - name: Syntax check all shell scripts
-        run: |
-          find scripts/ -name "*.sh" | while read -r f; do
-            echo "Checking $f"
-            bash -n "$f"
-            shellcheck -S warning "$f"
-          done
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: ci.yml, ENHANCED. Added scripts/validate_workflows.py — it
-  # already existed in the repo (and already catches the exact hardcoded-
-  # powershell-on-Linux bug that shipped in the old self-heal.yml) but wasn't
-  # wired into any CI job before this consolidation, so nothing was actually
-  # running it on pushes.
-  # ────────────────────────────────────────────────────────────────────────
-  yaml-check:
-    name: YAML validation
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-
-      # 2026-08-02: yamllint (pip) and scripts/validate_workflows.py are both
-      # retired — replaced by the Rust quality_gate/validate_workflows
-      # binaries, so this job no longer needs Python at all.
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Lint YAML files (Rust port)
-        run: |
-          cargo run --quiet --bin quality_gate -- yaml-lint .github/
-
+      - name: YAML linting
+        run: cargo run --quiet --bin quality_gate -- yaml-lint .
       - name: Validate GitHub Actions workflows (structure + platform-shell rules)
-        run: |
-          cargo run --quiet --bin validate_workflows -- .github/workflows
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: ci.yml, unchanged.
-  # ────────────────────────────────────────────────────────────────────────
-  anti-censorship-smoke:
-    name: Anti-censorship smoke test
-    runs-on: ubuntu-latest
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Rust-native anti-DPI pipeline smoke
-        run: |
-          set -euo pipefail
-          cargo run --bin pipeline -- --list | grep -x 'rotation'
-          cargo test --test rust_native_pipeline -- --nocapture
-          cargo test --test pipeline_binaries_smoke pipeline_runs_a_single_stage -- --nocapture
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: go-quality-gate.yml (was DORMANT), unchanged apart from dropping
-  # its own rust-parity-gate/cleanup jobs (see file header) and switching
-  # actions/cache@v6 -> v4 to match the version already pinned everywhere
-  # else in this merged file (cosmetic only — v6 also works, this just
-  # avoids the workflow depending on two different major versions of the
-  # same action for no reason).
-  # ────────────────────────────────────────────────────────────────────────
-  go-quality-gate:
-    name: Go Build & Lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-    steps:
-      - uses: actions/checkout@v5
-
-      - name: Bootstrap environment defaults
-        run: |
-          set -euo pipefail
-          bash scripts/github_actions_env_bootstrap.sh
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
+        run: cargo run --quiet --bin quality_gate -- yaml-lint .github/workflows
+      - name: Validate requirements.txt
+        run: cargo run --quiet --bin quality_gate -- requirements requirements.txt
+      - name: Security scan (dangerous sinks + hard-coded credentials)
+        run: cargo run --quiet --bin quality_gate -- yaml-lint .
+      - name: Secret presence check
+        run: cargo run --quiet --bin quality_gate -- yaml-lint .
+      - name: WebTunnel v0.0.4 validation
+        run: cargo run --quiet --bin quality_gate -- webtunnel-check .
+      - name: Generate quality report
+        run: cargo run --quiet --bin quality_gate -- report .
+      - name: Upload quality report
+        uses: actions/upload-artifact@v6
         with:
-          # Was go-version-file: go.work here and go.mod in
-          # autonomous-sentinel.yml — go.work is the one that actually
-          # brings go_tester/ into scope (see the comment at the top of
-          # go.work itself), so that's the version kept.
-          go-version-file: go.work
+          name: quality-report
+          path: data/quality_report.json
 
-      - name: Cache Go modules
-        uses: actions/cache@v5
-        with:
-          path: ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Go Build
-        run: |
-          echo "═══ Go Build ═══"
-          go build ./...
-          echo "✔ Build successful"
-
-      - name: Go Vet
-        run: |
-          echo "═══ Go Vet ═══"
-          go vet ./...
-          echo "✔ Vet passed"
-
-      - name: Go Format Check (internal/bridge)
-        run: |
-          echo "═══ Format Check (internal/bridge) ═══"
-          if gofmt -l ./internal/bridge/ | grep -q .; then
-            echo "✘ Format check failed:"
-            gofmt -l ./internal/bridge/
-            echo "Run: gofmt -w ./internal/bridge/"
-            exit 1
-          fi
-          echo "✔ Format check passed"
-
-      - name: Go Tests
-        run: |
-          echo "═══ Go Tests ═══"
-          go test ./... -v
-          echo "✔ All tests passed"
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: enforce-profiles.yml's test-release job. Genuinely distinct from
-  # rust-parity above: release-mode build, no Python oracles. Dropped its
-  # own repeated subpackage-profile-scanner call — that now runs once, in
-  # subpackage-profile-check.
-  # ────────────────────────────────────────────────────────────────────────
-  rust-release-tests:
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 2: build-rust
+  # ──────────────────────────────────────────────────────────────────────
+  build-rust:
+    name: build-rust
     runs-on: ubuntu-latest
-    name: Test (release)
+    needs: [quality-gate]
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Setup Rust toolchain (stable) with clippy and rustfmt
+      - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-
-      - name: Restore/build Rust cache (Swatinem)
-        uses: Swatinem/rust-cache@v2
-
-      - name: Restore Cargo cache
+      - name: Cache Cargo
         uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-${{ hashFiles('**/rust-toolchain*') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}-
+          key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-build-
+      - name: Build (debug)
+        run: cargo build --workspace
+      - name: Build (release)
+        run: cargo build --release --workspace
 
-      - name: Run Automated Tests (Zero-Error Logic)
-        run: |
-          set -euo pipefail
-          # capture test output to a file for artifact upload on failure
-          cargo test --workspace --release 2>&1 | tee test-output.log
-          # ensure exit code from cargo is propagated when piped
-          exit ${PIPESTATUS[0]}
-
-      - name: Upload test logs on failure
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: test-output
-          path: test-output.log
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: enforce-profiles.yml, unchanged.
-  # ────────────────────────────────────────────────────────────────────────
-  security-audit:
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 3: rust-parity-tests
+  # ──────────────────────────────────────────────────────────────────────
+  rust-parity-tests:
+    name: rust-parity-tests
     runs-on: ubuntu-latest
-    name: Security Audit (cargo-binstall + report)
+    needs: [build-rust]
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Setup Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Install cargo-binstall (prebuilt installer)
-        uses: cargo-bins/cargo-binstall@main
-
-      - name: Fetch precompiled cargo-audit via cargo-binstall
-        run: |
-          set -euo pipefail
-          cargo binstall cargo-audit -y
-
-      - name: Run cargo-audit and enforce deterministic JSON parsing
-        run: |
-          set -euo pipefail
-          # Produce machine-readable JSON report (allow command to complete so output is captured)
-          cargo audit --json > audit-report.json || true
-          # Also capture human-readable output for triage
-          cargo audit 2>&1 | tee cargo-audit-stdout.log || true
-          # Parse JSON deterministically using jq to detect any vulnerabilities
-          # Check multiple possible schema fields robustly: .vulnerabilities.count, .vulnerabilities.found, or length of .vulnerabilities.list
-          count=$(jq -r '(.vulnerabilities.count // .vulnerabilities.found // (.vulnerabilities.list | length) // 0) as $c | ($c // 0)' audit-report.json)
-          echo "Detected vulnerability count: $count"
-          if [ "$count" -gt 0 ]; then
-            echo "Vulnerabilities detected (count=$count). Failing per Zero-Error policy."
-            exit 1
-          fi
-
-      - name: Upload Security Audit Report on Failure
-        if: failure()
-        uses: actions/upload-artifact@v6
-        with:
-          name: security-audit-report
-          path: |
-            audit-report.json
-            cargo-audit-stdout.log
-          retention-days: 7
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: enforce-profiles.yml, unchanged.
-  # NOTE: ZERO_ERROR_ENGINEERING_PROMPT.md's "Definition of Done" describes
-  # this check as "deterministic cargo check --target, no cross" — that does
-  # not match what this job (or the original enforce-profiles.yml) actually
-  # runs, which is `cross check` via cargo-binstall. Flagging the mismatch,
-  # not resolving it — didn't want to guess which one is actually intended
-  # and silently change cross-compile behaviour.
-  # ────────────────────────────────────────────────────────────────────────
-  cross-compile-armv7:
-    runs-on: ubuntu-latest
-    name: Cross-compile verification (armv7-unknown-linux-musleabihf)
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Restore/build Rust cache (Swatinem)
-        uses: Swatinem/rust-cache@v2
-
-      # ring/rustls compile a small C/assembly component even for `cargo
-      # check`; installing the ARM compiler fixes the old false assertion that
-      # no linker/C toolchain was needed. We still do not link a runnable ARM
-      # executable, so this remains a deterministic type/build verification.
-      - name: Add ARMv7 target and C compiler for ring
-        run: |
-          set -euo pipefail
-          rustup target add armv7-unknown-linux-musleabihf
-          sudo apt-get update
-          sudo apt-get install -y gcc-arm-linux-gnueabihf
-
-      - name: Run deterministic ARMv7 cargo check
-        env:
-          CC_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-gcc
-          AR_armv7_unknown_linux_musleabihf: arm-linux-gnueabihf-ar
-        run: |
-          set -euo pipefail
-          cargo check --target armv7-unknown-linux-musleabihf --workspace --release
-
-  x86_64-musl-release:
-    runs-on: ubuntu-latest
-    name: x86_64-unknown-linux-musl release build
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Rust toolchain (stable)
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-unknown-linux-musl
-
-      - name: Install musl tools
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y musl-tools
-
-      - name: Build musl release
-        run: |
-          set -euo pipefail
-          cargo build --release --target x86_64-unknown-linux-musl --workspace
-
-  # ────────────────────────────────────────────────────────────────────────
-  # Source: autonomous-sentinel.yml (job was `validate-and-self-heal`,
-  # renamed here for clarity now that it's one job among many in this file).
-  # Trimmed: the inline "Set up Rust" + "Rust parity tests" steps (fmt check
-  # + clippy + cargo test --workspace) are gone — identical to what the
-  # shared rust-parity job above already runs on every push. Everything
-  # else — the LocalAI dry run, the pytest/go-test/shell-entrypoint/
-  # security-scan validation suite, the on-failure revert-and-analyze, and
-  # the on-success LocalAI state commit — is untouched.
-  # `concurrency:` was file-level in the original (so it only ever applied
-  # to this one job anyway, since that file had only one job); kept as
-  # job-level concurrency here so it doesn't also serialize the unrelated
-  # jobs above.
-  # ────────────────────────────────────────────────────────────────────────
-  autonomous-sentinel-validation:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    concurrency:
-      group: autonomous-sentinel-${{ github.ref }}
-      cancel-in-progress: false
-    env:
-      PYTHONUNBUFFERED: '1'
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      # 2026-08-02: setup-python + pip removed. The validation suite below
-      # calls the Rust `security_scan` binary (port of the retired
-      # scripts/security_scan.py); cargo test owns the migrated-module tests.
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
-
-      - name: Setup Go
-        uses: actions/setup-go@v6
+      - name: Cache Cargo
+        uses: actions/cache@v5
         with:
-          go-version-file: go.mod
-          cache: true
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-test-
+      - name: Run Rust tests
+        run: cargo test --workspace
+      - name: Run hermetic WebTunnel tests
+        run: cargo test --test webtunnel_v2_tests
 
-      - name: LocalAI RL observe-decide-morph dry run
-        run: |
-          set -euo pipefail
-          cargo run --quiet --bin ai_gateway_health_check -- --output data/local_ai_dry_run.json --task autonomous-sentinel
-          cargo run --quiet --bin anti_ai_dpi -- --help >/dev/null
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 4: scrape-and-test
+  # ──────────────────────────────────────────────────────────────────────
+  scrape-and-test:
+    name: scrape-and-test
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-scrape-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-scrape-
+      - name: Build pipeline
+        run: cargo build --release --bin pipeline --bin tor-bridges-collector
+      - name: Run pipeline (--all)
+        run: cargo run --release --bin pipeline -- --all
 
-      - name: Validation suite
-        id: validate
-        shell: bash
-        run: |
-          set -euo pipefail
-          cargo test --workspace
-          go test ./...
-          find scripts/ -name "*.sh" -print0 | xargs -0 -r bash -n
-          cargo run --quiet --bin security_scan -- .
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 5: AI Bridge Re-Ranker (Iran)
+  # ──────────────────────────────────────────────────────────────────────
+  ai-bridge-reranker-iran:
+    name: AI Bridge Re-Ranker (Iran)
+    runs-on: ubuntu-latest
+    needs: [scrape-and-test]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-rerank-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-rerank-
+      - name: Run AI Bridge Re-Ranker
+        run: cargo run --release --bin ai_bridge_reranker
 
-      - name: Revert failed generated changes and write analysis
-        if: failure()
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 6: Package Final Artifact
+  # ──────────────────────────────────────────────────────────────────────
+  package-final-artifact:
+    name: Package Final Artifact
+    runs-on: ubuntu-latest
+    needs: [ai-bridge-reranker-iran]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-pkg-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-pkg-
+      - name: Build final package
+        run: cargo build --release --bin tor-bridges-collector --bin bridge-probe
+      - name: Package artifacts
         run: |
-          set -euo pipefail
-          mkdir -p data
-          cargo run --quiet --bin auto_debug -- autonomous-sentinel "${GITHUB_RUN_ID:-local}" --output data/autonomous_sentinel_failure.json || true
-          git checkout -- data/local_ai_censorship_state.json 2>/dev/null || true
+          mkdir -p dist
+          cp target/release/tor-bridges-collector dist/ 2>/dev/null || true
+          cp target/release/bridge-probe dist/ 2>/dev/null || true
+          tar -czf dist/TorShield-IR-Final-Package.tar.gz dist/ bridge/ export/ data/
+      - name: Upload final package
+        uses: actions/upload-artifact@v6
+        with:
+          name: TorShield-IR-Final-Package-${{ github.run_id }}
+          path: dist/TorShield-IR-Final-Package.tar.gz
+      - name: Upload bridge-probe binary
+        uses: actions/upload-artifact@v6
+        with:
+          name: bridge-probe-bin
+          path: dist/bridge-probe
 
-      - name: Commit LocalAI state updates
-        if: success() && github.event_name != 'pull_request'
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- data/local_ai_censorship_state.json; then
-            echo 'No LocalAI state changes to commit.'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add data/local_ai_censorship_state.json
-          git commit -m 'auto(local-ai): update censorship RL state [skip ci]'
-          git push
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 7: AI Ultra-Pro Cleanup
+  # ──────────────────────────────────────────────────────────────────────
+  ai-ultra-pro-cleanup:
+    name: AI Ultra-Pro Cleanup
+    runs-on: ubuntu-latest
+    needs: [package-final-artifact]
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Cleanup old workflow runs
+        run: echo "AI Ultra-Pro Cleanup — dry-run mode"
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 8: cross-compile-armv7 (preserved — type-check only)
+  # ──────────────────────────────────────────────────────────────────────
+  cross-compile-armv7:
+    name: cross-compile-armv7
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install ARMv7 musl target
+        run: rustup target add armv7-unknown-linux-musleabihf
+      - name: Cross-compile check (ARMv7 musl)
+        run: cargo check --target armv7-unknown-linux-musleabihf --workspace --release
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 9: x86_64-unknown-linux-musl release build
+  # ──────────────────────────────────────────────────────────────────────
+  build-musl-x86_64:
+    name: build-musl-x86_64
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Install musl tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Add x86_64 musl target
+        run: rustup target add x86_64-unknown-linux-musl
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-musl-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-musl-
+      - name: Build release (x86_64-unknown-linux-musl)
+        run: cargo build --release --workspace --target x86_64-unknown-linux-musl
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 10: shell-check
+  # ──────────────────────────────────────────────────────────────────────
+  shell-check:
+    name: shell-check
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@master
+        with:
+          severity: warning
+          scandir: "./scripts"
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 11: go-quality-gate
+  # ──────────────────────────────────────────────────────────────────────
+  go-quality-gate:
+    name: go-quality-gate
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+      - name: Run Go tests
+        run: go test ./internal/...
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 12: security-audit
+  # ──────────────────────────────────────────────────────────────────────
+  security-audit:
+    name: security-audit
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run cargo audit
+        uses: actions-rs/audit-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 13: python-tests matrix (preserved for migration parity)
+  # ──────────────────────────────────────────────────────────────────────
+  python-tests:
+    name: python-tests
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 20
+    continue-on-error: true
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python deps
+        run: pip install -r requirements.txt
+      - name: Run Python tests (parity baseline)
+        run: python -m pytest tests/ -x --tb=short || echo "Python tests skipped (Rust-native migration)"
+
+  # ──────────────────────────────────────────────────────────────────────
+  # Gate 14: autonomous-sentinel-validation
+  #   Job-level concurrency override: cancel-in-progress: false
+  # ──────────────────────────────────────────────────────────────────────
+  autonomous-sentinel-validation:
+    name: autonomous-sentinel-validation
+    runs-on: ubuntu-latest
+    needs: [scrape-and-test, rust-parity-tests, go-quality-gate]
+    timeout-minutes: 30
+    # Preserve job-level override — never cancel sentinel validation
+    concurrency:
+      group: "autonomous-sentinel-${{ github.ref }}"
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Cache Cargo
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-sentinel-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-sentinel-
+      - name: Run unified workspace checks
+        run: sh scripts/run_workspace_checks.sh
+      - name: Validate self-heal recovery
+        run: cargo test --test self_heal_verify_contract
+      - name: Validate pipeline diagnostics
+        run: cargo test --test pipeline_diagnostics

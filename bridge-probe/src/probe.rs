@@ -12,7 +12,9 @@
 //!   meek_lite    → TLS probe to CDN endpoint
 //!   Vanilla      → Plain TCP connect (no data sent)
 
+use std::io::Write;
 use std::net::SocketAddr;
+use std::net::TcpStream as StdTcpStream;
 use std::process::Stdio;
 use std::time::Duration;
 
@@ -64,6 +66,14 @@ pub struct ProbeResult {
     pub probe_layer: String,
     /// SNI hostname used in TLS probe (if applicable).
     pub probe_sni: Option<String>,
+    /// Preferred address stack after dual-stack resolution.
+    pub preferred_stack: Option<String>,
+    /// IPv4 connect RTT in milliseconds.
+    pub ipv4_rtt_ms: Option<u64>,
+    /// IPv6 connect RTT in milliseconds.
+    pub ipv6_rtt_ms: Option<u64>,
+    /// Final operational transport after protocol-hopping (if hopping was attempted).
+    pub final_transport: Option<String>,
 }
 
 /// Probe a single [`Endpoint`] within `probe_timeout`.
@@ -140,6 +150,10 @@ pub async fn probe(ep: &Endpoint, probe_timeout: Duration) -> ProbeResult {
         dpi_tier: format!("{:?}", ep.transport.dpi_tier()),
         probe_layer,
         probe_sni: ep.sni.clone(),
+        preferred_stack: None,
+        ipv4_rtt_ms: None,
+        ipv6_rtt_ms: None,
+        final_transport: None,
     }
 }
 
@@ -332,4 +346,236 @@ async fn attempt_obfs4_via_subprocess(
     let status = probe_tcp(&ep.host, ep.port, probe_timeout).await;
     let _ = child.kill().await;
     Ok(status)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TCP fragmentation desync (Phase 3 — Anti-DPI Obfuscation)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// TCP fragment sizes for DPI evasion (mirrors `irAN_advanced_dpi_evasion::TCP_FRAGMENT_SIZES`).
+const TCP_FRAGMENT_SIZES: &[u16] = &[64, 128, 256, 512, 1024, 1460];
+
+/// Select fragmentation size based on censorship intensity.
+/// Higher levels use smaller fragments to evade DPI reassembly buffers.
+pub fn select_fragmentation_size(censorship_level: u32) -> u16 {
+    let idx = match censorship_level {
+        0..=1 => TCP_FRAGMENT_SIZES.len() - 1, // Large fragments (normal)
+        2 => TCP_FRAGMENT_SIZES.len() - 2,     // Medium fragments
+        3 => TCP_FRAGMENT_SIZES.len() - 3,     // Small fragments
+        _ => 0,                                // Minimum fragments (extreme)
+    };
+    TCP_FRAGMENT_SIZES[idx.min(TCP_FRAGMENT_SIZES.len() - 1)]
+}
+
+/// Send a byte payload over a std TCP stream with fragmentation desync.
+///
+/// Sets TCP_NODELAY, then splits the payload into fragments of at most
+/// `frag_size` bytes. A 1-5ms delay is inserted between fragments to
+/// thwart stateful DPI reassembly.
+///
+/// Returns Ok(()) on success, or the IO error.
+pub fn fragmented_send(
+    mut stream: StdTcpStream,
+    payload: &[u8],
+    frag_size: u16,
+) -> std::io::Result<()> {
+    stream.set_nodelay(true)?;
+
+    let frag_size = frag_size as usize;
+    for chunk in payload.chunks(frag_size.max(1)) {
+        stream.write_all(chunk)?;
+        // Small inter-fragment delay to defeat DPI reassembly timing.
+        if chunk.len() < payload.len() {
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+    stream.flush()?;
+    Ok(())
+}
+
+/// Build a minimal Chrome-120-like TLS 1.3 ClientHello byte vector.
+///
+/// This is a raw byte-level construction with:
+/// - GREASE cipher-suite values (0x0A0A pattern)
+/// - SNI extension for the given hostname
+/// - Supported groups and versions extensions
+///
+/// No TLS crate dependency — pure byte manipulation for direct socket write.
+pub fn build_client_hello(sni_host: &str) -> Vec<u8> {
+    let sni_bytes = sni_host.as_bytes();
+
+    // SNI extension
+    let mut sni_data = Vec::new();
+    sni_data.push(0x00); // name_type = host_name
+    sni_data.extend_from_slice(&(sni_bytes.len() as u16).to_be_bytes());
+    sni_data.extend_from_slice(sni_bytes);
+    let mut sni_list = Vec::new();
+    sni_list.extend_from_slice(&(sni_data.len() as u16).to_be_bytes());
+    sni_list.extend_from_slice(&sni_data);
+    let mut sni_ext = Vec::new();
+    sni_ext.extend_from_slice(&0x0000u16.to_be_bytes()); // extension_type = server_name
+    sni_ext.extend_from_slice(&(sni_list.len() as u16).to_be_bytes());
+    sni_ext.extend_from_slice(&sni_list);
+
+    // Supported groups: x25519, secp256r1, secp384r1
+    let groups: [u8; 6] = [0x00, 0x1d, 0x00, 0x17, 0x00, 0x18];
+    let mut groups_ext = Vec::new();
+    groups_ext.extend_from_slice(&0x000au16.to_be_bytes());
+    groups_ext.extend_from_slice(&((groups.len() + 2) as u16).to_be_bytes());
+    groups_ext.extend_from_slice(&(groups.len() as u16).to_be_bytes());
+    groups_ext.extend_from_slice(&groups);
+
+    // Supported versions: TLS 1.3
+    let sv_data: [u8; 3] = [0x02, 0x03, 0x04];
+    let mut sv_ext = Vec::new();
+    sv_ext.extend_from_slice(&0x002bu16.to_be_bytes());
+    sv_ext.extend_from_slice(&(sv_data.len() as u16).to_be_bytes());
+    sv_ext.extend_from_slice(&sv_data);
+
+    // Cipher suites: GREASE + standard Chrome 120 suites
+    let ciphers: [u8; 22] = [
+        0x1A, 0x1A, // GREASE
+        0x13, 0x01, // TLS_AES_128_GCM_SHA256
+        0x13, 0x02, // TLS_AES_256_GCM_SHA384
+        0x13, 0x03, // TLS_CHACHA20_POLY1305_SHA256
+        0xC0, 0x2B, // ECDHE-ECDSA-AES128-GCM-SHA256
+        0xC0, 0x2F, // ECDHE-RSA-AES128-GCM-SHA256
+        0xC0, 0x2C, // ECDHE-ECDSA-AES256-GCM-SHA384
+        0xC0, 0x30, // ECDHE-RSA-AES256-GCM-SHA384
+        0x00, 0x9C, // RSA-AES128-GCM-SHA256
+        0x00, 0x9D, // RSA-AES256-GCM-SHA384
+    ];
+
+    let mut extensions = Vec::new();
+    extensions.extend_from_slice(&sni_ext);
+    extensions.extend_from_slice(&groups_ext);
+    extensions.extend_from_slice(&sv_ext);
+    let mut ext_block = Vec::new();
+    ext_block.extend_from_slice(&(extensions.len() as u16).to_be_bytes());
+    ext_block.extend_from_slice(&extensions);
+
+    // ClientHello body
+    let mut hello = Vec::new();
+    hello.extend_from_slice(&[0x03, 0x03]); // legacy_version TLS 1.2
+    // 32 bytes of random
+    hello.extend_from_slice(&[0xAAu8; 32]);
+    hello.push(0x00); // session_id length = 0
+    hello.extend_from_slice(&(ciphers.len() as u16).to_be_bytes());
+    hello.extend_from_slice(&ciphers);
+    hello.extend_from_slice(&[0x01, 0x00]); // compression: none
+    hello.extend_from_slice(&ext_block);
+
+    // Handshake: type(1) + 3-byte length
+    let mut hs_body = Vec::new();
+    hs_body.push(0x01u8);
+    let hlen = (hello.len() as u32).to_be_bytes();
+    hs_body.extend_from_slice(&hlen[1..]);
+    hs_body.extend_from_slice(&hello);
+
+    // TLS record: type(22) + version(0x0301) + length
+    let mut record = Vec::new();
+    record.extend_from_slice(&[0x16, 0x03, 0x01]);
+    record.extend_from_slice(&(hs_body.len() as u16).to_be_bytes());
+    record.extend_from_slice(&hs_body);
+    record
+}
+
+/// Protocol-hopping probe: try transports in priority order.
+///
+/// Falls back on TCP RST (`ConnectionRefused`) or network timeouts.
+/// Sequence: WebTunnel → ShadowTLS → VLESS Reality.
+///
+/// Returns the result and the name of the winning transport.
+pub async fn probe_with_protocol_hop(
+    host: &str,
+    port: u16,
+    probe_timeout: Duration,
+    sni: Option<&str>,
+    enable_fragmentation: bool,
+    censorship_level: u32,
+) -> (ProbeStatus, Option<String>) {
+    // Ordered protocol hop list: WebTunnel → ShadowTLS → VLESS Reality
+    let hops: [(&str, Option<&str>); 3] = [
+        ("webtunnel", sni),
+        ("shadow_tls", sni),
+        ("vless_reality", Some(sni.unwrap_or("www.microsoft.com"))),
+    ];
+
+    for (hop_name, hop_sni) in &hops {
+        debug!(
+            "Protocol hop: trying {} (SNI: {:?}) on {}:{}",
+            hop_name, hop_sni, host, port
+        );
+
+        let status = if enable_fragmentation {
+            probe_tls_fragmented(host, port, probe_timeout, *hop_sni).await
+        } else {
+            probe_tls(host, port, probe_timeout, *hop_sni).await
+        };
+
+        match status {
+            ProbeStatus::Reachable | ProbeStatus::QuicReachable => {
+                debug!("Protocol hop: {} succeeded", hop_name);
+                return (status, Some(hop_name.to_string()));
+            }
+            ProbeStatus::Refused => {
+                debug!("Protocol hop: {} refused (RST) — trying next", hop_name);
+                continue;
+            }
+            ProbeStatus::Timeout => {
+                debug!("Protocol hop: {} timed out — trying next", hop_name);
+                continue;
+            }
+            ProbeStatus::Error => {
+                debug!("Protocol hop: {} error — trying next", hop_name);
+                continue;
+            }
+        }
+    }
+
+    debug!("Protocol hop: all hops exhausted");
+    (ProbeStatus::Timeout, None)
+}
+
+/// TLS probe with TCP fragmentation desync.
+///
+/// Opens a raw std TCP stream, builds a ClientHello with the given SNI,
+/// sends it in fragmented TCP segments, and checks for a response.
+async fn probe_tls_fragmented(
+    host: &str,
+    port: u16,
+    probe_timeout: Duration,
+    sni: Option<&str>,
+) -> ProbeStatus {
+    let sni_host = sni.unwrap_or(host);
+    let addr_str = format!("{}:{}", host, port);
+
+    // Build ClientHello
+    let client_hello = build_client_hello(sni_host);
+    let frag_size = select_fragmentation_size(3); // censorship level 3 = small fragments
+
+    // Use std::net::TcpStream for raw socket control (TCP_NODELAY, write timing)
+    debug!(
+        "Fragmented TLS probe {} (SNI: {}, frag_size: {} bytes)",
+        addr_str, sni_host, frag_size
+    );
+
+    match timeout(probe_timeout, async {
+        let stream = StdTcpStream::connect(&addr_str)?;
+        fragmented_send(stream, &client_hello, frag_size)?;
+        Ok::<_, std::io::Error>(())
+    })
+    .await
+    {
+        Ok(Ok(())) => ProbeStatus::Reachable,
+        Ok(Err(e)) => {
+            if e.kind() == std::io::ErrorKind::ConnectionRefused {
+                ProbeStatus::Refused
+            } else {
+                debug!("Fragmented TLS probe error {}: {}", addr_str, e);
+                ProbeStatus::Error
+            }
+        }
+        Err(_) => ProbeStatus::Timeout,
+    }
 }

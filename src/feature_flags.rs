@@ -88,6 +88,7 @@ pub struct FeatureFlags {
     pub enable_report_generation: bool,
     pub enable_anti_dpi_iran: bool,
     pub enable_utls_evasion: bool,
+    pub enable_fragmentation_desync: bool,
     pub enable_irst_routing: bool,
     pub enable_compat_path_fix: bool,
     pub enable_telemetry: bool,
@@ -131,6 +132,7 @@ impl FeatureFlags {
             enable_report_generation: parse_bool(env, "ENABLE_REPORT_GENERATION", true),
             enable_anti_dpi_iran: parse_bool(env, "ENABLE_ANTI_DPI_IRAN", true),
             enable_utls_evasion: parse_bool(env, "ENABLE_UTLS_EVASION", true),
+            enable_fragmentation_desync: parse_bool(env, "ENABLE_FRAGMENTATION_DESYNC", true),
             enable_irst_routing: parse_bool(env, "ENABLE_IRST_ROUTING", true),
             enable_compat_path_fix: parse_bool(env, "ENABLE_COMPAT_PATH_FIX", true),
             enable_telemetry: parse_bool(env, "ENABLE_TELEMETRY", true),
@@ -186,6 +188,7 @@ impl FeatureFlags {
             "ENABLE_REPORT_GENERATION": self.enable_report_generation,
             "ENABLE_ANTI_DPI_IRAN": self.enable_anti_dpi_iran,
             "ENABLE_UTLS_EVASION": self.enable_utls_evasion,
+            "ENABLE_FRAGMENTATION_DESYNC": self.enable_fragmentation_desync,
             "ENABLE_IRST_ROUTING": self.enable_irst_routing,
             "ENABLE_COMPAT_PATH_FIX": self.enable_compat_path_fix,
             "ENABLE_TELEMETRY": self.enable_telemetry,
@@ -240,6 +243,7 @@ mod tests {
         let flags = FeatureFlags::from_env_map(&EnvMap::new()).unwrap();
         assert!(flags.enable_endpoint_validation);
         assert!(flags.enable_circuit_breaker);
+        assert!(flags.enable_fragmentation_desync);
         assert_eq!(flags.circuit_breaker_failure_threshold, 3);
         assert_eq!(flags.circuit_breaker_cooldown_secs, 60.0);
         assert_eq!(flags.retry_max_attempts_429, 5);

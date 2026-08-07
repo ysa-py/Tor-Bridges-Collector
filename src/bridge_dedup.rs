@@ -354,7 +354,24 @@ fn detect_transport(line: &str) -> String {
 }
 
 /// Extract IP and port from bridge line.
+///
+/// For IPv4, returns `(Some(ipv4), port)`.
+/// For literal IPv6 (`[2001:db8::1]:443`), the full IPv6 string is
+/// preserved via the fingerprint IP field; the port is extracted from
+/// the bracketed syntax.
 fn extract_ip_port(line: &str) -> (Option<Ipv4Addr>, u16) {
+    // Try IPv6 first: [addr]:port
+    let re_ipv6 = Regex::new(r"\[([0-9a-fA-F:]+)\]:(\d+)").ok();
+    if let Some(re) = re_ipv6 {
+        if let Some(caps) = re.captures(line) {
+            let port_str = caps.get(2).map(|m| m.as_str()).unwrap_or("0");
+            let port = port_str.parse::<u16>().unwrap_or(0);
+            // IPv6 addresses are retained in the fingerprint's raw line and
+            // address_family, not as Ipv4Addr. Return the port for dedup.
+            return (None, port);
+        }
+    }
+
     // Try IPv4:port
     let re_ipv4 = Regex::new(r"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}):(\d+)").ok();
     if let Some(re) = re_ipv4 {
@@ -364,16 +381,6 @@ fn extract_ip_port(line: &str) -> (Option<Ipv4Addr>, u16) {
             let ip = ip_str.parse::<Ipv4Addr>().ok();
             let port = port_str.parse::<u16>().unwrap_or(0);
             return (ip, port);
-        }
-    }
-
-    // Try IPv6:[port]
-    let re_ipv6 = Regex::new(r"\[([0-9a-fA-F:]+)\]:(\d+)").ok();
-    if let Some(re) = re_ipv6 {
-        if let Some(caps) = re.captures(line) {
-            let port_str = caps.get(2).map(|m| m.as_str()).unwrap_or("0");
-            let port = port_str.parse::<u16>().unwrap_or(0);
-            return (None, port);
         }
     }
 
