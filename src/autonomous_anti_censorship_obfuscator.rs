@@ -371,8 +371,8 @@ impl TrafficObfuscator {
 
         // GREASE values (RFC 8701): 0x0A0A, 0x1A1A, ..., 0xF0F0 pattern
         const GREASE_VALUES: [u16; 16] = [
-            0x0A0A, 0x1A1A, 0x2A2A, 0x3A3A, 0x4A4A, 0x5A5A, 0x6A6A, 0x7A7A,
-            0x8A8A, 0x9A9A, 0xAAAA, 0xBABA, 0xCACA, 0xDADA, 0xEAEA, 0xFAFA,
+            0x0A0A, 0x1A1A, 0x2A2A, 0x3A3A, 0x4A4A, 0x5A5A, 0x6A6A, 0x7A7A, 0x8A8A, 0x9A9A, 0xAAAA,
+            0xBABA, 0xCACA, 0xDADA, 0xEAEA, 0xFAFA,
         ];
 
         // Build rotation seed deterministically
@@ -393,13 +393,18 @@ impl TrafficObfuscator {
             ciphers.push(g2);
         }
         for i in (0..CHROME_CIPHERS.len()).step_by(2) {
-            ciphers.push(u16::from_be_bytes([CHROME_CIPHERS[i], CHROME_CIPHERS[i + 1]]));
+            ciphers.push(u16::from_be_bytes([
+                CHROME_CIPHERS[i],
+                CHROME_CIPHERS[i + 1],
+            ]));
         }
 
         // Permute cipher suites using Fisher-Yates with rotation seed
         let mut state = rotation_seed;
         for i in (1..ciphers.len()).rev() {
-            state = state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             let j = (state as usize) % (i + 1);
             ciphers.swap(i, j);
         }
@@ -459,7 +464,9 @@ impl TrafficObfuscator {
         // Shuffle extension order using Fisher-Yates with a different seed
         let mut ext_state = rotation_seed.wrapping_add(0xDEADBEEF);
         for i in (1..extensions.len()).rev() {
-            ext_state = ext_state.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            ext_state = ext_state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             let j = (ext_state as usize) % (i + 1);
             extensions.swap(i, j);
         }

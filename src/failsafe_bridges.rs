@@ -96,8 +96,7 @@ pub fn transport_map(history: &serde_json::Map<String, Value>) -> Vec<(&'static 
         let raw = obj.get("raw").and_then(Value::as_str).unwrap_or_default();
         if let Some((_, bridges)) = map.iter_mut().find(|(t, _)| *t == transport) {
             let raw = raw.trim();
-            if !raw.is_empty()
-                && (transport != "webtunnel" || has_literal_webtunnel_endpoint(raw))
+            if !raw.is_empty() && (transport != "webtunnel" || has_literal_webtunnel_endpoint(raw))
             {
                 bridges.push(raw.to_string());
             }
@@ -691,7 +690,9 @@ mod tests {
             "iran_likely_working_webtunnel.txt",
         ] {
             assert_eq!(
-                std::fs::metadata(bridge_dir.join(name)).expect("webtunnel projection").len(),
+                std::fs::metadata(bridge_dir.join(name))
+                    .expect("webtunnel projection")
+                    .len(),
                 0,
                 "{name} must stay empty when only URL metadata is available"
             );

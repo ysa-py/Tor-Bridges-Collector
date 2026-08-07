@@ -322,7 +322,9 @@ fn stage_webtunnel_v2() -> StageResult {
         "bridges": payload,
     });
     write_json(Path::new("data/webtunnel_v2_report.json"), &report)?;
-    Ok(Outcome::Ok(json!({ "report": "data/webtunnel_v2_report.json", "bridges": payload.len() })))
+    Ok(Outcome::Ok(
+        json!({ "report": "data/webtunnel_v2_report.json", "bridges": payload.len() }),
+    ))
 }
 
 fn stage_nin_advanced() -> StageResult {

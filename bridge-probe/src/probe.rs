@@ -214,7 +214,12 @@ async fn probe_tls(
     probe_tcp(host, port, probe_timeout).await
 }
 
-async fn probe_webtunnel(host: &str, port: u16, probe_timeout: Duration, sni: Option<&str>) -> ProbeStatus {
+async fn probe_webtunnel(
+    host: &str,
+    port: u16,
+    probe_timeout: Duration,
+    sni: Option<&str>,
+) -> ProbeStatus {
     let alternatives = if host.contains(':') {
         vec![host.to_string()]
     } else {
@@ -457,7 +462,7 @@ pub fn build_client_hello(sni_host: &str) -> Vec<u8> {
     // ClientHello body
     let mut hello = Vec::new();
     hello.extend_from_slice(&[0x03, 0x03]); // legacy_version TLS 1.2
-    // 32 bytes of random
+                                            // 32 bytes of random
     hello.extend_from_slice(&[0xAAu8; 32]);
     hello.push(0x00); // session_id length = 0
     hello.extend_from_slice(&(ciphers.len() as u16).to_be_bytes());

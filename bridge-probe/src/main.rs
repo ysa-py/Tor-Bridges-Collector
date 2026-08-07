@@ -111,8 +111,8 @@ async fn main() -> Result<()> {
                     ep.port,
                     timeout,
                     ep.sni.as_deref(),
-                    true,  // enable_fragmentation
-                    3,     // censorship_level (3 = high, small fragments)
+                    true, // enable_fragmentation
+                    3,    // censorship_level (3 = high, small fragments)
                 )
                 .await;
 
