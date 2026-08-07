@@ -255,8 +255,9 @@ const USAGE: &str =
 /// Subcommand: validate WebTunnel bridge lines under `root`.
 ///
 /// Scans all bridge/*.txt files for WebTunnel lines and verifies:
-/// - version is present (any ver= tag is accepted; not just 0.0.4)
-/// - literal IPv4, IPv6, or DNS endpoint is present
+/// - version is present (any ver= tag is accepted, including 0.0.3–0.0.6+)
+/// - endpoint is present as literal IPv4:PORT, [IPv6]:PORT, or FQDN:PORT
+/// - URL-only WebTunnel lines (where the url= host is the endpoint) are accepted
 /// - fingerprint is a canonical 40- or 64-char hex string
 ///
 /// Follows standard banner formatting, ✓/✗ status output, ::error:: GitHub
@@ -315,7 +316,7 @@ pub fn webtunnel_check(root: &Path) -> i32 {
 
             let mut line_fail = false;
 
-            // 1. ver= presence (any version accepted)
+            // 1. ver= presence (any version accepted: 0.0.3, 0.0.4, 0.0.5, 0.0.6+)
             let ver_ok = lower.split_whitespace().any(|t| t.starts_with("ver="));
             if !ver_ok {
                 let detail = format!("{}:{} — missing ver= tag", name, line_no + 1);
@@ -323,14 +324,20 @@ pub fn webtunnel_check(root: &Path) -> i32 {
                 line_fail = true;
             }
 
-            // 2. literal endpoint required (IPv4, IPv6, or DNS hostname)
+            // 2. endpoint detection — accept literal IP:PORT, [IPv6]:PORT,
+            //    FQDN:PORT, or URL-only where the url= host serves as the endpoint.
             let has_literal = lower.split_whitespace().any(|t| {
+                // IPv4 like 192.0.2.1:443 or FQDN like example.com:443
                 (t.contains('.') && t.contains(':') && !t.starts_with("http") && !t.contains('='))
+                    // IPv6 like [2001:db8::1]:443
                     || (t.starts_with('[') && t.contains("]:"))
             });
-            if !has_literal {
+            // URL-only WebTunnel: lines like `webtunnel <FP> url=... ver=...`
+            // where the url= host defines the endpoint (no literal IP:PORT).
+            let has_url = lower.split_whitespace().any(|t| t.starts_with("url="));
+            if !has_literal && !has_url {
                 let detail = format!(
-                    "{}:{} — no literal IP:PORT or [IPv6]:PORT endpoint",
+                    "{}:{} — no literal IP:PORT, [IPv6]:PORT, or url= endpoint",
                     name,
                     line_no + 1
                 );
@@ -338,7 +345,7 @@ pub fn webtunnel_check(root: &Path) -> i32 {
                 line_fail = true;
             }
 
-            // 3. canonical fingerprint
+            // 3. canonical fingerprint (40 or 64 hex chars)
             let fp_ok = lower.split_whitespace().any(|t| {
                 let t = t.trim_matches(|c: char| matches!(c, ',' | ';' | '"'));
                 let hex_only = t.chars().all(|c| c.is_ascii_hexdigit());
@@ -478,7 +485,7 @@ mod tests {
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("create bridge dir");
 
-        // Valid WebTunnel v0.0.4 line
+        // Valid WebTunnel v0.0.4 line with IPv4 endpoint
         std::fs::write(
             bridge_dir.join("webtunnel.txt"),
             "webtunnel 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.4\n",
@@ -494,13 +501,29 @@ mod tests {
         .expect("write");
         assert_eq!(webtunnel_check(&dir), 0);
 
-        // Invalid: no literal endpoint
+        // Valid: ver=0.0.5 (forward-compatible version)
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.5\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 0);
+
+        // Valid: URL-only WebTunnel line (no literal IP:PORT — url= host is endpoint)
         std::fs::write(
             bridge_dir.join("webtunnel.txt"),
             "webtunnel AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=0.0.4\n",
         )
         .expect("write");
-        assert_eq!(webtunnel_check(&dir), 1);
+        assert_eq!(webtunnel_check(&dir), 0);
+
+        // Valid: FQDN endpoint
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel cdn.example.com:443 CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC url=https://backend.example.com ver=0.0.4\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 0);
 
         // Valid IPv6 line
         std::fs::write(
@@ -509,6 +532,14 @@ mod tests {
         )
         .expect("write");
         assert_eq!(webtunnel_check(&dir), 0);
+
+        // Invalid: has url= but no ver= tag
+        std::fs::write(
+            bridge_dir.join("webtunnel.txt"),
+            "webtunnel DDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDDD url=https://example.com\n",
+        )
+        .expect("write");
+        assert_eq!(webtunnel_check(&dir), 1);
 
         let _ = std::fs::remove_dir_all(&dir);
     }

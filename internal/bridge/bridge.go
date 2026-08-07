@@ -16,6 +16,9 @@ var ipv6PortRE = regexp.MustCompile(`^\[([0-9a-fA-F:]{2,39})\]:(\d{1,5})$`)
 // ipv4PortRE matches literal IPv4 endpoints: 192.0.2.1:443
 var ipv4PortRE = regexp.MustCompile(`^(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})$`)
 
+// fqdnPortRE matches FQDN:PORT endpoints: cdn.example.com:443
+var fqdnPortRE = regexp.MustCompile(`^([a-zA-Z0-9]([a-zA-Z0-9._-]*[a-zA-Z0-9])?\.[a-zA-Z]{2,}):(\d{1,5})$`)
+
 // Transport is a parsed bridge-line transport descriptor.
 type Transport struct {
 	// Type is the transport protocol name (e.g. "webtunnel", "obfs4").
@@ -39,9 +42,12 @@ type Transport struct {
 //
 //	webtunnel 192.0.2.1:443 FINGERPRINT url=https://example.com/path ver=0.0.4
 //	webtunnel [2001:db8::1]:443 FINGERPRINT url=https://example.com/path ver=0.0.4
+//	webtunnel cdn.example.com:443 FINGERPRINT url=https://backend.example.com ver=0.0.4
+//	webtunnel FINGERPRINT url=https://example.com/path ver=0.0.4
 //
-// The literal IP:PORT (or [IPv6]:PORT) token takes precedence over the
-// url= host. URL-only WebTunnel lines return an error.
+// The literal IP:PORT (or [IPv6]:PORT or FQDN:PORT) token takes precedence
+// over the url= host. URL-only WebTunnel lines (no literal endpoint) are
+// accepted — the url= host serves as the implicit endpoint.
 func parseWebTransport(raw string) (*Transport, error) {
 	line := strings.TrimSpace(raw)
 	if line == "" || strings.HasPrefix(line, "#") {
@@ -119,7 +125,15 @@ func parseWebTransport(raw string) (*Transport, error) {
 				foundEndpoint = true
 				continue
 			}
-			// Could be a DNS name with port
+		}
+
+		// Try FQDN:PORT: subdomain.domain.tld:443
+		if matches := fqdnPortRE.FindStringSubmatch(tok); len(matches) == 4 {
+			host := matches[1]
+			port, err := strconv.ParseUint(matches[3], 10, 16)
+			if err != nil || port == 0 {
+				continue
+			}
 			if isDNSName(host) {
 				t.Host = host
 				t.Port = uint16(port)
@@ -130,14 +144,17 @@ func parseWebTransport(raw string) (*Transport, error) {
 		}
 	}
 
-	// If no literal endpoint found, reject the line.
-	// URL-only WebTunnel lines are not valid — a literal IP:PORT endpoint
-	// is mandatory (matching the Rust collector's is_valid_bridge_line behavior).
+	// If no literal endpoint found, accept URL-only WebTunnel lines.
+	// The url= host serves as the implicit endpoint — this is a valid
+	// WebTunnel bridge format used when CDN/domain-fronted delivery
+	// resolves the connection target transparently.
 	if !foundEndpoint {
 		if _, ok := t.Params["url"]; !ok {
 			return nil, fmt.Errorf("WebTunnel line has no literal endpoint and no url= parameter")
 		}
-		return nil, fmt.Errorf("WebTunnel line has no literal IP:PORT endpoint (url= host is not sufficient)")
+		// URL-only lines are valid: set AddressFamily to "dns" and
+		// leave Host/Port at zero (the url= target handles resolution).
+		t.AddressFamily = "dns"
 	}
 
 	return t, nil
@@ -218,9 +235,18 @@ func ParseLine(line string) (*Transport, error) {
 				t.Port = uint16(port)
 				if net.ParseIP(matches[1]) != nil && net.ParseIP(matches[1]).To4() != nil {
 					t.AddressFamily = "ipv4"
-				} else if isDNSName(matches[1]) {
-					t.AddressFamily = "dns"
 				}
+				break
+			}
+		}
+
+		// FQDN:PORT
+		if matches := fqdnPortRE.FindStringSubmatch(tok); len(matches) == 4 {
+			port, _ := strconv.ParseUint(matches[3], 10, 16)
+			if port > 0 && isDNSName(matches[1]) {
+				t.Host = matches[1]
+				t.Port = uint16(port)
+				t.AddressFamily = "dns"
 				break
 			}
 		}

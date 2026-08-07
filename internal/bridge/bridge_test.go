@@ -48,10 +48,22 @@ func TestParseWebTransportIPv6(t *testing.T) {
 }
 
 func TestParseWebTransportURLOnly(t *testing.T) {
+	// URL-only WebTunnel lines are now valid — the url= host serves as the
+	// implicit endpoint (CDN/domain-fronted delivery). ver=0.0.3, 0.0.4,
+	// 0.0.5, and 0.0.6+ are all accepted.
 	line := "webtunnel FINGERPRINT url=https://example.com/path ver=0.0.4"
-	_, err := parseWebTransport(line)
-	if err == nil {
-		t.Fatal("expected error for URL-only WebTunnel line")
+	tr, err := parseWebTransport(line)
+	if err != nil {
+		t.Fatalf("unexpected error for URL-only WebTunnel: %v", err)
+	}
+	if tr.AddressFamily != "dns" {
+		t.Errorf("expected dns for URL-only, got %s", tr.AddressFamily)
+	}
+	if tr.Params["url"] != "https://example.com/path" {
+		t.Errorf("unexpected url param: %s", tr.Params["url"])
+	}
+	if tr.Params["ver"] != "0.0.4" {
+		t.Errorf("unexpected ver param: %s", tr.Params["ver"])
 	}
 }
 
@@ -69,6 +81,39 @@ func TestParseWebTransportIPv6Complex(t *testing.T) {
 	}
 	if tr.Params["ver"] != "0.0.4" {
 		t.Errorf("expected ver=0.0.4, got %s", tr.Params["ver"])
+	}
+}
+
+func TestParseWebTransportFQDN(t *testing.T) {
+	line := "webtunnel cdn.cloudflare.com:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://backend.example.com ver=0.0.4"
+	tr, err := parseWebTransport(line)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.AddressFamily != "dns" {
+		t.Errorf("expected dns, got %s", tr.AddressFamily)
+	}
+	if tr.Host != "cdn.cloudflare.com" {
+		t.Errorf("expected host cdn.cloudflare.com, got %s", tr.Host)
+	}
+	if tr.Port != 443 {
+		t.Errorf("expected port 443, got %d", tr.Port)
+	}
+}
+
+func TestParseWebTransportVersionFlexibility(t *testing.T) {
+	versions := []string{"0.0.3", "0.0.4", "0.0.5", "0.0.6", "1.0.0"}
+	for _, ver := range versions {
+		t.Run("ver="+ver, func(t *testing.T) {
+			line := "webtunnel 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://example.com ver=" + ver
+			tr, err := parseWebTransport(line)
+			if err != nil {
+				t.Fatalf("unexpected error for ver=%s: %v", ver, err)
+			}
+			if tr.Params["ver"] != ver {
+				t.Errorf("expected ver=%s, got %s", ver, tr.Params["ver"])
+			}
+		})
 	}
 }
 
