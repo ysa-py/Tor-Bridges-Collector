@@ -367,8 +367,6 @@ impl TrafficObfuscator {
         grease: bool,
         seed: u64,
     ) -> Vec<u8> {
-        use std::collections::hash_map::DefaultHasher;
-
         let chosen_sni: &[u8] = sni.unwrap_or(CDN_HOSTS[0]);
 
         // GREASE values (RFC 8701): 0x0A0A, 0x1A1A, ..., 0xF0F0 pattern
