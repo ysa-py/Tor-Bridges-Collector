@@ -18,6 +18,8 @@ pub struct Endpoint {
     pub host: String,
     /// TCP port to contact.
     pub port: u16,
+    /// Address family for the literal endpoint, if it can be determined.
+    pub address_family: String,
 }
 
 /// Parsed IPv4 obfs4 client arguments for the SOCKS harness.
@@ -46,8 +48,25 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         return false;
     }
 
-    if transport_token(trimmed) == "webtunnel" && !has_webtunnel_endpoint(trimmed) {
+    if contains_documentation_or_reserved_endpoint(trimmed) {
         return false;
+    }
+
+    if transport_token(trimmed) == "webtunnel" {
+        if token_value(trimmed, "ver").as_deref() != Some("0.0.4") {
+            return false;
+        }
+        if !has_webtunnel_literal_endpoint(trimmed) {
+            if extract_url(trimmed).is_some() {
+                return false;
+            }
+        }
+    }
+
+    if let Some(token) = first_fingerprint_like_token(trimmed) {
+        if !is_canonical_fingerprint(token) {
+            return false;
+        }
     }
 
     Regex::new(r"\d+\.\d+\.\d+\.\d+|\[[0-9A-Fa-f:]+\]|https?://")
@@ -170,7 +189,18 @@ pub fn extract_endpoint(line: &str) -> Option<Endpoint> {
     extract_url(line).and_then(|url| {
         let host = url.host_str()?.to_owned();
         let port = url.port_or_known_default().unwrap_or(443);
-        Some(Endpoint { host, port })
+        let address_family = if host.parse::<std::net::Ipv4Addr>().is_ok() {
+            "ipv4".to_owned()
+        } else if host.parse::<std::net::Ipv6Addr>().is_ok() {
+            "ipv6".to_owned()
+        } else {
+            "dns".to_owned()
+        };
+        Some(Endpoint {
+            host,
+            port,
+            address_family,
+        })
     })
 }
 
@@ -229,11 +259,11 @@ pub fn token_value(line: &str, key: &str) -> Option<String> {
         })
 }
 
-fn has_webtunnel_endpoint(line: &str) -> bool {
+fn has_webtunnel_literal_endpoint(line: &str) -> bool {
     strip_bridge_prefix(line)
         .split_whitespace()
         .filter_map(endpoint_from_token)
-        .any(|endpoint| endpoint.host.parse::<IpAddr>().is_ok())
+        .any(|endpoint| matches!(endpoint.address_family.as_str(), "ipv4" | "ipv6"))
 }
 
 fn endpoint_from_token(token: &str) -> Option<Endpoint> {
@@ -253,6 +283,7 @@ fn endpoint_from_token(token: &str) -> Option<Endpoint> {
             return Some(Endpoint {
                 host: host.to_owned(),
                 port,
+                address_family: "ipv6".to_owned(),
             });
         }
         return None;
@@ -267,6 +298,7 @@ fn endpoint_from_token(token: &str) -> Option<Endpoint> {
         return Some(Endpoint {
             host: host.to_owned(),
             port,
+            address_family: "ipv4".to_owned(),
         });
     }
     None
@@ -275,6 +307,76 @@ fn endpoint_from_token(token: &str) -> Option<Endpoint> {
 fn parse_port(value: &str) -> Option<u16> {
     let port = value.parse::<u16>().ok()?;
     (port != 0).then_some(port)
+}
+
+fn is_documentation_or_reserved_ip(ip: IpAddr) -> bool {
+    match ip {
+        IpAddr::V4(ipv4) => {
+            let octets = ipv4.octets();
+            octets[0] == 0
+                || octets[0] == 10
+                || octets[0] == 127
+                || (octets[0] == 100 && (64..=127).contains(&octets[1]))
+                || (octets[0] == 169 && octets[1] == 254)
+                || (octets[0] == 172 && (16..=31).contains(&octets[1]))
+                || (octets[0] == 192 && octets[1] == 0 && octets[2] == 0)
+                || (octets[0] == 192 && octets[1] == 0 && octets[2] == 2)
+                || (octets[0] == 192 && octets[1] == 88 && octets[2] == 99)
+                || (octets[0] == 192 && octets[1] == 168)
+                || (octets[0] == 198 && (18..=19).contains(&octets[1]))
+                || (octets[0] == 198 && octets[1] == 51 && octets[2] == 100)
+                || (octets[0] == 203 && octets[1] == 0 && octets[2] == 113)
+                || octets[0] >= 224
+        }
+        IpAddr::V6(ipv6) => {
+            let seg = ipv6.segments();
+            ipv6.is_unspecified()
+                || ipv6.is_loopback()
+                || (seg[0] & 0xffc0) == 0xfe80
+                || (seg[0] & 0xfe00) == 0xfc00
+                || (seg[0] & 0xff00) == 0xff00
+                || (seg[0] == 0x2001 && seg[1] == 0x0db8)
+        }
+    }
+}
+
+pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
+    let trimmed = strip_bridge_prefix(line);
+    for token in trimmed.split_whitespace() {
+        if let Some(endpoint) = endpoint_from_token(token) {
+            if let Ok(ip) = endpoint.host.parse::<IpAddr>() {
+                if is_documentation_or_reserved_ip(ip) {
+                    return true;
+                }
+            }
+        }
+    }
+    false
+}
+
+pub fn is_canonical_fingerprint(value: &str) -> bool {
+    let cleaned = value.trim().trim_matches(|c| matches!(c, ',' | ';' | '"'));
+    if cleaned.len() == 40 {
+        return Regex::new(r"\b[A-Fa-f0-9]{40}\b")
+            .ok()
+            .and_then(|re| re.is_match(cleaned).then_some(()))
+            .is_some();
+    }
+    if cleaned.len() == 64 {
+        return Regex::new(r"\b[A-Fa-f0-9]{64}\b")
+            .ok()
+            .and_then(|re| re.is_match(cleaned).then_some(()))
+            .is_some();
+    }
+    false
+}
+
+fn first_fingerprint_like_token(line: &str) -> Option<String> {
+    strip_bridge_prefix(line).split_whitespace().find_map(|token| {
+        let cleaned = token.trim_matches(|c| matches!(c, ',' | ';' | '"'));
+        (cleaned.len() == 40 || cleaned.len() == 64)
+            .then(|| cleaned.to_owned())
+    })
 }
 
 fn is_dns_name(host: &str) -> bool {
@@ -311,6 +413,7 @@ mod tests {
             Some(Endpoint {
                 host: "1.2.3.4".to_owned(),
                 port: 9001,
+                address_family: "ipv4".to_owned(),
             })
         );
         assert_eq!(
@@ -325,6 +428,7 @@ mod tests {
             Some(Endpoint {
                 host: "1.2.3.4".to_owned(),
                 port: 443,
+                address_family: "ipv4".to_owned(),
             })
         );
         assert_eq!(
@@ -339,6 +443,7 @@ mod tests {
             Some(Endpoint {
                 host: "bridge.example.net".to_owned(),
                 port: 8443,
+                address_family: "dns".to_owned(),
             })
         );
     }

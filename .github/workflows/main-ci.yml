@@ -466,6 +466,29 @@ jobs:
           set -euo pipefail
           cargo check --target armv7-unknown-linux-musleabihf --workspace --release
 
+  x86_64-musl-release:
+    runs-on: ubuntu-latest
+    name: x86_64-unknown-linux-musl release build
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Rust toolchain (stable)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
+
+      - name: Install musl tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y musl-tools
+
+      - name: Build musl release
+        run: |
+          set -euo pipefail
+          cargo build --release --target x86_64-unknown-linux-musl --workspace
+
   # ────────────────────────────────────────────────────────────────────────
   # Source: autonomous-sentinel.yml (job was `validate-and-self-heal`,
   # renamed here for clarity now that it's one job among many in this file).

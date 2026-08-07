@@ -118,13 +118,13 @@ jobs:
           PARENT_RUN_ID: ${{ github.event.workflow_run.id }}
         run: |
           set +e
-          gh run view "$PARENT_RUN_ID" --repo "$GITHUB_REPOSITORY" --log > data/parent_run.log
+          bash scripts/retry_with_backoff.sh --max-attempts 3 --sleep-base 2 --sleep-max 60 -- gh run view "$PARENT_RUN_ID" --repo "$GITHUB_REPOSITORY" --log > data/parent_run.log
           FETCH_STATUS=$?
           if [ "$FETCH_STATUS" -ne 0 ] || [ ! -s data/parent_run.log ]; then
             echo "::warning::complete parent log could not be downloaded (status=$FETCH_STATUS)"
             printf 'parent log unavailable; GitHub API fetch failed with status %s\n' "$FETCH_STATUS" > data/parent_run.log
           fi
-          cargo run --quiet --bin self_heal -- \
+          bash scripts/retry_with_backoff.sh --max-attempts 3 --sleep-base 2 --sleep-max 60 -- cargo run --quiet --bin self_heal -- \
             --log data/parent_run.log \
             --heal \
             --output data/whole_run_diagnostics.json

@@ -99,7 +99,7 @@ pub async fn probe(ep: &Endpoint, probe_timeout: Duration) -> ProbeResult {
         }
         Transport::WebTunnel => {
             // TLS handshake using the CDN/bridge SNI from the bridge line.
-            let s = probe_tls(&ep.host, ep.port, probe_timeout, ep.sni.as_deref()).await;
+            let s = probe_webtunnel(&ep.host, ep.port, probe_timeout, ep.sni.as_deref()).await;
             (s, "tls".to_string())
         }
         Transport::MeekLite => {
@@ -198,6 +198,23 @@ async fn probe_tls(
     }
     // TCP layer reachability — the CDN edge is live if TCP/443 is open.
     probe_tcp(host, port, probe_timeout).await
+}
+
+async fn probe_webtunnel(host: &str, port: u16, probe_timeout: Duration, sni: Option<&str>) -> ProbeStatus {
+    let alternatives = if host.contains(':') {
+        vec![host.to_string()]
+    } else {
+        vec![host.to_string(), format!("::ffff:{host}")]
+    };
+
+    for candidate in alternatives {
+        let status = probe_tls(&candidate, port, probe_timeout, sni).await;
+        if status != ProbeStatus::Timeout && status != ProbeStatus::Error {
+            return status;
+        }
+    }
+
+    ProbeStatus::Timeout
 }
 
 /// UDP probe for QUIC-based transports (Hysteria2, TUIC v5).

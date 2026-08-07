@@ -32,7 +32,7 @@ use torshield_ir_ultra::{
     iran_anti_siam, iran_nin_bypass, iran_smart_rotation, ja3_intelligence, ml_predictor,
     nin_advanced_bypass, nin_cut_tester,
     nin_internet_cut_classifier::NINInternetCutClassifier,
-    nin_selector, results_writer, root_modules,
+    nin_selector, results_writer, root_modules, webtunnel_v2,
 };
 
 /// Canonical stage order — mirrors the historical workflow stage numbering.
@@ -55,6 +55,8 @@ const STAGES: &[&str] = &[
     "warp",
     // Stage 8g  — ECH fingerprint evasion
     "ech",
+    // Stage 8g2 — WebTunnel v0.0.4 dual-stack metadata
+    "webtunnel-v2",
     // Stage 8h  — NIN advanced bypass
     "nin-advanced",
     // Stage 8i  — anti-AI DPI scoring
@@ -297,6 +299,32 @@ fn stage_ech() -> StageResult {
     Ok(Outcome::Ok(json!({ "report": "data/ech_report.json" })))
 }
 
+fn stage_webtunnel_v2() -> StageResult {
+    let input = Path::new("bridge/bridge_list_for_testing.json");
+    if !input.is_file() {
+        return Ok(Outcome::Skipped(format!("{} missing", input.display())));
+    }
+
+    let content = std::fs::read_to_string(input)?;
+    let payload: Vec<String> = content
+        .lines()
+        .map(str::trim)
+        .filter(|line| !line.is_empty() && !line.starts_with('#'))
+        .filter_map(|line| {
+            webtunnel_v2::parse_line(line).map(|info| {
+                serde_json::to_string(&webtunnel_v2::as_json(&info)).unwrap_or_default()
+            })
+        })
+        .collect();
+
+    let report = json!({
+        "generated_at": Utc::now().to_rfc3339(),
+        "bridges": payload,
+    });
+    write_json(Path::new("data/webtunnel_v2_report.json"), &report)?;
+    Ok(Outcome::Ok(json!({ "report": "data/webtunnel_v2_report.json", "bridges": payload.len() })))
+}
+
 fn stage_nin_advanced() -> StageResult {
     let probe = nin_advanced_bypass::StdTcpProbe;
     nin_advanced_bypass::run_main(
@@ -483,6 +511,7 @@ fn dispatch(stage: &str, input: &Path) -> StageResult {
         "quantum" => stage_quantum(),
         "warp" => stage_warp(),
         "ech" => stage_ech(),
+        "webtunnel-v2" => stage_webtunnel_v2(),
         "nin-advanced" => stage_nin_advanced(),
         "anti-ai-dpi" => stage_anti_ai_dpi(),
         "ml" => stage_ml(),
