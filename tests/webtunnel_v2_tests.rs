@@ -137,19 +137,19 @@ fn canonical_fingerprint_rejects_wrong_lengths() {
 fn is_valid_bridge_line_requires_ver_0_0_4_for_webtunnel() {
     // ver=0.0.4 — should pass
     assert!(parsing::is_valid_bridge_line(
-        "webtunnel 192.0.2.1:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
+        "webtunnel 1.2.3.4:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
          url=https://example.com ver=0.0.4"
     ));
 
     // ver=0.0.3 — should fail
     assert!(!parsing::is_valid_bridge_line(
-        "webtunnel 192.0.2.1:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
+        "webtunnel 1.2.3.4:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
          url=https://example.com ver=0.0.3"
     ));
 
     // no ver= — should fail
     assert!(!parsing::is_valid_bridge_line(
-        "webtunnel 192.0.2.1:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
+        "webtunnel 1.2.3.4:443 FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
          url=https://example.com"
     ));
 }
@@ -165,7 +165,7 @@ fn is_valid_bridge_line_rejects_url_only_webtunnel() {
 #[test]
 fn is_valid_bridge_line_accepts_ipv6_webtunnel() {
     assert!(parsing::is_valid_bridge_line(
-        "webtunnel [2001:db8::1]:443 \
+        "webtunnel [2606:4700:4700::1111]:443 \
          FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF \
          url=https://example.com ver=0.0.4"
     ));
@@ -175,7 +175,7 @@ fn is_valid_bridge_line_accepts_ipv6_webtunnel() {
 fn is_valid_bridge_line_rejects_non_hex_fingerprint() {
     // Contains 'G' which is not a hex character
     assert!(!parsing::is_valid_bridge_line(
-        "webtunnel 192.0.2.1:443 GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG \
+        "webtunnel 1.2.3.4:443 GGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGGG \
          url=https://example.com ver=0.0.4"
     ));
 }

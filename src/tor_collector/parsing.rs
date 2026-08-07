@@ -400,12 +400,12 @@ mod tests {
     #[test]
     fn validation_covers_ipv4_ipv6_and_url_forms() {
         assert!(is_valid_bridge_line("obfs4 1.2.3.4:443 cert=abc"));
-        assert!(is_valid_bridge_line("obfs4 [2001:db8::7]:443 cert=abc"));
+        assert!(is_valid_bridge_line("obfs4 [2606:4700:4700::1111]:443 cert=abc"));
         assert!(is_valid_bridge_line(
-            "webtunnel 1.2.3.4:443 url=https://example.org/x"
+            "webtunnel 1.2.3.4:443 FINGER url=https://example.org/x ver=0.0.4"
         ));
         assert!(is_valid_bridge_line(
-            "webtunnel [2001:db8::7]:443 FINGER url=https://example.org/x ver=0.0.4"
+            "webtunnel [2606:4700:4700::1111]:443 FINGER url=https://example.org/x ver=0.0.4"
         ));
         assert!(!is_valid_bridge_line("webtunnel FINGER url=https://example.org/x"));
         assert!(!is_valid_bridge_line("# 1.2.3.4:443"));

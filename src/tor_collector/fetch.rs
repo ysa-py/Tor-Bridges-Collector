@@ -282,7 +282,7 @@ mod tests {
     fn variant_filter_separates_ipv4_and_ipv6() {
         let lines = vec![
             "obfs4 1.2.3.4:443 FINGER cert=abc".to_owned(),
-            "obfs4 [2001:db8::1]:443 FINGER cert=abc".to_owned(),
+            "obfs4 [2606:4700:4700::1111]:443 FINGER cert=abc".to_owned(),
         ];
         assert_eq!(filter_variant(lines.clone(), false).len(), 1);
         assert_eq!(filter_variant(lines, true).len(), 1);
