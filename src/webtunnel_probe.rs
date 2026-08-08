@@ -253,12 +253,26 @@ pub fn probe_all_webtunnel_bridges(
             continue;
         }
 
+        let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
+        let (front_host, front_port) =
+            extract_front_domain(line).unwrap_or((host.to_string(), 443));
+
         probed += 1;
         let updated = probe_webtunnel_bridge(bridge, timeout);
+        let probe_status = updated
+            .get("probe_status")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let evidence = updated
+            .get("evidence_scope")
+            .and_then(Value::as_str)
+            .unwrap_or("");
         if updated.get("iran_status").and_then(Value::as_str) == Some("iran_unknown") {
             succeeded += 1;
+            println!("webtunnel-probe: {front_host}:{front_port} => {probe_status} 101");
         } else {
             failed += 1;
+            println!("webtunnel-probe: {front_host}:{front_port} => {probe_status}: {evidence}");
         }
         *bridge = updated;
     }
