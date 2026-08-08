@@ -1,10 +1,15 @@
 //! Bounded Rust-native bridge reachability tester.
 //!
 //! The test deliberately records exactly what a GitHub runner can establish:
-//! a TCP connection (or a transport-capability check for Snowflake).  It does
-//! not claim that a result proves Iranian reachability, a full Tor circuit, or
-//! successful pluggable-transport negotiation.  Those distinctions remain in
-//! the JSON report consumed by the publication layer.
+//! a TCP connection (or a transport-capability check for Snowflake / WebTunnel).
+//! It does not claim that a result proves Iranian reachability, a full Tor
+//! circuit, or successful pluggable-transport negotiation.  Those distinctions
+//! remain in the JSON report consumed by the publication layer.
+//!
+//! WebTunnel bridges that carry only a `url=https://front/path` (no routable
+//! IP endpoint) are probed via TLS+WebSocket Upgrade to the front domain.
+//! IPv6 bridges with documentation-range addresses (2001:db8::/32) are
+//! intentionally left as unroutable — those are upstream placeholder data.
 
 use std::collections::BTreeMap;
 use std::env;
@@ -13,11 +18,17 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use base64::Engine;
+use rand::RngCore;
+use regex::Regex;
+use rustls::pki_types::ServerName;
 use serde_json::{json, Value};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Semaphore;
 use tokio::task::JoinSet;
 use tokio::time::timeout;
+use tokio_rustls::TlsConnector;
 use torshield_ir_ultra::tester::extract_endpoint;
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -137,11 +148,262 @@ fn snowflake_capability_result(line: String) -> Value {
     })
 }
 
+/// A certificate verifier for reachability probes. It deliberately permits
+/// self-signed bridge/cdn-front certificates because the collector validates
+/// liveness/protocol behavior, not a public-Web PKI identity.
+#[derive(Debug)]
+struct ReachabilityVerifier;
+
+impl rustls::client::danger::ServerCertVerifier for ReachabilityVerifier {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &rustls::pki_types::CertificateDer<'_>,
+        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        _server_name: &ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: rustls::pki_types::UnixTime,
+    ) -> std::result::Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        Ok(rustls::client::danger::ServerCertVerified::assertion())
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> std::result::Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> std::result::Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        vec![
+            rustls::SignatureScheme::ECDSA_NISTP256_SHA256,
+            rustls::SignatureScheme::RSA_PSS_SHA256,
+            rustls::SignatureScheme::RSA_PKCS1_SHA256,
+        ]
+    }
+}
+
+fn make_tls_config() -> Arc<rustls::ClientConfig> {
+    let provider = rustls::crypto::ring::default_provider();
+    let builder = rustls::ClientConfig::builder_with_provider(Arc::new(provider))
+        .with_protocol_versions(&[&rustls::version::TLS13, &rustls::version::TLS12])
+        .expect("TLS protocol versions");
+    let mut config = builder
+        .dangerous()
+        .with_custom_certificate_verifier(Arc::new(ReachabilityVerifier))
+        .with_no_client_auth();
+    config.alpn_protocols = vec![b"http/1.1".to_vec()];
+    Arc::new(config)
+}
+
+/// Probe a WebTunnel bridge by performing TLS + HTTP WebSocket Upgrade to
+/// the front domain extracted from the `url=` parameter. Returns
+/// `transport_capable: true` when the front responds with HTTP 101.
+async fn probe_webtunnel_front(line: String, timeout_duration: Duration) -> Value {
+    let https_re = Regex::new(r"(?i)https?://([^/:\s]+)(?::(\d+))?").unwrap();
+    let (host, port) = match https_re.captures(&line) {
+        Some(caps) => {
+            let h = caps.get(1).unwrap().as_str().to_string();
+            let p = caps
+                .get(2)
+                .and_then(|m| m.as_str().parse::<u16>().ok())
+                .unwrap_or(443);
+            (h, p)
+        }
+        None => {
+            return json!({
+                "line": line,
+                "transport": "webtunnel",
+                "host": null,
+                "port": null,
+                "tcp_reachable": false,
+                "transport_capable": false,
+                "probe_status": "unparseable",
+                "probe_method": "websocket-upgrade",
+                "latency_ms": null,
+                "iran_status": "iran_unknown",
+                "evidence_scope": "WebTunnel line has no url= front domain; cannot probe.",
+                "composite_score": 0.0,
+            });
+        }
+    };
+
+    let started = Instant::now();
+
+    // 1. TCP connect to front domain
+    let tcp = match timeout(timeout_duration, TcpStream::connect((host.as_str(), port))).await {
+        Ok(Ok(s)) => s,
+        Ok(Err(_)) => {
+            return json!({
+                "line": line,
+                "transport": "webtunnel",
+                "host": host,
+                "port": port,
+                "tcp_reachable": false,
+                "transport_capable": false,
+                "probe_status": "refused",
+                "probe_method": "websocket-upgrade",
+                "latency_ms": started.elapsed().as_millis(),
+                "iran_status": "tcp_unreachable",
+                "evidence_scope": "TCP connect to WebTunnel front domain failed (refused).",
+                "composite_score": 0.0,
+            });
+        }
+        Err(_) => {
+            return json!({
+                "line": line,
+                "transport": "webtunnel",
+                "host": host,
+                "port": port,
+                "tcp_reachable": false,
+                "transport_capable": false,
+                "probe_status": "timeout",
+                "probe_method": "websocket-upgrade",
+                "latency_ms": started.elapsed().as_millis(),
+                "iran_status": "tcp_unreachable",
+                "evidence_scope": "TCP connect to WebTunnel front domain timed out.",
+                "composite_score": 0.0,
+            });
+        }
+    };
+
+    // 2. TLS handshake
+    let server_name = match ServerName::try_from(host.clone()) {
+        Ok(sn) => sn,
+        Err(_) => {
+            return json!({
+                "line": line,
+                "transport": "webtunnel",
+                "host": host,
+                "port": port,
+                "tcp_reachable": true,
+                "transport_capable": false,
+                "probe_status": "tls_invalid_name",
+                "probe_method": "websocket-upgrade",
+                "latency_ms": started.elapsed().as_millis(),
+                "iran_status": "iran_unknown",
+                "evidence_scope": "WebTunnel front domain is not a valid TLS server name.",
+                "composite_score": 0.3,
+            });
+        }
+    };
+
+    let config = make_tls_config();
+    let connector = TlsConnector::from(config);
+    let mut stream = match timeout(timeout_duration, connector.connect(server_name, tcp)).await {
+        Ok(Ok(s)) => s,
+        _ => {
+            return json!({
+                "line": line,
+                "transport": "webtunnel",
+                "host": host,
+                "port": port,
+                "tcp_reachable": true,
+                "transport_capable": false,
+                "probe_status": "tls_handshake_failed",
+                "probe_method": "websocket-upgrade",
+                "latency_ms": started.elapsed().as_millis(),
+                "iran_status": "iran_unknown",
+                "evidence_scope": "TLS handshake to WebTunnel front domain failed.",
+                "composite_score": 0.3,
+            });
+        }
+    };
+
+    // 3. WebSocket Upgrade
+    let mut key_bytes = [0u8; 16];
+    rand::thread_rng().fill_bytes(&mut key_bytes);
+    let key = base64::engine::general_purpose::STANDARD.encode(key_bytes);
+    let request = format!(
+        "GET / HTTP/1.1\r\nHost: {host}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n\
+         Sec-WebSocket-Key: {key}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+    );
+
+    if (timeout(timeout_duration, stream.write_all(request.as_bytes())).await).is_err() {
+        return json!({
+            "line": line,
+            "transport": "webtunnel",
+            "host": host,
+            "port": port,
+            "tcp_reachable": true,
+            "transport_capable": false,
+            "probe_status": "tls_reachable",
+            "probe_method": "websocket-upgrade",
+            "latency_ms": started.elapsed().as_millis(),
+            "iran_status": "iran_unknown",
+            "evidence_scope": "TLS to WebTunnel front succeeded but upgrade request write failed.",
+            "composite_score": 0.4,
+        });
+    }
+
+    let mut response = vec![0u8; 512];
+    let n = match timeout(timeout_duration, stream.read(&mut response)).await {
+        Ok(Ok(n)) => n,
+        _ => {
+            return json!({
+                "line": line,
+                "transport": "webtunnel",
+                "host": host,
+                "port": port,
+                "tcp_reachable": true,
+                "transport_capable": false,
+                "probe_status": "tls_reachable",
+                "probe_method": "websocket-upgrade",
+                "latency_ms": started.elapsed().as_millis(),
+                "iran_status": "iran_unknown",
+                "evidence_scope": "TLS to WebTunnel front succeeded but no HTTP response received.",
+                "composite_score": 0.4,
+            });
+        }
+    };
+
+    let response_text = String::from_utf8_lossy(&response[..n]);
+    let has_101 = response_text.contains("101");
+    let elapsed = started.elapsed().as_millis();
+
+    json!({
+        "line": line,
+        "transport": "webtunnel",
+        "host": host,
+        "port": port,
+        "tcp_reachable": true,
+        "transport_capable": has_101,
+        "probe_status": if has_101 { "websocket_101" } else { "http_response" },
+        "probe_method": "websocket-upgrade",
+        "latency_ms": elapsed,
+        "iran_status": "iran_unknown",
+        "evidence_scope": format!(
+            "TLS+WebSocket Upgrade probe to WebTunnel front domain. {}",
+            if has_101 {
+                "Front returned 101 Switching Protocols — WebTunnel handshake succeeded."
+            } else {
+                "Front responded but did not return 101. CDN front is alive but bridge may be offline."
+            }
+        ),
+        "composite_score": if has_101 { 0.7 } else { 0.45 },
+    })
+}
+
 async fn probe_one(line: String, timeout_duration: Duration) -> Value {
     let (host, port, extracted_transport) = extract_endpoint(&line);
     let transport = normalise_transport(&line, extracted_transport);
     if transport == "snowflake" {
         return snowflake_capability_result(line);
+    }
+    // v2.6.1: Domain-only WebTunnel bridges (no routable IP, only url=)
+    // are probed via TLS+WebSocket Upgrade to the front domain.
+    if transport == "webtunnel" {
+        return probe_webtunnel_front(line, timeout_duration).await;
     }
     let Some(host) = host else {
         return json!({
