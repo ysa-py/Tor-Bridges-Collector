@@ -534,6 +534,109 @@ pub fn validate_shadowtls_v3(uri: &str) -> Option<String> {
     None
 }
 
+// ── v2.6.0 Token-based protocol validators (obfs4, Snowflake, meek) ─────
+
+/// Validate an obfs4 bridge line: `obfs4 IP:PORT FINGERPRINT cert=... iat-mode=N [args]`.
+/// Returns `None` if structurally valid, `Some(reason)` on error.
+pub fn validate_obfs4(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("obfs4 ") {
+        return Some("transport=obfs4 reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=obfs4 reason=too_few_tokens".into());
+    }
+    // Token 1: must be IP:PORT (IPv4) or [IPv6]:PORT
+    let endpoint = tokens[1];
+    let has_endpoint = endpoint.contains(':') && {
+        let is_ipv4 = endpoint.chars().next().is_some_and(|c| c.is_ascii_digit());
+        let is_ipv6 = endpoint.starts_with('[') && endpoint.contains("]:");
+        is_ipv4 || is_ipv6
+    };
+    if !has_endpoint {
+        return Some("transport=obfs4 reason=missing_endpoint".into());
+    }
+    // Token 2: fingerprint (40 hex chars)
+    let fp = tokens[2];
+    let is_fp = fp.len() == 40 && fp.chars().all(|c| c.is_ascii_hexdigit());
+    if !is_fp {
+        return Some("transport=obfs4 reason=invalid_fingerprint".into());
+    }
+    // Token 3+: must contain cert= and iat-mode=
+    let rest = tokens[3..].join(" ").to_ascii_lowercase();
+    if !rest.contains("cert=") {
+        return Some("transport=obfs4 reason=missing_cert".into());
+    }
+    if !rest.contains("iat-mode=") {
+        return Some("transport=obfs4 reason=missing_iat_mode".into());
+    }
+    None
+}
+
+/// Validate a Snowflake bridge line: `snowflake 192.0.2.1:PORT FINGERPRINT [options]`
+/// or `snowflake fingerprint=FINGERPRINT url=...`.
+pub fn validate_snowflake(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("snowflake ") {
+        return Some("transport=snowflake reason=missing_prefix".into());
+    }
+    let rest = &trimmed["snowflake ".len()..];
+    // Must contain a 40-char hex fingerprint somewhere.
+    let has_fp = rest.split_whitespace().any(|t| {
+        let t = t.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '='));
+        // Handle fingerprint=WXYZ...
+        let hex_part = if let Some(pos) = t.find('=') {
+            &t[pos + 1..]
+        } else {
+            t
+        };
+        hex_part.len() == 40 && hex_part.chars().all(|c| c.is_ascii_hexdigit())
+    });
+    if !has_fp {
+        return Some("transport=snowflake reason=missing_fingerprint".into());
+    }
+    None
+}
+
+/// Validate a meek/meek_lite bridge line: `meek_lite IP:PORT FINGERPRINT url=... front=...`.
+pub fn validate_meek(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let (prefix, transport) = if lower.starts_with("meek_lite ") {
+        ("meek_lite ", "meek_lite")
+    } else if lower.starts_with("meek-") || lower.starts_with("meek ") {
+        ("meek ", "meek")
+    } else {
+        return Some("transport=meek reason=missing_prefix".into());
+    };
+    let rest = &trimmed[prefix.len()..];
+    let tokens: Vec<&str> = rest.split_whitespace().collect();
+    if tokens.len() < 2 {
+        return Some(format!("transport={transport} reason=too_few_tokens"));
+    }
+    // Token 0: IP:PORT (optional for URL-only meek)
+    // Token 1: fingerprint (40 hex chars) if not URL-only
+    // Must have url= somewhere in the line
+    let has_url = lower.contains("url=");
+    // Must have front= somewhere in the line
+    let has_front = lower.contains("front=");
+    if !has_url && !has_front {
+        return Some(format!("transport={transport} reason=missing_url_or_front"));
+    }
+    // Must have a 40-char hex fingerprint
+    let has_fp = rest.split_whitespace().any(|t| {
+        let cleaned = t.trim_matches(|c: char| matches!(c, ',' | ';' | '"'));
+        cleaned.len() == 40 && cleaned.chars().all(|c| c.is_ascii_hexdigit())
+    });
+    if !has_fp {
+        return Some(format!("transport={transport} reason=missing_fingerprint"));
+    }
+    None
+}
+
 /// Dispatch to the correct validator based on the transport scheme prefix.
 /// Returns `None` if no known transport prefix is detected.
 pub fn validate_protocol_line(line: &str) -> Option<String> {
@@ -546,6 +649,15 @@ pub fn validate_protocol_line(line: &str) -> Option<String> {
         Some(validate_tuic_v5(line.trim()).unwrap_or_default())
     } else if lower.starts_with("shadow-tls://") {
         Some(validate_shadowtls_v3(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("obfs4 ") {
+        Some(validate_obfs4(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("snowflake ") {
+        Some(validate_snowflake(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("meek_lite ")
+        || lower.starts_with("meek ")
+        || lower.starts_with("meek-")
+    {
+        Some(validate_meek(line.trim()).unwrap_or_default())
     } else {
         None
     }
@@ -838,7 +950,10 @@ mod tests {
             validate_protocol_line("shadow-tls://host:443?sni=example.com&password=s")
                 .is_some_and(|r| r.is_empty())
         );
-        assert!(validate_protocol_line("obfs4 192.0.2.1:443 cert=abc iat-mode=2").is_none());
+        assert!(validate_protocol_line(
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2"
+        )
+        .is_some_and(|r| r.is_empty()));
         assert!(validate_protocol_line("ordinary line").is_none());
     }
 
@@ -850,5 +965,119 @@ mod tests {
         assert!(!err.contains("sentinel"));
         assert!(!err.contains("target.com"));
         assert!(!err.to_lowercase().contains("user-uuid"));
+    }
+
+    // ── v2.6.0 obfs4, Snowflake, meek validator tests ──────────────────
+
+    #[test]
+    fn obfs4_valid_accepts_standard_line() {
+        let line =
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2";
+        assert!(validate_obfs4(line).is_none());
+    }
+
+    #[test]
+    fn obfs4_valid_accepts_ipv6() {
+        let line =
+            "obfs4 [2001:db8::1]:443 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB cert=abc iat-mode=2";
+        assert!(validate_obfs4(line).is_none());
+    }
+
+    #[test]
+    fn obfs4_rejects_missing_fingerprint() {
+        let line = "obfs4 192.0.2.1:443 cert=abc iat-mode=2";
+        assert!(validate_obfs4(line).is_some());
+    }
+
+    #[test]
+    fn obfs4_rejects_missing_cert() {
+        let line = "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA iat-mode=2";
+        let err = validate_obfs4(line);
+        assert!(err.is_some());
+        assert!(err.unwrap().contains("missing_cert"));
+    }
+
+    #[test]
+    fn obfs4_rejects_missing_iat_mode() {
+        let line = "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc";
+        assert!(validate_obfs4(line).is_some());
+    }
+
+    #[test]
+    fn snowflake_valid_accepts_standard_line() {
+        let line = "snowflake 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        assert!(validate_snowflake(line).is_none());
+    }
+
+    #[test]
+    fn snowflake_valid_accepts_fingerprint_key() {
+        let line = "snowflake fingerprint=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://snowflake-broker.example.com";
+        assert!(validate_snowflake(line).is_none());
+    }
+
+    #[test]
+    fn snowflake_rejects_missing_fingerprint() {
+        let line = "snowflake 192.0.2.1:443 url=https://snowflake-broker.example.com";
+        assert!(validate_snowflake(line).is_some());
+    }
+
+    #[test]
+    fn meek_valid_accepts_meek_lite() {
+        let line = "meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://meek-reflect.appspot.com/ front=ajax.aspnetcdn.com";
+        assert!(validate_meek(line).is_none());
+    }
+
+    #[test]
+    fn meek_rejects_missing_url_and_front() {
+        let line = "meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        let err = validate_meek(line);
+        assert!(err.is_some());
+        assert!(err.unwrap().contains("missing_url_or_front"));
+    }
+
+    #[test]
+    fn validate_protocol_line_dispatch_includes_token_transports() {
+        // URI-based transports
+        assert!(validate_protocol_line(
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp"
+        )
+        .is_some_and(|r| r.is_empty()));
+        // Token-based transports (v2.6.0)
+        assert!(validate_protocol_line(
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(validate_protocol_line(
+            "snowflake 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://x front=y")
+                .is_some_and(|r| r.is_empty())
+        );
+        // Non-transport line should return None
+        assert!(validate_protocol_line("ordinary line").is_none());
+    }
+
+    /// v2.6.0: Prove dynamically degraded candidates remain recoverable (Section M).
+    /// Structural invalidity may reject outright; dynamic failure must not permanently delete.
+    #[test]
+    fn structural_vs_dynamic_separation() {
+        // Structural invalidity: missing cert → reject outright.
+        let structural_fail =
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA iat-mode=2";
+        assert!(validate_obfs4(structural_fail).is_some());
+
+        // Dynamic failure: structurally valid obfs4 line (with all required params)
+        // MUST remain structurally parseable — health/ranking handles dynamic outcomes.
+        let dynamic_ok =
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2";
+        assert!(validate_obfs4(dynamic_ok).is_none());
+
+        // Same for Snowflake.
+        assert!(validate_snowflake(
+            "snowflake fingerprint=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://x"
+        )
+        .is_none());
     }
 }

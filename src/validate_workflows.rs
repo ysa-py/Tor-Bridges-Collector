@@ -320,6 +320,86 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// v2.6.0: Regression test asserting Cloudflare providers 1..11 each
+    /// expose the structural triplet (CF_ACCOUNT_ID_N / CF_API_TOKEN_N /
+    /// CF_AI_GATEWAY_URL_N) in the ai_self_healing workflow. The test
+    /// parses the YAML structure but never resolves or prints secret values.
+    #[test]
+    fn cloudflare_provider_triplet_completeness() {
+        let wf_path = ".github/workflows/ai_self_healing.yml";
+        let text = std::fs::read_to_string(wf_path).expect("ai_self_healing.yml must exist");
+        let doc: serde_yaml::Value =
+            serde_yaml::from_str(&text).expect("ai_self_healing.yml must be valid YAML");
+        let mapping = doc.as_mapping().expect("top-level must be a mapping");
+        let jobs = mapping
+            .get(&serde_yaml::Value::String("jobs".into()))
+            .and_then(|v| v.as_mapping())
+            .expect("jobs must be a mapping");
+
+        // Find the auto-diagnose-and-fix job.
+        let auto_job = jobs
+            .get(&serde_yaml::Value::String("auto-diagnose-and-fix".into()))
+            .and_then(|v| v.as_mapping())
+            .expect("auto-diagnose-and-fix job must exist");
+        let steps = auto_job
+            .get(&serde_yaml::Value::String("steps".into()))
+            .and_then(|v| v.as_sequence())
+            .expect("steps must be a sequence");
+
+        // Find the Run AutoDebugEngine step by inspecting each step's env.
+        let mut provider_vars: std::collections::BTreeMap<u32, Vec<String>> =
+            std::collections::BTreeMap::new();
+        for step in steps {
+            let sm = step.as_mapping().expect("step must be a mapping");
+            let env = sm
+                .get(&serde_yaml::Value::String("env".into()))
+                .and_then(|v| v.as_mapping());
+            if env.is_none() {
+                continue;
+            }
+            for (k, _v) in env.unwrap() {
+                let key = k.as_str().unwrap_or_default();
+                // Only track CF_ prefixed vars.
+                if !key.starts_with("CF_") {
+                    continue;
+                }
+                // Extract provider index: CF_ACCOUNT_ID_<N>, CF_API_TOKEN_<N>,
+                // CF_AI_GATEWAY_URL_<N>.
+                if let Some(idx_str) = key.rsplit('_').next() {
+                    if let Ok(idx) = idx_str.parse::<u32>() {
+                        if (1..=11).contains(&idx) {
+                            let base = key.trim_end_matches(&format!("_{idx}"));
+                            provider_vars.entry(idx).or_default().push(base.to_string());
+                        }
+                    }
+                }
+            }
+        }
+
+        // Assert: each provider 1..11 has exactly 3 vars.
+        let required = vec!["CF_ACCOUNT_ID", "CF_API_TOKEN", "CF_AI_GATEWAY_URL"];
+        for i in 1..=11_u32 {
+            let vars = provider_vars.get(&i);
+            assert!(
+                vars.is_some(),
+                "Cloudflare provider {i}: no CF_ env vars found in auto-diagnose-and-fix env"
+            );
+            let vars = vars.unwrap();
+            for req in &required {
+                assert!(
+                    vars.contains(&req.to_string()),
+                    "Cloudflare provider {i}: missing {req}_{i} in auto-diagnose-and-fix env"
+                );
+            }
+            assert_eq!(
+                vars.len(),
+                3,
+                "Cloudflare provider {i}: expected exactly 3 vars (got {:?})",
+                vars
+            );
+        }
+    }
+
     #[test]
     fn workflow_files_globs_and_sorts() {
         let dir = std::env::temp_dir().join(format!("vf_glob_{}", std::process::id()));
