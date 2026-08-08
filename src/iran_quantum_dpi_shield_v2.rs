@@ -1,5 +1,12 @@
 //! NEW advanced anti-censorship capability (no Python original to supersede).
 //!
+//! # Mandatory v2.6.0 connectivity statement (Section I)
+//!
+//! This change does not claim to manufacture international connectivity when
+//! all upstream international routes are physically unavailable. It improves
+//! detection, preservation, selection, and recovery of any paths that remain
+//! reachable.
+//!
 //! `iran_quantum_dpi_shield_v2` — predictive multi-layer DPI evasion shield
 //! for Iran's SIAM/NGFW ML-based censorship infrastructure (2024–2026
 //! observed behaviour).
