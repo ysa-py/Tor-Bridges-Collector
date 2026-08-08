@@ -16,7 +16,7 @@ use serde_json::{json, Value};
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use std::io::{Read, Write};
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
 
 /// Extract the front domain host and port from a WebTunnel bridge line.
 /// Returns None if the line doesn't contain a url= parameter.
@@ -95,13 +95,15 @@ mod tls_ws {
     /// front domain. Returns the raw HTTP status line on success, or
     /// an error string describing the failure mode.
     pub fn probe_sync(host: &str, port: u16, timeout: Duration) -> Result<String, String> {
-        // 1. TCP connect
+        // 1. DNS + TCP connect
         let addr = format!("{host}:{port}");
-        let mut tcp = TcpStream::connect_timeout(
-            &addr.parse().map_err(|e| format!("bad addr: {e}"))?,
-            timeout,
-        )
-        .map_err(|e| format!("TCP connect failed: {e}"))?;
+        let socket_addr = addr
+            .to_socket_addrs()
+            .map_err(|e| format!("DNS resolve {host}: {e}"))?
+            .next()
+            .ok_or_else(|| format!("DNS returned no addresses for {host}"))?;
+        let mut tcp = TcpStream::connect_timeout(&socket_addr, timeout)
+            .map_err(|e| format!("TCP connect failed: {e}"))?;
         tcp.set_read_timeout(Some(timeout))
             .map_err(|e| format!("set read timeout: {e}"))?;
         tcp.set_write_timeout(Some(timeout))
