@@ -785,6 +785,14 @@
       "transport": "vanilla"
     },
     {
+      "ip": "23.251.95.250",
+      "port": 990,
+      "raw": "Bridge 23.251.95.250:990 E4423CECCD04AEBBD27E3210EDEEC22C22FADAF2",
+      "sni": "",
+      "tier": "RED",
+      "transport": "vanilla"
+    },
+    {
       "ip": "23.95.62.122",
       "port": 8008,
       "raw": "Bridge 23.95.62.122:8008 CBBE8FC02F311F2656C405896F38A7E63490F4CC",
@@ -1905,6 +1913,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "176.163.188.198",
+      "port": 7193,
+      "raw": "obfs4 176.163.188.198:7193 A8E56244D112204C8632042AA776BC38D471285E cert=DL2/fFVnQD9GodlYXK8sU5MFN9tsYhpMDlkUo49sLhGuvd+oPcP+zWyQvnPSxMjhlkfUfw iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "178.17.170.33",
       "port": 4444,
       "raw": "obfs4 178.17.170.33:4444 07D619A6011501CC892FAA78D182F0B20C826145 cert=DdnwQv/dJBh2aeW+PQWPHKZMijhEOy593n87dKKEBb6T7DWEIZOk3LdNOOH0sRoZsDdefw iat-mode=0",
@@ -2777,6 +2793,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "5.83.147.191",
+      "port": 8080,
+      "raw": "obfs4 5.83.147.191:8080 84DE70C3735D1F2D3D8142AAAD785521750310D2 cert=1EAtrN2FDSjOvdC/kznspxRnQegwZGnJ4Wk74L9Zs/wU/KRclyNn/Et10UGNC+fv0wGCUQ iat-mode=0",
+      "sni": "",
+      "tier": "YELLOW",
+      "transport": "obfs4"
+    },
+    {
       "ip": "51.159.59.157",
       "port": 9003,
       "raw": "obfs4 51.159.59.157:9003 85794367DBECF3B3933312C6E0641AA344FA0651 cert=9hrd0JIpvg7e1c6dJY/FAJAi3f1D8SGJFyU/dAVUM7wGVkfYdDQrNqn4UfjDTqh3/xU0Ig iat-mode=0",
@@ -3585,6 +3609,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "99.9.98.26",
+      "port": 9898,
+      "raw": "obfs4 99.9.98.26:9898 655BD2B114B3B09F323F879EAA5B09BB59B749F1 cert=zT5M0E/upMzmGfl5GtQIHuwMMs+0VNdZrbsM74zjmTnfQpEuA29s4eYhCaOyq/7NFFJ3cQ iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "",
       "port": 0,
       "raw": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
@@ -3662,10 +3694,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-07T23:04:11.184461+00:00",
+  "generated_at": "2026-08-08T00:04:38.328053+00:00",
   "green_count": 5,
-  "red_count": 362,
+  "red_count": 365,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 457,
-  "yellow_count": 90
+  "total_bridges": 461,
+  "yellow_count": 91
 }
