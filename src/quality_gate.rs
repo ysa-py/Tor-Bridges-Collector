@@ -250,7 +250,7 @@ pub fn report(root: &Path) -> i32 {
 }
 
 const USAGE: &str =
-    "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check> [path]";
+    "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check|protocol-check> [path]";
 
 /// Subcommand: validate WebTunnel bridge lines under `root`.
 ///
@@ -379,6 +379,288 @@ pub fn webtunnel_check(root: &Path) -> i32 {
     }
     println!("  ✓ All WebTunnel v0.0.4 bridge lines pass validation");
     0
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2.6.0 Protocol validators — structural parsing; no keyword matching.
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Validate a VLESS+REALITY URI: `vless://UUID@HOST:PORT?security=reality&pbk=...&sid=...&fp=...&sni=...&flow=...&type=tcp`.
+/// Returns `None` if structurally valid, `Some(reason)` sanitized on error.
+pub fn validate_vless_reality(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("vless://") {
+        return Some("transport=vless reason=missing_scheme".into());
+    }
+    let rest = &uri["vless://".len()..];
+    let at_pos = rest.find('@')?;
+    let _uuid = &rest[..at_pos];
+    let after_at = &rest[at_pos + 1..];
+    let qm = after_at.find('?');
+    let _host_port = if let Some(pos) = qm {
+        &after_at[..pos]
+    } else {
+        after_at
+    };
+    let query = if let Some(pos) = qm {
+        &after_at[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("security=reality") {
+        return Some("transport=vless reason=missing_security_reality".into());
+    }
+    let required = ["pbk=", "sid=", "fp=", "sni="];
+    for field in &required {
+        if !q.contains(field) {
+            return Some(format!(
+                "transport=vless reason=missing_{}",
+                field.trim_end_matches('=')
+            ));
+        }
+    }
+    // reject ambiguous duplicate security=
+    let sec_count = q.matches("security=").count();
+    if sec_count > 1 {
+        return Some("transport=vless reason=duplicate_security_param".into());
+    }
+    None
+}
+
+/// Validate a Hysteria2 URI: `hysteria2://PASSWORD@HOST:PORT?sni=...&obfs=...&obfs-password=...`.
+pub fn validate_hysteria2(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("hysteria2://") && !lower.starts_with("hysteria://") {
+        return Some("transport=hysteria2 reason=missing_scheme".into());
+    }
+    let scheme_end = if lower.starts_with("hysteria2://") {
+        "hysteria2://".len()
+    } else {
+        "hysteria://".len()
+    };
+    let rest = &uri[scheme_end..];
+    let at_pos = rest.find('@')?;
+    let _auth = &rest[..at_pos];
+    let after_at = &rest[at_pos + 1..];
+    let qm = after_at.find('?');
+    let _host_part = if let Some(pos) = qm {
+        &after_at[..pos]
+    } else {
+        after_at
+    };
+    let query = if let Some(pos) = qm {
+        &after_at[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("sni=") {
+        return Some("transport=hysteria2 reason=missing_sni".into());
+    }
+    // obfs present → obfs-password must also be present
+    if q.contains("obfs=") && !q.contains("obfs-password=") {
+        let obfs_val = q.split("obfs=").nth(1)?.split('&').next()?;
+        if obfs_val != "none" {
+            return Some("transport=hysteria2 reason=missing_obfs_password".into());
+        }
+    }
+    None
+}
+
+/// Validate a TUIC v5 URI: `tuic://UUID:PASSWORD@HOST:PORT?congestion_control=...&alpn=...&sni=...`.
+pub fn validate_tuic_v5(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("tuic://") {
+        return Some("transport=tuic reason=missing_scheme".into());
+    }
+    let rest = &uri["tuic://".len()..];
+    let at_pos = rest.find('@')?;
+    let userinfo = &rest[..at_pos];
+    if !userinfo.contains(':') {
+        return Some("transport=tuic reason=missing_password_in_userinfo".into());
+    }
+    let after_at = &rest[at_pos + 1..];
+    let qm = after_at.find('?');
+    let _host_part = if let Some(pos) = qm {
+        &after_at[..pos]
+    } else {
+        after_at
+    };
+    let query = if let Some(pos) = qm {
+        &after_at[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("sni=") {
+        return Some("transport=tuic reason=missing_sni".into());
+    }
+    None
+}
+
+/// Validate a ShadowTLS v3 URI: `shadow-tls://HOST:PORT?sni=...&password=...&version=3`.
+pub fn validate_shadowtls_v3(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("shadow-tls://") {
+        return Some("transport=shadowtls reason=missing_scheme".into());
+    }
+    let rest = &uri["shadow-tls://".len()..];
+    let qm = rest.find('?');
+    let _host_part = if let Some(pos) = qm {
+        &rest[..pos]
+    } else {
+        rest
+    };
+    let query = if let Some(pos) = qm {
+        &rest[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("sni=") {
+        return Some("transport=shadowtls reason=missing_sni".into());
+    }
+    if !q.contains("password=") {
+        return Some("transport=shadowtls reason=missing_password".into());
+    }
+    // version=3 is expected for v3
+    if q.contains("version=") {
+        let ver_val = q.split("version=").nth(1)?.split('&').next()?;
+        if ver_val != "3" {
+            return Some("transport=shadowtls reason=unsupported_version".into());
+        }
+    }
+    None
+}
+
+// ── v2.6.0 Token-based protocol validators (obfs4, Snowflake, meek) ─────
+
+/// Validate an obfs4 bridge line: `obfs4 IP:PORT FINGERPRINT cert=... iat-mode=N [args]`.
+/// Returns `None` if structurally valid, `Some(reason)` on error.
+pub fn validate_obfs4(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("obfs4 ") {
+        return Some("transport=obfs4 reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = trimmed.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=obfs4 reason=too_few_tokens".into());
+    }
+    // Token 1: must be IP:PORT (IPv4) or [IPv6]:PORT
+    let endpoint = tokens[1];
+    let has_endpoint = endpoint.contains(':') && {
+        let is_ipv4 = endpoint.chars().next().is_some_and(|c| c.is_ascii_digit());
+        let is_ipv6 = endpoint.starts_with('[') && endpoint.contains("]:");
+        is_ipv4 || is_ipv6
+    };
+    if !has_endpoint {
+        return Some("transport=obfs4 reason=missing_endpoint".into());
+    }
+    // Token 2: fingerprint (40 hex chars)
+    let fp = tokens[2];
+    let is_fp = fp.len() == 40 && fp.chars().all(|c| c.is_ascii_hexdigit());
+    if !is_fp {
+        return Some("transport=obfs4 reason=invalid_fingerprint".into());
+    }
+    // Token 3+: must contain cert= and iat-mode=
+    let rest = tokens[3..].join(" ").to_ascii_lowercase();
+    if !rest.contains("cert=") {
+        return Some("transport=obfs4 reason=missing_cert".into());
+    }
+    if !rest.contains("iat-mode=") {
+        return Some("transport=obfs4 reason=missing_iat_mode".into());
+    }
+    None
+}
+
+/// Validate a Snowflake bridge line: `snowflake 192.0.2.1:PORT FINGERPRINT [options]`
+/// or `snowflake fingerprint=FINGERPRINT url=...`.
+pub fn validate_snowflake(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    if !lower.starts_with("snowflake ") {
+        return Some("transport=snowflake reason=missing_prefix".into());
+    }
+    let rest = &trimmed["snowflake ".len()..];
+    // Must contain a 40-char hex fingerprint somewhere.
+    let has_fp = rest.split_whitespace().any(|t| {
+        let t = t.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '='));
+        // Handle fingerprint=WXYZ...
+        let hex_part = if let Some(pos) = t.find('=') {
+            &t[pos + 1..]
+        } else {
+            t
+        };
+        hex_part.len() == 40 && hex_part.chars().all(|c| c.is_ascii_hexdigit())
+    });
+    if !has_fp {
+        return Some("transport=snowflake reason=missing_fingerprint".into());
+    }
+    None
+}
+
+/// Validate a meek/meek_lite bridge line: `meek_lite IP:PORT FINGERPRINT url=... front=...`.
+pub fn validate_meek(line: &str) -> Option<String> {
+    let trimmed = line.trim();
+    let lower = trimmed.to_ascii_lowercase();
+    let (prefix, transport) = if lower.starts_with("meek_lite ") {
+        ("meek_lite ", "meek_lite")
+    } else if lower.starts_with("meek-") || lower.starts_with("meek ") {
+        ("meek ", "meek")
+    } else {
+        return Some("transport=meek reason=missing_prefix".into());
+    };
+    let rest = &trimmed[prefix.len()..];
+    let tokens: Vec<&str> = rest.split_whitespace().collect();
+    if tokens.len() < 2 {
+        return Some(format!("transport={transport} reason=too_few_tokens"));
+    }
+    // Token 0: IP:PORT (optional for URL-only meek)
+    // Token 1: fingerprint (40 hex chars) if not URL-only
+    // Must have url= somewhere in the line
+    let has_url = lower.contains("url=");
+    // Must have front= somewhere in the line
+    let has_front = lower.contains("front=");
+    if !has_url && !has_front {
+        return Some(format!("transport={transport} reason=missing_url_or_front"));
+    }
+    // Must have a 40-char hex fingerprint
+    let has_fp = rest.split_whitespace().any(|t| {
+        let cleaned = t.trim_matches(|c: char| matches!(c, ',' | ';' | '"'));
+        cleaned.len() == 40 && cleaned.chars().all(|c| c.is_ascii_hexdigit())
+    });
+    if !has_fp {
+        return Some(format!("transport={transport} reason=missing_fingerprint"));
+    }
+    None
+}
+
+/// Dispatch to the correct validator based on the transport scheme prefix.
+/// Returns `None` if no known transport prefix is detected.
+pub fn validate_protocol_line(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if lower.starts_with("vless://") {
+        Some(validate_vless_reality(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("hysteria2://") || lower.starts_with("hysteria://") {
+        Some(validate_hysteria2(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("tuic://") {
+        Some(validate_tuic_v5(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("shadow-tls://") {
+        Some(validate_shadowtls_v3(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("obfs4 ") {
+        Some(validate_obfs4(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("snowflake ") {
+        Some(validate_snowflake(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("meek_lite ")
+        || lower.starts_with("meek ")
+        || lower.starts_with("meek-")
+    {
+        Some(validate_meek(line.trim()).unwrap_or_default())
+    } else {
+        None
+    }
 }
 
 /// CLI entry point; returns the process exit code.
@@ -568,5 +850,234 @@ mod tests {
         assert_eq!(value["checks"]["yaml_file_count"], 1);
         assert!(value["timestamp"].as_str().is_some_and(|t| t.contains('T')));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── v2.6.0 Protocol validator tests ────────────────────────────────
+
+    #[test]
+    fn vless_reality_valid_accepts_standard_uri() {
+        let uri = "vless://d342d11e-d424-4583-b36e-524ab1f0afa4@192.0.2.1:443?security=reality&pbk=Z84J2IelR9u0s9nPd5Bl7Jo0LkNpVz8p&sid=6ba85179e30d4fc2&fp=chrome&sni=cloudflare.com&flow=xtls-rprx-vision&type=tcp";
+        assert!(validate_vless_reality(uri).is_none());
+    }
+
+    #[test]
+    fn vless_reality_rejects_missing_security() {
+        let uri = "vless://uuid@host:443?pbk=x&sid=y&fp=z&sni=w&type=tcp";
+        assert!(validate_vless_reality(uri).is_some());
+    }
+
+    #[test]
+    fn vless_reality_rejects_missing_scheme() {
+        assert!(validate_vless_reality("https://example.com").is_some());
+    }
+
+    #[test]
+    fn vless_reality_rejects_duplicate_security() {
+        let uri =
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&security=none&type=tcp";
+        let err = validate_vless_reality(uri);
+        assert!(err.is_some());
+        let msg = err.unwrap();
+        assert!(msg.contains("duplicate_security_param"));
+        // Sentinel: the error must not echo credential-bearing input.
+        assert!(!msg.contains("Z84J"));
+    }
+
+    #[test]
+    fn hysteria2_valid_accepts_minimal() {
+        let uri = "hysteria2://letmein@192.0.2.1:8443?sni=cloudflare.com";
+        assert!(validate_hysteria2(uri).is_none());
+    }
+
+    #[test]
+    fn hysteria2_rejects_missing_sni() {
+        let uri = "hysteria2://letmein@192.0.2.1:8443";
+        assert!(validate_hysteria2(uri).is_some());
+    }
+
+    #[test]
+    fn hysteria2_obfs_requires_obfs_password() {
+        let uri = "hysteria2://auth@host:443?sni=example.com&obfs=salamander";
+        assert!(validate_hysteria2(uri).is_some());
+    }
+
+    #[test]
+    fn tuic_v5_valid_accepts_standard() {
+        let uri =
+            "tuic://uuid:password@192.0.2.1:8443?sni=cloudflare.com&congestion_control=bbr&alpn=h3";
+        assert!(validate_tuic_v5(uri).is_none());
+    }
+
+    #[test]
+    fn tuic_v5_rejects_missing_sni() {
+        let uri = "tuic://uuid:password@192.0.2.1:8443";
+        assert!(validate_tuic_v5(uri).is_some());
+    }
+
+    #[test]
+    fn tuic_v5_rejects_missing_password_in_userinfo() {
+        let uri = "tuic://uuid@192.0.2.1:8443?sni=example.com";
+        assert!(validate_tuic_v5(uri).is_some());
+    }
+
+    #[test]
+    fn shadowtls_v3_valid_accepts_standard() {
+        let uri = "shadow-tls://192.0.2.1:443?sni=cloudflare.com&password=secret&version=3";
+        assert!(validate_shadowtls_v3(uri).is_none());
+    }
+
+    #[test]
+    fn shadowtls_v3_rejects_wrong_version() {
+        let uri = "shadow-tls://192.0.2.1:443?sni=cloudflare.com&password=secret&version=2";
+        assert!(validate_shadowtls_v3(uri).is_some());
+    }
+
+    #[test]
+    fn validate_protocol_line_dispatch() {
+        assert!(validate_protocol_line(
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("hysteria2://auth@host:443?sni=example.com")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("tuic://uuid:pass@host:443?sni=example.com")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("shadow-tls://host:443?sni=example.com&password=s")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(validate_protocol_line(
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(validate_protocol_line("ordinary line").is_none());
+    }
+
+    #[test]
+    fn secret_sanitization_no_credential_leak() {
+        // Synthetic sentinel credentials must never appear in error messages.
+        let uri = "vless://sentinel-user-uuid@host:443?security=none&pbk=sentinel-pbk&sid=sentinel-sid&fp=sentinel&sni=target.com&type=tcp";
+        let err = validate_vless_reality(uri).unwrap();
+        assert!(!err.contains("sentinel"));
+        assert!(!err.contains("target.com"));
+        assert!(!err.to_lowercase().contains("user-uuid"));
+    }
+
+    // ── v2.6.0 obfs4, Snowflake, meek validator tests ──────────────────
+
+    #[test]
+    fn obfs4_valid_accepts_standard_line() {
+        let line =
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2";
+        assert!(validate_obfs4(line).is_none());
+    }
+
+    #[test]
+    fn obfs4_valid_accepts_ipv6() {
+        let line =
+            "obfs4 [2001:db8::1]:443 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB cert=abc iat-mode=2";
+        assert!(validate_obfs4(line).is_none());
+    }
+
+    #[test]
+    fn obfs4_rejects_missing_fingerprint() {
+        let line = "obfs4 192.0.2.1:443 cert=abc iat-mode=2";
+        assert!(validate_obfs4(line).is_some());
+    }
+
+    #[test]
+    fn obfs4_rejects_missing_cert() {
+        let line = "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA iat-mode=2";
+        let err = validate_obfs4(line);
+        assert!(err.is_some());
+        assert!(err.unwrap().contains("missing_cert"));
+    }
+
+    #[test]
+    fn obfs4_rejects_missing_iat_mode() {
+        let line = "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc";
+        assert!(validate_obfs4(line).is_some());
+    }
+
+    #[test]
+    fn snowflake_valid_accepts_standard_line() {
+        let line = "snowflake 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        assert!(validate_snowflake(line).is_none());
+    }
+
+    #[test]
+    fn snowflake_valid_accepts_fingerprint_key() {
+        let line = "snowflake fingerprint=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://snowflake-broker.example.com";
+        assert!(validate_snowflake(line).is_none());
+    }
+
+    #[test]
+    fn snowflake_rejects_missing_fingerprint() {
+        let line = "snowflake 192.0.2.1:443 url=https://snowflake-broker.example.com";
+        assert!(validate_snowflake(line).is_some());
+    }
+
+    #[test]
+    fn meek_valid_accepts_meek_lite() {
+        let line = "meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://meek-reflect.appspot.com/ front=ajax.aspnetcdn.com";
+        assert!(validate_meek(line).is_none());
+    }
+
+    #[test]
+    fn meek_rejects_missing_url_and_front() {
+        let line = "meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+        let err = validate_meek(line);
+        assert!(err.is_some());
+        assert!(err.unwrap().contains("missing_url_or_front"));
+    }
+
+    #[test]
+    fn validate_protocol_line_dispatch_includes_token_transports() {
+        // URI-based transports
+        assert!(validate_protocol_line(
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp"
+        )
+        .is_some_and(|r| r.is_empty()));
+        // Token-based transports (v2.6.0)
+        assert!(validate_protocol_line(
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(validate_protocol_line(
+            "snowflake 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://x front=y")
+                .is_some_and(|r| r.is_empty())
+        );
+        // Non-transport line should return None
+        assert!(validate_protocol_line("ordinary line").is_none());
+    }
+
+    /// v2.6.0: Prove dynamically degraded candidates remain recoverable (Section M).
+    /// Structural invalidity may reject outright; dynamic failure must not permanently delete.
+    #[test]
+    fn structural_vs_dynamic_separation() {
+        // Structural invalidity: missing cert → reject outright.
+        let structural_fail =
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA iat-mode=2";
+        assert!(validate_obfs4(structural_fail).is_some());
+
+        // Dynamic failure: structurally valid obfs4 line (with all required params)
+        // MUST remain structurally parseable — health/ranking handles dynamic outcomes.
+        let dynamic_ok =
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2";
+        assert!(validate_obfs4(dynamic_ok).is_none());
+
+        // Same for Snowflake.
+        assert!(validate_snowflake(
+            "snowflake fingerprint=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://x"
+        )
+        .is_none());
     }
 }

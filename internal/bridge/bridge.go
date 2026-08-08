@@ -1,10 +1,13 @@
 // Package bridge provides bridge-line parsing and normalization for Tor
-// pluggable transports, including dual-stack IPv4/IPv6 WebTunnel support.
+// pluggable transports, including dual-stack IPv4/IPv6 WebTunnel support
+// and v2.6.0 modern protocol dispatch (VLESS+REALITY, Hysteria2, TUIC v5,
+// ShadowTLS v3).
 package bridge
 
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -145,19 +148,144 @@ func parseWebTransport(raw string) (*Transport, error) {
 	}
 
 	// If no literal endpoint found, accept URL-only WebTunnel lines.
-	// The url= host serves as the implicit endpoint — this is a valid
-	// WebTunnel bridge format used when CDN/domain-fronted delivery
-	// resolves the connection target transparently.
 	if !foundEndpoint {
 		if _, ok := t.Params["url"]; !ok {
 			return nil, fmt.Errorf("WebTunnel line has no literal endpoint and no url= parameter")
 		}
-		// URL-only lines are valid: set AddressFamily to "dns" and
-		// leave Host/Port at zero (the url= target handles resolution).
 		t.AddressFamily = "dns"
 	}
 
 	return t, nil
+}
+
+// ── v2.6.0 Modern protocol URI parsers ────────────────────────────────
+
+// parseVlessReality parses a VLESS+REALITY URI.
+// Format: vless://UUID@HOST:PORT?security=reality&pbk=...&sid=...&fp=...&sni=...&flow=...&type=...
+func parseVlessReality(raw string) (*Transport, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("transport=vless reason=invalid_uri: %v", err)
+	}
+	if u.Scheme != "vless" {
+		return nil, fmt.Errorf("transport=vless reason=wrong_scheme")
+	}
+	host, port, af := splitHostPort(u.Host)
+	t := &Transport{
+		Type:          "vless",
+		Host:          host,
+		Port:          port,
+		AddressFamily: af,
+		Raw:           raw,
+		Params:        make(map[string]string),
+	}
+	for k, v := range u.Query() {
+		t.Params[strings.ToLower(k)] = strings.Join(v, ",")
+	}
+	return t, nil
+}
+
+// parseHysteria2 parses a Hysteria2 URI.
+// Format: hysteria2://PASSWORD@HOST:PORT?sni=...&obfs=...&obfs-password=...
+func parseHysteria2(raw string) (*Transport, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("transport=hysteria2 reason=invalid_uri: %v", err)
+	}
+	host, port, af := splitHostPort(u.Host)
+	t := &Transport{
+		Type:          "hysteria2",
+		Host:          host,
+		Port:          port,
+		AddressFamily: af,
+		Raw:           raw,
+		Params:        make(map[string]string),
+	}
+	if u.User != nil {
+		t.Params["auth"] = u.User.String()
+	}
+	for k, v := range u.Query() {
+		t.Params[strings.ToLower(k)] = strings.Join(v, ",")
+	}
+	return t, nil
+}
+
+// parseTuicV5 parses a TUIC v5 URI.
+// Format: tuic://UUID:PASSWORD@HOST:PORT?congestion_control=...&alpn=...&sni=...
+func parseTuicV5(raw string) (*Transport, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("transport=tuic reason=invalid_uri: %v", err)
+	}
+	if u.Scheme != "tuic" {
+		return nil, fmt.Errorf("transport=tuic reason=wrong_scheme")
+	}
+	host, port, af := splitHostPort(u.Host)
+	t := &Transport{
+		Type:          "tuic",
+		Host:          host,
+		Port:          port,
+		AddressFamily: af,
+		Raw:           raw,
+		Params:        make(map[string]string),
+	}
+	if u.User != nil {
+		t.Params["uuid"] = u.User.Username()
+		if pwd, ok := u.User.Password(); ok {
+			t.Params["password"] = pwd
+		}
+	}
+	for k, v := range u.Query() {
+		t.Params[strings.ToLower(k)] = strings.Join(v, ",")
+	}
+	return t, nil
+}
+
+// parseShadowTLS parses a ShadowTLS v3 URI.
+// Format: shadow-tls://HOST:PORT?sni=...&password=...&version=3
+func parseShadowTLS(raw string) (*Transport, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("transport=shadowtls reason=invalid_uri: %v", err)
+	}
+	host, port, af := splitHostPort(u.Host)
+	t := &Transport{
+		Type:          "shadow-tls",
+		Host:          host,
+		Port:          port,
+		AddressFamily: af,
+		Raw:           raw,
+		Params:        make(map[string]string),
+	}
+	for k, v := range u.Query() {
+		t.Params[strings.ToLower(k)] = strings.Join(v, ",")
+	}
+	return t, nil
+}
+
+// splitHostPort splits an authority component into host, port, and
+// address family. Handles IPv4, bracketed IPv6, and bare hostnames.
+func splitHostPort(authority string) (string, uint16, string) {
+	host, portStr, err := net.SplitHostPort(authority)
+	if err != nil {
+		// No port in the authority; use host as-is with port 0.
+		host = authority
+		if ip := net.ParseIP(host); ip != nil {
+			if ip.To4() != nil {
+				return host, 0, "ipv4"
+			}
+			return host, 0, "ipv6"
+		}
+		return host, 0, "dns"
+	}
+	port, _ := strconv.ParseUint(portStr, 10, 16)
+	if ip := net.ParseIP(host); ip != nil {
+		if ip.To4() != nil {
+			return host, uint16(port), "ipv4"
+		}
+		return host, uint16(port), "ipv6"
+	}
+	return host, uint16(port), "dns"
 }
 
 // isDNSName returns true if host looks like a DNS name.
@@ -174,8 +302,41 @@ func isDNSName(host string) bool {
 	return true
 }
 
+// ── v2.6.0 parseTransportLine — transport-aware URI dispatch ─────────
+
+// parseTransportLine detects the transport type from a scheme-prefixed
+// URI and dispatches to the appropriate structural parser. Returns nil
+// if the line does not start with a known transport scheme — callers
+// should fall back to ParseLine for token-based parsing.
+// Never exposes credentials in error messages.
+func parseTransportLine(raw string) (*Transport, error) {
+	line := strings.TrimSpace(raw)
+	if line == "" {
+		return nil, fmt.Errorf("empty line")
+	}
+	lower := strings.ToLower(line)
+	switch {
+	case strings.HasPrefix(lower, "vless://"):
+		return parseVlessReality(raw)
+	case strings.HasPrefix(lower, "hysteria2://"), strings.HasPrefix(lower, "hysteria://"):
+		return parseHysteria2(raw)
+	case strings.HasPrefix(lower, "tuic://"):
+		return parseTuicV5(raw)
+	case strings.HasPrefix(lower, "shadow-tls://"):
+		return parseShadowTLS(raw)
+	default:
+		return nil, nil // Not a URI-based transport; caller try ParseLine
+	}
+}
+
 // ParseLine detects the transport type and dispatches to the appropriate parser.
+// v2.6.0: tries parseTransportLine first for URI-based modern protocols.
 func ParseLine(line string) (*Transport, error) {
+	// v2.6.0: try URI-based modern protocol dispatch first
+	if tr, err := parseTransportLine(line); err != nil || tr != nil {
+		return tr, err
+	}
+
 	trimmed := strings.TrimSpace(line)
 	if trimmed == "" || strings.HasPrefix(trimmed, "#") {
 		return nil, fmt.Errorf("empty or comment")
@@ -204,7 +365,6 @@ func ParseLine(line string) (*Transport, error) {
 		t.Type = strings.ToLower(tokens[0])
 	}
 
-	// Try IPv6 first, then IPv4.
 	for i := 0; i < len(tokens); i++ {
 		tok := tokens[i]
 

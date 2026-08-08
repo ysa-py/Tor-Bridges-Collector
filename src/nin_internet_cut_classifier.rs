@@ -93,6 +93,22 @@ pub const YELLOW_TRANSPORTS: &[&str] = &["webtunnel"];
 /// Transports that are always RED.
 pub const RED_TRANSPORTS: &[&str] = &["vanilla", "obfs3"];
 
+/// v2.6.0: Transports that depend on UDP/QUIC for connectivity (Hysteria2, TUIC).
+/// During measured UDP/QUIC degradation, these transports have lowered dynamic
+/// health but are never permanently blacklisted. When UDP/QUIC recovers, real
+/// successes raise ranking gradually.
+pub const UDP_QUIC_TRANSPORTS: &[&str] = &["hysteria2", "hysteria", "tuic", "tuic_v5"];
+/// v2.6.0: Transports resilient to UDP/QUIC degradation (TCP/TLS/CDN/WebRTC).
+pub const TCP_RELIANT_TRANSPORTS: &[&str] = &[
+    "obfs4",
+    "webtunnel",
+    "snowflake",
+    "meek_lite",
+    "meek-lite",
+    "vless",
+    "shadow-tls",
+];
+
 /// Ports considered NIN-safe for obfs4 classification.
 pub const NIN_SAFE_PORTS: &[u32] = &[80, 443, 8080, 8443];
 
@@ -115,6 +131,17 @@ pub const IRAN_CDN_CIDR_RAW: &[&str] = &[
 /// Scenario description written into the report JSON.
 pub const SCENARIO_TEXT: &str = "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.";
 
+/// v2.6.0 — International-connectivity honesty statement (Section I).
+///
+/// This change does not claim to manufacture international connectivity when all
+/// upstream international routes are physically unavailable. It improves detection,
+/// preservation, selection, and recovery of any paths that remain reachable.
+///
+/// During measured UDP/QUIC degradation: lower dynamic health of Hysteria2/TUIC
+/// (never delete, never permanently blacklist); preserve healthy TCP/TLS/CDN/WebRTC
+/// alternatives; when UDP/QUIC recovers, real successes raise ranking gradually.
+/// Never hardcode QUIC is always best/blocked — strictly evidence-driven.
+///
 /// GREEN classification logic description written into the report JSON.
 pub const CLASSIFICATION_LOGIC_GREEN: &str =
     "Snowflake, meek_lite (CDN by design) OR WebTunnel via Iranian/Cloudflare CDN SNI";
