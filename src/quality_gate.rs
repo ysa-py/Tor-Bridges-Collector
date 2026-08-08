@@ -250,7 +250,7 @@ pub fn report(root: &Path) -> i32 {
 }
 
 const USAGE: &str =
-    "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check> [path]";
+    "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check|protocol-check> [path]";
 
 /// Subcommand: validate WebTunnel bridge lines under `root`.
 ///
@@ -379,6 +379,176 @@ pub fn webtunnel_check(root: &Path) -> i32 {
     }
     println!("  ✓ All WebTunnel v0.0.4 bridge lines pass validation");
     0
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// v2.6.0 Protocol validators — structural parsing; no keyword matching.
+// ────────────────────────────────────────────────────────────────────────────
+
+/// Validate a VLESS+REALITY URI: `vless://UUID@HOST:PORT?security=reality&pbk=...&sid=...&fp=...&sni=...&flow=...&type=tcp`.
+/// Returns `None` if structurally valid, `Some(reason)` sanitized on error.
+pub fn validate_vless_reality(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("vless://") {
+        return Some("transport=vless reason=missing_scheme".into());
+    }
+    let rest = &uri["vless://".len()..];
+    let at_pos = rest.find('@')?;
+    let _uuid = &rest[..at_pos];
+    let after_at = &rest[at_pos + 1..];
+    let qm = after_at.find('?');
+    let _host_port = if let Some(pos) = qm {
+        &after_at[..pos]
+    } else {
+        after_at
+    };
+    let query = if let Some(pos) = qm {
+        &after_at[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("security=reality") {
+        return Some("transport=vless reason=missing_security_reality".into());
+    }
+    let required = ["pbk=", "sid=", "fp=", "sni="];
+    for field in &required {
+        if !q.contains(field) {
+            return Some(format!(
+                "transport=vless reason=missing_{}",
+                field.trim_end_matches('=')
+            ));
+        }
+    }
+    // reject ambiguous duplicate security=
+    let sec_count = q.matches("security=").count();
+    if sec_count > 1 {
+        return Some("transport=vless reason=duplicate_security_param".into());
+    }
+    None
+}
+
+/// Validate a Hysteria2 URI: `hysteria2://PASSWORD@HOST:PORT?sni=...&obfs=...&obfs-password=...`.
+pub fn validate_hysteria2(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("hysteria2://") && !lower.starts_with("hysteria://") {
+        return Some("transport=hysteria2 reason=missing_scheme".into());
+    }
+    let scheme_end = if lower.starts_with("hysteria2://") {
+        "hysteria2://".len()
+    } else {
+        "hysteria://".len()
+    };
+    let rest = &uri[scheme_end..];
+    let at_pos = rest.find('@')?;
+    let _auth = &rest[..at_pos];
+    let after_at = &rest[at_pos + 1..];
+    let qm = after_at.find('?');
+    let _host_part = if let Some(pos) = qm {
+        &after_at[..pos]
+    } else {
+        after_at
+    };
+    let query = if let Some(pos) = qm {
+        &after_at[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("sni=") {
+        return Some("transport=hysteria2 reason=missing_sni".into());
+    }
+    // obfs present → obfs-password must also be present
+    if q.contains("obfs=") && !q.contains("obfs-password=") {
+        let obfs_val = q.split("obfs=").nth(1)?.split('&').next()?;
+        if obfs_val != "none" {
+            return Some("transport=hysteria2 reason=missing_obfs_password".into());
+        }
+    }
+    None
+}
+
+/// Validate a TUIC v5 URI: `tuic://UUID:PASSWORD@HOST:PORT?congestion_control=...&alpn=...&sni=...`.
+pub fn validate_tuic_v5(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("tuic://") {
+        return Some("transport=tuic reason=missing_scheme".into());
+    }
+    let rest = &uri["tuic://".len()..];
+    let at_pos = rest.find('@')?;
+    let userinfo = &rest[..at_pos];
+    if !userinfo.contains(':') {
+        return Some("transport=tuic reason=missing_password_in_userinfo".into());
+    }
+    let after_at = &rest[at_pos + 1..];
+    let qm = after_at.find('?');
+    let _host_part = if let Some(pos) = qm {
+        &after_at[..pos]
+    } else {
+        after_at
+    };
+    let query = if let Some(pos) = qm {
+        &after_at[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("sni=") {
+        return Some("transport=tuic reason=missing_sni".into());
+    }
+    None
+}
+
+/// Validate a ShadowTLS v3 URI: `shadow-tls://HOST:PORT?sni=...&password=...&version=3`.
+pub fn validate_shadowtls_v3(uri: &str) -> Option<String> {
+    let lower = uri.to_ascii_lowercase();
+    if !lower.starts_with("shadow-tls://") {
+        return Some("transport=shadowtls reason=missing_scheme".into());
+    }
+    let rest = &uri["shadow-tls://".len()..];
+    let qm = rest.find('?');
+    let _host_part = if let Some(pos) = qm {
+        &rest[..pos]
+    } else {
+        rest
+    };
+    let query = if let Some(pos) = qm {
+        &rest[pos + 1..]
+    } else {
+        ""
+    };
+    let q = query.to_ascii_lowercase();
+    if !q.contains("sni=") {
+        return Some("transport=shadowtls reason=missing_sni".into());
+    }
+    if !q.contains("password=") {
+        return Some("transport=shadowtls reason=missing_password".into());
+    }
+    // version=3 is expected for v3
+    if q.contains("version=") {
+        let ver_val = q.split("version=").nth(1)?.split('&').next()?;
+        if ver_val != "3" {
+            return Some("transport=shadowtls reason=unsupported_version".into());
+        }
+    }
+    None
+}
+
+/// Dispatch to the correct validator based on the transport scheme prefix.
+/// Returns `None` if no known transport prefix is detected.
+pub fn validate_protocol_line(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if lower.starts_with("vless://") {
+        Some(validate_vless_reality(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("hysteria2://") || lower.starts_with("hysteria://") {
+        Some(validate_hysteria2(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("tuic://") {
+        Some(validate_tuic_v5(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("shadow-tls://") {
+        Some(validate_shadowtls_v3(line.trim()).unwrap_or_default())
+    } else {
+        None
+    }
 }
 
 /// CLI entry point; returns the process exit code.
@@ -568,5 +738,117 @@ mod tests {
         assert_eq!(value["checks"]["yaml_file_count"], 1);
         assert!(value["timestamp"].as_str().is_some_and(|t| t.contains('T')));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    // ── v2.6.0 Protocol validator tests ────────────────────────────────
+
+    #[test]
+    fn vless_reality_valid_accepts_standard_uri() {
+        let uri = "vless://d342d11e-d424-4583-b36e-524ab1f0afa4@192.0.2.1:443?security=reality&pbk=Z84J2IelR9u0s9nPd5Bl7Jo0LkNpVz8p&sid=6ba85179e30d4fc2&fp=chrome&sni=cloudflare.com&flow=xtls-rprx-vision&type=tcp";
+        assert!(validate_vless_reality(uri).is_none());
+    }
+
+    #[test]
+    fn vless_reality_rejects_missing_security() {
+        let uri = "vless://uuid@host:443?pbk=x&sid=y&fp=z&sni=w&type=tcp";
+        assert!(validate_vless_reality(uri).is_some());
+    }
+
+    #[test]
+    fn vless_reality_rejects_missing_scheme() {
+        assert!(validate_vless_reality("https://example.com").is_some());
+    }
+
+    #[test]
+    fn vless_reality_rejects_duplicate_security() {
+        let uri =
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&security=none&type=tcp";
+        let err = validate_vless_reality(uri);
+        assert!(err.is_some());
+        let msg = err.unwrap();
+        assert!(msg.contains("duplicate_security_param"));
+        // Sentinel: the error must not echo credential-bearing input.
+        assert!(!msg.contains("Z84J"));
+    }
+
+    #[test]
+    fn hysteria2_valid_accepts_minimal() {
+        let uri = "hysteria2://letmein@192.0.2.1:8443?sni=cloudflare.com";
+        assert!(validate_hysteria2(uri).is_none());
+    }
+
+    #[test]
+    fn hysteria2_rejects_missing_sni() {
+        let uri = "hysteria2://letmein@192.0.2.1:8443";
+        assert!(validate_hysteria2(uri).is_some());
+    }
+
+    #[test]
+    fn hysteria2_obfs_requires_obfs_password() {
+        let uri = "hysteria2://auth@host:443?sni=example.com&obfs=salamander";
+        assert!(validate_hysteria2(uri).is_some());
+    }
+
+    #[test]
+    fn tuic_v5_valid_accepts_standard() {
+        let uri =
+            "tuic://uuid:password@192.0.2.1:8443?sni=cloudflare.com&congestion_control=bbr&alpn=h3";
+        assert!(validate_tuic_v5(uri).is_none());
+    }
+
+    #[test]
+    fn tuic_v5_rejects_missing_sni() {
+        let uri = "tuic://uuid:password@192.0.2.1:8443";
+        assert!(validate_tuic_v5(uri).is_some());
+    }
+
+    #[test]
+    fn tuic_v5_rejects_missing_password_in_userinfo() {
+        let uri = "tuic://uuid@192.0.2.1:8443?sni=example.com";
+        assert!(validate_tuic_v5(uri).is_some());
+    }
+
+    #[test]
+    fn shadowtls_v3_valid_accepts_standard() {
+        let uri = "shadow-tls://192.0.2.1:443?sni=cloudflare.com&password=secret&version=3";
+        assert!(validate_shadowtls_v3(uri).is_none());
+    }
+
+    #[test]
+    fn shadowtls_v3_rejects_wrong_version() {
+        let uri = "shadow-tls://192.0.2.1:443?sni=cloudflare.com&password=secret&version=2";
+        assert!(validate_shadowtls_v3(uri).is_some());
+    }
+
+    #[test]
+    fn validate_protocol_line_dispatch() {
+        assert!(validate_protocol_line(
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("hysteria2://auth@host:443?sni=example.com")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("tuic://uuid:pass@host:443?sni=example.com")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("shadow-tls://host:443?sni=example.com&password=s")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(validate_protocol_line("obfs4 192.0.2.1:443 cert=abc iat-mode=2").is_none());
+        assert!(validate_protocol_line("ordinary line").is_none());
+    }
+
+    #[test]
+    fn secret_sanitization_no_credential_leak() {
+        // Synthetic sentinel credentials must never appear in error messages.
+        let uri = "vless://sentinel-user-uuid@host:443?security=none&pbk=sentinel-pbk&sid=sentinel-sid&fp=sentinel&sni=target.com&type=tcp";
+        let err = validate_vless_reality(uri).unwrap();
+        assert!(!err.contains("sentinel"));
+        assert!(!err.contains("target.com"));
+        assert!(!err.to_lowercase().contains("user-uuid"));
     }
 }

@@ -878,14 +878,26 @@ mod tests {
         // match the "timeout" category first. This is correct: the broad
         // timeout pattern wins, and the more specific SNI/probe categories
         // are reached only when the generic patterns don't match.
-        assert_eq!(categorize("tls handshake reset on connection"), "tls_clienthello_reset");
-        assert_eq!(categorize("clienthello reset detected"), "tls_clienthello_reset");
-        assert_eq!(categorize("tls fatal alert received"), "tls_clienthello_reset");
+        assert_eq!(
+            categorize("tls handshake reset on connection"),
+            "tls_clienthello_reset"
+        );
+        assert_eq!(
+            categorize("clienthello reset detected"),
+            "tls_clienthello_reset"
+        );
+        assert_eq!(
+            categorize("tls fatal alert received"),
+            "tls_clienthello_reset"
+        );
         // timeout category wins over sni_shaped_timeout (checked first)
         assert_eq!(categorize("sni timeout after connect"), "timeout");
         assert_eq!(categorize("post-handshake timeout detected"), "timeout");
         assert_eq!(categorize("tls handshake timeout"), "timeout");
-        assert_eq!(categorize("quic unreachable from endpoint"), "quic_unreachable");
+        assert_eq!(
+            categorize("quic unreachable from endpoint"),
+            "quic_unreachable"
+        );
         assert_eq!(categorize("udp port unreachable error"), "quic_unreachable");
         assert_eq!(categorize("h3 connection failure seen"), "quic_unreachable");
         assert_eq!(categorize("upstream 5xx from provider"), "upstream_5xx");
