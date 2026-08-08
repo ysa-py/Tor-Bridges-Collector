@@ -83,6 +83,7 @@ pub mod tor_collector;
 pub mod torshield_ai_gateway;
 pub mod validate_workflows;
 pub mod vercel_cleanup;
+pub mod webtunnel_probe;
 pub mod webtunnel_v2;
 pub mod yield_telemetry;
 

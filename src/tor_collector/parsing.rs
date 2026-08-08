@@ -58,9 +58,10 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         if ver.is_none() {
             return false;
         }
-        if !has_webtunnel_literal_endpoint(trimmed) && extract_url(trimmed).is_some() {
-            return false;
-        }
+        // v2.6.1: Domain-only WebTunnel bridges (no literal IP endpoint, only
+        // url=https://front/path) are now accepted. Downstream testers must
+        // perform TLS+WebSocket Upgrade probes against the URL front domain
+        // instead of raw TCP to a nonexistent endpoint.
     }
 
     if let Some(ref token) = first_fingerprint_like_token(trimmed) {
@@ -259,6 +260,7 @@ pub fn token_value(line: &str, key: &str) -> Option<String> {
         })
 }
 
+#[allow(dead_code)]
 fn has_webtunnel_literal_endpoint(line: &str) -> bool {
     strip_bridge_prefix(line)
         .split_whitespace()

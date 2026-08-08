@@ -140,6 +140,30 @@ pub fn load_iran_results(path: &Path) -> Result<Value, ResultsWriterError> {
     })
 }
 
+/// Returns true if the bridge is a domain-fronted WebTunnel bridge:
+/// transport=webtunnel, has a url= host that is a domain name (not an IP),
+/// and the bridge line lacks a routable [ip]:port field.
+///
+/// These bridges cannot be TCP-probed and are currently assigned
+/// tcp_unreachable by the Go iran_tester, but that status is meaningless
+/// for domain-fronting — TCP is the wrong probe for them.
+fn is_domain_fronted_webtunnel(bridge: &Value) -> bool {
+    let transport = bridge
+        .get("transport")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    if transport != "webtunnel" {
+        return false;
+    }
+    let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
+    if host.is_empty() {
+        return false;
+    }
+    // If host parses as an IP address, it has a routable endpoint — not domain-fronted.
+    // Domain-fronted bridges have a domain name as the host (no routable IP).
+    host.parse::<std::net::IpAddr>().is_err()
+}
+
 /// Categorise bridges and write all `results_writer.py` bridge text outputs.
 ///
 /// Behavior traced to `results_writer.py::write_result_files`:
@@ -194,7 +218,21 @@ pub fn write_result_files(
             }
         }
 
-        if UNKNOWN_REACHABLE.contains(&status)
+        // v2.6.2: Domain-fronted WebTunnel bridges (url=, no routable IP)
+        // cannot be probed via raw TCP. The Go iran_tester correctly marks
+        // them tcp_unreachable, but that is the wrong signal for WebTunnel.
+        // Reclassify them as iran_unknown so that Tier 2's existing
+        // webtunnel special-case (bypasses tcp_ok) promotes them.
+        let effective_status = if status == "tcp_unreachable"
+            && transport == "webtunnel"
+            && is_domain_fronted_webtunnel(bridge)
+        {
+            "iran_unknown"
+        } else {
+            status
+        };
+
+        if UNKNOWN_REACHABLE.contains(&effective_status)
             && (tcp_ok || matches!(transport, "snowflake" | "webtunnel"))
         {
             if let Some(bucket) = t2_by_transport.get_mut(transport) {
