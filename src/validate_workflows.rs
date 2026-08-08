@@ -332,17 +332,17 @@ mod tests {
             serde_yaml::from_str(&text).expect("ai_self_healing.yml must be valid YAML");
         let mapping = doc.as_mapping().expect("top-level must be a mapping");
         let jobs = mapping
-            .get(&serde_yaml::Value::String("jobs".into()))
+            .get(serde_yaml::Value::String("jobs".into()))
             .and_then(|v| v.as_mapping())
             .expect("jobs must be a mapping");
 
         // Find the auto-diagnose-and-fix job.
         let auto_job = jobs
-            .get(&serde_yaml::Value::String("auto-diagnose-and-fix".into()))
+            .get(serde_yaml::Value::String("auto-diagnose-and-fix".into()))
             .and_then(|v| v.as_mapping())
             .expect("auto-diagnose-and-fix job must exist");
         let steps = auto_job
-            .get(&serde_yaml::Value::String("steps".into()))
+            .get(serde_yaml::Value::String("steps".into()))
             .and_then(|v| v.as_sequence())
             .expect("steps must be a sequence");
 
@@ -352,7 +352,7 @@ mod tests {
         for step in steps {
             let sm = step.as_mapping().expect("step must be a mapping");
             let env = sm
-                .get(&serde_yaml::Value::String("env".into()))
+                .get(serde_yaml::Value::String("env".into()))
                 .and_then(|v| v.as_mapping());
             if env.is_none() {
                 continue;
