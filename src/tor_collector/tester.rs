@@ -31,7 +31,7 @@ use tokio_rustls::client::TlsStream;
 use tokio_rustls::TlsConnector;
 
 use super::config::{CollectorConfig, Transport, USER_AGENT};
-use super::parsing::{extract_endpoint, extract_front_host, extract_url, parse_obfs4_ipv4};
+use super::parsing::{parse_bridge_line, parse_obfs4_ipv4};
 
 /// One completed protocol probe.
 #[derive(Clone, Debug)]
@@ -417,31 +417,73 @@ impl ProbeEngine {
         result
     }
 
-    async fn probe_once(&self, line: &str, transport: Transport, ipv6: bool) -> Result<()> {
-        if transport.is_fronted() {
-            let host = extract_front_host(line)
-                .ok_or_else(|| anyhow!("fronted line has no front/broker host"))?;
-            if !self.circuit_breaker.allow(&host) {
-                return Err(anyhow!("front-domain circuit is open for {host}"));
+    async fn probe_once(&self, line: &str, _transport: Transport, ipv6: bool) -> Result<()> {
+        // ── Transport-agnostic probe routing via ParsedBridgeLine ──
+        //
+        // The prober does NOT branch on transport type or hardcode CDN-
+        // specific behaviour.  It inspects the parsed bridge fields and
+        // chooses a probe strategy based on what the line actually
+        // contains — a direct endpoint, a domain-fronted URL, or both.
+        // This single logic path works transparently whether the resolved
+        // IP belongs to a CDN edge node, an origin server, or a bare-metal
+        // bridge host.
+
+        let parsed = parse_bridge_line(line);
+
+        // 1. Domain-fronted WebSocket/HTTP probe.
+        //    Applies to any bridge that carries a URL and a front/SIR
+        //    domain (from url=, front=, fronts=, or sni=) without a
+        //    literal IP endpoint.  Same logic for every transport.
+        if let (Some(ref url_str), Some(ref sni)) = (&parsed.url, &parsed.sni) {
+            if parsed.ipv4.is_none() && parsed.ipv6.is_none() {
+                // Domain-only bridge: probe through the front domain.
+                if !self.circuit_breaker.allow(sni) {
+                    return Err(anyhow!("front-domain circuit is open for {sni}"));
+                }
+                let result = if let Ok(parsed_url) = url::Url::parse(url_str) {
+                    self.websocket_upgrade(parsed_url).await
+                } else {
+                    self.tls_probe(sni, parsed.port.unwrap_or(443), true).await
+                };
+                self.circuit_breaker.record(sni, result.is_ok());
+                return result;
             }
-            let result = self.tls_probe(&host, 443, false).await;
-            self.circuit_breaker.record(&host, result.is_ok());
-            return result;
         }
 
-        if transport == Transport::WebTunnel {
-            let url =
-                extract_url(line).ok_or_else(|| anyhow!("WebTunnel line has no valid url="))?;
-            return self.websocket_upgrade(url).await;
+        // 2. Fronted transport with both endpoint and front domain.
+        //    Snowflake / meek / conjure: the placeholder endpoint is
+        //    irrelevant; probe the front domain with a TLS+HTTP request.
+        if let Some(ref sni) = parsed.sni {
+            if parsed.ipv4.is_some() || parsed.ipv6.is_some() {
+                if !self.circuit_breaker.allow(sni) {
+                    return Err(anyhow!("front-domain circuit is open for {sni}"));
+                }
+                let result = if let Some(ref url_str) = parsed.url {
+                    if let Ok(parsed_url) = url::Url::parse(url_str) {
+                        self.websocket_upgrade(parsed_url).await
+                    } else {
+                        self.tls_probe(sni, 443, false).await
+                    }
+                } else {
+                    self.tls_probe(sni, 443, false).await
+                };
+                self.circuit_breaker.record(sni, result.is_ok());
+                return result;
+            }
         }
 
-        let endpoint =
-            extract_endpoint(line).ok_or_else(|| anyhow!("bridge line has no endpoint"))?;
-        // IPv4 obfs4 intentionally starts with a TCP prefilter; the service
-        // subsequently invokes the real obfs4 SOCKS handshake on survivors.
-        // IPv6 obfs4 remains TCP-only because CI runners commonly lack IPv6.
+        // 3. Direct-endpoint probe (obfs4, vanilla, etc.).
+        //    Standard TCP connect to the literal IP address.
         let _ = ipv6;
-        self.tcp_probe(&endpoint.host, endpoint.port).await
+        let host = parsed
+            .ipv4
+            .as_deref()
+            .or(parsed.ipv6.as_deref())
+            .ok_or_else(|| anyhow!("bridge line has no routable endpoint"))?;
+        let port = parsed
+            .port
+            .ok_or_else(|| anyhow!("bridge line has no port"))?;
+        self.tcp_probe(host, port).await
     }
 
     async fn tcp_probe(&self, host: &str, port: u16) -> Result<()> {
@@ -709,9 +751,19 @@ fn backoff_ms(attempt: usize) -> u64 {
 }
 
 fn probe_mode(transport: Transport, ipv6: bool) -> &'static str {
+    // Transport-agnostic probe modes: the actual probe strategy is
+    // determined by the parsed bridge-line structure (endpoint vs
+    // domain-fronted), not by hardcoded transport dispatch.
+    // These labels are informational for logs and Prometheus metrics.
     match transport {
-        Transport::WebTunnel => "websocket-101",
-        Transport::Snowflake | Transport::MeekAzure | Transport::Conjure => "front-tls",
+        Transport::WebTunnel
+        | Transport::Snowflake
+        | Transport::MeekAzure
+        | Transport::Conjure
+        | Transport::VlessReality
+        | Transport::ShadowTls
+        | Transport::HttpUpgrade
+        | Transport::Grpc => "tls-front",
         Transport::Obfs4 if !ipv6 => "tcp-prefilter",
         _ => "tcp",
     }
