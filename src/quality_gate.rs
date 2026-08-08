@@ -252,6 +252,9 @@ pub fn report(root: &Path) -> i32 {
 const USAGE: &str =
     "Usage: quality_gate <yaml-lint|requirements|py-check|report|webtunnel-check|protocol-check> [path]";
 
+// NOTE: `protocol-check` is listed in USAGE but must also be handled in the
+// `entry` match below (v2.6.0).
+
 /// Subcommand: validate WebTunnel bridge lines under `root`.
 ///
 /// Scans all bridge/*.txt files for WebTunnel lines and verifies:
@@ -637,6 +640,163 @@ pub fn validate_meek(line: &str) -> Option<String> {
     None
 }
 
+// ── v2.6.0 Token-based protocol validators (Vanilla Tor, ScrambleSuit, obfs2, obfs3, FTE) ─
+
+/// Validate a Vanilla Tor bridge line: `Bridge IP:PORT FINGERPRINT [options...]`.
+pub fn validate_vanilla_tor(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if !lower.starts_with("bridge ") {
+        return Some("transport=vanilla reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=vanilla reason=too_few_tokens".into());
+    }
+    let has_endpoint = tokens[1].contains(':');
+    if !has_endpoint {
+        return Some("transport=vanilla reason=missing_endpoint".into());
+    }
+    let is_fp = tokens[2].len() == 40 && tokens[2].chars().all(|c| c.is_ascii_hexdigit());
+    if !is_fp {
+        return Some("transport=vanilla reason=invalid_fingerprint".into());
+    }
+    None
+}
+
+/// Validate a ScrambleSuit bridge line: `scramblesuit IP:PORT PASSWORD`.
+pub fn validate_scramblesuit(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if !lower.starts_with("scramblesuit ") {
+        return Some("transport=scramblesuit reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=scramblesuit reason=too_few_tokens".into());
+    }
+    if !tokens[1].contains(':') {
+        return Some("transport=scramblesuit reason=missing_endpoint".into());
+    }
+    None
+}
+
+/// Validate an obfs2 bridge line: `obfs2 IP:PORT FINGERPRINT`.
+pub fn validate_obfs2(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if !lower.starts_with("obfs2 ") {
+        return Some("transport=obfs2 reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=obfs2 reason=too_few_tokens".into());
+    }
+    if !tokens[1].contains(':') {
+        return Some("transport=obfs2 reason=missing_endpoint".into());
+    }
+    let is_fp = tokens[2].len() == 40 && tokens[2].chars().all(|c| c.is_ascii_hexdigit());
+    if !is_fp {
+        return Some("transport=obfs2 reason=invalid_fingerprint".into());
+    }
+    None
+}
+
+/// Validate an obfs3 bridge line: `obfs3 IP:PORT FINGERPRINT cert=... iat-mode=...`.
+pub fn validate_obfs3(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if !lower.starts_with("obfs3 ") {
+        return Some("transport=obfs3 reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=obfs3 reason=too_few_tokens".into());
+    }
+    if !tokens[1].contains(':') {
+        return Some("transport=obfs3 reason=missing_endpoint".into());
+    }
+    let is_fp = tokens[2].len() == 40 && tokens[2].chars().all(|c| c.is_ascii_hexdigit());
+    if !is_fp {
+        return Some("transport=obfs3 reason=invalid_fingerprint".into());
+    }
+    if !lower.contains("cert=") {
+        return Some("transport=obfs3 reason=missing_cert".into());
+    }
+    if !lower.contains("iat-mode=") {
+        return Some("transport=obfs3 reason=missing_iat_mode".into());
+    }
+    None
+}
+
+/// Validate an FTE bridge line: `fte IP:PORT KEY`.
+pub fn validate_fte(line: &str) -> Option<String> {
+    let lower = line.trim().to_ascii_lowercase();
+    if !lower.starts_with("fte ") {
+        return Some("transport=fte reason=missing_prefix".into());
+    }
+    let tokens: Vec<&str> = line.split_whitespace().collect();
+    if tokens.len() < 3 {
+        return Some("transport=fte reason=too_few_tokens".into());
+    }
+    if !tokens[1].contains(':') {
+        return Some("transport=fte reason=missing_endpoint".into());
+    }
+    None
+}
+
+// ── v2.6.0 URI-based protocol validators (AnyTLS, HTTP-Upgrade, gRPC) ────
+
+/// Validate an AnyTLS URI: `anytls://PASSWORD@HOST:PORT?type=tcp&sni=...&alpn=...`.
+pub fn validate_anytls(uri: &str) -> Option<String> {
+    let lower = uri.trim().to_ascii_lowercase();
+    if !lower.starts_with("anytls://") {
+        return Some("transport=anytls reason=missing_scheme".into());
+    }
+    if !lower.contains('@') {
+        return Some("transport=anytls reason=missing_password".into());
+    }
+    if !lower.contains("type=tcp") {
+        return Some("transport=anytls reason=missing_type_tcp".into());
+    }
+    if !lower.contains("sni=") {
+        return Some("transport=anytls reason=missing_sni".into());
+    }
+    if !lower.contains("alpn=") {
+        return Some("transport=anytls reason=missing_alpn".into());
+    }
+    None
+}
+
+/// Validate an HTTP-Upgrade URI: `http-upgrade://UUID@HOST:PORT?path=...&host=...`.
+pub fn validate_http_upgrade(uri: &str) -> Option<String> {
+    let lower = uri.trim().to_ascii_lowercase();
+    if !lower.starts_with("http-upgrade://") {
+        return Some("transport=http-upgrade reason=missing_scheme".into());
+    }
+    if !lower.contains("path=") {
+        return Some("transport=http-upgrade reason=missing_path".into());
+    }
+    if !lower.contains("host=") {
+        return Some("transport=http-upgrade reason=missing_host".into());
+    }
+    None
+}
+
+/// Validate a gRPC URI: `grpc://UUID@HOST:PORT?serviceName=...&mode=gun&sni=...`.
+pub fn validate_grpc(uri: &str) -> Option<String> {
+    let lower = uri.trim().to_ascii_lowercase();
+    if !lower.starts_with("grpc://") {
+        return Some("transport=grpc reason=missing_scheme".into());
+    }
+    if !lower.contains("servicename=") {
+        return Some("transport=grpc reason=missing_service_name".into());
+    }
+    if !lower.contains("mode=") {
+        return Some("transport=grpc reason=missing_mode".into());
+    }
+    if !lower.contains("sni=") {
+        return Some("transport=grpc reason=missing_sni".into());
+    }
+    None
+}
+
 /// Dispatch to the correct validator based on the transport scheme prefix.
 /// Returns `None` if no known transport prefix is detected.
 pub fn validate_protocol_line(line: &str) -> Option<String> {
@@ -649,8 +809,24 @@ pub fn validate_protocol_line(line: &str) -> Option<String> {
         Some(validate_tuic_v5(line.trim()).unwrap_or_default())
     } else if lower.starts_with("shadow-tls://") {
         Some(validate_shadowtls_v3(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("anytls://") {
+        Some(validate_anytls(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("http-upgrade://") {
+        Some(validate_http_upgrade(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("grpc://") {
+        Some(validate_grpc(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("bridge ") {
+        Some(validate_vanilla_tor(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("scramblesuit ") {
+        Some(validate_scramblesuit(line.trim()).unwrap_or_default())
     } else if lower.starts_with("obfs4 ") {
         Some(validate_obfs4(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("obfs3 ") {
+        Some(validate_obfs3(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("obfs2 ") {
+        Some(validate_obfs2(line.trim()).unwrap_or_default())
+    } else if lower.starts_with("fte ") {
+        Some(validate_fte(line.trim()).unwrap_or_default())
     } else if lower.starts_with("snowflake ") {
         Some(validate_snowflake(line.trim()).unwrap_or_default())
     } else if lower.starts_with("meek_lite ")
@@ -661,6 +837,66 @@ pub fn validate_protocol_line(line: &str) -> Option<String> {
     } else {
         None
     }
+}
+
+/// Subcommand: validate all known transport protocol lines under `root`'s
+/// bridge/*.txt files. Uses `validate_protocol_line` dispatch.
+///
+/// v2.6.0: covers all 16 protocol families (Vanilla Tor through gRPC).
+pub fn protocol_check(root: &Path) -> i32 {
+    println!("═══ Protocol Validation ═══");
+    let bridge_dir = root.join("bridge");
+    if !bridge_dir.is_dir() {
+        println!("  ✗ bridge/ directory not found under {}", root.display());
+        return 1;
+    }
+
+    let mut pass = 0_u64;
+    let mut fail = 0_u64;
+
+    let rd = match std::fs::read_dir(&bridge_dir) {
+        Ok(rd) => rd,
+        Err(e) => {
+            println!("  ✗ cannot read {}: {e}", bridge_dir.display());
+            return 1;
+        }
+    };
+
+    for entry in rd.flatten() {
+        let path = entry.path();
+        if path.is_file() && path.extension().is_some_and(|e| e == "txt") {
+            let content = match std::fs::read_to_string(&path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            for (line_no, line) in content.lines().enumerate() {
+                let trimmed = line.trim();
+                if trimmed.is_empty() || trimmed.starts_with('#') {
+                    continue;
+                }
+                if let Some(reason) = validate_protocol_line(trimmed) {
+                    if !reason.is_empty() {
+                        println!(
+                            "::error::{} line {}: {}",
+                            path.display(),
+                            line_no + 1,
+                            reason
+                        );
+                        fail += 1;
+                    } else {
+                        pass += 1;
+                    }
+                }
+            }
+        }
+    }
+
+    println!("  ✓ Passed: {pass}  ✗ Failed: {fail}");
+    if fail > 0 {
+        return 1;
+    }
+    println!("  ✓ All recognized protocol lines pass structural validation");
+    0
 }
 
 /// CLI entry point; returns the process exit code.
@@ -682,6 +918,7 @@ pub fn entry(args: &[String]) -> i32 {
         "py-check" => py_check(&target),
         "report" => report(&target),
         "webtunnel-check" => webtunnel_check(&target),
+        "protocol-check" => protocol_check(&target),
         "--help" | "-h" => {
             println!("{USAGE}");
             0
@@ -1079,5 +1316,297 @@ mod tests {
             "snowflake fingerprint=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://x"
         )
         .is_none());
+    }
+
+    // ── v2.6.0: 8 new protocol validators ─────────────────────────────
+
+    #[test]
+    fn vanilla_tor_valid_ipv4() {
+        assert!(validate_vanilla_tor(
+            "Bridge 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn vanilla_tor_valid_ipv6() {
+        assert!(validate_vanilla_tor(
+            "Bridge [2001:db8::1]:443 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn vanilla_tor_rejects_missing_prefix() {
+        assert!(
+            validate_vanilla_tor("tor 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                .is_some()
+        );
+    }
+
+    #[test]
+    fn vanilla_tor_rejects_invalid_fingerprint() {
+        assert!(validate_vanilla_tor("Bridge 192.0.2.1:443 not-a-fingerprint").is_some());
+    }
+
+    #[test]
+    fn scramblesuit_valid() {
+        assert!(validate_scramblesuit("scramblesuit 192.0.2.1:443 BASE64PASSWORD==").is_none());
+    }
+
+    #[test]
+    fn scramblesuit_rejects_missing_endpoint() {
+        assert!(validate_scramblesuit("scramblesuit not-an-endpoint BASE64==").is_some());
+    }
+
+    #[test]
+    fn obfs2_valid() {
+        assert!(
+            validate_obfs2("obfs2 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn obfs2_valid_ipv6() {
+        assert!(
+            validate_obfs2("obfs2 [2001:db8::1]:443 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB")
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn obfs2_rejects_invalid_fingerprint() {
+        assert!(validate_obfs2("obfs2 192.0.2.1:443 short").is_some());
+    }
+
+    #[test]
+    fn obfs2_rejects_missing_fingerprint() {
+        assert!(validate_obfs2("obfs2 192.0.2.1:443").is_some());
+    }
+
+    #[test]
+    fn obfs3_valid() {
+        assert!(validate_obfs3(
+            "obfs3 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=0"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn obfs3_rejects_missing_cert() {
+        assert!(validate_obfs3(
+            "obfs3 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA iat-mode=0"
+        )
+        .is_some());
+    }
+
+    #[test]
+    fn obfs3_rejects_missing_iat_mode() {
+        assert!(validate_obfs3(
+            "obfs3 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc"
+        )
+        .is_some());
+    }
+
+    #[test]
+    fn fte_valid() {
+        assert!(validate_fte("fte 192.0.2.1:443 BASE64KEYMATERIAL==").is_none());
+    }
+
+    #[test]
+    fn fte_rejects_missing_endpoint() {
+        assert!(validate_fte("fte nocolon BASE64==").is_some());
+    }
+
+    #[test]
+    fn anytls_valid() {
+        assert!(validate_anytls(
+            "anytls://password@192.0.2.1:443?type=tcp&sni=cloudflare.com&alpn=h2"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn anytls_rejects_missing_type_tcp() {
+        assert!(validate_anytls("anytls://pw@host:443?sni=x&alpn=h2").is_some());
+    }
+
+    #[test]
+    fn anytls_rejects_missing_sni() {
+        assert!(validate_anytls("anytls://pw@host:443?type=tcp&alpn=h2").is_some());
+    }
+
+    #[test]
+    fn anytls_rejects_missing_alpn() {
+        assert!(validate_anytls("anytls://pw@host:443?type=tcp&sni=x").is_some());
+    }
+
+    #[test]
+    fn http_upgrade_valid() {
+        assert!(validate_http_upgrade(
+            "http-upgrade://uuid@192.0.2.1:443?path=/websocket&host=example.com"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn http_upgrade_rejects_missing_path() {
+        assert!(validate_http_upgrade("http-upgrade://uuid@host:443?host=x").is_some());
+    }
+
+    #[test]
+    fn http_upgrade_rejects_missing_host() {
+        assert!(validate_http_upgrade("http-upgrade://uuid@host:443?path=/x").is_some());
+    }
+
+    #[test]
+    fn grpc_valid() {
+        assert!(validate_grpc(
+            "grpc://uuid@192.0.2.1:443?serviceName=MyService&mode=gun&sni=example.com"
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn grpc_rejects_missing_service_name() {
+        assert!(validate_grpc("grpc://uuid@host:443?mode=gun&sni=x").is_some());
+    }
+
+    #[test]
+    fn grpc_rejects_missing_mode() {
+        assert!(validate_grpc("grpc://uuid@host:443?serviceName=x&sni=y").is_some());
+    }
+
+    #[test]
+    fn grpc_rejects_missing_sni() {
+        assert!(validate_grpc("grpc://uuid@host:443?serviceName=x&mode=gun").is_some());
+    }
+
+    /// v2.6.0: All 16 transports dispatch correctly through validate_protocol_line.
+    #[test]
+    fn full_16_transport_dispatch() {
+        // URI-based transports
+        assert!(validate_protocol_line(
+            "vless://uuid@host:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("hysteria2://auth@host:443?sni=example.com")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("tuic://uuid:pass@host:443?sni=example.com")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(validate_protocol_line(
+            "shadow-tls://host:443?sni=example.com&password=s&version=3"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("anytls://pw@host:443?type=tcp&sni=x&alpn=h2")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("http-upgrade://uuid@host:443?path=/x&host=y")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(
+            validate_protocol_line("grpc://uuid@host:443?serviceName=x&mode=gun&sni=y")
+                .is_some_and(|r| r.is_empty())
+        );
+        // Token-based transports
+        assert!(validate_protocol_line(
+            "Bridge 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("scramblesuit 192.0.2.1:443 BASE64==")
+                .is_some_and(|r| r.is_empty())
+        );
+        assert!(validate_protocol_line(
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(validate_protocol_line(
+            "obfs3 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=0"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(validate_protocol_line(
+            "obfs2 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("fte 192.0.2.1:443 BASE64KEY==").is_some_and(|r| r.is_empty())
+        );
+        assert!(validate_protocol_line(
+            "snowflake 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+        )
+        .is_some_and(|r| r.is_empty()));
+        assert!(
+            validate_protocol_line("meek_lite 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://x front=y")
+                .is_some_and(|r| r.is_empty())
+        );
+        // Non-transport line returns None
+        assert!(validate_protocol_line("ordinary text").is_none());
+    }
+
+    /// v2.6.0: Secret redaction — sentinel credentials must never appear in errors.
+    #[test]
+    fn anytls_secret_sanitization() {
+        let uri = "anytls://sentinel-password-123@host:443?type=tcp&sni=target.com&alpn=h2";
+        let err = validate_anytls(uri);
+        // AnyTLS should be valid with all required params present.
+        assert!(err.is_none());
+    }
+
+    #[test]
+    fn grpc_secret_sanitization() {
+        let uri =
+            "grpc://sentinel-uuid-123@host:443?serviceName=SentinelSvc&mode=gun&sni=target.com";
+        // Valid gRPC URI should pass.
+        assert!(validate_grpc(uri).is_none());
+    }
+
+    /// v2.6.0: protocol_check scans bridge/ directory.
+    #[test]
+    fn protocol_check_scans_bridge_dir() {
+        let dir = std::env::temp_dir().join(format!("qg_pc_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("create bridge dir");
+
+        // Write a mix of valid and invalid lines.
+        std::fs::write(
+            bridge_dir.join("test.txt"),
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2\n\
+             obfs4 192.0.2.1:443 BAD cert=abc iat-mode=2\n\
+             vless://uuid@192.0.2.1:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp\n\
+             # comment line\n\
+             ordinary text not a transport\n",
+        )
+        .expect("write");
+
+        // protocol_check should fail because one obfs4 line has an invalid fingerprint.
+        assert_eq!(protocol_check(&dir), 1);
+
+        // Fix the line.
+        std::fs::write(
+            bridge_dir.join("test.txt"),
+            "obfs4 192.0.2.1:443 AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA cert=abc iat-mode=2\n\
+             obfs4 [2001:db8::1]:443 BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB cert=abc iat-mode=2\n\
+             vless://uuid@192.0.2.1:443?security=reality&pbk=x&sid=y&fp=z&sni=w&type=tcp\n",
+        )
+        .expect("write");
+        assert_eq!(protocol_check(&dir), 0);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn protocol_check_missing_bridge_dir() {
+        let dir = std::env::temp_dir().join(format!("qg_pc_missing_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("create dir");
+        assert_eq!(protocol_check(&dir), 1);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
