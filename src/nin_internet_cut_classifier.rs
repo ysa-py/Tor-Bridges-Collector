@@ -1,6 +1,13 @@
 //! Parity port of `nin_internet_cut_classifier.py` — Stage 8p: NIN Internet-Cut
 //! Bridge Classifier.
 //!
+//! # Mandatory v2.6.0 connectivity statement (Section I)
+//!
+//! This change does not claim to manufacture international connectivity when
+//! all upstream international routes are physically unavailable. It improves
+//! detection, preservation, selection, and recovery of any paths that remain
+//! reachable.
+//!
 //! Classifies known bridges into GREEN / YELLOW / RED tiers for the worst-case
 //! scenario of a complete international internet blackout where only traffic
 //! through Iranian domestic ASNs remains reachable.
