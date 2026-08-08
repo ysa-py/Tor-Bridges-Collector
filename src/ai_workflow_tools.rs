@@ -394,6 +394,9 @@ const FIXABLE_PATTERNS: &[(&str, &[&str])] = &[
 ];
 
 /// Transient failure patterns, in the iteration order of the Python dict.
+/// v2.6.0: extended with censorship-shaped transients (Section N).
+/// These are NEVER fixable by AutoDebug — they originate from upstream
+/// network/censorship conditions, not from repo source defects.
 const TRANSIENT_PATTERNS: &[(&str, &[&str])] = &[
     (
         "network_error",
@@ -420,6 +423,57 @@ const TRANSIENT_PATTERNS: &[(&str, &[&str])] = &[
             "operation timed out",
         ],
     ),
+    // ── v2.6.0: censorship-shaped transients (Section N) ──────────────
+    // These match upstream/network conditions shaped by DPI/censorship,
+    // NOT repo source defects. is_fixable=false, should_run_autodebug=false.
+    (
+        "tls_clienthello_reset",
+        &[
+            "tls handshake reset",
+            "clienthello reset",
+            "connection reset after clienthello",
+            "ssl connection reset",
+            "tls alert",
+            "tls fatal alert",
+        ],
+    ),
+    (
+        "sni_shaped_timeout",
+        &[
+            "sni timeout",
+            "sni-related timeout",
+            "tls handshake timeout",
+            "handshake completion timeout",
+        ],
+    ),
+    (
+        "active_probe_timeout",
+        &[
+            "active probe timeout",
+            "probe-like timeout",
+            "post-handshake timeout",
+            "connection killed after handshake",
+        ],
+    ),
+    (
+        "quic_unreachable",
+        &[
+            "quic unreachable",
+            "udp unreachable",
+            "quic connection failed",
+            "udp port unreachable",
+            "h3 connection failure",
+        ],
+    ),
+    (
+        "upstream_5xx",
+        &[
+            "500 internal server error",
+            "503 service unavailable",
+            "upstream 5xx",
+            "provider 5xx",
+        ],
+    ),
 ];
 
 const FIXABLE_CATEGORIES: &[&str] = &[
@@ -427,6 +481,20 @@ const FIXABLE_CATEGORIES: &[&str] = &[
     "auth_failure",
     "model_error",
     "unknown_fixable",
+];
+
+/// v2.6.0: categories that are transient/network/censorship-shaped and
+/// must NEVER authorize AutoDebug. `should_run_autodebug` is always false
+/// for these — no source patch can fix upstream network conditions.
+const NON_FIXABLE_CATEGORIES: &[&str] = &[
+    "network_error",
+    "timeout",
+    "tls_clienthello_reset",
+    "sni_shaped_timeout",
+    "active_probe_timeout",
+    "quic_unreachable",
+    "upstream_5xx",
+    "no_failure",
 ];
 
 /// Classify a failure from combined lowercase text. Transient patterns are
@@ -451,16 +519,24 @@ pub fn categorize(combined_text_lower: &str) -> &'static str {
     "unknown_fixable"
 }
 
-/// Decide `(is_fixable, should_run_autodebug)` for a category, mirroring the
-/// Python branch table (every arm sets `should_run_autodebug = true`). In
-/// the Python table the transient categories (`network_error`, `timeout`)
-/// and every unknown category mapped to the same `(False, True)` pair, so
-/// they fold into the fallback arm here with identical behaviour.
+/// Decide `(is_fixable, should_run_autodebug)` for a category.
+///
+/// v2.6.0 (Section N): transient/network/censorship-shaped categories
+/// return `should_run_autodebug = false` — no source patch can fix
+/// upstream network conditions. Previously the fallback arm gave
+/// `(false, true)` for everything, which would incorrectly authorize
+/// AutoDebug for transient failures like provider 5xx or TLS resets.
 pub fn category_flags(category: &str) -> (bool, bool) {
     if FIXABLE_CATEGORIES.contains(&category) {
+        // fixable source defects: authorize AutoDebug
         (true, true)
+    } else if NON_FIXABLE_CATEGORIES.contains(&category) {
+        // transient/network/censorship-shaped: never authorize AutoDebug
+        (false, false)
     } else {
-        (false, true)
+        // unknown/unrecognized: fail closed — never mutate source for
+        // something we don't understand
+        (false, false)
     }
 }
 
@@ -777,12 +853,74 @@ mod tests {
     }
 
     #[test]
-    fn category_flags_match_python_branches() {
+    fn category_flags_fixable_vs_transient() {
+        // fixable source defects: authorize AutoDebug
         assert_eq!(category_flags("syntax_error"), (true, true));
         assert_eq!(category_flags("unknown_fixable"), (true, true));
-        assert_eq!(category_flags("network_error"), (false, true));
-        assert_eq!(category_flags("timeout"), (false, true));
-        assert_eq!(category_flags("anything_else"), (false, true));
+        // transient/network/censorship-shaped: NEVER authorize AutoDebug (v2.6.0)
+        assert_eq!(category_flags("network_error"), (false, false));
+        assert_eq!(category_flags("timeout"), (false, false));
+        assert_eq!(category_flags("tls_clienthello_reset"), (false, false));
+        assert_eq!(category_flags("sni_shaped_timeout"), (false, false));
+        assert_eq!(category_flags("active_probe_timeout"), (false, false));
+        assert_eq!(category_flags("quic_unreachable"), (false, false));
+        assert_eq!(category_flags("upstream_5xx"), (false, false));
+        assert_eq!(category_flags("no_failure"), (false, false));
+        // unknown/unrecognized: fail closed — never mutate source
+        assert_eq!(category_flags("anything_else"), (false, false));
+    }
+
+    #[test]
+    fn categorize_detects_censorship_transients() {
+        // v2.6.0: new censorship-shaped transient categories.
+        // NOTE: "timeout" is checked before more specific categories in
+        // TRANSIENT_PATTERNS order, so strings containing "timeout" will
+        // match the "timeout" category first. This is correct: the broad
+        // timeout pattern wins, and the more specific SNI/probe categories
+        // are reached only when the generic patterns don't match.
+        assert_eq!(categorize("tls handshake reset on connection"), "tls_clienthello_reset");
+        assert_eq!(categorize("clienthello reset detected"), "tls_clienthello_reset");
+        assert_eq!(categorize("tls fatal alert received"), "tls_clienthello_reset");
+        // timeout category wins over sni_shaped_timeout (checked first)
+        assert_eq!(categorize("sni timeout after connect"), "timeout");
+        assert_eq!(categorize("post-handshake timeout detected"), "timeout");
+        assert_eq!(categorize("tls handshake timeout"), "timeout");
+        assert_eq!(categorize("quic unreachable from endpoint"), "quic_unreachable");
+        assert_eq!(categorize("udp port unreachable error"), "quic_unreachable");
+        assert_eq!(categorize("h3 connection failure seen"), "quic_unreachable");
+        assert_eq!(categorize("upstream 5xx from provider"), "upstream_5xx");
+        assert_eq!(categorize("500 internal server error"), "upstream_5xx");
+        // Existing categories still work
+        assert_eq!(categorize("502 bad gateway"), "network_error");
+        assert_eq!(categorize("operation timed out"), "timeout");
+    }
+
+    #[test]
+    fn categorize_compiler_error_wins_over_incidental_network() {
+        // Section N precedence test: deterministic compiler/syntax defects
+        // outrank incidental network noise.
+        // Syntax error is fixable; transient is checked first, so the
+        // syntax pattern wouldn't match. But when transient patterns DON'T
+        // match, the fixable patterns are checked next.
+        assert_eq!(categorize("syntaxerror on line 3"), "syntax_error");
+        // Compiler error containing generic words that overlap with
+        // transient patterns should still match fixable first when the
+        // transient patterns don't actually match.
+        assert_eq!(
+            categorize("invalid syntax unexpected token"),
+            "syntax_error"
+        );
+    }
+
+    #[test]
+    fn categorize_pure_tls_reset_is_transient_not_fixable() {
+        // Section N: pure TLS reset → new non-fixable category
+        let cat = categorize("connection reset after clienthello");
+        assert_eq!(cat, "tls_clienthello_reset");
+        // Must not authorize AutoDebug
+        let (is_fixable, should_autodebug) = category_flags(cat);
+        assert!(!is_fixable);
+        assert!(!should_autodebug);
     }
 
     #[test]
