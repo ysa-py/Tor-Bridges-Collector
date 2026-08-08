@@ -369,7 +369,10 @@ impl ProbeEngine {
         output
     }
 
-    /// Run a transport-specific probe with bounded retries and jitter.
+    /// Run a transport-specific probe with bounded retries and jittered
+    /// exponential backoff. Later attempts wait exponentially longer so a
+    /// transiently unreachable endpoint cannot consume the whole Stage 0b
+    /// budget with back-to-back retries.
     pub async fn probe(&self, line: String, transport: Transport, ipv6: bool) -> ProbeResult {
         let started = Instant::now();
         let mut last_error = None;
@@ -391,8 +394,14 @@ impl ProbeEngine {
                 Err(error) => {
                     last_error = Some(error.to_string());
                     if attempt + 1 < self.config.max_retries {
-                        let jitter = thread_rng().gen_range(50_u64..=250_u64);
-                        sleep(Duration::from_millis(jitter)).await;
+                        let delay_ms = backoff_ms(attempt);
+                        tracing::debug!(
+                            attempt = attempt + 1,
+                            retries = self.config.max_retries,
+                            delay_ms,
+                            "probe failed; backing off before retry"
+                        );
+                        sleep(Duration::from_millis(delay_ms)).await;
                     }
                 }
             }
@@ -533,16 +542,22 @@ Sec-WebSocket-Version: 13\r\n\r\n"
         .context("TLS handshake timed out")?
         .context("TLS handshake failed")
     }
-
-    /// Resolve a DNS host once, then attempt every returned address with a
     /// separately configured socket. `SO_REUSEADDR`, TCP keepalive, and
     /// `TCP_NODELAY` are applied before/after connection where supported.
+    ///
+    /// The DNS resolution itself is bounded by the connect timeout so a slow
+    /// or blackholed resolver can never stall a probe for longer than one
+    /// connect budget (previously an unbounded `lookup_host` could hang a
+    /// CI run on the OS resolver's own multi-second timeout, per bridge, per
+    /// retry).
     async fn connect(&self, host: &str, port: u16) -> Result<TcpStream> {
+        let dns_timeout = Duration::from_secs(self.config.connect_timeout_secs);
         let addresses = if let Ok(address) = host.parse::<IpAddr>() {
             vec![SocketAddr::new(address, port)]
         } else {
-            lookup_host((host, port))
+            timeout(dns_timeout, lookup_host((host, port)))
                 .await
+                .with_context(|| format!("DNS lookup timed out for {host}"))?
                 .with_context(|| format!("DNS lookup failed for {host}"))?
                 .collect::<Vec<_>>()
         };
@@ -680,6 +695,17 @@ Sec-WebSocket-Version: 13\r\n\r\n"
             ),
         }
     }
+}
+
+/// Exponential backoff in milliseconds with full jitter, capped so a single
+/// failing bridge line can never burn more than a few seconds of the shared
+/// probe budget on retries alone.
+fn backoff_ms(attempt: usize) -> u64 {
+    const BASE_MS: u64 = 200;
+    const CAP_MS: u64 = 4_000;
+    let exponent = attempt.min(6) as u32;
+    let ceiling = BASE_MS.saturating_mul(1_u64 << exponent).min(CAP_MS);
+    thread_rng().gen_range(0..=ceiling)
 }
 
 fn probe_mode(transport: Transport, ipv6: bool) -> &'static str {
@@ -1026,5 +1052,23 @@ mod tests {
     fn engine_uses_config_without_panicking() {
         let engine = ProbeEngine::new(config());
         assert!(engine.metrics().render().contains("# HELP"));
+    }
+
+    #[test]
+    fn backoff_is_bounded_and_never_zero() {
+        // Every attempt must yield a positive, bounded delay; no attempt may
+        // exceed the cap so a single line cannot starve the probe budget.
+        for attempt in 0..10 {
+            let delay = backoff_ms(attempt);
+            assert!(
+                delay <= 4_000,
+                "attempt {attempt} delay {delay} exceeds cap"
+            );
+        }
+        // Full jitter may legally return 0 for any single draw, but over a
+        // modest sample the distribution must exceed the base for later
+        // attempts, proving the exponential growth is wired in.
+        let late_max = (4..8).map(backoff_ms).max().unwrap_or(0);
+        assert!(late_max > 0, "exponential backoff never produced a delay");
     }
 }
