@@ -32,7 +32,7 @@ use torshield_ir_ultra::{
     iran_anti_siam, iran_nin_bypass, iran_smart_rotation, ja3_intelligence, ml_predictor,
     nin_advanced_bypass, nin_cut_tester,
     nin_internet_cut_classifier::NINInternetCutClassifier,
-    nin_selector, results_writer, root_modules, webtunnel_v2,
+    nin_selector, results_writer, root_modules, webtunnel_probe, webtunnel_v2,
 };
 
 /// Canonical stage order — mirrors the historical workflow stage numbering.
@@ -166,14 +166,33 @@ enum Outcome {
 type StageResult = Result<Outcome, Box<dyn Error>>;
 
 fn stage_results(input: &Path) -> StageResult {
-    let Some(bridges) = read_bridges(input) else {
+    let Some(mut bridges) = read_bridges(input) else {
         return Ok(Outcome::Skipped(format!(
             "{} is missing or has no bridges array",
             input.display()
         )));
     };
+    // v2.6.2: Probe domain-fronted WebTunnel bridges via TLS+WebSocket
+    // Upgrade before classification. Domain-fronted bridges have no
+    // routable IP and the Go iran_tester correctly marks them
+    // tcp_unreachable, but TCP is the wrong probe for WebTunnel.
+    let (probed, ws_ok, ws_fail) = webtunnel_probe::probe_all_webtunnel_bridges(
+        &mut bridges,
+        std::time::Duration::from_secs(6),
+    );
+    if probed > 0 {
+        println!("webtunnel-probe: probed={probed} ws_101={ws_ok} ws_fail={ws_fail}");
+    }
     let stats = results_writer::write_result_files(Path::new("bridge"), &bridges)?;
-    Ok(Outcome::Ok(json!({ "files": stats })))
+    let mut detail = json!({ "files": stats });
+    if probed > 0 {
+        detail["webtunnel_probe"] = json!({
+            "probed": probed,
+            "ws_101": ws_ok,
+            "ws_fail": ws_fail,
+        });
+    }
+    Ok(Outcome::Ok(detail))
 }
 
 fn stage_adaptive() -> StageResult {
