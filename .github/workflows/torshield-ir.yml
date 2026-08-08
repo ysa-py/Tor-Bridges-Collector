@@ -653,13 +653,21 @@ jobs:
         timeout-minutes: 6
         run: cargo run --quiet --bin pipeline -- --stage nin-classify --report data/nin_classify_pipeline_report.json
 
-      # Install Zig explicitly instead of silently skipping Stage 8q. The
-      # setup action is cached by the runner and the version is pinned so a
-      # toolchain drift cannot produce a false-green omission.
+      # Install Zig 0.14.0 directly — replaces mlugg/setup-zig@v2 (which
+      # targets Node 20, producing a deprecation annotation on Node 24
+      # runners). A direct download is faster, more reliable, and
+      # eliminates the Node.js action dependency entirely.
       - name: Install Zig toolchain for Stage 8q
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.14.0
+        run: |
+          set -euo pipefail
+          ZIG_VERSION="0.14.0"
+          ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz"
+          echo "Fetching Zig ${ZIG_VERSION} from ${ZIG_URL}"
+          curl -fsSL --retry 3 --retry-delay 5 -o /tmp/zig.tar.xz "${ZIG_URL}"
+          tar -xJf /tmp/zig.tar.xz -C /tmp
+          echo "/tmp/zig-linux-x86_64-${ZIG_VERSION}" >> "${GITHUB_PATH}"
+          rm -f /tmp/zig.tar.xz
+          echo "Zig ${ZIG_VERSION} installed"
 
       - name: Stage 8q — Zig ultra-fast TCP bridge pre-screener
         timeout-minutes: 6
