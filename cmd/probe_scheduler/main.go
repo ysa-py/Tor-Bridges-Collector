@@ -481,7 +481,7 @@ func main() {
 					}
 					rCtx, cancel := context.WithTimeout(ctx, 12*time.Minute)
 					defer cancel()
-					ok, tested := ripeClient.Measure(rCtx, b.Host, b.Port)
+					ok, tested := ripeClient.Measure(rCtx, b.Host, int(b.Port))
 					ripeCh <- ripeResult{raw, ok, tested}
 				}(tb.line, tb.source)
 			}
