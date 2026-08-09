@@ -116,33 +116,287 @@ pub fn transport_token(line: &str) -> String {
         .unwrap_or_default()
 }
 
-/// Infer the transport family using the precedence of the Python scripts.
+/// Infer the transport family from the first whitespace-delimited token.
+///
+/// This is intentionally token-based rather than substring-contains so it
+/// never misclassifies a bridge line whose fingerprint, certificate, or URL
+/// happens to contain a transport name.  When the first token looks like an
+/// endpoint (contains `:` or is an IP-like dotted quad) rather than a
+/// transport name, the line is classified as `Vanilla`.
 pub fn detect_transport(line: &str) -> Transport {
-    let lower = line.to_ascii_lowercase();
-    if lower.contains("snowflake") {
-        Transport::Snowflake
-    } else if lower.contains("webtunnel") {
-        Transport::WebTunnel
-    } else if lower.contains("obfs4") {
-        Transport::Obfs4
-    } else if lower.contains("meek") {
-        Transport::MeekAzure
-    } else if lower.contains("conjure") {
-        Transport::Conjure
-    } else if lower.contains("url=https") {
-        // A bare `url=https` line is a WebTunnel line in both Python scripts.
-        Transport::WebTunnel
-    } else {
-        Transport::Vanilla
+    let token = transport_token(line);
+    if token.is_empty() {
+        if line.to_ascii_lowercase().contains("url=https") {
+            return Transport::WebTunnel;
+        }
+        return Transport::Vanilla;
     }
+    match token.as_str() {
+        "vanilla" => Transport::Vanilla,
+        "obfs4" => Transport::Obfs4,
+        "webtunnel" => Transport::WebTunnel,
+        "snowflake" => Transport::Snowflake,
+        "meek_lite" | "meek" | "meek-azure" => Transport::MeekAzure,
+        "conjure" => Transport::Conjure,
+        "vless" | "vless+reality" | "reality" => Transport::VlessReality,
+        "hysteria2" | "hysteria" => Transport::Hysteria2,
+        "tuic" => Transport::Tuic,
+        "shadowtls" => Transport::ShadowTls,
+        "anytls" => Transport::Anytls,
+        "http-upgrade" | "httpupgrade" => Transport::HttpUpgrade,
+        "grpc" => Transport::Grpc,
+        _ => {
+            // The first token didn't match any known transport.  If it looks
+            // like a literal endpoint (contains ':' port separator, or is a
+            // dotted quad), treat the line as a bare Vanilla endpoint.
+            if token.contains(':') || looks_like_ipv4(&token) {
+                Transport::Vanilla
+            } else {
+                Transport::Unknown
+            }
+        }
+    }
+}
+
+/// Heuristic: the token matches an IPv4 dotted-quad pattern.
+fn looks_like_ipv4(token: &str) -> bool {
+    let parts: Vec<&str> = token.split('.').collect();
+    parts.len() == 4 && parts.iter().all(|p| p.parse::<u8>().is_ok())
 }
 
 /// Return whether a line has a fronted transport token.
 pub fn is_fronted_line(line: &str) -> bool {
-    matches!(
-        transport_token(line).as_str(),
-        "snowflake" | "meek" | "meek_lite" | "meek-azure" | "conjure"
-    )
+    detect_transport(line).is_fronted()
+}
+
+// ── Unified parsed bridge line ────────────────────────────────────────────
+
+/// All extractable fields from a bridge line, parsed generically without
+/// transport-specific field-position assumptions.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ParsedBridgeLine {
+    /// Detected transport family.
+    pub transport: String,
+    /// SNI / TLS server name (from `url=` host, `front=`, `fronts=`, or `sni=`).
+    pub sni: Option<String>,
+    /// First IPv4 endpoint address, if any.
+    pub ipv4: Option<String>,
+    /// First IPv6 endpoint address, if any.
+    pub ipv6: Option<String>,
+    /// TCP port extracted from the primary endpoint or URL.
+    pub port: Option<u16>,
+    /// Protocol version (`ver=` field).
+    pub version: Option<String>,
+    /// Full `url=` value, if present.
+    pub url: Option<String>,
+    /// Canonical bridge fingerprint, if present.
+    pub fingerprint: Option<String>,
+    /// Raw transport token (first word).
+    pub transport_token: Option<String>,
+    /// All key=value pairs found on the line.
+    pub kv_pairs: std::collections::BTreeMap<String, String>,
+}
+
+impl ParsedBridgeLine {
+    /// Return the effective connection host: the SNI/host to dial for a
+    /// transport handshake.  For domain-fronted lines this is the front
+    /// domain; for direct lines it is the literal endpoint.
+    pub fn dial_host(&self) -> Option<&str> {
+        self.sni
+            .as_deref()
+            .or(self.ipv4.as_deref())
+            .or(self.ipv6.as_deref())
+    }
+
+    /// Return the effective connection port.
+    pub fn dial_port(&self) -> Option<u16> {
+        self.port
+    }
+}
+
+/// Parse a bridge line into all known fields dynamically.
+///
+/// The parser scans every whitespace-delimited token exactly once and
+/// classifies each as either a key=value pair (stored in `kv_pairs` plus
+/// extracted into typed fields), a literal endpoint (IPv4, IPv6, or DNS
+/// name with port), a fingerprint, or the transport token.  No token is
+/// hardcoded to a particular position, and the function never assumes a
+/// transport-specific field layout — it works uniformly for every line
+/// format the project has encountered and any future format that follows
+/// the same token conventions.
+pub fn parse_bridge_line(line: &str) -> ParsedBridgeLine {
+    let mut parsed = ParsedBridgeLine::default();
+    let raw = strip_bridge_prefix(line);
+    if raw.is_empty() {
+        return parsed;
+    }
+
+    let mut tokens = raw.split_whitespace().peekable();
+
+    // ── Transport token (first word) ──
+    if let Some(first) = tokens.next() {
+        // A first token that is not a key=value and is not an endpoint
+        // is the transport name.
+        if !first.contains('=')
+            && !first.contains(':')
+            && !first.starts_with("http://")
+            && !first.starts_with("https://")
+        {
+            parsed.transport_token = Some(first.to_ascii_lowercase());
+        } else {
+            // Put it back — it's not a transport token, re-process below.
+            // We work around this by collecting all tokens upfront.
+        }
+    }
+
+    // ── Scan all tokens ──
+    let all_tokens: Vec<&str> = {
+        let v: Vec<&str> = raw.split_whitespace().collect();
+        // If the first token was a transport name, it's already consumed;
+        // the remaining tokens start from index 1.
+        if parsed.transport_token.is_some() && v.len() > 1 {
+            v[1..].to_vec()
+        } else {
+            v
+        }
+    };
+
+    let mut seen_endpoint = false;
+    for token in &all_tokens {
+        // ── key=value pairs ──
+        if let Some((key, value)) = token.split_once('=') {
+            let key_lower = key.trim_matches('"').to_ascii_lowercase();
+            let val = value.trim_matches('"').to_string();
+
+            // Track every key=value generically
+            parsed.kv_pairs.insert(key_lower.clone(), val.clone());
+
+            // Extract well-known fields
+            match key_lower.as_str() {
+                "url" => {
+                    if val.starts_with("https://") || val.starts_with("http://") {
+                        parsed.url = Some(val.clone());
+                    }
+                }
+                "ver" | "version" => {
+                    parsed.version = Some(val.clone());
+                }
+                "sni" => {
+                    parsed.sni = Some(val.clone());
+                }
+                "front" => {
+                    parsed.sni = Some(val.clone());
+                }
+                "fronts" => {
+                    // Use first front from comma-separated list
+                    parsed.sni = val
+                        .split(',')
+                        .map(str::trim)
+                        .find(|h| !h.is_empty())
+                        .map(String::from);
+                }
+                "fingerprint" | "cert" | "iat-mode" | "ice" | "utls-imitate" | "transport"
+                | "path" | "host" | "alpn" | "quic" | "password" | "uuid" | "aid" | "security"
+                | "encryption" | "flow" | "headerType" | "requestHost" | "serviceName" | "mode" => {
+                    // These are tracked in kv_pairs but have no typed field
+                }
+                _ => {}
+            }
+            continue;
+        }
+
+        // ── URL tokens (bare https://…) ──
+        if token.starts_with("https://") || token.starts_with("http://") {
+            parsed.url = Some(token.to_string());
+            if let Ok(u) = url::Url::parse(token) {
+                if let Some(host) = u.host_str() {
+                    if parsed.sni.is_none() {
+                        parsed.sni = Some(host.to_owned());
+                    }
+                }
+                if parsed.port.is_none() {
+                    parsed.port = u.port_or_known_default();
+                }
+            }
+            continue;
+        }
+
+        // ── Fingerprint ──
+        if parsed.fingerprint.is_none() && is_canonical_fingerprint(token) {
+            parsed.fingerprint = Some(token.to_ascii_uppercase());
+            continue;
+        }
+
+        // ── Literal endpoint (IP:port or [IPv6]:port or DNS:port) ──
+        if !seen_endpoint {
+            if let Some(ep) = endpoint_from_token(token) {
+                seen_endpoint = true;
+                match ep.address_family.as_str() {
+                    "ipv4" => {
+                        parsed.ipv4 = Some(ep.host);
+                        parsed.port = Some(ep.port);
+                    }
+                    "ipv6" => {
+                        parsed.ipv6 = Some(ep.host);
+                        parsed.port = Some(ep.port);
+                    }
+                    "dns" => {
+                        parsed.sni = Some(ep.host);
+                        parsed.port = Some(ep.port);
+                    }
+                    _ => {}
+                }
+                continue;
+            }
+        }
+    }
+
+    // ── Post-processing: extract SNI/port from URL if not yet set ──
+    if let Some(ref u) = parsed.url {
+        if parsed.sni.is_none() {
+            if let Ok(parsed_url) = url::Url::parse(u) {
+                if let Some(host) = parsed_url.host_str() {
+                    parsed.sni = Some(host.to_owned());
+                }
+            }
+        }
+        if parsed.port.is_none() {
+            if let Ok(parsed_url) = url::Url::parse(u) {
+                parsed.port = parsed_url.port_or_known_default();
+            }
+        }
+    }
+
+    // ── Transport ──
+    parsed.transport = if let Some(ref token) = parsed.transport_token {
+        detect_transport_from_token(token)
+    } else {
+        detect_transport(line).to_string()
+    };
+
+    parsed
+}
+
+/// Map a transport token string to the canonical transport name,
+/// without requiring the full Transport enum import at call sites.
+fn detect_transport_from_token(token: &str) -> String {
+    match token {
+        "vanilla" => "vanilla",
+        "obfs4" => "obfs4",
+        "webtunnel" => "webtunnel",
+        "snowflake" => "snowflake",
+        "meek_lite" | "meek" | "meek-azure" => "meek-azure",
+        "conjure" => "conjure",
+        "vless" | "vless+reality" | "reality" => "vless-reality",
+        "hysteria2" | "hysteria" => "hysteria2",
+        "tuic" => "tuic",
+        "shadowtls" => "shadowtls",
+        "anytls" => "anytls",
+        "http-upgrade" | "httpupgrade" => "http-upgrade",
+        "grpc" => "grpc",
+        _ => "unknown",
+    }
+    .to_string()
 }
 
 /// Extract the exact `url=` value, if any.
@@ -395,13 +649,13 @@ mod tests {
             "obfs4 [2606:4700:4700::1111]:443 cert=abc"
         ));
         assert!(is_valid_bridge_line(
-            "webtunnel 1.2.3.4:443 FINGER url=https://example.org/x ver=0.0.4"
+            "webtunnel 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.org/x ver=0.0.4"
         ));
         assert!(is_valid_bridge_line(
-            "webtunnel [2606:4700:4700::1111]:443 FINGER url=https://example.org/x ver=0.0.4"
+            "webtunnel [2606:4700:4700::1111]:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.org/x ver=0.0.4"
         ));
         assert!(!is_valid_bridge_line(
-            "webtunnel FINGER url=https://example.org/x"
+            "webtunnel 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.org/x"
         ));
         assert!(!is_valid_bridge_line("# 1.2.3.4:443"));
         assert!(!is_valid_bridge_line("No bridges available"));
@@ -502,5 +756,336 @@ mod tests {
         );
         assert!(parse_obfs4_ipv4("obfs4 [2001:db8::1]:443 FINGER cert=abc").is_none());
         assert!(parse_obfs4_ipv4("obfs4 203.0.113.7:443 FINGER").is_none());
+    }
+
+    // ── Dynamic parser tests ──────────────────────────────────────────────
+
+    #[test]
+    fn dynamic_parser_handles_obfs4_ipv4() {
+        let p = parse_bridge_line(
+            "obfs4 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc iat-mode=2",
+        );
+        assert_eq!(p.transport, "obfs4");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.port, Some(443));
+        assert!(p.fingerprint.is_some());
+        assert_eq!(p.kv_pairs.get("cert").map(|s| s.as_str()), Some("abc"));
+        assert_eq!(p.kv_pairs.get("iat-mode").map(|s| s.as_str()), Some("2"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_obfs4_ipv6() {
+        let p = parse_bridge_line(
+            "obfs4 [2001:db8::1]:8443 0123456789ABCDEF0123456789ABCDEF01234567 cert=xyz iat-mode=0",
+        );
+        assert_eq!(p.transport, "obfs4");
+        assert_eq!(p.ipv6.as_deref(), Some("2001:db8::1"));
+        assert_eq!(p.port, Some(8443));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_webtunnel_with_literal_endpoint() {
+        let p = parse_bridge_line(
+            "webtunnel 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.com/path ver=0.0.4",
+        );
+        assert_eq!(p.transport, "webtunnel");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.port, Some(443));
+        assert_eq!(p.sni.as_deref(), Some("example.com"));
+        assert_eq!(p.url.as_deref(), Some("https://example.com/path"));
+        assert_eq!(p.version.as_deref(), Some("0.0.4"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_domain_only_webtunnel() {
+        let p =
+            parse_bridge_line("webtunnel 0123456789ABCDEF0123456789ABCDEF01234567 url=https://vault.example.xyz/path ver=0.0.3");
+        assert_eq!(p.transport, "webtunnel");
+        assert_eq!(p.sni.as_deref(), Some("vault.example.xyz"));
+        assert_eq!(p.url.as_deref(), Some("https://vault.example.xyz/path"));
+        assert_eq!(p.version.as_deref(), Some("0.0.3"));
+        assert!(p.ipv4.is_none());
+        assert!(p.ipv6.is_none());
+        // port defaults to 443 for HTTPS URLs
+        assert_eq!(p.port, Some(443));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_vanilla_ipv4() {
+        let p = parse_bridge_line("1.2.3.4:9001 0123456789ABCDEF0123456789ABCDEF01234567");
+        assert_eq!(p.transport, "vanilla");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.port, Some(9001));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_vanilla_ipv6() {
+        let p = parse_bridge_line("[2001:db8::1]:9001 0123456789ABCDEF0123456789ABCDEF01234567");
+        assert_eq!(p.transport, "vanilla");
+        assert_eq!(p.ipv6.as_deref(), Some("2001:db8::1"));
+        assert_eq!(p.port, Some(9001));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_snowflake() {
+        let p = parse_bridge_line(
+            "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302",
+        );
+        assert_eq!(p.transport, "snowflake");
+        assert_eq!(p.ipv4.as_deref(), Some("192.0.2.3"));
+        assert_eq!(p.port, Some(80));
+        assert_eq!(p.sni.as_deref(), Some("www.cdn77.com"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_meek() {
+        let p = parse_bridge_line(
+            "meek_lite 0.0.3.0:1 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+        );
+        assert_eq!(p.transport, "meek-azure");
+        assert_eq!(p.sni.as_deref(), Some("ajax.aspnetcdn.com"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_conjure() {
+        let p = parse_bridge_line(
+            "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
+        );
+        assert_eq!(p.transport, "conjure");
+        assert_eq!(p.sni.as_deref(), Some("cdn.sstatic.net"));
+        assert_eq!(p.kv_pairs.get("transport").map(|s| s.as_str()), Some("min"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_vless_reality() {
+        let p = parse_bridge_line(
+            "vless abc123-def uuid=550e8400-e29b-41d4-a716-446655440000 reality=on flow=xtls-rprx-vision security=reality sni=discord.com",
+        );
+        assert_eq!(p.transport, "vless-reality");
+        assert_eq!(p.sni.as_deref(), Some("discord.com"));
+        assert_eq!(
+            p.kv_pairs.get("uuid").map(|s| s.as_str()),
+            Some("550e8400-e29b-41d4-a716-446655440000")
+        );
+    }
+
+    #[test]
+    fn dynamic_parser_handles_hysteria2() {
+        let p = parse_bridge_line(
+            "hysteria2 1.2.3.4:8443 password=secret123 sni=cloudflare.com alpn=h3",
+        );
+        assert_eq!(p.transport, "hysteria2");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.sni.as_deref(), Some("cloudflare.com"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_tuic() {
+        let p = parse_bridge_line(
+            "tuic 1.2.3.4:443 password=secret uuid=abc sni=example.com alpn=h3 congestion_control=bbr",
+        );
+        assert_eq!(p.transport, "tuic");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.sni.as_deref(), Some("example.com"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_shadowtls() {
+        let p = parse_bridge_line(
+            "shadowtls 1.2.3.4:443 password=secret sni=www.microsoft.com version=3",
+        );
+        assert_eq!(p.transport, "shadowtls");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.sni.as_deref(), Some("www.microsoft.com"));
+        assert_eq!(p.version.as_deref(), Some("3"));
+    }
+
+    #[test]
+    fn dynamic_parser_handles_http_upgrade() {
+        let p = parse_bridge_line(
+            "http-upgrade 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 host=example.com path=/ws alpn=http/1.1",
+        );
+        assert_eq!(p.transport, "http-upgrade");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(
+            p.kv_pairs.get("host").map(|s| s.as_str()),
+            Some("example.com")
+        );
+    }
+
+    #[test]
+    fn dynamic_parser_handles_grpc() {
+        let p = parse_bridge_line(
+            "grpc 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 serviceName=tor",
+        );
+        assert_eq!(p.transport, "grpc");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(
+            p.kv_pairs.get("servicename").map(|s| s.as_str()),
+            Some("tor")
+        );
+    }
+
+    #[test]
+    fn dynamic_parser_unknown_transport_defaults() {
+        let p = parse_bridge_line("fancynew 1.2.3.4:443 secret=abc");
+        assert_eq!(p.transport, "unknown");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.port, Some(443));
+        assert_eq!(p.kv_pairs.get("secret").map(|s| s.as_str()), Some("abc"));
+    }
+
+    #[test]
+    fn dynamic_parser_dial_host_prefers_sni() {
+        let p = parse_bridge_line(
+            "webtunnel 1.2.3.4:443 FINGER url=https://example.com/path ver=0.0.4",
+        );
+        assert_eq!(p.dial_host(), Some("example.com"));
+        assert_eq!(p.dial_port(), Some(443));
+    }
+
+    #[test]
+    fn dynamic_parser_dial_host_falls_back_to_ipv4() {
+        let p = parse_bridge_line("obfs4 1.2.3.4:443 FINGER cert=abc");
+        assert_eq!(p.dial_host(), Some("1.2.3.4"));
+    }
+
+    #[test]
+    fn detect_transport_uses_token_not_substring() {
+        // A bridge line whose URL/params contain "snowflake" must not be
+        // classified as Snowflake when the transport token is different.
+        assert_eq!(
+            detect_transport("obfs4 1.2.3.4:443 cert=snowflake"),
+            Transport::Obfs4
+        );
+        assert_eq!(
+            detect_transport("webtunnel 1.2.3.4:443 url=https://snowflake.example.com"),
+            Transport::WebTunnel
+        );
+        // Bare endpoint falls to vanilla because the first token "1.2.3.4:443"
+        // contains ':' (port separator) — it's an endpoint, not a transport name.
+        assert_eq!(
+            detect_transport("1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://snowflake.example.com"),
+            Transport::Vanilla
+        );
+        assert_eq!(
+            detect_transport("webtunnel 0123456789ABCDEF0123456789ABCDEF01234567 url=https://conjure.example.com ver=0.0.4"),
+            Transport::WebTunnel
+        );
+    }
+
+    #[test]
+    fn detect_transport_handles_new_types() {
+        assert_eq!(
+            detect_transport("vless abc123-def uuid=550e8400 sni=discord.com"),
+            Transport::VlessReality
+        );
+        assert_eq!(
+            detect_transport("hysteria2 1.2.3.4:443 password=secret"),
+            Transport::Hysteria2
+        );
+        assert_eq!(
+            detect_transport("tuic 1.2.3.4:443 password=secret"),
+            Transport::Tuic
+        );
+        assert_eq!(
+            detect_transport("shadowtls 1.2.3.4:443 password=secret sni=ms.com"),
+            Transport::ShadowTls
+        );
+        assert_eq!(detect_transport("anytls 1.2.3.4:443"), Transport::Anytls);
+        assert_eq!(
+            detect_transport("http-upgrade 1.2.3.4:443 host=example.com"),
+            Transport::HttpUpgrade
+        );
+        assert_eq!(
+            detect_transport("grpc 1.2.3.4:443 serviceName=tor"),
+            Transport::Grpc
+        );
+        assert_eq!(detect_transport("fancynew 1.2.3.4:443"), Transport::Unknown);
+    }
+    #[test]
+    fn transport_from_name_handles_aliases() {
+        assert_eq!(
+            Transport::from_name("vless+reality"),
+            Some(Transport::VlessReality)
+        );
+        assert_eq!(Transport::from_name("vless"), Some(Transport::VlessReality));
+        assert_eq!(
+            Transport::from_name("hysteria2"),
+            Some(Transport::Hysteria2)
+        );
+        assert_eq!(Transport::from_name("hysteria"), Some(Transport::Hysteria2));
+        assert_eq!(Transport::from_name("tuic"), Some(Transport::Tuic));
+        assert_eq!(
+            Transport::from_name("shadowtls"),
+            Some(Transport::ShadowTls)
+        );
+        assert_eq!(Transport::from_name("anytls"), Some(Transport::Anytls));
+        assert_eq!(
+            Transport::from_name("http-upgrade"),
+            Some(Transport::HttpUpgrade)
+        );
+        assert_eq!(Transport::from_name("grpc"), Some(Transport::Grpc));
+        assert_eq!(Transport::from_name("bogus"), None);
+    }
+
+    // ── Edge case & error handling tests ───────────────────────────────────
+
+    #[test]
+    fn parse_empty_line_produces_default() {
+        let p = parse_bridge_line("");
+        assert!(p.transport.is_empty());
+        assert!(p.ipv4.is_none());
+        assert!(p.ipv6.is_none());
+        assert!(p.sni.is_none());
+        assert!(p.port.is_none());
+    }
+
+    #[test]
+    fn parse_whitespace_only_is_benign() {
+        let p = parse_bridge_line("   ");
+        // Should not panic; edge case gracefully handled
+        assert!(p.transport.is_empty());
+    }
+
+    #[test]
+    fn parse_comment_lines_are_not_bridge_lines() {
+        assert!(!is_valid_bridge_line("# obfs4 1.2.3.4:443 cert=abc"));
+        assert!(!is_valid_bridge_line("    #"));
+    }
+
+    #[test]
+    fn parse_bridge_prefix_is_stripped_correctly() {
+        let p = parse_bridge_line("Bridge obfs4 1.2.3.4:443 cert=abc");
+        assert_eq!(p.transport, "obfs4");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+    }
+
+    #[test]
+    fn detect_transport_handles_leading_whitespace() {
+        assert_eq!(detect_transport("  obfs4 1.2.3.4:443"), Transport::Obfs4);
+        assert_eq!(
+            detect_transport("\tvanilla 1.2.3.4:443"),
+            Transport::Vanilla
+        );
+    }
+
+    #[test]
+    fn parse_bridge_line_handles_url_without_scheme() {
+        // A URL without https:// should still be captured
+        let p = parse_bridge_line("webtunnel FINGER url=example.com/path ver=0.0.3");
+        // url= is captured as key-value but won't be parsed as a URL for SNI
+        // because it doesn't start with https://
+        assert_eq!(
+            p.kv_pairs.get("url").map(|s| s.as_str()),
+            Some("example.com/path")
+        );
+    }
+
+    #[test]
+    fn parse_bridge_line_isolates_transport_from_endpoint() {
+        // obfs4's cert can contain 'obfs4' - detect_transport uses token, not substring
+        let p = parse_bridge_line("obfs4 1.2.3.4:443 FINGER cert=obfs4test-abc iat-mode=0");
+        assert_eq!(p.transport, "obfs4");
     }
 }

@@ -27,6 +27,9 @@ pub const DEFAULT_RAW_REPO_URL: &str =
 pub const COMMUNITY_SOURCE_BASES: &[&str] = &[DELTA_RAW_BASE_URL, DEFAULT_RAW_REPO_URL];
 
 /// Transport families published by the collector.
+///
+/// Variant order is stable and used for ordinal comparisons;
+/// adding new variants at the end preserves existing ordering.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub enum Transport {
     /// Direct Tor ORPort bridge line.
@@ -41,6 +44,25 @@ pub enum Transport {
     MeekAzure,
     /// Conjure registration/fronted transport.
     Conjure,
+    // ── Extended transports (dynamic parser support) ──
+    /// VLESS + REALITY (XTLS-core) — TLS-fronted proxy protocol.
+    VlessReality,
+    /// Hysteria2 — QUIC-based obfuscated proxy.
+    Hysteria2,
+    /// TUIC — multiplexed QUIC proxy.
+    Tuic,
+    /// ShadowTLS — TLS-handshake-fingerprint proxy.
+    ShadowTls,
+    /// AnyTLS — generic TLS-passthrough transport.
+    Anytls,
+    /// HTTP Upgrade — HTTP/1.1 Upgrade-based transport.
+    HttpUpgrade,
+    /// gRPC — HTTP/2-based streaming transport.
+    Grpc,
+    /// Sentinel value for unrecognised transport tokens; never persisted
+    /// in output files.  The parser returns this when no recognised token
+    /// matches the first word of the bridge line.
+    Unknown,
 }
 
 impl Transport {
@@ -59,6 +81,14 @@ impl Transport {
             Self::Snowflake => "snowflake",
             Self::MeekAzure => "meek-azure",
             Self::Conjure => "conjure",
+            Self::VlessReality => "vless-reality",
+            Self::Hysteria2 => "hysteria2",
+            Self::Tuic => "tuic",
+            Self::ShadowTls => "shadowtls",
+            Self::Anytls => "anytls",
+            Self::HttpUpgrade => "http-upgrade",
+            Self::Grpc => "grpc",
+            Self::Unknown => "unknown",
         }
     }
 
@@ -71,6 +101,14 @@ impl Transport {
             Self::Snowflake => "snowflake",
             Self::MeekAzure => "meek-azure",
             Self::Conjure => "conjure",
+            Self::VlessReality => "vless-reality",
+            Self::Hysteria2 => "hysteria2",
+            Self::Tuic => "tuic",
+            Self::ShadowTls => "shadowtls",
+            Self::Anytls => "anytls",
+            Self::HttpUpgrade => "http-upgrade",
+            Self::Grpc => "grpc",
+            Self::Unknown => "unknown",
         }
     }
 
@@ -102,6 +140,13 @@ impl Transport {
             "snowflake" => Some(Self::Snowflake),
             "meek-azure" | "meek_azure" | "meek_lite" | "meek" => Some(Self::MeekAzure),
             "conjure" => Some(Self::Conjure),
+            "vless" | "vless+reality" | "reality" => Some(Self::VlessReality),
+            "hysteria2" | "hysteria" => Some(Self::Hysteria2),
+            "tuic" => Some(Self::Tuic),
+            "shadowtls" => Some(Self::ShadowTls),
+            "anytls" => Some(Self::Anytls),
+            "http-upgrade" | "httpupgrade" => Some(Self::HttpUpgrade),
+            "grpc" => Some(Self::Grpc),
             _ => None,
         }
     }
