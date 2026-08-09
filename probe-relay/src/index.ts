@@ -52,7 +52,7 @@ interface ProbeResult {
 }
 
 interface Env {
-  PROBE_AUTH_TOKEN?: string;
+  PROBE_RELAY_TOKEN?: string;
   MAX_BRIDGES_PER_REQUEST?: string;
   BATCH_SIZE?: string;
   PROBE_TIMEOUT_SECS?: string;
@@ -89,7 +89,7 @@ export default {
 
     // Authentication
     const token = request.headers.get("X-Probe-Token");
-    const expectedToken = env.PROBE_AUTH_TOKEN;
+    const expectedToken = env.PROBE_RELAY_TOKEN;
     if (!expectedToken || token !== expectedToken) {
       return jsonResponse(401, {
         error: "unauthorized",

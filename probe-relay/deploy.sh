@@ -7,11 +7,11 @@
 #      (free tier, no credit card required)
 #   2. Install wrangler: npm install -g wrangler
 #   3. Authenticate:    wrangler login
-#   4. Set the secret:  wrangler secret put PROBE_AUTH_TOKEN
+#   4. Set the secret:  wrangler secret put PROBE_RELAY_TOKEN
 #      (generate one with: openssl rand -hex 32)
 #   5. Note the deployed Worker URL (e.g. probe-relay.YOUR_SUBDOMAIN.workers.dev)
 #      — add it as GitHub Actions secret PROBE_RELAY_URL
-#      — add the PROBE_AUTH_TOKEN value as GitHub Actions secret PROBE_RELAY_TOKEN
+#      — add the PROBE_RELAY_TOKEN value as GitHub Actions secret PROBE_RELAY_TOKEN
 #
 # After initial setup, this script handles redeploys:
 #   sh probe-relay/deploy.sh
@@ -39,15 +39,15 @@ fi
 if ! npx wrangler whoami &>/dev/null; then
   echo "::error::Not authenticated with Cloudflare."
   echo "Run: npx wrangler login"
-  echo "Then: npx wrangler secret put PROBE_AUTH_TOKEN"
+  echo "Then: npx wrangler secret put PROBE_RELAY_TOKEN"
   exit 1
 fi
 
 # Check secret is set
-if ! npx wrangler secret list 2>/dev/null | grep -q PROBE_AUTH_TOKEN; then
-  echo "::warning::PROBE_AUTH_TOKEN secret not set."
+if ! npx wrangler secret list 2>/dev/null | grep -q PROBE_RELAY_TOKEN; then
+  echo "::warning::PROBE_RELAY_TOKEN secret not set."
   echo "Generate one:  openssl rand -hex 32"
-  echo "Set it:         npx wrangler secret put PROBE_AUTH_TOKEN"
+  echo "Set it:         npx wrangler secret put PROBE_RELAY_TOKEN"
 fi
 
 # Deploy
@@ -59,7 +59,7 @@ echo "✅ Deploy complete."
 echo ""
 echo "Add these as GitHub Actions repository secrets:"
 echo "  PROBE_RELAY_URL   = <the .workers.dev URL shown above>"
-echo "  PROBE_RELAY_TOKEN = <your PROBE_AUTH_TOKEN value>"
+echo "  PROBE_RELAY_TOKEN = <your PROBE_RELAY_TOKEN value>"
 echo ""
 echo "Test the relay with:"
 echo "  curl -X POST https://<YOUR_WORKER>.workers.dev/probe \\"
