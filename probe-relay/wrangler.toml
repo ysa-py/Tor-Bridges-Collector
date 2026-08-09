@@ -1,0 +1,28 @@
+name = "tor-bridge-probe-relay"
+main = "src/index.ts"
+compatibility_date = "2025-08-09"
+
+# Free tier: 100,000 requests/day, 10ms CPU per invocation.
+# Outbound TCP sockets count toward the 50-subrequest limit per invocation.
+# We process batches of 10 concurrent probes to stay within limits.
+
+[vars]
+# Maximum bridges per single POST /probe request. The CI client
+# auto-chunks larger lists, but this is the hard cap per Worker invocation.
+MAX_BRIDGES_PER_REQUEST = "50"
+
+# Concurrent probes per internal batch. Larger values risk CPU spikes
+# and subrequest exhaustion; smaller values waste wall-clock budget.
+BATCH_SIZE = "10"
+
+# Per-probe TCP connect timeout in seconds. Keep this low — a slow
+# bridge shouldn't starve other probes in the same batch.
+PROBE_TIMEOUT_SECS = "5"
+
+# --- Secrets (never committed to source control) ---
+# Set via: wrangler secret put PROBE_RELAY_TOKEN
+# PROBE_RELAY_TOKEN = ""
+
+[observability]
+enabled = true
+head_sampling_rate = 1
