@@ -469,8 +469,7 @@ mod tests {
     #[test]
     fn score_shadow_tls_very_low_risk() {
         // shadow-tls (0.82) + safe_port (0.05, 443) + cdn_hinted (0.05, fastly) = 0.92 → VERY_LOW
-        let r =
-            score_anti_ai_dpi("shadow-tls://1.2.3.4:443?sni=www.fastly.com&password=sec");
+        let r = score_anti_ai_dpi("shadow-tls://1.2.3.4:443?sni=www.fastly.com&password=sec");
         assert_eq!(r["transport"], "shadow-tls");
         assert_eq!(r["anti_ai_dpi_score"], 0.92);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
