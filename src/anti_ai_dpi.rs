@@ -102,6 +102,50 @@ pub const TOR_KNOWN_PORTS: &[u16] = &[9001, 9030, 9050];
 /// CDN keyword hints used by the bonus logic (Python inline set).
 pub const CDN_HINT_KEYWORDS: &[&str] = &["cloudflare", "fastly", "akamai", "cloudfront", "arvan"];
 
+/// Iran-specific CDN domain bonus tiers (differential CDN value).
+///
+/// Not all CDNs are equal inside Iran. Domestic CDNs (Arvan Cloud) and CDNs
+/// widely used by Iranian businesses/government (Azure) cause massive
+/// collateral damage if blocked, so bridges fronted through them blend
+/// better with legitimate traffic. Foreign-only CDNs (Fastly, Akamai) are
+/// less common in Iranian traffic and thus easier for SIAM to fingerprint.
+///
+/// This is a heuristic based on public OONI/Censored Planet observations
+/// (2022–2026), not a learned model.
+///
+/// * **Arvan Cloud** (arvancloud.ir, cdn.arvancloud.com): Iranian CDN —
+///   blocked traffic would impact domestic services → highest bonus.
+/// * **Azure** (azure.microsoft.com, azureedge.net, azurefd.net): Microsoft
+///   CDN — heavily used by Iranian government/business → high bonus.
+/// * **Cloudflare**: widely used globally, partially used in Iran → medium.
+/// * **Fastly, Akamai, CloudFront**: rare in Iranian traffic → low bonus.
+const IRAN_CDN_BONUS_TIERS: &[(&[&str], f64)] = &[
+    (&["arvancloud", "arvan"], 0.03),
+    (&["azure", "azureedge", "azurefd", "microsoft"], 0.02),
+    (&["cloudflare"], 0.01),
+    (&["fastly", "akamai", "cloudfront", "gcore"], 0.0),
+];
+
+/// Returns the Iran-specific CDN domain bonus for a bridge line.
+///
+/// Scans the line (case-insensitive) for CDN domain keywords and returns
+/// the highest-matching bonus tier. This is additive to the existing
+/// `cdn_hinted` flag bonus (+0.05) — together they reward bridges that use
+/// CDNs AND those CDNs are specifically hard for Iran to block.
+pub fn iran_cdn_bonus(line: &str) -> f64 {
+    let lower = line.to_lowercase();
+    IRAN_CDN_BONUS_TIERS
+        .iter()
+        .filter_map(|(keywords, bonus)| {
+            if keywords.iter().any(|kw| lower.contains(kw)) {
+                Some(*bonus)
+            } else {
+                None
+            }
+        })
+        .fold(0.0_f64, f64::max)
+}
+
 /// Returns true if `port` is in [`SAFE_PORTS`].
 pub fn is_safe_port(port: u16) -> bool {
     SAFE_PORTS.contains(&port)
@@ -237,11 +281,19 @@ pub fn score_anti_ai_dpi(line: &str) -> Value {
         flags.push("obfs4_iat_timing_randomised");
     }
 
-    // CDN hint in line (case-insensitive)
+    // CDN hint in line (case-insensitive) — base +0.05 for any CDN
     let lower = trimmed.to_lowercase();
     if CDN_HINT_KEYWORDS.iter().any(|kw| lower.contains(kw)) {
         bonus += 0.05;
         flags.push("cdn_hinted");
+    }
+    // Iran-specific CDN tier bonus — differential reward for CDNs that
+    // are harder for Iran's SIAM to block (domestic or widely-used CDNs
+    // cause massive collateral damage if blocked).
+    let iran_cdn_extra = iran_cdn_bonus(trimmed);
+    if iran_cdn_extra > 0.0 {
+        bonus += iran_cdn_extra;
+        flags.push("iran_cdn_safe");
     }
 
     let final_score = ((base_score + bonus).min(1.0) * 1000.0).round() / 1000.0;
@@ -598,9 +650,108 @@ mod tests {
     #[test]
     fn score_cdn_hint_adds_bonus() {
         let r = score_anti_ai_dpi("obfs4 1.2.3.4:443 cloudflare");
-        // 0.72 + 0.05 (safe) + 0.05 (cdn) = 0.82 → VERY_LOW
-        assert_eq!(r["anti_ai_dpi_score"], 0.82);
+        // 0.72 + 0.05 (safe) + 0.05 (cdn) + 0.01 (iran_cdn_safe) = 0.83 → VERY_LOW
+        assert_eq!(r["anti_ai_dpi_score"], 0.83);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    // ── v37 Iran-specific CDN domain bonus tests ───────────────────────────
+
+    #[test]
+    fn iran_cdn_bonus_arvan_cloud_returns_highest() {
+        // Arvan Cloud is Iran's domestic CDN — hardest to block
+        assert_eq!(iran_cdn_bonus("obfs4 1.2.3.4:443 arvancloud.ir"), 0.03);
+        assert_eq!(iran_cdn_bonus("cdn.arvancloud.com front"), 0.03);
+        assert_eq!(iran_cdn_bonus("webtunnel url=https://arvan.dev/path"), 0.03);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_azure_returns_medium() {
+        assert_eq!(iran_cdn_bonus("azure.microsoft.com"), 0.02);
+        assert_eq!(iran_cdn_bonus("https://azureedge.net/path"), 0.02);
+        assert_eq!(iran_cdn_bonus("azurefd.net front"), 0.02);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_cloudflare_returns_low() {
+        assert_eq!(iran_cdn_bonus("bridge cloudflare.com"), 0.01);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_fastly_returns_none() {
+        // Fastly/Akamai/CloudFront are rare in Iranian traffic — no extra bonus
+        assert_eq!(iran_cdn_bonus("sni=cdn.fastly.com"), 0.0);
+        assert_eq!(iran_cdn_bonus("akamai.net front"), 0.0);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_no_cdn_returns_zero() {
+        assert_eq!(iran_cdn_bonus("obfs4 1.2.3.4:443"), 0.0);
+        assert_eq!(iran_cdn_bonus("vanilla 5.6.7.8:9001"), 0.0);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_multiple_matches_returns_highest() {
+        // Both arvan AND azure keywords → should get arvan's higher bonus (0.03)
+        assert_eq!(
+            iran_cdn_bonus("arvancloud azure.microsoft.com webtunnel"),
+            0.03
+        );
+    }
+
+    #[test]
+    fn iran_cdn_bonus_case_insensitive() {
+        assert_eq!(iran_cdn_bonus("ARVANCLOUD.IR"), 0.03);
+        assert_eq!(iran_cdn_bonus("Azure.Microsoft.COM"), 0.02);
+        assert_eq!(iran_cdn_bonus("CLOUDFLARE"), 0.01);
+    }
+
+    #[test]
+    fn score_arvan_cdn_gets_extra_bonus() {
+        // obfs4 (0.72) on port 443 (+0.05) + CDN (+0.05) + Arvan bonus (+0.03) = 0.85
+        let r = score_anti_ai_dpi("obfs4 1.2.3.4:443 arvancloud.ir");
+        assert_eq!(r["anti_ai_dpi_score"], 0.85);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"safe_port"));
+        assert!(flags.contains(&"cdn_hinted"));
+        assert!(flags.contains(&"iran_cdn_safe"));
+    }
+
+    #[test]
+    fn score_azure_cdn_gets_extra_bonus() {
+        // snowflake (0.92) on port 443 (+0.05) + CDN (+0.05) + Azure bonus (+0.02) = 1.0 (clamped)
+        let r = score_anti_ai_dpi("snowflake 1.2.3.4:443 azure.microsoft.com");
+        assert_eq!(r["anti_ai_dpi_score"], 1.0);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"iran_cdn_safe"));
+    }
+
+    #[test]
+    fn score_fastly_cdn_no_iran_extra_bonus() {
+        // Fastly gets CDN flag (+0.05) but no iran_cdn_safe bonus (0.0)
+        let r = score_anti_ai_dpi("obfs4 1.2.3.4:8443 fastly.net");
+        // 0.72 + 0.05 (safe 8443) + 0.05 (cdn) + 0.0 (iran_cdn) = 0.82
+        assert_eq!(r["anti_ai_dpi_score"], 0.82);
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"cdn_hinted"));
+        assert!(!flags.contains(&"iran_cdn_safe"));
     }
 
     #[test]
