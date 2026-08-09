@@ -496,14 +496,32 @@ jobs:
           touch /tmp/sched_started
           sleep 10
 
-      - name: Stage 4 — bridge-probe (Rust PT handshakes)
-        timeout-minutes: 15
+      # Stage 4 — External Probe Relay (CI Egress Fix)
+      #
+      # GitHub Actions runners have restricted outbound egress and cannot
+      # reliably complete raw TCP/TLS handshakes to arbitrary Tor bridge
+      # IP:port pairs. The in-runner bridge-probe binary is preserved as a
+      # fallback when the relay is unreachable, but the primary path now
+      # delegates PT handshake verification to an external always-on relay
+      # service (Cloudflare Worker, free tier) that has real outbound
+      # network access via the cloudflare:sockets connect() API.
+      #
+      # The relay performs:
+      #   - TCP connect for vanilla/obfs4 (prefilter) endpoints
+      #   - TLS handshake for domain-fronted transports
+      #   - TLS + HTTP WebSocket Upgrade (101 check) for WebTunnel bridges
+      #
+      # Full obfs4 PT handshake verification remains local (via
+      # obfs4proxy/lyrebird SOCKS5 harness) against TCP-reachable endpoints
+      # that the relay confirms.
+      - name: Stage 4 — External Probe Relay (CI egress fix)
+        timeout-minutes: 20
+        env:
+          PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+          PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
         run: |
           set -euo pipefail
-          cat bridge/bridge_list_for_testing.json \
-            | ./bridge-probe/target/release/bridge-probe \
-              --timeout 20 --workers 50 \
-            > data/pt_results.json
+          bash scripts/probe_relay.sh bridge/bridge_list_for_testing.json data/pt_results.json
 
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
