@@ -119,14 +119,14 @@ func portRiskFlag(port int) bool {
 // net.Conn here, so we flag WebTunnel bridges on the default Tor port as
 // elevated risk. A full JA3 check would require capturing the ClientHello.
 // The flag is advisory; classification continues.
-func dpiHighRisk(b *bridge.Bridge) bool {
-	if b.Transport == "webtunnel" || b.Transport == "meek_lite" {
+func dpiHighRisk(b *bridge.Transport) bool {
+	if b.Type == "webtunnel" || b.Type == "meek_lite" {
 		// Flag bridges using the default Tor ORPort or PT port
-		return iranHighRiskPorts[b.Port]
+		return iranHighRiskPorts[int(b.Port)]
 	}
 	// For obfs4 bridges, we cannot inspect JA3 without a PT handshake.
 	// We conservatively flag any bridge on a known-Tor port.
-	return iranHighRiskPorts[b.Port]
+	return iranHighRiskPorts[int(b.Port)]
 }
 
 // compositScore implements the formula:
@@ -175,22 +175,22 @@ func classifyBridge(
 ) BridgeResult {
 	result := BridgeResult{Line: rawLine}
 
-	b, err := bridge.Parse(rawLine)
+	b, err := bridge.ParseLine(rawLine)
 	if err != nil {
 		result.IranStatus = StatusTCPUnreachable
 		return result
 	}
 	result.Host = b.Host
-	result.Port = b.Port
-	result.Transport = b.Transport
+	result.Port = int(b.Port)
+	result.Transport = b.Type
 
 	// ── Step 1: TCP reachability ──────────────────────────────────────────
 	bridgeCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	tcpOK := bridge.TestWithContext(bridgeCtx, b, timeout)
+	tcpOK := tcpProbeWithContext(bridgeCtx, b, timeout)
 	result.TCPReachable = tcpOK
 
-	if !tcpOK && b.Transport != "snowflake" {
+	if !tcpOK && b.Type != "snowflake" {
 		result.IranStatus = StatusTCPUnreachable
 		result.CompositeScore = compositeScore(false, StatusTCPUnreachable, nil, false)
 		return result
@@ -212,7 +212,7 @@ func classifyBridge(
 			}
 
 			// CDN front validation (WebTunnel only)
-			if b.Transport == "webtunnel" {
+			if b.Type == "webtunnel" {
 				if isCDN, _ := asn.IsCDN(asnStr); isCDN {
 					result.Flags = append(result.Flags, FlagDomainFrontCDNOK)
 				} else {
@@ -228,7 +228,7 @@ func classifyBridge(
 	}
 
 	// ── Step 4: Port risk assessment (advisory flag) ──────────────────────
-	if portRiskFlag(b.Port) {
+	if portRiskFlag(int(b.Port)) {
 		result.Flags = append(result.Flags, FlagPortHighRisk)
 	}
 
@@ -253,12 +253,12 @@ func classifyBridge(
 	var iranStatus IranStatus = StatusIranUnknown
 
 	switch {
-	case b.Transport == "snowflake":
+	case b.Type == "snowflake":
 		// Snowflake uses WebRTC via the broker; no IP to probe.
 		// It is the hardest transport to block and optimistically marked working.
 		iranStatus = StatusIranLikelyWorking
 
-	case b.Transport == "webtunnel" || b.Transport == "meek_lite":
+	case b.Type == "webtunnel" || b.Type == "meek_lite":
 		// Domain-fronted transport: OONI cannot classify by domain name.
 		// TLS reachability from the runner is the best available signal.
 		if tcpOK {
@@ -327,6 +327,26 @@ func dynamicWorkerCount(requested, candidates int) int {
 		return candidates
 	}
 	return cpuScaled
+}
+
+// lineForTransport returns a formatted host:port string suitable for dialing.
+func lineForTransport(b *bridge.Transport) string {
+	return net.JoinHostPort(b.Host, fmt.Sprintf("%d", b.Port))
+}
+
+// tcpProbeWithContext attempts a TCP connection to the bridge within the
+// given timeout. Returns true if the connection succeeds, false otherwise.
+func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.Duration) bool {
+	if b.Host == "" || b.Port == 0 {
+		return false
+	}
+	dialer := net.Dialer{Timeout: timeout}
+	conn, err := dialer.DialContext(ctx, "tcp", lineForTransport(b))
+	if err != nil {
+		return false
+	}
+	conn.Close()
+	return true
 }
 
 func main() {

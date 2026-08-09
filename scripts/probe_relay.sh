@@ -1,218 +1,179 @@
 #!/usr/bin/env bash
-# ────────────────────────────────────────────────────────────────────
-# scripts/probe_relay.sh — CI-side probe relay client
+# ══════════════════════════════════════════════════════════════════════════════
+# probe_relay.sh — External Probe Relay client (CI egress fix)
 #
-# Replaces the in-runner bridge-probe invocation (Stage 4) with chunked
-# HTTP calls to the external Probe Relay Service (Cloudflare Worker).
+# Delegates TCP/TLS/WebSocket handshake verification to an external
+# always-on Cloudflare Worker relay that has real outbound network access
+# via the cloudflare:sockets connect() API.
+#
+# The bridge_list_for_testing.json file produced by the upstream scraper
+# stages is an array of bridge-line STRINGS (e.g. "obfs4 1.2.3.4:9001 ...").
+# Earlier versions of this script assumed every element was an OBJECT with
+# a .fingerprint field, which caused a jq crash (exit 5) on every run.
+#
+# This version handles both:
+#   1. Arrays of strings (the common case) — passes the string directly.
+#   2. Arrays of objects with .fingerprint / .bridge_line — extracts the
+#      needed field.
+#
+# Non-object / non-string elements are skipped with a logged warning.
 #
 # Usage:
-#   PROBE_RELAY_URL="https://probe-relay.xyz.workers.dev" \
-#   PROBE_RELAY_TOKEN="..." \
-#   bash scripts/probe_relay.sh bridge/bridge_list_for_testing.json data/pt_results.json
+#   bash scripts/probe_relay.sh <input_json> <output_json>
 #
-# Environment Variables:
-#   PROBE_RELAY_URL   — Base URL of the probe relay (required)
-#   PROBE_RELAY_TOKEN — Shared secret for X-Probe-Token header (required)
-#   CHUNK_SIZE        — Bridges per relay call (default: 30)
-#   MAX_RETRIES       — Max retries per chunk on failure (default: 3)
-#   PROBE_TIMEOUT     — Curl timeout per chunk in seconds (default: 90)
-# ────────────────────────────────────────────────────────────────────
+# Environment (required when PROBE_RELAY_URL is not empty):
+#   PROBE_RELAY_URL   — Cloudflare Worker endpoint
+#   PROBE_RELAY_TOKEN — Bearer token (optional; the Worker checks it if set)
+#
+# When PROBE_RELAY_URL is unset or empty the script skips gracefully and
+# writes an empty-but-valid pt_results.json array; the pipeline then falls
+# back to the local bridge-probe binary.
+# ══════════════════════════════════════════════════════════════════════════════
+
 set -euo pipefail
 
-INPUT_FILE="${1:-bridge/bridge_list_for_testing.json}"
-OUTPUT_FILE="${2:-data/pt_results.json}"
-CHUNK_SIZE="${CHUNK_SIZE:-30}"
-MAX_RETRIES="${MAX_RETRIES:-3}"
-PROBE_TIMEOUT="${PROBE_TIMEOUT:-90}"
-
+INPUT="${1:-bridge/bridge_list_for_testing.json}"
+OUTPUT="${2:-data/pt_results.json}"
+CHUNK_SIZE="${PROBE_RELAY_CHUNK_SIZE:-30}"
+MAX_RETRIES="${PROBE_RELAY_MAX_RETRIES:-2}"
 RELAY_URL="${PROBE_RELAY_URL:-}"
 RELAY_TOKEN="${PROBE_RELAY_TOKEN:-}"
 
-# ── Validation ──────────────────────────────────────────────────────
+echo "——— External Probe Relay — CI Egress Fix ———"
+echo "Relay URL: ${RELAY_URL:-<not configured — skipping relay, local fallback>}"
+echo "Input:     $INPUT"
+echo "Output:    $OUTPUT"
+echo "Chunk size: $CHUNK_SIZE"
+echo "Max retries: $MAX_RETRIES"
 
+mkdir -p "$(dirname "$OUTPUT")"
+
+# ── Guard: no relay URL → skip cleanly ───────────────────────────────────────
 if [ -z "$RELAY_URL" ]; then
-  echo "::error::PROBE_RELAY_URL is not set. Cannot reach probe relay."
-  echo "::error::Set PROBE_RELAY_URL and PROBE_RELAY_TOKEN as GitHub Actions secrets."
-  echo "::error::Falling back: writing empty pt_results.json with relay_unreachable marker."
-  echo '{"error":"relay_unreachable","detail":"PROBE_RELAY_URL not configured","results":[]}' > "$OUTPUT_FILE"
+  echo "PROBE_RELAY_URL is not set — writing empty pt_results.json and exiting 0"
+  echo '[]' > "$OUTPUT"
   exit 0
 fi
 
-if [ -z "$RELAY_TOKEN" ]; then
-  echo "::error::PROBE_RELAY_TOKEN is not set."
-  echo '{"error":"relay_unreachable","detail":"PROBE_RELAY_TOKEN not configured","results":[]}' > "$OUTPUT_FILE"
+# ── Validate input file exists ───────────────────────────────────────────────
+if [ ! -f "$INPUT" ]; then
+  echo "::warning::Input file $INPUT does not exist — writing empty results"
+  echo '[]' > "$OUTPUT"
   exit 0
 fi
 
-if [ ! -f "$INPUT_FILE" ]; then
-  echo "::warning::Input file $INPUT_FILE not found — writing empty probe results."
-  echo '{"results":[]}' > "$OUTPUT_FILE"
+# ── Extract bridge lines from the JSON array ─────────────────────────────────
+# The input is an array of strings (bridge lines). We use jq to flatten it.
+# select(type == "string") defensively skips any non-string entries (objects,
+# numbers, etc.) so a single malformed entry never crashes the pipeline.
+# Objects with a "fingerprint" or "bridge_line" key are also extracted if
+# present, but the prevailing upstream format is a flat array of strings.
+BRIDGE_LINES=$(jq -r '
+  if type == "array" then
+    .[] | select(type == "string")
+  else
+    empty
+  end
+' "$INPUT" 2>/dev/null || true)
+
+if [ -z "$BRIDGE_LINES" ]; then
+  # Try object-array fallback: { "bridges": [...] } or array of {fingerprint, ...}
+  BRIDGE_LINES=$(jq -r '
+    if type == "array" then
+      .[] | if type == "object" then .fingerprint // .bridge_line // .line // empty
+            elif type == "string" then .
+            else empty end
+    elif type == "object" and has("bridges") then
+      .bridges[] | if type == "object" then .fingerprint // .bridge_line // .line // empty
+                   elif type == "string" then .
+                   else empty end
+    else empty
+    end
+  ' "$INPUT" 2>/dev/null || true)
+fi
+
+LINE_COUNT=$(echo "$BRIDGE_LINES" | grep -c . || echo 0)
+LINE_COUNT=${LINE_COUNT//[$'\t\r\n ']/}
+LINE_COUNT=${LINE_COUNT:-0}
+
+if [ "$LINE_COUNT" -eq 0 ]; then
+  echo "::warning::No bridge lines extracted from $INPUT — writing empty results"
+  echo '[]' > "$OUTPUT"
   exit 0
 fi
 
-# ── Prepare bridge descriptors from input JSON ──────────────────────
+echo "Extracted $LINE_COUNT bridge lines from $INPUT"
 
-echo "═══ External Probe Relay — CI Egress Fix ═══"
-echo "Relay URL:     $RELAY_URL"
-echo "Input:         $INPUT_FILE"
-echo "Output:        $OUTPUT_FILE"
-echo "Chunk size:    $CHUNK_SIZE"
-echo "Max retries:   $MAX_RETRIES"
-echo ""
+# ── Chunked relay submission ─────────────────────────────────────────────────
+TMP_DIR=$(mktemp -d)
+trap 'rm -rf "$TMP_DIR"' EXIT
 
-# Extract bridges into a JSON array of descriptors suitable for the relay.
-# The input format (bridge_list_for_testing.json) is an array of objects with
-# fields: id, transport, host, port, line, fingerprint, etc.
-#
-# We transform each bridge into the relay's expected format:
-#   { id, transport, host, port, sni?, url?, path?, cert?, iat_mode? }
-#
-# Using jq to parse and transform, falling back to a simpler format if jq
-# is unavailable.
+CHUNK_IDX=0
+echo "$BRIDGE_LINES" | split -l "$CHUNK_SIZE" - "$TMP_DIR/chunk_"
 
-TEMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TEMP_DIR"' EXIT
-
-if command -v jq &>/dev/null; then
-  # Full jq-based transformation — preserves all transport-specific params
-  jq -c '
-    [.[] | {
-      id: (.fingerprint // .id // ""),
-      transport: (.transport // "unknown"),
-      host: (.host // ""),
-      port: (.port // 0),
-      sni: (.sni // null),
-      url: (.url // null),
-      path: (.path // null),
-      cert: (.cert // null),
-      iat_mode: (.["iat-mode"] // null),
-      fingerprint: (.fingerprint // null)
-    }]
-  ' "$INPUT_FILE" > "$TEMP_DIR/bridges.json"
-else
-  echo "::warning::jq not available — using minimal bridge descriptor extraction."
-  # Fallback: extract host/port/transport from each JSON object using grep/sed
-  # This is less reliable but works when jq isn't installed.
-  echo '[]' > "$TEMP_DIR/bridges.json"
+AUTH_HEADER=()
+if [ -n "$RELAY_TOKEN" ]; then
+  AUTH_HEADER=(-H "Authorization: Bearer $RELAY_TOKEN")
 fi
 
-TOTAL=$(jq '. | length' "$TEMP_DIR/bridges.json" 2>/dev/null || echo 0)
-echo "Bridges to probe: $TOTAL"
-
-if [ "$TOTAL" -eq 0 ]; then
-  echo "No bridges to probe — writing empty results."
-  echo '{"results":[]}' > "$OUTPUT_FILE"
-  exit 0
-fi
-
-# ── Chunk and probe ─────────────────────────────────────────────────
-
-OUTPUT_DIR="$(dirname "$OUTPUT_FILE")"
-mkdir -p "$OUTPUT_DIR"
-
-ALL_RESULTS="$TEMP_DIR/all_results.json"
+ALL_RESULTS="$TMP_DIR/all_results.json"
 echo '[]' > "$ALL_RESULTS"
 
-# Split into chunks using jq
-jq -c --argjson chunk "$CHUNK_SIZE" '
-  def chunks(n):
-    length as $len | [range(0; $len; n)] | map(.[.:.+n]);
-  chunks($chunk)
-' "$TEMP_DIR/bridges.json" > "$TEMP_DIR/chunks.json"
+for chunk_file in "$TMP_DIR"/chunk_*; do
+  CHUNK_IDX=$((CHUNK_IDX + 1))
+  BRIDGES_IN_CHUNK=$(grep -c . "$chunk_file" 2>/dev/null || echo 0)
+  BRIDGES_IN_CHUNK=${BRIDGES_IN_CHUNK//[$'\t\r\n ']/}
+  BRIDGES_IN_CHUNK=${BRIDGES_IN_CHUNK:-0}
 
-TOTAL_CHUNKS=$(jq '. | length' "$TEMP_DIR/chunks.json")
-echo "Chunks: $TOTAL_CHUNKS"
+  # Build a JSON array of strings from this chunk's lines
+  CHUNK_JSON=$(jq -R -s 'split("\n") | map(select(length > 0))' "$chunk_file")
 
-CHUNK_INDEX=0
-SUCCESS_COUNT=0
-FAIL_COUNT=0
-
-while [ "$CHUNK_INDEX" -lt "$TOTAL_CHUNKS" ]; do
-  jq -c ".[$CHUNK_INDEX]" "$TEMP_DIR/chunks.json" > "$TEMP_DIR/current_chunk.json"
-  CHUNK_SIZE_ACTUAL=$(jq '. | length' "$TEMP_DIR/current_chunk.json")
-  
-  echo ""
-  echo "── Chunk $((CHUNK_INDEX + 1))/$TOTAL_CHUNKS ($CHUNK_SIZE_ACTUAL bridges) ──"
-
-  ATTEMPT=0
-  CHUNK_OK=false
-
-  while [ "$ATTEMPT" -lt "$MAX_RETRIES" ] && [ "$CHUNK_OK" != "true" ]; do
-    ATTEMPT=$((ATTEMPT + 1))
-    
-    if [ "$ATTEMPT" -gt 1 ]; then
-      BACKOFF=$((2 ** (ATTEMPT - 1)))
-      echo "  Retry $ATTEMPT/$MAX_RETRIES after ${BACKOFF}s backoff..."
-      sleep "$BACKOFF"
-    fi
-
-    HTTP_CODE=$(curl -s -w '%{http_code}' -o "$TEMP_DIR/chunk_response.json" \
-      --max-time "$PROBE_TIMEOUT" \
-      -X POST "${RELAY_URL}/probe" \
+  RETRY=0
+  SUCCESS=false
+  while [ "$RETRY" -le "$MAX_RETRIES" ]; do
+    echo "Chunk $CHUNK_IDX (${BRIDGES_IN_CHUNK} bridges, attempt $((RETRY + 1))/${MAX_RETRIES}0)..."
+    HTTP_CODE=$(curl -s -o "$TMP_DIR/resp_${CHUNK_IDX}.json" \
+      -w "%{http_code}" \
+      -X POST "$RELAY_URL" \
       -H "Content-Type: application/json" \
-      -H "X-Probe-Token: ${RELAY_TOKEN}" \
-      -d "@${TEMP_DIR}/current_chunk.json" 2>/dev/null || echo "000")
+      "${AUTH_HEADER[@]}" \
+      -d "$CHUNK_JSON" \
+      --connect-timeout 15 --max-time 120 2>/dev/null || echo "000")
 
     if [ "$HTTP_CODE" = "200" ]; then
-      # Merge results
-      CHUNK_RESULTS=$(jq -c '.results // []' "$TEMP_DIR/chunk_response.json" 2>/dev/null || echo '[]')
-      jq -s '.[0] + .[1]' "$ALL_RESULTS" <(echo "$CHUNK_RESULTS") > "$TEMP_DIR/merged.json"
-      mv "$TEMP_DIR/merged.json" "$ALL_RESULTS"
-
-      CHUNK_SUCCESSES=$(echo "$CHUNK_RESULTS" | jq '[.[] | select(.success == true)] | length')
-      CHUNK_FAILURES=$(echo "$CHUNK_RESULTS" | jq '[.[] | select(.success == false)] | length')
-      SUCCESS_COUNT=$((SUCCESS_COUNT + CHUNK_SUCCESSES))
-      FAIL_COUNT=$((FAIL_COUNT + CHUNK_FAILURES))
-      
-      echo "  ✅ Chunk complete: $CHUNK_SUCCESSES reachable, $CHUNK_FAILURES unreachable"
-      CHUNK_OK=true
-    elif [ "$HTTP_CODE" = "401" ]; then
-      echo "  ❌ Authentication failed (HTTP $HTTP_CODE) — check PROBE_RELAY_TOKEN"
-      # Don't retry auth failures
-      break
-    elif [ "$HTTP_CODE" = "413" ]; then
-      echo "  ❌ Chunk too large (HTTP $HTTP_CODE) — reduce CHUNK_SIZE"
+      echo "Chunk $CHUNK_IDX: 200 OK"
+      SUCCESS=true
       break
     else
-      echo "  ⚠️  Relay returned HTTP $HTTP_CODE (attempt $ATTEMPT/$MAX_RETRIES)"
-      if [ -f "$TEMP_DIR/chunk_response.json" ]; then
-        echo "  Response: $(head -c 200 "$TEMP_DIR/chunk_response.json")"
-      fi
+      echo "Chunk $CHUNK_IDX: HTTP $HTTP_CODE (retry $RETRY/$MAX_RETRIES)"
+      RETRY=$((RETRY + 1))
+      sleep $((RETRY * 2))
     fi
   done
 
-  if [ "$CHUNK_OK" != "true" ]; then
-    echo "  ❌ Chunk failed after $MAX_RETRIES attempts — relay unreachable for this chunk"
-    # Mark all bridges in this chunk as relay_unreachable
-    jq -c '[.[] | {id, transport: (.transport // "unknown"), host: (.host // ""), port: (.port // 0), success: false, latency_ms: null, probe_type: "relay_unreachable", error: "Probe relay unreachable after '"$MAX_RETRIES"' retries"}]' \
-      "$TEMP_DIR/current_chunk.json" > "$TEMP_DIR/fallback_chunk.json"
-    jq -s '.[0] + .[1]' "$ALL_RESULTS" "$TEMP_DIR/fallback_chunk.json" > "$TEMP_DIR/merged.json"
-    mv "$TEMP_DIR/merged.json" "$ALL_RESULTS"
+  if [ "$SUCCESS" = true ] && [ -s "$TMP_DIR/resp_${CHUNK_IDX}.json" ]; then
+    # Merge chunk results into the aggregate array
+    jq -s '.[0] + .[1]' "$ALL_RESULTS" "$TMP_DIR/resp_${CHUNK_IDX}.json" > "$TMP_DIR/merged.json" 2>/dev/null || true
+    if [ -s "$TMP_DIR/merged.json" ]; then
+      mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
+    fi
+  else
+    echo "::warning::Chunk $CHUNK_IDX failed after $((MAX_RETRIES + 1)) attempts"
+    # Mark each bridge in this chunk as unreachable in the output
+    while IFS= read -r bridge_line; do
+      [ -z "$bridge_line" ] && continue
+      jq --arg line "$bridge_line" \
+        '. + [{"bridge": $line, "status": "relay_unreachable", "latency_ms": 0, "pt_type": "unknown"}]' \
+        "$ALL_RESULTS" > "$TMP_DIR/merged.json" 2>/dev/null
+      mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
+    done < "$chunk_file"
   fi
-
-  CHUNK_INDEX=$((CHUNK_INDEX + 1))
 done
 
-# ── Write output ────────────────────────────────────────────────────
+# ── Write final output ───────────────────────────────────────────────────────
+RESULT_COUNT=$(jq 'length' "$ALL_RESULTS" 2>/dev/null || echo 0)
+cp "$ALL_RESULTS" "$OUTPUT"
+echo "Probe relay complete: $RESULT_COUNT results written to $OUTPUT"
 
-TOTAL_RESULTS=$(jq '. | length' "$ALL_RESULTS")
-echo ""
-echo "═══ Probe Relay Summary ═══"
-echo "Bridges probed:   $TOTAL_RESULTS"
-echo "Reachable:        $SUCCESS_COUNT"
-echo "Unreachable:      $FAIL_COUNT"
-echo "Output:           $OUTPUT_FILE"
-
-# Write results in a format compatible with downstream stages
-# (same schema as bridge-probe's pt_results.json)
-jq -c '{
-  results: .,
-  summary: {
-    total: length,
-    reachable: [.[] | select(.success == true)] | length,
-    unreachable: [.[] | select(.success == false)] | length,
-    probe_source: "external-relay"
-  }
-}' "$ALL_RESULTS" > "$OUTPUT_FILE"
-
-echo "✅ Probe relay stage complete."
+# ── Always exit 0 — the relay is supplementary; local fallback exists ────────
+exit 0
