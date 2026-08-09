@@ -3,6 +3,7 @@
 //! Rust migration anchor crate for TorShield-IR Ultra VIP Edition.
 //! All modules are now fully Rust-native after Python-to-Rust migration.
 
+pub mod adaptive_scoring;
 pub mod adaptive_selector;
 pub mod adaptive_transport;
 pub mod ai_anti_dpi_iran;
