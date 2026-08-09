@@ -2441,6 +2441,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "198.71.53.250",
+      "port": 65444,
+      "raw": "obfs4 198.71.53.250:65444 B524273A55048AA713C95154C55E3024A48C041A cert=eKX/SI81xX23LVyLqgHomfKpC8fRsCcnHc/IkhCLMWJ06rwnYzGOOg4wP8S+7R68PiOjBg iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "198.98.59.76",
       "port": 80,
       "raw": "obfs4 198.98.59.76:80 2E18F504F27DFC23B5A716BB157C281874265AD1 cert=RHJPe84Blvxm7FiRTDQ/CAdERigYU0KTWUivRDqJm7tOkmpE/p4ZcNKB9kH8SSa/FfKmTw iat-mode=0",
@@ -2913,11 +2921,11 @@
       "transport": "obfs4"
     },
     {
-      "ip": "5.83.147.191",
-      "port": 8080,
-      "raw": "obfs4 5.83.147.191:8080 84DE70C3735D1F2D3D8142AAAD785521750310D2 cert=1EAtrN2FDSjOvdC/kznspxRnQegwZGnJ4Wk74L9Zs/wU/KRclyNn/Et10UGNC+fv0wGCUQ iat-mode=0",
+      "ip": "51.15.209.137",
+      "port": 8082,
+      "raw": "obfs4 51.15.209.137:8082 D5CA618CFEEFF9BA06D3CA2EA0A16C060B4E8EC6 cert=TeBCaBZLV4Vh6lUKvlmE6CXARPR9EecQPlOFKsBqbZjvu9UG7KC9q8meXp4oBJy2W0GOBg iat-mode=0",
       "sni": "",
-      "tier": "YELLOW",
+      "tier": "RED",
       "transport": "obfs4"
     },
     {
@@ -3862,10 +3870,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-09T13:10:08.689616+00:00",
+  "generated_at": "2026-08-09T14:17:24.515566+00:00",
   "green_count": 6,
-  "red_count": 379,
+  "red_count": 381,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 482,
-  "yellow_count": 97
+  "total_bridges": 483,
+  "yellow_count": 96
 }
