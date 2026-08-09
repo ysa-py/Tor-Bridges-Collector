@@ -500,39 +500,21 @@ jobs:
       #
       # BEFORE the 1447-bridge batch, we:
       #   1. Deploy the probe-relay Cloudflare Worker (in case it drifted)
-      #      using the first CF_ACCOUNT_ID_N / CF_API_TOKEN_N pair that
-      #      authenticates, falling through slots 1..11.
+      #      using the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
+      #      secrets (NEVER the CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11
+      #      slots, which belong to the AI Gateway provider rotation system).
       #   2. Run a live smoke-test curl to confirm the Worker is alive and
       #      returns 200 — fail loudly if it does not.
-      #   3. If PROBE_RELAY_URL is unset or empty, skip Stage 4 cleanly
-      #      rather than burning 10+ minutes on guaranteed HTTP 404s.
+      #   3. If CF_WORKER_ACCOUNT_ID or PROBE_RELAY_URL is unset, skip
+      #      Stage 4 cleanly (exit 0, logged as SKIPPED) rather than burning
+      #      10+ minutes on guaranteed HTTP 404s.
       - name: Stage 4-prep — Deploy probe relay + live smoke test
         id: relay_prep
         env:
           PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
           PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
-          CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
-          CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
-          CF_ACCOUNT_ID_2: ${{ secrets.CF_ACCOUNT_ID_2 }}
-          CF_API_TOKEN_2: ${{ secrets.CF_API_TOKEN_2 }}
-          CF_ACCOUNT_ID_3: ${{ secrets.CF_ACCOUNT_ID_3 }}
-          CF_API_TOKEN_3: ${{ secrets.CF_API_TOKEN_3 }}
-          CF_ACCOUNT_ID_4: ${{ secrets.CF_ACCOUNT_ID_4 }}
-          CF_API_TOKEN_4: ${{ secrets.CF_API_TOKEN_4 }}
-          CF_ACCOUNT_ID_5: ${{ secrets.CF_ACCOUNT_ID_5 }}
-          CF_API_TOKEN_5: ${{ secrets.CF_API_TOKEN_5 }}
-          CF_ACCOUNT_ID_6: ${{ secrets.CF_ACCOUNT_ID_6 }}
-          CF_API_TOKEN_6: ${{ secrets.CF_API_TOKEN_6 }}
-          CF_ACCOUNT_ID_7: ${{ secrets.CF_ACCOUNT_ID_7 }}
-          CF_API_TOKEN_7: ${{ secrets.CF_API_TOKEN_7 }}
-          CF_ACCOUNT_ID_8: ${{ secrets.CF_ACCOUNT_ID_8 }}
-          CF_API_TOKEN_8: ${{ secrets.CF_API_TOKEN_8 }}
-          CF_ACCOUNT_ID_9: ${{ secrets.CF_ACCOUNT_ID_9 }}
-          CF_API_TOKEN_9: ${{ secrets.CF_API_TOKEN_9 }}
-          CF_ACCOUNT_ID_10: ${{ secrets.CF_ACCOUNT_ID_10 }}
-          CF_API_TOKEN_10: ${{ secrets.CF_API_TOKEN_10 }}
-          CF_ACCOUNT_ID_11: ${{ secrets.CF_ACCOUNT_ID_11 }}
-          CF_API_TOKEN_11: ${{ secrets.CF_API_TOKEN_11 }}
+          CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID }}
+          CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
         run: |
           set -euo pipefail
           echo "═══ Stage 4-prep: Probe Relay Deployment + Smoke Test ═══"
@@ -548,48 +530,33 @@ jobs:
           echo "Relay URL: ${PROBE_RELAY_URL}"
 
           # ── Deploy / re-deploy the Worker via wrangler ──────────────
-          if ! command -v npx >/dev/null 2>&1; then
+          # Uses ONLY the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
+          # secrets. The CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11 slots are
+          # reserved for the AI Gateway provider rotation system and must not
+          # be referenced here.
+          if [ -z "${CF_WORKER_ACCOUNT_ID:-}" ] || [ -z "${CF_WORKER_API_TOKEN:-}" ]; then
+            echo "::warning::CF_WORKER_ACCOUNT_ID/TOKEN not configured — skipping wrangler deploy"
+            echo "::warning::The probe relay Worker may be stale if redeployed outside CI"
+          elif ! command -v npx >/dev/null 2>&1; then
             echo "::warning::npx not available — skipping wrangler deploy; using existing Worker deployment"
           else
-            DEPLOYED=false
-            for slot in 1 2 3 4 5 6 7 8 9 10 11; do
-              ACCT_VAR="CF_ACCOUNT_ID_${slot}"
-              TOKEN_VAR="CF_API_TOKEN_${slot}"
-              ACCT="${!ACCT_VAR:-}"
-              TOKEN="${!TOKEN_VAR:-}"
-              if [ -z "$ACCT" ] || [ -z "$TOKEN" ]; then
-                continue
-              fi
-              echo "Trying Cloudflare slot $slot for wrangler deploy…"
-              export CLOUDFLARE_ACCOUNT_ID="$ACCT"
-              export CLOUDFLARE_API_TOKEN="$TOKEN"
-              if npx wrangler@latest deploy --config probe-relay/wrangler.toml 2>&1; then
-                echo "✅ wrangler deploy succeeded via slot $slot"
-                DEPLOYED=true
-                break
-              else
-                echo "::warning::wrangler deploy failed for slot $slot — trying next slot"
-              fi
-            done
-            if [ "$DEPLOYED" = false ]; then
-              echo "::warning::wrangler deploy failed for all 11 CF slots — proceeding with existing Worker deployment"
+            echo "Deploying probe-relay Worker via wrangler…"
+            export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
+            export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+            if npx wrangler@latest deploy --config probe-relay/wrangler.toml 2>&1; then
+              echo "✅ wrangler deploy succeeded"
+            else
+              echo "::warning::wrangler deploy FAILED — proceeding with existing Worker deployment"
             fi
           fi
 
           # ── Show the deployed Worker version (diagnostic) ───────────
-          if command -v npx >/dev/null 2>&1; then
-            for slot in 1 2 3 4 5 6 7 8 9 10 11; do
-              TOKEN_VAR="CF_API_TOKEN_${slot}"
-              TOKEN="${!TOKEN_VAR:-}"
-              if [ -n "$TOKEN" ]; then
-                export CLOUDFLARE_API_TOKEN="$TOKEN"
-                echo "--- wrangler whoami (slot $slot) ---"
-                npx wrangler@latest whoami 2>&1 || true
-                echo "--- wrangler deployments list ---"
-                npx wrangler@latest deployments list --config probe-relay/wrangler.toml 2>&1 || true
-                break
-              fi
-            done
+          if [ -n "${CF_WORKER_API_TOKEN:-}" ] && command -v npx >/dev/null 2>&1; then
+            export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+            echo "--- wrangler whoami ---"
+            npx wrangler@latest whoami 2>&1 || true
+            echo "--- wrangler deployments list ---"
+            npx wrangler@latest deployments list --config probe-relay/wrangler.toml 2>&1 || true
           fi
 
           # ── Live smoke test: single curl before the 49-chunk batch ──
