@@ -108,12 +108,16 @@ echo "Extracted $LINE_COUNT bridge lines from $INPUT"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
+# Ensure URL ends with /probe (Worker only handles POST /probe, not root).
+# Strip any trailing slash, then append /probe.
+RELAY_URL="${RELAY_URL%/}/probe"
+
 CHUNK_IDX=0
 echo "$BRIDGE_LINES" | split -l "$CHUNK_SIZE" - "$TMP_DIR/chunk_"
 
 AUTH_HEADER=()
 if [ -n "$RELAY_TOKEN" ]; then
-  AUTH_HEADER=(-H "Authorization: Bearer $RELAY_TOKEN")
+  AUTH_HEADER=(-H "X-Probe-Token: $RELAY_TOKEN")
 fi
 
 ALL_RESULTS="$TMP_DIR/all_results.json"
