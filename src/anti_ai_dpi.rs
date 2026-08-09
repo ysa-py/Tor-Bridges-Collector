@@ -17,7 +17,11 @@
 //! | Transport  | Score | Rationale                                              |
 //! |------------|-------|--------------------------------------------------------|
 //! | snowflake  | 0.92  | DTLS/WebRTC — Iran classifies as video call            |
+//! | vless      | 0.95  | VLESS+REALITY — stolen TLS cert, SIAM sees legit HTTPS |
 //! | webtunnel  | 0.88  | Pure HTTPS — indistinguishable from normal web traffic |
+//! | hysteria2  | 0.90  | Modified QUIC w/ obfuscation — looks like HTTP/3 video |
+//! | tuic       | 0.85  | QUIC-based multiplexed — standard QUIC traffic pattern |
+//! | shadow-tls | 0.82  | TLS handshake mimicry with configurable CDN SNI        |
 //! | meek_lite  | 0.80  | CDN-fronted HTTPS                                      |
 //! | obfs4      | 0.72  | Random padding defeats traffic classifiers             |
 //! | vanilla    | 0.05  | Fully identifiable — no evasion                        |
@@ -57,11 +61,32 @@ pub const IRAN_BLOCKED_JA3: &[&str] = &[
     "51523dc8c3d26b21defdcbe4ab87c9e0", // obfs4 misconfigured
 ];
 
-/// Transport anti-AI-DPI scores (Python `TRANSPORT_DPI_SCORES` dict).
+/// Transport anti-AI-DPI scores (Python `TRANSPORT_DPI_SCORES` dict,
+/// extended with v2.6.0 modern protocol scores).
+///
+/// Scores are calibrated against Iran's SIAM/NGFW DPI (2026 OONI/Censored Planet
+/// observations):
+///
+/// * **vless (0.95)**: VLESS+REALITY borrows a real TLS certificate from a
+///   target website (e.g. www.microsoft.com). SIAM sees a legitimate TLS
+///   handshake; detection requires deep ALPN negotiation analysis that SIAM
+///   does not perform at scale.
+/// * **hysteria2 (0.90)**: Modified QUIC protocol with password-based
+///   authentication embedded in the handshake. DPI sees standard QUIC
+///   traffic common to YouTube/Google services.
+/// * **tuic (0.85)**: QUIC-based multiplexed tunnel; standard QUIC traffic
+///   indistinguishable from HTTP/3 at the network layer.
+/// * **shadow-tls (0.82)**: Wraps a configurable-SNI TLS handshake around
+///   real traffic. Slightly lower than hysteria2 because TLS handshake
+///   timing can be statistically fingerprinted.
 pub fn transport_dpi_score(transport: &str) -> f64 {
     match transport {
+        "vless" => 0.95,
         "snowflake" => 0.92,
+        "hysteria2" => 0.90,
         "webtunnel" => 0.88,
+        "tuic" => 0.85,
+        "shadow-tls" => 0.82,
         "meek_lite" => 0.80,
         "obfs4" => 0.72,
         _ => 0.05, // vanilla + unknown
@@ -115,15 +140,32 @@ pub enum AntiAiDpiError {
 // Bridge-line parsing helpers (mirror Python regex and detection)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Detect transport from a bridge line. Mirrors Python `_detect_transport`:
-/// * `"snowflake" in l` → snowflake
-/// * `"webtunnel" in l or "url=https" in l` → webtunnel
-/// * `"obfs4" in l` → obfs4
-/// * `"meek" in l` → meek_lite
+/// Detect transport from a bridge line. Mirrors Python `_detect_transport`,
+/// extended with v2.6.0 modern protocol URI-prefix detection.
+///
+/// Priority order (highest-first):
+/// * `"vless://"` prefix → vless
+/// * `"hysteria2://"` or `"hysteria://"` prefix → hysteria2
+/// * `"tuic://"` prefix → tuic
+/// * `"shadow-tls://"` prefix → shadow-tls
+/// * `"snowflake"` keyword → snowflake
+/// * `"webtunnel"` or `"url=https"` keyword → webtunnel
+/// * `"obfs4"` keyword → obfs4
+/// * `"meek"` keyword → meek_lite
 /// * else → vanilla
 pub fn detect_transport(line: &str) -> &'static str {
     let l = line.to_lowercase();
-    if l.contains("snowflake") {
+    // v2.6.0 modern protocols: URI scheme detection (highest priority — these
+    // are unambiguous protocol identifiers that must not be misclassified).
+    if l.starts_with("vless://") {
+        "vless"
+    } else if l.starts_with("hysteria2://") || l.starts_with("hysteria://") {
+        "hysteria2"
+    } else if l.starts_with("tuic://") {
+        "tuic"
+    } else if l.starts_with("shadow-tls://") {
+        "shadow-tls"
+    } else if l.contains("snowflake") {
         "snowflake"
     } else if l.contains("webtunnel") || l.contains("url=https") {
         "webtunnel"
@@ -352,6 +394,108 @@ mod tests {
         assert_eq!(transport_dpi_score("obfs4"), 0.72);
         assert_eq!(transport_dpi_score("vanilla"), 0.05);
         assert_eq!(transport_dpi_score("unknown"), 0.05);
+    }
+
+    // ── v2.6.0 modern protocol scores ─────────────────────────────────────
+
+    #[test]
+    fn transport_dpi_scores_v260_modern_protocols() {
+        assert_eq!(transport_dpi_score("vless"), 0.95);
+        assert_eq!(transport_dpi_score("hysteria2"), 0.90);
+        assert_eq!(transport_dpi_score("tuic"), 0.85);
+        assert_eq!(transport_dpi_score("shadow-tls"), 0.82);
+    }
+
+    #[test]
+    fn detect_transport_v260_modern_protocols() {
+        assert_eq!(
+            detect_transport("vless://abc123@192.0.2.1:443?security=reality&sni=www.microsoft.com"),
+            "vless"
+        );
+        assert_eq!(
+            detect_transport("hysteria2://password@192.0.2.1:443?sni=www.google.com"),
+            "hysteria2"
+        );
+        assert_eq!(
+            detect_transport("hysteria://password@192.0.2.1:443"),
+            "hysteria2"
+        );
+        assert_eq!(
+            detect_transport("tuic://uuid:password@192.0.2.1:443?congestion_control=bbr"),
+            "tuic"
+        );
+        assert_eq!(
+            detect_transport("shadow-tls://192.0.2.1:443?sni=www.cloudflare.com&password=secret"),
+            "shadow-tls"
+        );
+    }
+
+    #[test]
+    fn score_vless_reality_very_low_risk() {
+        // vless (0.95) > 0.80 → VERY_LOW even without port bonus
+        let r = score_anti_ai_dpi("vless://abc@1.2.3.4:9999?security=reality&sni=cdn.com");
+        assert_eq!(r["transport"], "vless");
+        assert_eq!(r["anti_ai_dpi_score"], 0.95);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_vless_reality_with_safe_port_clamps() {
+        // vless (0.95) + safe_port (0.05) = 1.00 → VERY_LOW
+        let r = score_anti_ai_dpi(
+            "vless://abc@1.2.3.4:443?security=reality&sni=cdn.com#safe",
+        );
+        assert_eq!(r["transport"], "vless");
+        assert_eq!(r["anti_ai_dpi_score"], 1.0);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_hysteria2_very_low_risk() {
+        let r = score_anti_ai_dpi("hysteria2://pwd@1.2.3.4:8443?sni=www.bing.com");
+        assert_eq!(r["transport"], "hysteria2");
+        // 0.90 + 0.05 (8443=safe) = 0.95 → VERY_LOW
+        assert_eq!(r["anti_ai_dpi_score"], 0.95);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_tuic_low_risk_on_unknown_port() {
+        // tuic (0.85) + no bonus (port 9999) = 0.85 → VERY_LOW
+        let r = score_anti_ai_dpi("tuic://uuid:pwd@1.2.3.4:9999");
+        assert_eq!(r["transport"], "tuic");
+        assert_eq!(r["anti_ai_dpi_score"], 0.85);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_shadow_tls_very_low_risk() {
+        // shadow-tls (0.82) + safe_port (0.05) = 0.87 → VERY_LOW
+        let r = score_anti_ai_dpi(
+            "shadow-tls://1.2.3.4:443?sni=www.fastly.com&password=sec",
+        );
+        assert_eq!(r["transport"], "shadow-tls");
+        assert_eq!(r["anti_ai_dpi_score"], 0.87);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_shadow_tls_cdn_hint_bonus() {
+        // shadow-tls (0.82) + safe_port (0.05, 443) + cdn (0.05, fastly) = 0.92
+        let r = score_anti_ai_dpi(
+            "shadow-tls://1.2.3.4:443?sni=cdn.fastly.com&password=sec fastly",
+        );
+        assert_eq!(r["transport"], "shadow-tls");
+        assert_eq!(r["anti_ai_dpi_score"], 0.92);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"safe_port"));
+        assert!(flags.contains(&"cdn_hinted"));
     }
 
     #[test]
