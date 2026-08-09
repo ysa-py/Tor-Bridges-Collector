@@ -474,14 +474,14 @@ func main() {
 				go func(raw, src string) {
 					defer ripeWG.Done()
 					defer func() { <-sem }()
-					b, err := bridge.Parse(raw)
-					if err != nil || b.Transport == "snowflake" {
+					b, err := bridge.ParseLine(raw)
+					if err != nil || b.Type == "snowflake" {
 						ripeCh <- ripeResult{line: raw, reachable: false, tested: false}
 						return
 					}
 					rCtx, cancel := context.WithTimeout(ctx, 12*time.Minute)
 					defer cancel()
-					ok, tested := ripeClient.Measure(rCtx, b.Host, b.Port)
+					ok, tested := ripeClient.Measure(rCtx, b.Host, int(b.Port))
 					ripeCh <- ripeResult{raw, ok, tested}
 				}(tb.line, tb.source)
 			}
@@ -503,10 +503,10 @@ func main() {
 
 		var merged []MergedResult
 		for _, tb := range allBridges {
-			b, _ := bridge.Parse(tb.line)
+			b, _ := bridge.ParseLine(tb.line)
 			host, port, transport := "", 0, "unknown"
 			if b != nil {
-				host, port, transport = b.Host, b.Port, b.Transport
+				host, port, transport = b.Host, int(b.Port), b.Type
 			}
 
 			rr := ripeMap[tb.line]

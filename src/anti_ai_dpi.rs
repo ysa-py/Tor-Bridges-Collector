@@ -17,7 +17,11 @@
 //! | Transport  | Score | Rationale                                              |
 //! |------------|-------|--------------------------------------------------------|
 //! | snowflake  | 0.92  | DTLS/WebRTC — Iran classifies as video call            |
+//! | vless      | 0.95  | VLESS+REALITY — stolen TLS cert, SIAM sees legit HTTPS |
 //! | webtunnel  | 0.88  | Pure HTTPS — indistinguishable from normal web traffic |
+//! | hysteria2  | 0.90  | Modified QUIC w/ obfuscation — looks like HTTP/3 video |
+//! | tuic       | 0.85  | QUIC-based multiplexed — standard QUIC traffic pattern |
+//! | shadow-tls | 0.82  | TLS handshake mimicry with configurable CDN SNI        |
 //! | meek_lite  | 0.80  | CDN-fronted HTTPS                                      |
 //! | obfs4      | 0.72  | Random padding defeats traffic classifiers             |
 //! | vanilla    | 0.05  | Fully identifiable — no evasion                        |
@@ -57,11 +61,32 @@ pub const IRAN_BLOCKED_JA3: &[&str] = &[
     "51523dc8c3d26b21defdcbe4ab87c9e0", // obfs4 misconfigured
 ];
 
-/// Transport anti-AI-DPI scores (Python `TRANSPORT_DPI_SCORES` dict).
+/// Transport anti-AI-DPI scores (Python `TRANSPORT_DPI_SCORES` dict,
+/// extended with v2.6.0 modern protocol scores).
+///
+/// Scores are calibrated against Iran's SIAM/NGFW DPI (2026 OONI/Censored Planet
+/// observations):
+///
+/// * **vless (0.95)**: VLESS+REALITY borrows a real TLS certificate from a
+///   target website (e.g. www.microsoft.com). SIAM sees a legitimate TLS
+///   handshake; detection requires deep ALPN negotiation analysis that SIAM
+///   does not perform at scale.
+/// * **hysteria2 (0.90)**: Modified QUIC protocol with password-based
+///   authentication embedded in the handshake. DPI sees standard QUIC
+///   traffic common to YouTube/Google services.
+/// * **tuic (0.85)**: QUIC-based multiplexed tunnel; standard QUIC traffic
+///   indistinguishable from HTTP/3 at the network layer.
+/// * **shadow-tls (0.82)**: Wraps a configurable-SNI TLS handshake around
+///   real traffic. Slightly lower than hysteria2 because TLS handshake
+///   timing can be statistically fingerprinted.
 pub fn transport_dpi_score(transport: &str) -> f64 {
     match transport {
+        "vless" => 0.95,
         "snowflake" => 0.92,
+        "hysteria2" => 0.90,
         "webtunnel" => 0.88,
+        "tuic" => 0.85,
+        "shadow-tls" => 0.82,
         "meek_lite" => 0.80,
         "obfs4" => 0.72,
         _ => 0.05, // vanilla + unknown
@@ -76,6 +101,50 @@ pub const TOR_KNOWN_PORTS: &[u16] = &[9001, 9030, 9050];
 
 /// CDN keyword hints used by the bonus logic (Python inline set).
 pub const CDN_HINT_KEYWORDS: &[&str] = &["cloudflare", "fastly", "akamai", "cloudfront", "arvan"];
+
+/// Iran-specific CDN domain bonus tiers (differential CDN value).
+///
+/// Not all CDNs are equal inside Iran. Domestic CDNs (Arvan Cloud) and CDNs
+/// widely used by Iranian businesses/government (Azure) cause massive
+/// collateral damage if blocked, so bridges fronted through them blend
+/// better with legitimate traffic. Foreign-only CDNs (Fastly, Akamai) are
+/// less common in Iranian traffic and thus easier for SIAM to fingerprint.
+///
+/// This is a heuristic based on public OONI/Censored Planet observations
+/// (2022–2026), not a learned model.
+///
+/// * **Arvan Cloud** (arvancloud.ir, cdn.arvancloud.com): Iranian CDN —
+///   blocked traffic would impact domestic services → highest bonus.
+/// * **Azure** (azure.microsoft.com, azureedge.net, azurefd.net): Microsoft
+///   CDN — heavily used by Iranian government/business → high bonus.
+/// * **Cloudflare**: widely used globally, partially used in Iran → medium.
+/// * **Fastly, Akamai, CloudFront**: rare in Iranian traffic → low bonus.
+const IRAN_CDN_BONUS_TIERS: &[(&[&str], f64)] = &[
+    (&["arvancloud", "arvan"], 0.03),
+    (&["azure", "azureedge", "azurefd", "microsoft"], 0.02),
+    (&["cloudflare"], 0.01),
+    (&["fastly", "akamai", "cloudfront", "gcore"], 0.0),
+];
+
+/// Returns the Iran-specific CDN domain bonus for a bridge line.
+///
+/// Scans the line (case-insensitive) for CDN domain keywords and returns
+/// the highest-matching bonus tier. This is additive to the existing
+/// `cdn_hinted` flag bonus (+0.05) — together they reward bridges that use
+/// CDNs AND those CDNs are specifically hard for Iran to block.
+pub fn iran_cdn_bonus(line: &str) -> f64 {
+    let lower = line.to_lowercase();
+    IRAN_CDN_BONUS_TIERS
+        .iter()
+        .filter_map(|(keywords, bonus)| {
+            if keywords.iter().any(|kw| lower.contains(kw)) {
+                Some(*bonus)
+            } else {
+                None
+            }
+        })
+        .fold(0.0_f64, f64::max)
+}
 
 /// Returns true if `port` is in [`SAFE_PORTS`].
 pub fn is_safe_port(port: u16) -> bool {
@@ -115,15 +184,32 @@ pub enum AntiAiDpiError {
 // Bridge-line parsing helpers (mirror Python regex and detection)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Detect transport from a bridge line. Mirrors Python `_detect_transport`:
-/// * `"snowflake" in l` → snowflake
-/// * `"webtunnel" in l or "url=https" in l` → webtunnel
-/// * `"obfs4" in l` → obfs4
-/// * `"meek" in l` → meek_lite
+/// Detect transport from a bridge line. Mirrors Python `_detect_transport`,
+/// extended with v2.6.0 modern protocol URI-prefix detection.
+///
+/// Priority order (highest-first):
+/// * `"vless://"` prefix → vless
+/// * `"hysteria2://"` or `"hysteria://"` prefix → hysteria2
+/// * `"tuic://"` prefix → tuic
+/// * `"shadow-tls://"` prefix → shadow-tls
+/// * `"snowflake"` keyword → snowflake
+/// * `"webtunnel"` or `"url=https"` keyword → webtunnel
+/// * `"obfs4"` keyword → obfs4
+/// * `"meek"` keyword → meek_lite
 /// * else → vanilla
 pub fn detect_transport(line: &str) -> &'static str {
     let l = line.to_lowercase();
-    if l.contains("snowflake") {
+    // v2.6.0 modern protocols: URI scheme detection (highest priority — these
+    // are unambiguous protocol identifiers that must not be misclassified).
+    if l.starts_with("vless://") {
+        "vless"
+    } else if l.starts_with("hysteria2://") || l.starts_with("hysteria://") {
+        "hysteria2"
+    } else if l.starts_with("tuic://") {
+        "tuic"
+    } else if l.starts_with("shadow-tls://") {
+        "shadow-tls"
+    } else if l.contains("snowflake") {
         "snowflake"
     } else if l.contains("webtunnel") || l.contains("url=https") {
         "webtunnel"
@@ -195,11 +281,19 @@ pub fn score_anti_ai_dpi(line: &str) -> Value {
         flags.push("obfs4_iat_timing_randomised");
     }
 
-    // CDN hint in line (case-insensitive)
+    // CDN hint in line (case-insensitive) — base +0.05 for any CDN
     let lower = trimmed.to_lowercase();
     if CDN_HINT_KEYWORDS.iter().any(|kw| lower.contains(kw)) {
         bonus += 0.05;
         flags.push("cdn_hinted");
+    }
+    // Iran-specific CDN tier bonus — differential reward for CDNs that
+    // are harder for Iran's SIAM to block (domestic or widely-used CDNs
+    // cause massive collateral damage if blocked).
+    let iran_cdn_extra = iran_cdn_bonus(trimmed);
+    if iran_cdn_extra > 0.0 {
+        bonus += iran_cdn_extra;
+        flags.push("iran_cdn_safe");
     }
 
     let final_score = ((base_score + bonus).min(1.0) * 1000.0).round() / 1000.0;
@@ -354,6 +448,103 @@ mod tests {
         assert_eq!(transport_dpi_score("unknown"), 0.05);
     }
 
+    // ── v2.6.0 modern protocol scores ─────────────────────────────────────
+
+    #[test]
+    fn transport_dpi_scores_v260_modern_protocols() {
+        assert_eq!(transport_dpi_score("vless"), 0.95);
+        assert_eq!(transport_dpi_score("hysteria2"), 0.90);
+        assert_eq!(transport_dpi_score("tuic"), 0.85);
+        assert_eq!(transport_dpi_score("shadow-tls"), 0.82);
+    }
+
+    #[test]
+    fn detect_transport_v260_modern_protocols() {
+        assert_eq!(
+            detect_transport("vless://abc123@192.0.2.1:443?security=reality&sni=www.microsoft.com"),
+            "vless"
+        );
+        assert_eq!(
+            detect_transport("hysteria2://password@192.0.2.1:443?sni=www.google.com"),
+            "hysteria2"
+        );
+        assert_eq!(
+            detect_transport("hysteria://password@192.0.2.1:443"),
+            "hysteria2"
+        );
+        assert_eq!(
+            detect_transport("tuic://uuid:password@192.0.2.1:443?congestion_control=bbr"),
+            "tuic"
+        );
+        assert_eq!(
+            detect_transport("shadow-tls://192.0.2.1:443?sni=www.cloudflare.com&password=secret"),
+            "shadow-tls"
+        );
+    }
+
+    #[test]
+    fn score_vless_reality_very_low_risk() {
+        // vless (0.95) > 0.80 → VERY_LOW even without port bonus
+        let r = score_anti_ai_dpi("vless://abc@1.2.3.4:9999?security=reality&sni=cdn.com");
+        assert_eq!(r["transport"], "vless");
+        assert_eq!(r["anti_ai_dpi_score"], 0.95);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_vless_reality_with_safe_port_clamps() {
+        // vless (0.95) + safe_port (0.05) = 1.00 → VERY_LOW
+        let r = score_anti_ai_dpi("vless://abc@1.2.3.4:443?security=reality&sni=cdn.com#safe");
+        assert_eq!(r["transport"], "vless");
+        assert_eq!(r["anti_ai_dpi_score"], 1.0);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_hysteria2_very_low_risk() {
+        let r = score_anti_ai_dpi("hysteria2://pwd@1.2.3.4:8443?sni=www.bing.com");
+        assert_eq!(r["transport"], "hysteria2");
+        // 0.90 + 0.05 (8443=safe) = 0.95 → VERY_LOW
+        assert_eq!(r["anti_ai_dpi_score"], 0.95);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_tuic_low_risk_on_unknown_port() {
+        // tuic (0.85) + no bonus (port 9999) = 0.85 → VERY_LOW
+        let r = score_anti_ai_dpi("tuic://uuid:pwd@1.2.3.4:9999");
+        assert_eq!(r["transport"], "tuic");
+        assert_eq!(r["anti_ai_dpi_score"], 0.85);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_shadow_tls_very_low_risk() {
+        // shadow-tls (0.82) + safe_port (0.05, 443) + cdn_hinted (0.05, fastly) = 0.92 → VERY_LOW
+        let r = score_anti_ai_dpi("shadow-tls://1.2.3.4:443?sni=www.fastly.com&password=sec");
+        assert_eq!(r["transport"], "shadow-tls");
+        assert_eq!(r["anti_ai_dpi_score"], 0.92);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    #[test]
+    fn score_shadow_tls_cdn_hint_bonus() {
+        // shadow-tls (0.82) + safe_port (0.05, 443) + cdn (0.05, fastly) = 0.92
+        let r =
+            score_anti_ai_dpi("shadow-tls://1.2.3.4:443?sni=cdn.fastly.com&password=sec fastly");
+        assert_eq!(r["transport"], "shadow-tls");
+        assert_eq!(r["anti_ai_dpi_score"], 0.92);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"safe_port"));
+        assert!(flags.contains(&"cdn_hinted"));
+    }
+
     #[test]
     fn detect_transport_priority_matches_python() {
         // snowflake > (webtunnel | url=https) > obfs4 > meek > vanilla
@@ -459,9 +650,115 @@ mod tests {
     #[test]
     fn score_cdn_hint_adds_bonus() {
         let r = score_anti_ai_dpi("obfs4 1.2.3.4:443 cloudflare");
-        // 0.72 + 0.05 (safe) + 0.05 (cdn) = 0.82 → VERY_LOW
-        assert_eq!(r["anti_ai_dpi_score"], 0.82);
+        // 0.72 + 0.05 (safe) + 0.05 (cdn) + 0.01 (iran_cdn_safe) = 0.83 → VERY_LOW
+        assert_eq!(r["anti_ai_dpi_score"], 0.83);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+    }
+
+    // ── v37 Iran-specific CDN domain bonus tests ───────────────────────────
+
+    #[test]
+    fn iran_cdn_bonus_arvan_cloud_returns_highest() {
+        // Arvan Cloud is Iran's domestic CDN — hardest to block
+        assert_eq!(iran_cdn_bonus("obfs4 1.2.3.4:443 arvancloud.ir"), 0.03);
+        assert_eq!(iran_cdn_bonus("cdn.arvancloud.com front"), 0.03);
+        assert_eq!(iran_cdn_bonus("webtunnel url=https://arvan.dev/path"), 0.03);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_azure_returns_medium() {
+        assert_eq!(iran_cdn_bonus("azure.microsoft.com"), 0.02);
+        assert_eq!(iran_cdn_bonus("https://azureedge.net/path"), 0.02);
+        assert_eq!(iran_cdn_bonus("azurefd.net front"), 0.02);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_cloudflare_returns_low() {
+        assert_eq!(iran_cdn_bonus("bridge cloudflare.com"), 0.01);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_fastly_returns_none() {
+        // Fastly/Akamai/CloudFront are rare in Iranian traffic — no extra bonus
+        assert_eq!(iran_cdn_bonus("sni=cdn.fastly.com"), 0.0);
+        assert_eq!(iran_cdn_bonus("akamai.net front"), 0.0);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_no_cdn_returns_zero() {
+        assert_eq!(iran_cdn_bonus("obfs4 1.2.3.4:443"), 0.0);
+        assert_eq!(iran_cdn_bonus("vanilla 5.6.7.8:9001"), 0.0);
+    }
+
+    #[test]
+    fn iran_cdn_bonus_multiple_matches_returns_highest() {
+        // Both arvan AND azure keywords → should get arvan's higher bonus (0.03)
+        assert_eq!(
+            iran_cdn_bonus("arvancloud azure.microsoft.com webtunnel"),
+            0.03
+        );
+    }
+
+    #[test]
+    fn iran_cdn_bonus_case_insensitive() {
+        assert_eq!(iran_cdn_bonus("ARVANCLOUD.IR"), 0.03);
+        assert_eq!(iran_cdn_bonus("Azure.Microsoft.COM"), 0.02);
+        assert_eq!(iran_cdn_bonus("CLOUDFLARE"), 0.01);
+    }
+
+    #[test]
+    fn score_arvan_cdn_gets_extra_bonus() {
+        // obfs4 (0.72) on port 443 (+0.05) + CDN (+0.05) + Arvan bonus (+0.03) = 0.85
+        let r = score_anti_ai_dpi("obfs4 1.2.3.4:443 arvancloud.ir");
+        assert_eq!(r["anti_ai_dpi_score"], 0.85);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"safe_port"));
+        assert!(flags.contains(&"cdn_hinted"));
+        assert!(flags.contains(&"iran_cdn_safe"));
+    }
+
+    #[test]
+    fn score_azure_cdn_gets_extra_bonus() {
+        // snowflake (0.92) + safe_port 443 (0.05) + iran_cdn_safe azure (0.02) = 0.99
+        // Note: "azure.microsoft.com" does NOT match CDN_HINT_KEYWORDS
+        // (cloudflare/fastly/akamai/cloudfront/arvan), so no +0.05 cdn_hinted.
+        // Only the Iran-specific bonus applies because "microsoft" matches
+        // the azure/microsoft tier in IRAN_CDN_BONUS_TIERS.
+        let r = score_anti_ai_dpi("snowflake 1.2.3.4:443 azure.microsoft.com");
+        assert_eq!(r["anti_ai_dpi_score"], 0.99);
+        assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"safe_port"));
+        assert!(flags.contains(&"iran_cdn_safe"));
+        // cdn_hinted NOT present — azure.microsoft.com doesn't match general CDN keywords
+        assert!(!flags.contains(&"cdn_hinted"));
+    }
+
+    #[test]
+    fn score_fastly_cdn_no_iran_extra_bonus() {
+        // Fastly gets CDN flag (+0.05) but no iran_cdn_safe bonus (0.0)
+        let r = score_anti_ai_dpi("obfs4 1.2.3.4:8443 fastly.net");
+        // 0.72 + 0.05 (safe 8443) + 0.05 (cdn) + 0.0 (iran_cdn) = 0.82
+        assert_eq!(r["anti_ai_dpi_score"], 0.82);
+        let flags: Vec<&str> = r["flags"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|v| v.as_str().unwrap())
+            .collect();
+        assert!(flags.contains(&"cdn_hinted"));
+        assert!(!flags.contains(&"iran_cdn_safe"));
     }
 
     #[test]

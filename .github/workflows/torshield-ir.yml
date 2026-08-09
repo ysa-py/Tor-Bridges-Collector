@@ -496,6 +496,93 @@ jobs:
           touch /tmp/sched_started
           sleep 10
 
+      # ── Stage 4-prep — Deploy probe relay Worker + smoke test ─────────────
+      #
+      # BEFORE the 1447-bridge batch, we:
+      #   1. Deploy the probe-relay Cloudflare Worker (in case it drifted)
+      #      using the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
+      #      secrets (NEVER the CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11
+      #      slots, which belong to the AI Gateway provider rotation system).
+      #   2. Run a live smoke-test curl to confirm the Worker is alive and
+      #      returns 200 — fail loudly if it does not.
+      #   3. If CF_WORKER_ACCOUNT_ID or PROBE_RELAY_URL is unset, skip
+      #      Stage 4 cleanly (exit 0, logged as SKIPPED) rather than burning
+      #      10+ minutes on guaranteed HTTP 404s.
+      - name: Stage 4-prep — Deploy probe relay + live smoke test
+        id: relay_prep
+        env:
+          PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+          PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
+          CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID }}
+          CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "═══ Stage 4-prep: Probe Relay Deployment + Smoke Test ═══"
+
+          # ── Guard: no relay URL → skip ──────────────────────────────
+          if [ -z "${PROBE_RELAY_URL:-}" ]; then
+            echo "PROBE_RELAY_URL is not set"
+            echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
+            echo "::notice::PROBE_RELAY_URL not configured — Stage 4 will be skipped"
+            exit 0
+          fi
+
+          echo "Relay URL: ${PROBE_RELAY_URL}"
+
+          # ── Deploy / re-deploy the Worker via wrangler ──────────────
+          # Uses ONLY the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
+          # secrets. The CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11 slots are
+          # reserved for the AI Gateway provider rotation system and must not
+          # be referenced here.
+          if [ -z "${CF_WORKER_ACCOUNT_ID:-}" ] || [ -z "${CF_WORKER_API_TOKEN:-}" ]; then
+            echo "::warning::CF_WORKER_ACCOUNT_ID/TOKEN not configured — skipping wrangler deploy"
+            echo "::warning::The probe relay Worker may be stale if redeployed outside CI"
+          elif ! command -v npx >/dev/null 2>&1; then
+            echo "::warning::npx not available — skipping wrangler deploy; using existing Worker deployment"
+          else
+            echo "Deploying probe-relay Worker via wrangler…"
+            export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
+            export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+            if npx wrangler@latest deploy --config probe-relay/wrangler.toml 2>&1; then
+              echo "✅ wrangler deploy succeeded"
+            else
+              echo "::warning::wrangler deploy FAILED — proceeding with existing Worker deployment"
+            fi
+          fi
+
+          # ── Show the deployed Worker version (diagnostic) ───────────
+          if [ -n "${CF_WORKER_API_TOKEN:-}" ] && command -v npx >/dev/null 2>&1; then
+            export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+            echo "--- wrangler whoami ---"
+            npx wrangler@latest whoami 2>&1 || true
+            echo "--- wrangler deployments list ---"
+            npx wrangler@latest deployments list --config probe-relay/wrangler.toml 2>&1 || true
+          fi
+
+          # ── Live smoke test: single curl before the 49-chunk batch ──
+          SMOKE_URL="${PROBE_RELAY_URL%/}/probe"
+          echo "Smoke-testing ${SMOKE_URL} …"
+          SMOKE_BODY='[{"address":"127.0.0.1","port":9999,"transport":"obfs4"}]'
+          SMOKE_CODE=$(curl -s -o /tmp/smoke_resp.json -w "%{http_code}" \
+            -X POST "$SMOKE_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
+            -d "$SMOKE_BODY" \
+            --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
+          echo "Smoke test HTTP status: ${SMOKE_CODE}"
+          if [ -s /tmp/smoke_resp.json ]; then
+            echo "Smoke test response body (first 5 lines):"
+            head -5 /tmp/smoke_resp.json
+          fi
+          if [ "$SMOKE_CODE" != "200" ]; then
+            echo "::error::Probe relay smoke test FAILED — HTTP ${SMOKE_CODE} (expected 200)"
+            echo "::error::Check PROBE_RELAY_URL secret and Worker deployment status"
+            echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          echo "✅ Probe relay smoke test passed (HTTP 200) — Stage 4 will proceed"
+          echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
+
       # Stage 4 — External Probe Relay (CI Egress Fix)
       #
       # GitHub Actions runners have restricted outbound egress and cannot
@@ -515,6 +602,7 @@ jobs:
       # obfs4proxy/lyrebird SOCKS5 harness) against TCP-reachable endpoints
       # that the relay confirms.
       - name: Stage 4 — External Probe Relay (CI egress fix)
+        if: steps.relay_prep.outputs.PROBE_RELAY_SKIP != 'true'
         timeout-minutes: 20
         env:
           PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
