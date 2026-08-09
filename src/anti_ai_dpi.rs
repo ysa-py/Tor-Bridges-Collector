@@ -725,9 +725,13 @@ mod tests {
 
     #[test]
     fn score_azure_cdn_gets_extra_bonus() {
-        // snowflake (0.92) on port 443 (+0.05) + CDN (+0.05) + Azure bonus (+0.02) = 1.0 (clamped)
+        // snowflake (0.92) + safe_port 443 (0.05) + iran_cdn_safe azure (0.02) = 0.99
+        // Note: "azure.microsoft.com" does NOT match CDN_HINT_KEYWORDS
+        // (cloudflare/fastly/akamai/cloudfront/arvan), so no +0.05 cdn_hinted.
+        // Only the Iran-specific bonus applies because "microsoft" matches
+        // the azure/microsoft tier in IRAN_CDN_BONUS_TIERS.
         let r = score_anti_ai_dpi("snowflake 1.2.3.4:443 azure.microsoft.com");
-        assert_eq!(r["anti_ai_dpi_score"], 1.0);
+        assert_eq!(r["anti_ai_dpi_score"], 0.99);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
         let flags: Vec<&str> = r["flags"]
             .as_array()
@@ -735,7 +739,10 @@ mod tests {
             .iter()
             .map(|v| v.as_str().unwrap())
             .collect();
+        assert!(flags.contains(&"safe_port"));
         assert!(flags.contains(&"iran_cdn_safe"));
+        // cdn_hinted NOT present — azure.microsoft.com doesn't match general CDN keywords
+        assert!(!flags.contains(&"cdn_hinted"));
     }
 
     #[test]
