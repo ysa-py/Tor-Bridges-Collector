@@ -1,3 +1,4 @@
+import { connect } from "cloudflare:sockets";
 /**
  * Tor Bridge Probe Relay — Cloudflare Worker
  *
