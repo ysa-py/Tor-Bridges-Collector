@@ -442,9 +442,7 @@ mod tests {
     #[test]
     fn score_vless_reality_with_safe_port_clamps() {
         // vless (0.95) + safe_port (0.05) = 1.00 → VERY_LOW
-        let r = score_anti_ai_dpi(
-            "vless://abc@1.2.3.4:443?security=reality&sni=cdn.com#safe",
-        );
+        let r = score_anti_ai_dpi("vless://abc@1.2.3.4:443?security=reality&sni=cdn.com#safe");
         assert_eq!(r["transport"], "vless");
         assert_eq!(r["anti_ai_dpi_score"], 1.0);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
@@ -470,21 +468,19 @@ mod tests {
 
     #[test]
     fn score_shadow_tls_very_low_risk() {
-        // shadow-tls (0.82) + safe_port (0.05) = 0.87 → VERY_LOW
-        let r = score_anti_ai_dpi(
-            "shadow-tls://1.2.3.4:443?sni=www.fastly.com&password=sec",
-        );
+        // shadow-tls (0.82) + safe_port (0.05, 443) + cdn_hinted (0.05, fastly) = 0.92 → VERY_LOW
+        let r =
+            score_anti_ai_dpi("shadow-tls://1.2.3.4:443?sni=www.fastly.com&password=sec");
         assert_eq!(r["transport"], "shadow-tls");
-        assert_eq!(r["anti_ai_dpi_score"], 0.87);
+        assert_eq!(r["anti_ai_dpi_score"], 0.92);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
     }
 
     #[test]
     fn score_shadow_tls_cdn_hint_bonus() {
         // shadow-tls (0.82) + safe_port (0.05, 443) + cdn (0.05, fastly) = 0.92
-        let r = score_anti_ai_dpi(
-            "shadow-tls://1.2.3.4:443?sni=cdn.fastly.com&password=sec fastly",
-        );
+        let r =
+            score_anti_ai_dpi("shadow-tls://1.2.3.4:443?sni=cdn.fastly.com&password=sec fastly");
         assert_eq!(r["transport"], "shadow-tls");
         assert_eq!(r["anti_ai_dpi_score"], 0.92);
         assert_eq!(r["iran_ml_dpi_risk"], "VERY_LOW");
