@@ -21,20 +21,22 @@
       "transport": "snowflake"
     },
     {
-      "anti_ai_dpi_score": 0.93,
-      "bridge_line": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
-      "flags": [
-        "safe_port"
-      ],
-      "iran_ml_dpi_risk": "VERY_LOW",
-      "port": 443,
-      "transport": "webtunnel"
-    },
-    {
-      "anti_ai_dpi_score": 0.93,
+      "anti_ai_dpi_score": 0.95,
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
       "flags": [
-        "safe_port"
+        "safe_port",
+        "iran_cdn_safe"
+      ],
+      "iran_ml_dpi_risk": "VERY_LOW",
+      "port": 443,
+      "transport": "webtunnel"
+    },
+    {
+      "anti_ai_dpi_score": 0.95,
+      "bridge_line": "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+      "flags": [
+        "safe_port",
+        "iran_cdn_safe"
       ],
       "iran_ml_dpi_risk": "VERY_LOW",
       "port": 443,
@@ -42,7 +44,7 @@
     },
     {
       "anti_ai_dpi_score": 0.93,
-      "bridge_line": "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+      "bridge_line": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
       "flags": [
         "safe_port"
       ],
