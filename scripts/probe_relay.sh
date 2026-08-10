@@ -109,8 +109,14 @@ TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 # Ensure URL ends with /probe (Worker only handles POST /probe, not root).
-# Strip any trailing slash, then append /probe.
-RELAY_URL="${RELAY_URL%/}/probe"
+# Normalize: strip trailing slash, strip /probe suffix if present, then append /probe.
+# This makes the system format-tolerant regardless of whether the owner sets:
+#   https://foo.workers.dev         → https://foo.workers.dev/probe
+#   https://foo.workers.dev/        → https://foo.workers.dev/probe
+#   https://foo.workers.dev/probe   → https://foo.workers.dev/probe
+RELAY_URL="${RELAY_URL%/}"
+RELAY_URL="${RELAY_URL%/probe}"
+RELAY_URL="${RELAY_URL}/probe"
 
 CHUNK_IDX=0
 echo "$BRIDGE_LINES" | split -l "$CHUNK_SIZE" - "$TMP_DIR/chunk_"

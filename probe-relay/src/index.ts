@@ -88,10 +88,11 @@ export default {
       });
     }
 
-    // Authentication
+    // Authentication — skip when no token is configured on the Worker
+    // (e.g. before the first wrangler secret put runs in CI).
     const token = request.headers.get("X-Probe-Token");
     const expectedToken = env.PROBE_RELAY_TOKEN;
-    if (!expectedToken || token !== expectedToken) {
+    if (expectedToken && token !== expectedToken) {
       return jsonResponse(401, {
         error: "unauthorized",
         detail: "Invalid or missing X-Probe-Token header",

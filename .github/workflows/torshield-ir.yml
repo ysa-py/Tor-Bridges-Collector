@@ -543,6 +543,20 @@ jobs:
             echo "Deploying probe-relay Worker via wrangler…"
             export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
             export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+
+            # Sync the PROBE_RELAY_TOKEN secret to the Worker so that
+            # X-Probe-Token authentication matches between CI (sender)
+            # and Worker (validator). This keeps the two in sync
+            # automatically every deploy cycle — the owner never needs
+            # to run `wrangler secret put` by hand.
+            if [ -n "${PROBE_RELAY_TOKEN:-}" ]; then
+              echo "Syncing PROBE_RELAY_TOKEN to Worker secret…"
+              echo "${PROBE_RELAY_TOKEN}" | npx wrangler@latest secret put PROBE_RELAY_TOKEN --config probe-relay/wrangler.toml 2>&1 || \
+                echo "::warning::wrangler secret put FAILED — Worker may reject probes with 401"
+            else
+              echo "::notice::PROBE_RELAY_TOKEN not set — Worker will run in auth-less mode if its secret is also unset"
+            fi
+
             if npx wrangler@latest deploy --config probe-relay/wrangler.toml 2>&1; then
               echo "✅ wrangler deploy succeeded"
             else
@@ -560,7 +574,15 @@ jobs:
           fi
 
           # ── Live smoke test: single curl before the 49-chunk batch ──
-          SMOKE_URL="${PROBE_RELAY_URL%/}/probe"
+          # Normalize URL: strip trailing slash, strip /probe suffix if
+          # owner accidentally included it, then append /probe.
+          # This makes the system format-tolerant so the owner can set:
+          #   https://foo.workers.dev       → /probe
+          #   https://foo.workers.dev/      → /probe
+          #   https://foo.workers.dev/probe → /probe (no doubling)
+          SMOKE_URL="${PROBE_RELAY_URL%/}"
+          SMOKE_URL="${SMOKE_URL%/probe}"
+          SMOKE_URL="${SMOKE_URL}/probe"
           echo "Smoke-testing ${SMOKE_URL} …"
           SMOKE_BODY='[{"address":"127.0.0.1","port":9999,"transport":"obfs4"}]'
           SMOKE_CODE=$(curl -s -o /tmp/smoke_resp.json -w "%{http_code}" \
