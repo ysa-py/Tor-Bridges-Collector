@@ -291,7 +291,7 @@ impl CollectorConfig {
         let connect_timeout_secs = env_u64("CONNECT_TIMEOUT", 8, 1, 120)?;
 
         Ok(Self {
-            bridge_dir,
+            bridge_dir: bridge_dir.clone(),
             readme_path: env_path("README_PATH", PathBuf::from("README.md")),
             history_path,
             zip_path,
@@ -316,23 +316,10 @@ impl CollectorConfig {
                 5,
                 300,
             )?,
-            source_circuit_breaker_failures: env_u32(
-                "SOURCE_CB_FAILURES",
-                5,
-                1,
-                100,
-            )?,
-            source_circuit_breaker_reset_secs: env_u64(
-                "SOURCE_CB_RESET_SECS",
-                600,
-                30,
-                86_400,
-            )?,
+            source_circuit_breaker_failures: env_u32("SOURCE_CB_FAILURES", 5, 1, 100)?,
+            source_circuit_breaker_reset_secs: env_u64("SOURCE_CB_RESET_SECS", 600, 30, 86_400)?,
             stage_deadline_secs: env_u64("STAGE_DEADLINE_SECS", 660, 30, 3_600)?,
-            retained_fallback_dir: env_path(
-                "RETAINED_FALLBACK_DIR",
-                bridge_dir.clone(),
-            ),
+            retained_fallback_dir: env_path("RETAINED_FALLBACK_DIR", bridge_dir.clone()),
             metrics_output: env::var_os("METRICS_OUTPUT").map(PathBuf::from),
             dry_run: env_bool("DRY_RUN", false),
             verbose: env_bool("VERBOSE", false),
@@ -401,9 +388,7 @@ fn resolve_raw_repo_url() -> String {
                 .ok()
                 .filter(|b| !b.trim().is_empty())
                 .unwrap_or_else(|| "main".to_owned());
-            return format!(
-                "https://raw.githubusercontent.com/{repo}/refs/heads/{branch}/bridge"
-            );
+            return format!("https://raw.githubusercontent.com/{repo}/refs/heads/{branch}/bridge");
         }
     }
     if let (Ok(owner), Ok(name)) = (env::var("GH_REPO_OWNER"), env::var("GH_REPO_NAME")) {
@@ -414,9 +399,7 @@ fn resolve_raw_repo_url() -> String {
                 .ok()
                 .filter(|b| !b.trim().is_empty())
                 .unwrap_or_else(|| "main".to_owned());
-            return format!(
-                "https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}/bridge"
-            );
+            return format!("https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}/bridge");
         }
     }
     // No resolution possible — keep the sentinel so downstream code can

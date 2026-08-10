@@ -134,7 +134,9 @@ impl SourceFetcher {
             .user_agent(USER_AGENT)
             .connect_timeout(Duration::from_secs(config.connect_timeout_secs))
             .timeout(Duration::from_secs(
-                config.per_source_timeout_secs.max(config.connect_timeout_secs.saturating_mul(3)),
+                config
+                    .per_source_timeout_secs
+                    .max(config.connect_timeout_secs.saturating_mul(3)),
             ))
             .build()
             .context("unable to construct upstream HTTP client")?;
@@ -428,12 +430,9 @@ impl SourceFetcher {
                     if status.is_success() {
                         match response.text().await {
                             Ok(text) if !text.trim().is_empty() => return Ok(text),
-                            Ok(_) => {
-                                last_error = Some(anyhow!("upstream returned an empty body"))
-                            }
+                            Ok(_) => last_error = Some(anyhow!("upstream returned an empty body")),
                             Err(error) => {
-                                last_error =
-                                    Some(anyhow!("unable to read response body: {error}"))
+                                last_error = Some(anyhow!("unable to read response body: {error}"))
                             }
                         }
                     } else {
@@ -453,9 +452,7 @@ impl SourceFetcher {
 
             if attempt + 1 < self.config.fetch_retries {
                 let exponent = attempt.min(8) as u32;
-                let ceiling_ms = 250_u64
-                    .saturating_mul(1_u64 << exponent)
-                    .min(20_000);
+                let ceiling_ms = 250_u64.saturating_mul(1_u64 << exponent).min(20_000);
                 let delay_ms = rand::thread_rng().gen_range(0..=ceiling_ms);
                 tracing::warn!(
                     attempt = attempt + 1,

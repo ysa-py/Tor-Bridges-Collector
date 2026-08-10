@@ -344,11 +344,7 @@ impl CollectorService {
                 let archive_path = self.config.bridge_dir.join(spec.archive_name());
                 if let Ok(existing) = read_existing_archive(&archive_path) {
                     if !existing.is_empty() {
-                        stage_lines(
-                            &mut staged,
-                            archive_path,
-                            &existing,
-                        );
+                        stage_lines(&mut staged, archive_path, &existing);
                     }
                 }
             }
