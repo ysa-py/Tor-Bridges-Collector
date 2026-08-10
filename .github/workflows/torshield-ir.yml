@@ -519,11 +519,77 @@ jobs:
           set -euo pipefail
           echo "═══ Stage 4-prep: Probe Relay Deployment + Smoke Test ═══"
 
-          # ── Guard: no relay URL → skip ──────────────────────────────
-          if [ -z "${PROBE_RELAY_URL:-}" ]; then
-            echo "PROBE_RELAY_URL is not set"
+          # ── Secret validation helper ───────────────────────────────
+          # Validates each secret with three distinct failure modes:
+          #   1. UNSET: the secret was never created (env var absent)
+          #   2. EMPTY: secret exists but value is empty string or whitespace
+          #   3. INVALID: secret set but fails format validation
+          #
+          # Outputs a clear, actionable error for each failure mode so the
+          # owner knows exactly what to fix — no more confusing "not set"
+          # messages when the secret exists but is blank.
+          validate_secret() {
+            local name="$1"
+            local raw_val="$2"
+            local format_check="${3:-}"
+
+            # Mode 1: secret variable does not exist at all
+            if [ -z "${raw_val+set}" ]; then
+              echo "::error::SECRET UNSET: '${name}' was never created. Go to GitHub → Settings → Secrets and variables → Actions → New repository secret, name it exactly '${name}'."
+              return 1
+            fi
+
+            # Mode 2: secret exists but value is empty or only whitespace
+            local trimmed
+            trimmed="$(printf '%s' "${raw_val}" | xargs)"
+            if [ -z "${trimmed}" ]; then
+              echo "::error::SECRET EMPTY: '${name}' exists in GitHub Secrets but its value is blank (empty string or whitespace only). Go to GitHub → Settings → Secrets and variables → Actions → edit '${name}' and set a real value."
+              return 1
+            fi
+
+            # Mode 3: format validation (optional, caller-specified)
+            if [ -n "${format_check}" ]; then
+              case "${format_check}" in
+                HTTPS_URL)
+                  if ! printf '%s' "${trimmed}" | grep -qE '^https://[a-zA-Z0-9.-]+(\.[a-zA-Z]{2,})+(/.*)?$'; then
+                    echo "::error::SECRET INVALID: '${name}' is set to '${trimmed}' but does not look like a valid HTTPS URL (must start with https:// and contain a valid hostname). Update the secret value."
+                    return 1
+                  fi
+                  ;;
+                CF_ACCOUNT_ID)
+                  if ! printf '%s' "${trimmed}" | grep -qE '^[a-f0-9]{32}$'; then
+                    echo "::error::SECRET INVALID: '${name}' is set but does not look like a Cloudflare Account ID (32 hex chars). Update the secret value."
+                    return 1
+                  fi
+                  ;;
+                CF_API_TOKEN)
+                  if [ "${#trimmed}" -lt 20 ]; then
+                    echo "::error::SECRET INVALID: '${name}' is set but too short to be a valid Cloudflare API token (< 20 chars). Update the secret value."
+                    return 1
+                  fi
+                  ;;
+                NONEMPTY)
+                  # Already validated by the empty check above
+                  ;;
+              esac
+            fi
+
+            echo "  ✓ ${name} is valid (length=${#trimmed})"
+            return 0
+          }
+
+          # ── Validate all four Stage 4 secrets ─────────────────────
+          ERRORS=0
+          validate_secret "PROBE_RELAY_URL"     "${PROBE_RELAY_URL:-}"     "HTTPS_URL"      || ERRORS=$((ERRORS + 1))
+          validate_secret "PROBE_RELAY_TOKEN"   "${PROBE_RELAY_TOKEN:-}"   "NONEMPTY"       || ERRORS=$((ERRORS + 1))
+          validate_secret "CF_WORKER_ACCOUNT_ID" "${CF_WORKER_ACCOUNT_ID:-}" "CF_ACCOUNT_ID" || ERRORS=$((ERRORS + 1))
+          validate_secret "CF_WORKER_API_TOKEN" "${CF_WORKER_API_TOKEN:-}" "CF_API_TOKEN"   || ERRORS=$((ERRORS + 1))
+
+          if [ "$ERRORS" -gt 0 ]; then
+            echo ""
+            echo "::error::❌ ${ERRORS} Stage 4 secret(s) failed validation. Stage 4 will be skipped."
+            echo "::notice::Fix the secrets listed above, then re-run this workflow."
             echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
-            echo "::notice::PROBE_RELAY_URL not configured — Stage 4 will be skipped"
             exit 0
           fi
 
