@@ -182,15 +182,26 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
   done
 
   if [ "$SUCCESS" = true ] && [ -s "$TMP_DIR/resp_${CHUNK_IDX}.json" ]; then
-    # Merge chunk results into the aggregate array
-    jq -s '.[0] + .[1]' "$ALL_RESULTS" "$TMP_DIR/resp_${CHUNK_IDX}.json" > "$TMP_DIR/merged.json" 2>/dev/null || true
-    if [ -s "$TMP_DIR/merged.json" ]; then
-      mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
-      # Incremental write: persist after EVERY chunk so partial results
-      # survive a step timeout. The previous write-at-end-only approach
-      # lost ALL results when Stage 4 exceeded its 20-min timeout.
-      cp "$ALL_RESULTS" "$OUTPUT"
+    # Merge chunk results into the aggregate array.
+    # The Worker returns {"results":[...],"stats":{...}} — we extract .results.
+    # The // .[1] fallback handles legacy raw-array responses gracefully.
+    #
+    # DIAGNOSTIC: if jq merge fails (e.g. malformed response), capture stderr
+    # so the failure reason is visible in CI logs — no more silent drops.
+    MERGE_ERR=$(mktemp)
+    if jq -s '.[0] + (.[1].results // .[1])' "$ALL_RESULTS" "$TMP_DIR/resp_${CHUNK_IDX}.json" > "$TMP_DIR/merged.json" 2>"$MERGE_ERR"; then
+      if [ -s "$TMP_DIR/merged.json" ]; then
+        mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
+        # Incremental write: persist after EVERY chunk so partial results
+        # survive a step timeout. The previous write-at-end-only approach
+        # lost ALL results when Stage 4 exceeded its 20-min timeout.
+        cp "$ALL_RESULTS" "$OUTPUT"
+      fi
+    else
+      echo "::warning::Chunk $CHUNK_IDX merge FAILED — jq error: $(tr '\n' ' ' < "$MERGE_ERR")"
+      echo "::warning::Response body (first 200 chars): $(head -c 200 "$TMP_DIR/resp_${CHUNK_IDX}.json")"
     fi
+    rm -f "$MERGE_ERR"
   else
     echo "::warning::Chunk $CHUNK_IDX failed after $((MAX_RETRIES + 1)) attempts"
     # Mark each bridge in this chunk as unreachable in the output.
@@ -224,6 +235,25 @@ done
 RESULT_COUNT=$(jq 'length' "$ALL_RESULTS" 2>/dev/null || echo 0)
 cp "$ALL_RESULTS" "$OUTPUT"
 echo "Probe relay complete: $RESULT_COUNT results written to $OUTPUT"
+
+# ── Structured diagnostics: zero results is a critical signal ────────────────
+if [ "$RESULT_COUNT" -eq 0 ]; then
+  echo ""
+  echo "═══ ZERO-RESULTS DIAGNOSTIC ═══"
+  echo "Chunks attempted:  $CHUNK_IDX"
+  echo "Input bridge lines: $LINE_COUNT"
+  echo ""
+  echo "Possible causes (check CI logs above):"
+  echo "  1. All jq merge steps failed — look for 'merge FAILED' warnings above"
+  echo "  2. Worker returned empty .results arrays — check Cloudflare Observability for probe errors"
+  echo "  3. Worker response format mismatch — the fix in this script extracts .results from {results,stats}"
+  echo "  4. PROBE_RELAY_URL missing or misconfigured"
+  echo "  5. Bridge lines could not be parsed into {host,port,transport} by jq — check chunk JSON above"
+  echo ""
+  echo "Next step: verify the Worker is deployed (wrangler deploy) and reachable (curl smoke test)."
+  echo "If the Worker IS healthy, check Cloudflare Observability for per-probe failure reasons."
+  echo "═══════════════════════════════"
+fi
 
 # ── Always exit 0 — the relay is supplementary; local fallback exists ────────
 exit 0
