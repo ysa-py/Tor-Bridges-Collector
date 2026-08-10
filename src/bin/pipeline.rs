@@ -22,17 +22,12 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::Ordering;
 
 use chrono::Utc;
 use serde_json::{json, Value};
 
-/// Global cancellation flag set by the SIGTERM/SIGINT handler.
-/// GitHub Actions sends SIGTERM to cancel in-progress jobs;
-/// the pipeline checks this flag between stages and writes a
-/// partial report instead of dying silently and leaving downstream
-/// stages without their expected input file.
-static CANCELLED: AtomicBool = AtomicBool::new(false);
+use torshield_ir_ultra::cancellation::CANCELLED;
 
 use torshield_ir_ultra::{
     adaptive_transport, anti_ai_dpi,

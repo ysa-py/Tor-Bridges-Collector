@@ -15,6 +15,7 @@ pub mod autonomous_anti_censorship_obfuscator;
 pub mod bridge_dedup;
 pub mod bridge_publication;
 pub mod bridge_scoring;
+pub mod cancellation;
 pub mod censorship_fusion;
 pub mod censorship_monitor;
 pub mod censorship_scorer_fusion;
