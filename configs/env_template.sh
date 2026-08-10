@@ -126,8 +126,12 @@ EXPORT_DIR="export"                    # Directory for exported bridge files
 # ─────────────────────────────────────────────────────────────────────────────
 # REPOSITORY URL
 # ─────────────────────────────────────────────────────────────────────────────
-# Used to fetch static bridge lists from GitHub
-REPO_URL="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/refs/heads/main"
+# Auto-resolved at runtime from GITHUB_REPOSITORY / GITHUB_REF_NAME.
+# Leave empty unless you need to override for a fork or custom mirror path.
+# The Rust code resolves: GITHUB_REPOSITORY → GH_REPO_OWNER+GH_REPO_NAME →
+# explicit REPO_URL env var. If all are empty it fails with a clear message
+# rather than silently using a placeholder.
+REPO_URL=""
 
 # ─────────────────────────────────────────────────────────────────────────────
 # TELEGRAM NOTIFICATIONS
