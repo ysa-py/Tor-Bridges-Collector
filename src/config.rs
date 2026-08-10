@@ -7,8 +7,11 @@
 
 use std::collections::BTreeMap;
 
-const DEFAULT_REPO_URL: &str =
-    "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/refs/heads/main";
+/// Never used as a default when `GITHUB_REPOSITORY` is available in CI.
+/// Kept as a sentinel fallback that immediately fails if a caller does not
+/// independently resolve the real URL.  No hardcoded owner/repo survives
+/// into any published output.
+const DEFAULT_REPO_URL: &str = "https://raw.githubusercontent.com/UNRESOLVED/UNRESOLVED/main";
 const DEFAULT_PORTKEY_GATEWAY_URL: &str = "https://api.portkey.ai/v1";
 
 /// Typed errors for Python-compatible configuration parsing.
@@ -271,7 +274,7 @@ impl Config {
             scores_file: format!("{bridge_dir}/bridge_scores.json"),
             bridge_dir,
             export_dir,
-            repo_url: get("REPO_URL", DEFAULT_REPO_URL),
+            repo_url: resolve_repo_url(&lookup),
             is_github: lookup("GITHUB_ACTIONS").as_deref() == Some("true"),
             cf_n_slots,
             cf_account_ids,
@@ -362,6 +365,54 @@ impl Config {
             dynamic_bridge_yield: boolv("DYNAMIC_BRIDGE_YIELD", "true"),
         })
     }
+}
+
+/// Resolve the raw file base URL dynamically so no hardcoded owner/repo
+/// is ever shipped.  In CI (`GITHUB_REPOSITORY`) the URL is computed from
+/// the actual repository; outside CI the `REPO_URL` env var is required.
+/// The literal `UNRESOLVED` sentinel will cause downstream consumers to
+/// fail openly rather than silently using a placeholder.
+fn resolve_repo_url<F>(lookup: &F) -> String
+where
+    F: Fn(&str) -> Option<String>,
+{
+    // Explicit override takes highest priority
+    if let Some(value) = lookup("REPO_URL") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() && !trimmed.contains("YOUR_USERNAME") && !trimmed.contains("UNRESOLVED")
+        {
+            return trimmed.to_owned();
+        }
+    }
+    // In GHA: derive from github.repository + github.ref_name
+    if let Some(repo) = lookup("GITHUB_REPOSITORY") {
+        let repo = repo.trim();
+        if !repo.is_empty() && repo.contains('/') {
+            let branch = lookup("GITHUB_REF_NAME")
+                .map(|b| b.trim().to_owned())
+                .filter(|b| !b.is_empty())
+                .unwrap_or_else(|| "main".to_owned());
+            return format!(
+                "https://raw.githubusercontent.com/{repo}/refs/heads/{branch}"
+            );
+        }
+    }
+    // Local/compat: try GITHUB_REPO_OWNER + GITHUB_REPO_NAME
+    if let (Some(owner), Some(name)) = (lookup("GH_REPO_OWNER"), lookup("GH_REPO_NAME")) {
+        let owner = owner.trim();
+        let name = name.trim();
+        if !owner.is_empty() && !name.is_empty() {
+            let branch = lookup("CIRCLE_BRANCH")
+                .map(|b| b.trim().to_owned())
+                .filter(|b| !b.is_empty())
+                .unwrap_or_else(|| "main".to_owned());
+            return format!(
+                "https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}"
+            );
+        }
+    }
+    // Nothing resolvable: return the sentinel so consumers fail loudly
+    DEFAULT_REPO_URL.to_owned()
 }
 
 fn parse_int(name: &'static str, value: &str) -> Result<i64, ConfigError> {

@@ -4,11 +4,13 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use anyhow::{Context, Result};
 use chrono::{Timelike, Utc};
 use serde_json::{json, Value};
 use tokio::task::JoinSet;
+use tokio::time::timeout;
 
 use super::config::{fronted_defaults, CollectorConfig, ListSpec, Transport};
 use super::fetch::{deduplicate, SourceFetcher};
@@ -70,7 +72,39 @@ impl CollectorService {
     /// Run collection, testing, reporting, ZIP creation, and optional Telegram
     /// upload. Individual upstream/probe failures are logged and skipped;
     /// filesystem publication errors are returned to the caller.
+    ///
+    /// A configurable `STAGE_DEADLINE_SECS` wraps the entire operation so a
+    /// stuck source can never consume the full CI job budget.  When the deadline
+    /// fires, the collector writes whatever partial data is available rather
+    /// than failing hard.
     pub async fn run(&self) -> Result<RunSummary> {
+        let deadline = Duration::from_secs(self.config.stage_deadline_secs);
+        match timeout(deadline, self.run_inner()).await {
+            Ok(Ok(summary)) => Ok(summary),
+            Ok(Err(error)) => Err(error),
+            Err(_elapsed) => {
+                log(&format!(
+                    "STAGE_DEADLINE of {}s reached; writing partial data before exiting",
+                    self.config.stage_deadline_secs
+                ));
+                // Write whatever we managed to collect
+                let staged = self.flush_partial().await?;
+                let changed = publish_staged(&staged, self.config.dry_run)?;
+                log(&format!(
+                    "Graceful deadline exit: {changed} file(s) written from partial collection"
+                ));
+                Ok(RunSummary {
+                    changed_files: changed,
+                    dry_run: self.config.dry_run,
+                    stats: StatsMap::new(),
+                    history_entries: 0,
+                })
+            }
+        }
+    }
+
+    /// Inner run implementation without deadline wrapping.
+    async fn run_inner(&self) -> Result<RunSummary> {
         let now = Utc::now();
         log("Starting unified Tor bridge collection run...");
         let (mut history, history_writable) = match HistoryStore::load(&self.config.history_path) {
@@ -295,6 +329,35 @@ impl CollectorService {
             stats,
             history_entries: history.len(),
         })
+    }
+
+    /// When the stage deadline fires mid-collection, flush whatever output
+    /// files we have partially staged so downstream CI stages have
+    /// last-known-good data instead of nothing.
+    async fn flush_partial(&self) -> Result<BTreeMap<PathBuf, Vec<u8>>> {
+        let mut staged = BTreeMap::new();
+        // Re-read all existing archive files from disk so we can
+        // republish them unchanged alongside any partial results.
+        for transport in Transport::POOLED.into_iter().chain(Transport::FRONTED) {
+            for ipv6 in [false, true] {
+                let spec = ListSpec { transport, ipv6 };
+                let archive_path = self.config.bridge_dir.join(spec.archive_name());
+                if let Ok(existing) = read_existing_archive(&archive_path) {
+                    if !existing.is_empty() {
+                        stage_lines(
+                            &mut staged,
+                            archive_path,
+                            &existing,
+                        );
+                    }
+                }
+            }
+        }
+        log(&format!(
+            "Flushed {} existing archive files as partial-deadline fallback",
+            staged.len()
+        ));
+        Ok(staged)
     }
 
     async fn collect_list(
@@ -630,6 +693,43 @@ fn timestamp() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn test_config() -> CollectorConfig {
+        let bridge_dir = PathBuf::from("bridge");
+        CollectorConfig {
+            bridge_dir: bridge_dir.clone(),
+            readme_path: PathBuf::from("README.md"),
+            history_path: bridge_dir.join("bridge_history.json"),
+            zip_path: bridge_dir.join("tor_bridges.zip"),
+            bridgedb_base_url: "https://example.invalid".to_owned(),
+            delta_raw_base_url: "https://example.invalid".to_owned(),
+            raw_repo_url: "https://example.invalid".to_owned(),
+            connect_timeout_secs: 1,
+            obfs4_handshake_timeout_secs: 1,
+            max_retries: 1,
+            max_workers: 8,
+            min_workers: 2,
+            max_test_per_list: 10,
+            recent_hours: 72,
+            history_retention_days: 30,
+            obfs4_verify_min_fraction: 0.2,
+            front_failure_threshold: 2,
+            front_cooldown_secs: 1,
+            fetch_retries: 1,
+            per_source_timeout_secs: 15,
+            source_circuit_breaker_failures: 5,
+            source_circuit_breaker_reset_secs: 600,
+            stage_deadline_secs: 660,
+            retained_fallback_dir: bridge_dir,
+            metrics_output: None,
+            dry_run: true,
+            verbose: false,
+            telegram_bot_token: None,
+            telegram_chat_id: None,
+            telegram_upload: false,
+            github_actions: false,
+        }
+    }
 
     #[test]
     fn obfs4_policy_preserves_tcp_set_when_harness_is_unavailable() {
