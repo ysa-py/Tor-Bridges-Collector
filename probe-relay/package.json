@@ -1,15 +1,21 @@
 {
   "name": "tor-bridge-probe-relay",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "private": true,
-  "description": "Cloudflare Worker — external probe relay for Tor bridge PT handshake verification",
+  "description": "Cloudflare Worker — external probe relay for Tor bridge PT handshake verification (v2: concurrency-safe)",
   "type": "module",
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "tail": "wrangler tail"
+    "tail": "wrangler tail",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npx tsc --noEmit"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260702.1",
+    "typescript": "^7.0.2",
+    "vitest": "^2.0.0",
     "wrangler": "^3.80.0"
   }
 }

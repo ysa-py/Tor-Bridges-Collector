@@ -31,7 +31,10 @@ set -euo pipefail
 
 INPUT="${1:-bridge/bridge_list_for_testing.json}"
 OUTPUT="${2:-data/pt_results.json}"
-CHUNK_SIZE="${PROBE_RELAY_CHUNK_SIZE:-30}"
+# v2: default 15 bridges per chunk matches the Worker's MAX_CONCURRENT_PROBES=5
+# with 3× headroom for per-probe timeouts. The Worker drains all reader
+# locks after each probe, so 15 bridges × 5s timeout ≈ 75s worst-case.
+CHUNK_SIZE="${PROBE_RELAY_CHUNK_SIZE:-15}"
 MAX_RETRIES="${PROBE_RELAY_MAX_RETRIES:-2}"
 RELAY_URL="${PROBE_RELAY_URL:-}"
 RELAY_TOKEN="${PROBE_RELAY_TOKEN:-}"
