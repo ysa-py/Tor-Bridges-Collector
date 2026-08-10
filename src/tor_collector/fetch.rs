@@ -1,6 +1,7 @@
 //! Async upstream collection with bounded retries, jittered exponential
 //! backoff, per-source circuit breaking, and HTTP 429/403 detection.
 
+use std::collections::BTreeSet;
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
