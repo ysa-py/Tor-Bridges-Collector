@@ -57,7 +57,7 @@ name: TorShield-IR Bridge Intelligence
     branches: ["**"]
   pull_request:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 */3 * * *'
   workflow_dispatch:
     inputs:
       upload_to_telegram:
