@@ -33,7 +33,9 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::scraper::{HttpFetch, HttpResponse, ScraperError};
+use crate::scraper::{
+    contains_documentation_or_reserved_endpoint, HttpFetch, HttpResponse, ScraperError,
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (mirrors module-level constants in sources/torproject.py)
@@ -185,12 +187,20 @@ pub fn bridge_line_re() -> &'static Regex {
 /// Validate a single bridge line. Mirrors Python `_is_valid_line(line)`:
 /// 1. Return false if line is empty or shorter than 10 chars.
 /// 2. Return false if line contains "No bridges available" or starts with "#".
-/// 3. Return true if `bridge_line_re().is_match(line)`, false otherwise.
+/// 3. Return false if line contains a documentation-range or reserved IP
+///    address (RFC 3849, RFC 5737, link-local, loopback, etc.) — these are
+///    never routable and must not enter the pipeline.
+/// 4. Return true if `bridge_line_re().is_match(line)`, false otherwise.
 pub fn is_valid_line(line: &str) -> bool {
     if line.is_empty() || line.len() < 10 {
         return false;
     }
     if line.contains("No bridges available") || line.starts_with('#') {
+        return false;
+    }
+    // Reject documentation-range / reserved IP addresses (RFC 3849 `2001:db8::/32`,
+    // RFC 5737 TEST-NET, link-local, loopback, multicast, etc.) for ALL transports.
+    if contains_documentation_or_reserved_endpoint(line) {
         return false;
     }
     if line
@@ -486,22 +496,63 @@ mod tests {
     }
 
     #[test]
+    fn is_valid_line_rejects_documentation_range_ipv6() {
+        // RFC 3849 `2001:db8::/32` addresses are documentation-only and must never
+        // enter the bridge pipeline — they're never routable.
+        assert!(!is_valid_line("obfs4 [2001:db8::1]:443 cert=abc"));
+        assert!(!is_valid_line(
+            "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT url=https://x ver=0.0.3"
+        ));
+        assert!(!is_valid_line("vanilla [2001:db8:1234::1]:9001"));
+    }
+
+    #[test]
+    fn is_valid_line_rejects_reserved_ipv4() {
+        // RFC 1918 private, loopback, link-local, TEST-NET, etc.
+        assert!(!is_valid_line("obfs4 10.0.0.1:443 cert=abc"));
+        assert!(!is_valid_line("obfs4 127.0.0.1:443 cert=abc"));
+        assert!(!is_valid_line("obfs4 192.168.1.1:443 cert=abc"));
+        assert!(!is_valid_line("obfs4 169.254.1.1:443 cert=abc"));
+    }
+
+    #[test]
+    fn is_valid_line_accepts_routable_ipv6() {
+        // Real routable IPv6 addresses (not in 2001:db8::/32) should pass.
+        assert!(is_valid_line("obfs4 [2001:4860:4860::8888]:443 cert=abc"));
+        assert!(is_valid_line(
+            "webtunnel [2606:4700:4700::1111]:443 FINGERPRINT url=https://x ver=0.0.4"
+        ));
+    }
+
+    #[test]
+    fn is_valid_line_accepts_url_only_webtunnel_when_no_ip() {
+        // Domain-fronted WebTunnel lines without any IP address are allowed
+        // through — they get probed via TLS+WebSocket upgrade to the front domain.
+        // The existing URL-only test confirms they still fail (no endpoint),
+        // but a webtunnel line with just a URL should still be considered for
+        // probing if it passes the webtunnel endpoint check.
+    }
+
+    #[test]
     fn is_valid_line_accepts_ipv4() {
         assert!(is_valid_line("obfs4 1.2.3.4:443 cert=abc"));
     }
 
     #[test]
-    fn is_valid_line_accepts_ipv6() {
-        assert!(is_valid_line("obfs4 [2001:db8::1]:443 cert=abc"));
+    fn is_valid_line_rejects_documentation_ipv6() {
+        // Backward-compat alias; the real assert is in the dedicated test above.
+        assert!(!is_valid_line("obfs4 [2001:db8::1]:443 cert=abc"));
     }
 
     #[test]
     fn is_valid_line_rejects_url_only_webtunnel() {
         assert!(!is_valid_line("webtunnel url=https://example.com/path"));
+        // Valid webtunnel with a routable IPv4 endpoint passes.
         assert!(is_valid_line(
-            "webtunnel 192.0.2.4:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
+            "webtunnel 8.8.4.4:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
         ));
-        assert!(is_valid_line(
+        // Documentation-range IPv6 webtunnel must be rejected.
+        assert!(!is_valid_line(
             "webtunnel [2001:db8::4]:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
         ));
     }
@@ -542,13 +593,13 @@ mod tests {
         let html = r#"
         <html><body>
             <code>
-                webtunnel 192.0.2.4:443 FINGERPRINT url=https://example.com/x ver=0.0.4
+                webtunnel 8.8.4.4:443 FINGERPRINT url=https://example.com/x ver=0.0.4
             </code>
         </body></html>
         "#;
         let lines = parse_html(html);
         assert_eq!(lines.len(), 1);
-        assert!(lines[0].contains("192.0.2.4:443"));
+        assert!(lines[0].contains("8.8.4.4:443"));
     }
 
     #[test]

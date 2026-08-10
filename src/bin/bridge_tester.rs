@@ -9,7 +9,9 @@
 //! WebTunnel bridges that carry only a `url=https://front/path` (no routable
 //! IP endpoint) are probed via TLS+WebSocket Upgrade to the front domain.
 //! IPv6 bridges with documentation-range addresses (2001:db8::/32) are
-//! intentionally left as unroutable — those are upstream placeholder data.
+//! actively rejected before any TCP attempt — the guard in `probe_one()`
+//! uses `contains_documentation_or_reserved_endpoint()` which covers RFC 3849
+//! (2001:db8::/32), RFC 5737 (TEST-NET), link-local, loopback, and multicast.
 
 use std::collections::BTreeMap;
 use std::env;
@@ -34,6 +36,7 @@ use tokio::task::JoinSet;
 use tokio::time::timeout;
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use tokio_rustls::TlsConnector;
+use torshield_ir_ultra::scraper::contains_documentation_or_reserved_endpoint;
 use torshield_ir_ultra::tester::extract_endpoint;
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -448,6 +451,27 @@ async fn probe_webtunnel_front(line: String, _timeout_duration: Duration) -> Val
 }
 
 async fn probe_one(line: String, timeout_duration: Duration) -> Value {
+    // Reject documentation-range/reserved IP addresses BEFORE any TCP attempt.
+    // This covers RFC 3849 (2001:db8::/32), RFC 5737 (TEST-NET), RFC 1918,
+    // link-local, loopback, and multicast — none are ever routable.
+    if contains_documentation_or_reserved_endpoint(&line) {
+        let transport = normalise_transport(&line, extract_endpoint(&line).2);
+        return json!({
+            "line": line,
+            "transport": transport,
+            "host": null,
+            "port": null,
+            "tcp_reachable": false,
+            "transport_capable": false,
+            "probe_status": "non_routable_endpoint",
+            "probe_method": "none",
+            "latency_ms": null,
+            "iran_status": "non_routable",
+            "evidence_scope": "Bridge line contains a documentation-range or reserved IP address that is never routable from any vantage point.",
+            "composite_score": 0.0,
+        });
+    }
+
     let (host, port, extracted_transport) = extract_endpoint(&line);
     let transport = normalise_transport(&line, extracted_transport);
     if transport == "snowflake" {
