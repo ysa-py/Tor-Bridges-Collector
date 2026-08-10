@@ -690,6 +690,7 @@ fn timestamp() -> String {
 mod tests {
     use super::*;
 
+    #[allow(dead_code)]
     fn test_config() -> CollectorConfig {
         let bridge_dir = PathBuf::from("bridge");
         CollectorConfig {

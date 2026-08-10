@@ -1,7 +1,6 @@
 //! Async upstream collection with bounded retries, jittered exponential
 //! backoff, per-source circuit breaking, and HTTP 429/403 detection.
 
-use std::collections::BTreeSet;
 use std::env;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
@@ -28,7 +27,6 @@ use super::parsing::{clean_output_line, is_ipv6_line, is_valid_bridge_line};
 pub struct SourceCircuitBreaker {
     threshold: u32,
     cooldown: Duration,
-    state: Arc<Mutex<BTreeSet<String>>>,
     open_since: Arc<Mutex<std::collections::HashMap<String, Instant>>>,
     failures: Arc<Mutex<std::collections::HashMap<String, u32>>>,
 }
@@ -38,7 +36,6 @@ impl SourceCircuitBreaker {
         Self {
             threshold,
             cooldown,
-            state: Arc::new(Mutex::new(BTreeSet::new())),
             open_since: Arc::new(Mutex::new(std::collections::HashMap::new())),
             failures: Arc::new(Mutex::new(std::collections::HashMap::new())),
         }
