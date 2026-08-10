@@ -379,7 +379,9 @@ where
     // Explicit override takes highest priority
     if let Some(value) = lookup("REPO_URL") {
         let trimmed = value.trim();
-        if !trimmed.is_empty() && !trimmed.contains("YOUR_USERNAME") && !trimmed.contains("UNRESOLVED")
+        if !trimmed.is_empty()
+            && !trimmed.contains("YOUR_USERNAME")
+            && !trimmed.contains("UNRESOLVED")
         {
             return trimmed.to_owned();
         }
@@ -392,9 +394,7 @@ where
                 .map(|b| b.trim().to_owned())
                 .filter(|b| !b.is_empty())
                 .unwrap_or_else(|| "main".to_owned());
-            return format!(
-                "https://raw.githubusercontent.com/{repo}/refs/heads/{branch}"
-            );
+            return format!("https://raw.githubusercontent.com/{repo}/refs/heads/{branch}");
         }
     }
     // Local/compat: try GITHUB_REPO_OWNER + GITHUB_REPO_NAME
@@ -406,9 +406,7 @@ where
                 .map(|b| b.trim().to_owned())
                 .filter(|b| !b.is_empty())
                 .unwrap_or_else(|| "main".to_owned());
-            return format!(
-                "https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}"
-            );
+            return format!("https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}");
         }
     }
     // Nothing resolvable: return the sentinel so consumers fail loudly

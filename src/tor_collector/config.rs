@@ -399,7 +399,9 @@ fn resolve_raw_repo_url() -> String {
                 .ok()
                 .filter(|b| !b.trim().is_empty())
                 .unwrap_or_else(|| "main".to_owned());
-            return format!("https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}/bridge");
+            return format!(
+                "https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}/bridge"
+            );
         }
     }
     // No resolution possible — keep the sentinel so downstream code can
