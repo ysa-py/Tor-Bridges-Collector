@@ -31,10 +31,11 @@ set -euo pipefail
 
 INPUT="${1:-bridge/bridge_list_for_testing.json}"
 OUTPUT="${2:-data/pt_results.json}"
-# v2: default 15 bridges per chunk matches the Worker's MAX_CONCURRENT_PROBES=5
-# with 3× headroom for per-probe timeouts. The Worker drains all reader
-# locks after each probe, so 15 bridges × 5s timeout ≈ 75s worst-case.
-CHUNK_SIZE="${PROBE_RELAY_CHUNK_SIZE:-15}"
+# v3: default 30 bridges per chunk matches the Worker's MAX_CONCURRENT_PROBES=5
+# with 6× headroom for per-probe timeouts. The Worker drains all reader
+# locks after each probe, so 30 bridges × 5s timeout ≈ 150s worst-case.
+# With ~1450 bridges: 1450/30 ≈ 49 chunks × ~15s avg ≈ 12.5 min total.
+CHUNK_SIZE="${PROBE_RELAY_CHUNK_SIZE:-30}"
 MAX_RETRIES="${PROBE_RELAY_MAX_RETRIES:-2}"
 RELAY_URL="${PROBE_RELAY_URL:-}"
 RELAY_TOKEN="${PROBE_RELAY_TOKEN:-}"
@@ -185,6 +186,10 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
     jq -s '.[0] + .[1]' "$ALL_RESULTS" "$TMP_DIR/resp_${CHUNK_IDX}.json" > "$TMP_DIR/merged.json" 2>/dev/null || true
     if [ -s "$TMP_DIR/merged.json" ]; then
       mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
+      # Incremental write: persist after EVERY chunk so partial results
+      # survive a step timeout. The previous write-at-end-only approach
+      # lost ALL results when Stage 4 exceeded its 20-min timeout.
+      cp "$ALL_RESULTS" "$OUTPUT"
     fi
   else
     echo "::warning::Chunk $CHUNK_IDX failed after $((MAX_RETRIES + 1)) attempts"
@@ -210,6 +215,8 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
       jq --argjson parsed "$PARSED" '. + [$parsed]' "$ALL_RESULTS" > "$TMP_DIR/merged.json" 2>/dev/null
       mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
     done < "$chunk_file"
+    # Incremental write for failed chunk too — partial results survive timeout
+    cp "$ALL_RESULTS" "$OUTPUT"
   fi
 done
 

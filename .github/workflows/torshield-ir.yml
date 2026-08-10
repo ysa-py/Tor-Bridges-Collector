@@ -693,7 +693,7 @@ jobs:
       # that the relay confirms.
       - name: Stage 4 — External Probe Relay (CI egress fix)
         if: steps.relay_prep.outputs.PROBE_RELAY_SKIP != 'true'
-        timeout-minutes: 20
+        timeout-minutes: 25
         env:
           PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
           PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
