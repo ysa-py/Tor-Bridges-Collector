@@ -8,15 +8,12 @@
 #
 # The bridge_list_for_testing.json file produced by the upstream scraper
 # stages is an array of bridge-line STRINGS (e.g. "obfs4 1.2.3.4:9001 ...").
-# Earlier versions of this script assumed every element was an OBJECT with
-# a .fingerprint field, which caused a jq crash (exit 5) on every run.
 #
-# This version handles both:
-#   1. Arrays of strings (the common case) — passes the string directly.
-#   2. Arrays of objects with .fingerprint / .bridge_line — extracts the
-#      needed field.
-#
-# Non-object / non-string elements are skipped with a logged warning.
+# This script parses every bridge line into a structured BridgeDescriptor
+# object {host, port, transport, id} matching the Worker schema
+# (probe-relay/src/index.ts) before POSTing to the relay endpoint.
+# Raw bridge-line strings are NEVER sent directly — the Worker requires
+# host/port/transport fields, not bare strings or "address"-keyed objects.
 #
 # Usage:
 #   bash scripts/probe_relay.sh <input_json> <output_json>
@@ -135,8 +132,27 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
   BRIDGES_IN_CHUNK=${BRIDGES_IN_CHUNK//[$'\t\r\n ']/}
   BRIDGES_IN_CHUNK=${BRIDGES_IN_CHUNK:-0}
 
-  # Build a JSON array of strings from this chunk's lines
-  CHUNK_JSON=$(jq -R -s 'split("\n") | map(select(length > 0))' "$chunk_file")
+  # Build a JSON array of BridgeDescriptor objects from this chunk's bridge lines.
+  # The Worker expects {"host","port","transport"} — NOT raw bridge-line strings
+  # and NOT {"address",...}. Schema: probe-relay/src/index.ts BridgeDescriptor.
+  #
+  # Bridge line formats handled:
+  #   "transport IP:PORT ..."  → {"host":"IP","port":PORT,"transport":"transport"}
+  #   "transport [IPv6]:PORT ..." → {"host":"[IPv6]","port":PORT,"transport":"transport"}
+  CHUNK_JSON=$(jq -R -s '
+    def parse_bridge:
+      if test("^[a-zA-Z][a-zA-Z0-9_-]* +[0-9a-fA-F.:\\[\\]]+:[0-9]+ ") then
+        split(" ") as $parts
+        | ($parts[1] | split(":")) as $addr
+        | { host: (if ($addr | length) > 2 then ($addr[:-1] | join(":")) else $addr[0] end),
+            port: ($addr[-1] | tonumber),
+            transport: $parts[0],
+            id: ("line-" + ($parts[0]) + "-" + (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) + "-" + ($addr[-1])) }
+      else
+        empty
+      end;
+    split("\n") | map(select(length > 0) | parse_bridge)
+  ' "$chunk_file")
 
   RETRY=0
   SUCCESS=false
@@ -169,12 +185,26 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
     fi
   else
     echo "::warning::Chunk $CHUNK_IDX failed after $((MAX_RETRIES + 1)) attempts"
-    # Mark each bridge in this chunk as unreachable in the output
+    # Mark each bridge in this chunk as unreachable in the output.
+    # Output schema matches the Worker's ProbeResult: {id,host,port,transport,success,latency_ms,error}
     while IFS= read -r bridge_line; do
       [ -z "$bridge_line" ] && continue
-      jq --arg line "$bridge_line" \
-        '. + [{"bridge": $line, "status": "relay_unreachable", "latency_ms": 0, "pt_type": "unknown"}]' \
-        "$ALL_RESULTS" > "$TMP_DIR/merged.json" 2>/dev/null
+      PARSED=$(echo "$bridge_line" | jq -R '
+        if test("^[a-zA-Z][a-zA-Z0-9_-]* +[0-9a-fA-F.:\\[\\]]+:[0-9]+ ") then
+          split(" ") as $parts
+          | ($parts[1] | split(":")) as $addr
+          | { id: ("line-" + $parts[0] + "-" + (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) + "-" + $addr[-1]),
+              host: (if ($addr | length) > 2 then ($addr[:-1] | join(":")) else $addr[0] end),
+              port: ($addr[-1] | tonumber),
+              transport: $parts[0],
+              success: false,
+              latency_ms: null,
+              error: "relay_unreachable" }
+        else
+          { id: ("unknown-" + (now | tostring)), host: "unknown", port: 0, transport: "unknown", success: false, latency_ms: null, error: "relay_unreachable:unparseable" }
+        end
+      ' 2>/dev/null || echo '{"success":false,"error":"relay_unreachable"}')
+      jq --argjson parsed "$PARSED" '. + [$parsed]' "$ALL_RESULTS" > "$TMP_DIR/merged.json" 2>/dev/null
       mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
     done < "$chunk_file"
   fi

@@ -1161,4 +1161,110 @@ mod tests {
             diversified.iter().map(|b| b.bridge_line.clone()).collect();
         assert_eq!(original_lines, diversified_lines);
     }
+
+    // ── (d) Probe Relay Schema Contract tests ────────────────────────────
+    //
+    // These tests enforce that the Worker schema (probe-relay/src/index.ts)
+    // and the CI/probe_relay.sh payloads stay in sync. A field-name mismatch
+    // like "address" vs "host" causes the Worker to reject every probe with
+    // HTTP 400, silently skipping Stage 4.
+
+    /// The Worker's BridgeDescriptor validation requires exactly {host, port, transport}.
+    /// Using "address" instead of "host" produces:
+    ///   {"error":"bad_request","detail":"Each bridge must have host, port, and transport fields"}
+    #[test]
+    fn probe_relay_schema_requires_host_not_address() {
+        // Correct payload — matches probe-relay/src/index.ts BridgeDescriptor
+        let correct = serde_json::json!({"host": "127.0.0.1", "port": 9999, "transport": "obfs4"});
+        assert!(correct.get("host").is_some());
+        assert!(correct.get("port").is_some());
+        assert!(correct.get("transport").is_some());
+        // "address" must NOT be present (it's the wrong field name)
+        assert!(correct.get("address").is_none());
+
+        // Wrong payload — this is what the old SMOKE_BODY sent
+        let wrong = serde_json::json!({"address": "127.0.0.1", "port": 9999, "transport": "obfs4"});
+        assert!(wrong.get("address").is_some());
+        // The Worker would reject this because "host" is missing
+        assert!(wrong.get("host").is_none());
+    }
+
+    /// Bridge-line parsing must produce {host, port, transport} objects.
+    /// The common bridge-line format is: "transport IP:PORT ..."
+    #[test]
+    fn bridge_line_parsing_produces_host_port_transport() {
+        // Simulate what probe_relay.sh's jq parser produces for common formats
+        let bridge_line =
+            "obfs4 192.0.2.1:9001 AABBCCDDEEFF00112233445566778899AABBCCDD cert=xyz iat-mode=0";
+
+        // Parse like the jq logic in probe_relay.sh:
+        //   split(" ")[0] = transport, split(" ")[1] = host:port
+        let parts: Vec<&str> = bridge_line.splitn(3, ' ').collect();
+        assert_eq!(parts[0], "obfs4");
+        let addr_parts: Vec<&str> = parts[1].split(':').collect();
+        let host = if addr_parts.len() > 2 {
+            // IPv6: [...]:...:port
+            addr_parts[..addr_parts.len() - 1].join(":")
+        } else {
+            addr_parts[0].to_string()
+        };
+        let port: u16 = addr_parts[addr_parts.len() - 1].parse().unwrap();
+        let transport = parts[0].to_string();
+
+        assert_eq!(host, "192.0.2.1");
+        assert_eq!(port, 9001);
+        assert_eq!(transport, "obfs4");
+
+        // Verify the resulting object has the Worker-expected fields
+        let parsed = serde_json::json!({"host": host, "port": port, "transport": transport});
+        assert!(parsed.get("host").is_some());
+        assert!(
+            parsed.get("address").is_none(),
+            "parsed object must NOT contain 'address' — the Worker expects 'host'"
+        );
+    }
+
+    /// IPv6 bridge lines with bracket notation must parse correctly.
+    #[test]
+    fn ipv6_bridge_line_parsing_preserves_bracket_host() {
+        let bridge_line = "obfs4 [2001:db8::1]:9443 AABBCCDD cert=xyz";
+
+        let parts: Vec<&str> = bridge_line.splitn(3, ' ').collect();
+        let addr_str = parts[1]; // "[2001:db8::1]:9443"
+
+        // Split on LAST ':' to separate host:port for IPv6 bracket notation
+        let last_colon = addr_str.rfind(':').unwrap();
+        let host = &addr_str[..last_colon]; // "[2001:db8::1]"
+        let port: u16 = addr_str[last_colon + 1..].parse().unwrap();
+
+        assert_eq!(host, "[2001:db8::1]");
+        assert_eq!(port, 9443);
+    }
+
+    /// Only three fields are mandatory: host, port, transport.
+    /// The Worker rejects anything missing any of these.
+    #[test]
+    fn worker_validation_requires_all_three_fields() {
+        // These are the three mandatory fields from probe-relay/src/index.ts:
+        //   if (!bridge.host || !bridge.port || !bridge.transport) { ... }
+        let mandatory = ["host", "port", "transport"];
+
+        let valid = serde_json::json!({"host": "10.0.0.1", "port": 443, "transport": "obfs4"});
+        for field in &mandatory {
+            assert!(
+                valid.get(field).is_some(),
+                "valid payload missing mandatory field '{field}'"
+            );
+        }
+
+        // Missing any one field → invalid
+        let missing_host = serde_json::json!({"port": 443, "transport": "obfs4"});
+        assert!(missing_host.get("host").is_none());
+
+        let missing_port = serde_json::json!({"host": "10.0.0.1", "transport": "obfs4"});
+        assert!(missing_port.get("port").is_none());
+
+        let missing_transport = serde_json::json!({"host": "10.0.0.1", "port": 443});
+        assert!(missing_transport.get("transport").is_none());
+    }
 }

@@ -650,7 +650,9 @@ jobs:
           SMOKE_URL="${SMOKE_URL%/probe}"
           SMOKE_URL="${SMOKE_URL}/probe"
           echo "Smoke-testing ${SMOKE_URL} …"
-          SMOKE_BODY='[{"address":"127.0.0.1","port":9999,"transport":"obfs4"}]'
+          # The Worker expects {"host","port","transport"} — NOT "address".
+          # Schema validated at: probe-relay/src/index.ts "Each bridge must have host, port, and transport fields"
+          SMOKE_BODY='[{"host":"127.0.0.1","port":9999,"transport":"obfs4"}]'
           SMOKE_CODE=$(curl -s -o /tmp/smoke_resp.json -w "%{http_code}" \
             -X POST "$SMOKE_URL" \
             -H "Content-Type: application/json" \
