@@ -13,18 +13,23 @@ pub const USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWeb
 pub const BRIDGEDB_BASE_URL: &str = "https://bridges.torproject.org/bridges";
 
 /// Community seed-list source used to enrich BridgeDB results.
+/// Override with `DELTA_RAW_BASE_URL` env var; this constant is a
+/// fallback, not a hardcoded owner/repo commitment.
 pub const DELTA_RAW_BASE_URL: &str =
     "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge";
 
-/// Canonical public raw-file base used in generated documentation.
+/// Sentinel reference-base used when no dynamic repo URL can be resolved.
+/// The actual base is computed at runtime from `GITHUB_REPOSITORY` or
+/// the explicit `RAW_REPO_URL` / `DELTA_RAW_BASE_URL` env var.
 pub const DEFAULT_RAW_REPO_URL: &str =
-    "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge";
+    "https://raw.githubusercontent.com/UNRESOLVED/UNRESOLVED/main/bridge";
 
 /// Redundant public community mirrors. The collector treats these as
 /// opportunistic sources; a mirror can fail without erasing the prior
 /// non-empty archive. Additional bases may be supplied through
-/// `BRIDGE_SOURCE_BASES` as a comma-separated list.
-pub const COMMUNITY_SOURCE_BASES: &[&str] = &[DELTA_RAW_BASE_URL, DEFAULT_RAW_REPO_URL];
+/// `BRIDGE_SOURCE_BASES` as a comma-separated list.  Mirrors are
+/// validated at startup; unreachable ones are removed from the active set.
+pub const COMMUNITY_SOURCE_BASES: &[&str] = &[DELTA_RAW_BASE_URL];
 
 /// Transport families published by the collector.
 ///
@@ -240,6 +245,19 @@ pub struct CollectorConfig {
     pub front_cooldown_secs: u64,
     /// Number of fetch attempts, including the first attempt.
     pub fetch_retries: usize,
+    /// Per-source timeout in seconds. A single dead source cannot consume
+    /// the entire stage budget.
+    pub per_source_timeout_secs: u64,
+    /// Consecutive fetch failures before a source is circuit-broken.
+    pub source_circuit_breaker_failures: u32,
+    /// Circuit-breaker cooldown for individual sources in seconds.
+    pub source_circuit_breaker_reset_secs: u64,
+    /// Hard deadline for the entire stage; after this, the collector writes
+    /// whatever partial data is available rather than timing out.
+    pub stage_deadline_secs: u64,
+    /// Directory where last-known-good bridge files are retained for
+    /// fallback when fresh sources return nothing.
+    pub retained_fallback_dir: PathBuf,
     /// Optional Prometheus text-file destination.
     pub metrics_output: Option<PathBuf>,
     /// Do all collection/probing and report changes without writing output files.
@@ -270,16 +288,17 @@ impl CollectorConfig {
             .unwrap_or(64);
         let max_workers = env_usize("MAX_WORKERS", detected_workers, 1, 1_000)?;
         let min_workers = env_usize("MIN_WORKERS", (max_workers / 8).max(2), 1, max_workers)?;
+        let connect_timeout_secs = env_u64("CONNECT_TIMEOUT", 8, 1, 120)?;
 
         Ok(Self {
-            bridge_dir,
+            bridge_dir: bridge_dir.clone(),
             readme_path: env_path("README_PATH", PathBuf::from("README.md")),
             history_path,
             zip_path,
             bridgedb_base_url: env_string("BRIDGEDB_BASE_URL", BRIDGEDB_BASE_URL),
             delta_raw_base_url: env_string("DELTA_RAW_BASE_URL", DELTA_RAW_BASE_URL),
-            raw_repo_url: env_string("RAW_REPO_URL", DEFAULT_RAW_REPO_URL),
-            connect_timeout_secs: env_u64("CONNECT_TIMEOUT", 8, 1, 120)?,
+            raw_repo_url: resolve_raw_repo_url(),
+            connect_timeout_secs,
             obfs4_handshake_timeout_secs: env_u64("OBFS4_HANDSHAKE_TIMEOUT", 12, 1, 120)?,
             max_retries: env_usize("MAX_RETRIES", 2, 1, 10)?,
             max_workers,
@@ -291,6 +310,16 @@ impl CollectorConfig {
             front_failure_threshold: env_u32("FRONT_FAILURE_THRESHOLD", 3, 1, 100)?,
             front_cooldown_secs: env_u64("FRONT_COOLDOWN_SECS", 300, 1, 86_400)?,
             fetch_retries: env_usize("FETCH_RETRIES", 3, 1, 10)?,
+            per_source_timeout_secs: env_u64(
+                "PER_SOURCE_TIMEOUT_SECS",
+                connect_timeout_secs.saturating_mul(3).max(15),
+                5,
+                300,
+            )?,
+            source_circuit_breaker_failures: env_u32("SOURCE_CB_FAILURES", 5, 1, 100)?,
+            source_circuit_breaker_reset_secs: env_u64("SOURCE_CB_RESET_SECS", 600, 30, 86_400)?,
+            stage_deadline_secs: env_u64("STAGE_DEADLINE_SECS", 660, 30, 3_600)?,
+            retained_fallback_dir: env_path("RETAINED_FALLBACK_DIR", bridge_dir.clone()),
             metrics_output: env::var_os("METRICS_OUTPUT").map(PathBuf::from),
             dry_run: env_bool("DRY_RUN", false),
             verbose: env_bool("VERBOSE", false),
@@ -336,6 +365,48 @@ pub fn fronted_defaults(transport: Transport) -> &'static [&'static str] {
         ],
         _ => &[],
     }
+}
+
+/// Resolve the raw file base URL dynamically from the environment.
+/// In CI it derives from `GITHUB_REPOSITORY`; outside CI the `RAW_REPO_URL`
+/// env var is required.  The sentinel `UNRESOLVED` will fail openly if
+/// no resolution is possible.
+fn resolve_raw_repo_url() -> String {
+    if let Ok(value) = env::var("RAW_REPO_URL") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty()
+            && !trimmed.contains("YOUR_USERNAME")
+            && !trimmed.contains("UNRESOLVED")
+        {
+            return trimmed.to_owned();
+        }
+    }
+    if let Ok(repo) = env::var("GITHUB_REPOSITORY") {
+        let repo = repo.trim();
+        if !repo.is_empty() && repo.contains('/') {
+            let branch = env::var("GITHUB_REF_NAME")
+                .ok()
+                .filter(|b| !b.trim().is_empty())
+                .unwrap_or_else(|| "main".to_owned());
+            return format!("https://raw.githubusercontent.com/{repo}/refs/heads/{branch}/bridge");
+        }
+    }
+    if let (Ok(owner), Ok(name)) = (env::var("GH_REPO_OWNER"), env::var("GH_REPO_NAME")) {
+        let owner = owner.trim();
+        let name = name.trim();
+        if !owner.is_empty() && !name.is_empty() {
+            let branch = env::var("CIRCLE_BRANCH")
+                .ok()
+                .filter(|b| !b.trim().is_empty())
+                .unwrap_or_else(|| "main".to_owned());
+            return format!(
+                "https://raw.githubusercontent.com/{owner}/{name}/refs/heads/{branch}/bridge"
+            );
+        }
+    }
+    // No resolution possible — keep the sentinel so downstream code can
+    // detect the problem rather than silently using a broken default.
+    DEFAULT_RAW_REPO_URL.to_owned()
 }
 
 fn env_string(name: &str, default: &str) -> String {

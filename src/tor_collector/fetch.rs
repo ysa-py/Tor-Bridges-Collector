@@ -1,24 +1,127 @@
-//! Async upstream collection with bounded retries and jittered exponential backoff.
+//! Async upstream collection with bounded retries, jittered exponential
+//! backoff, per-source circuit breaking, and HTTP 429/403 detection.
 
 use std::collections::BTreeSet;
 use std::env;
-use std::time::Duration;
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 
 use anyhow::{anyhow, Context, Result};
 use rand::Rng;
 use reqwest::Client;
 use scraper::{Html, Selector};
 use tokio::task::JoinSet;
-use tokio::time::sleep;
+use tokio::time::{sleep, timeout};
 
 use super::config::{CollectorConfig, Transport, COMMUNITY_SOURCE_BASES, USER_AGENT};
 use super::parsing::{clean_output_line, is_ipv6_line, is_valid_bridge_line};
+
+/// ── Per-source circuit breaker ─────────────────────────────────────────
+///
+/// After `threshold` consecutive fetch failures for a source key (typically
+/// the hostname of the URL), the breaker opens and all subsequent attempts
+/// for that source are skipped for `cooldown` seconds.  This prevents a
+/// persistently dead mirror from consuming the entire stage budget on every
+/// run.  A single successful fetch from the source resets the counter and
+/// closes the breaker.
+#[derive(Clone, Debug)]
+pub struct SourceCircuitBreaker {
+    threshold: u32,
+    cooldown: Duration,
+    open_since: Arc<Mutex<std::collections::HashMap<String, Instant>>>,
+    failures: Arc<Mutex<std::collections::HashMap<String, u32>>>,
+}
+
+impl SourceCircuitBreaker {
+    pub fn new(threshold: u32, cooldown: Duration) -> Self {
+        Self {
+            threshold,
+            cooldown,
+            open_since: Arc::new(Mutex::new(std::collections::HashMap::new())),
+            failures: Arc::new(Mutex::new(std::collections::HashMap::new())),
+        }
+    }
+
+    /// Check whether the source is allowed to be contacted.  An open breaker
+    /// automatically resets when its cooldown has elapsed.
+    pub fn allow(&self, source_key: &str) -> bool {
+        let mut open = match self.open_since.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let now = Instant::now();
+        if let Some(opened) = open.get(source_key).copied() {
+            if now.duration_since(opened) >= self.cooldown {
+                // Cooldown expired — close the breaker
+                open.remove(source_key);
+                if let Ok(mut f) = self.failures.lock() {
+                    f.remove(source_key);
+                }
+                tracing::info!(
+                    source = %source_key,
+                    "circuit-breaker cooldown elapsed; source re-enabled"
+                );
+                return true;
+            }
+            return false;
+        }
+        true
+    }
+
+    /// Record one fetch outcome.  After `threshold` consecutive failures
+    /// the source is blocked until the cooldown passes.
+    pub fn record(&self, source_key: &str, success: bool) {
+        if success {
+            // Reset on any success
+            let mut failed = match self.failures.lock() {
+                Ok(g) => g,
+                Err(p) => p.into_inner(),
+            };
+            failed.remove(source_key);
+            let mut open = match self.open_since.lock() {
+                Ok(g) => g,
+                Err(p) => p.into_inner(),
+            };
+            open.remove(source_key);
+            return;
+        }
+        let mut failed = match self.failures.lock() {
+            Ok(g) => g,
+            Err(p) => p.into_inner(),
+        };
+        let count = failed.entry(source_key.to_ascii_lowercase()).or_insert(0);
+        *count = count.saturating_add(1);
+        if *count >= self.threshold {
+            let mut open = match self.open_since.lock() {
+                Ok(g) => g,
+                Err(p) => p.into_inner(),
+            };
+            open.insert(source_key.to_ascii_lowercase(), Instant::now());
+            tracing::warn!(
+                source = %source_key,
+                consecutive_failures = *count,
+                cooldown_secs = self.cooldown.as_secs(),
+                "source circuit breaker opened; source will be skipped"
+            );
+        }
+    }
+
+    /// Extract a stable source key from a URL (hostname component).
+    pub fn key_from_url(url: &str) -> String {
+        url.split('/')
+            .nth(2)
+            .map(|h| h.split(':').next().unwrap_or("unknown"))
+            .unwrap_or("unknown")
+            .to_ascii_lowercase()
+    }
+}
 
 /// HTTP source client shared across BridgeDB and community-seed fetches.
 #[derive(Clone)]
 pub struct SourceFetcher {
     client: Client,
     config: CollectorConfig,
+    circuit_breaker: SourceCircuitBreaker,
 }
 
 impl SourceFetcher {
@@ -29,11 +132,21 @@ impl SourceFetcher {
             .user_agent(USER_AGENT)
             .connect_timeout(Duration::from_secs(config.connect_timeout_secs))
             .timeout(Duration::from_secs(
-                config.connect_timeout_secs.saturating_mul(3),
+                config
+                    .per_source_timeout_secs
+                    .max(config.connect_timeout_secs.saturating_mul(3)),
             ))
             .build()
             .context("unable to construct upstream HTTP client")?;
-        Ok(Self { client, config })
+        let circuit_breaker = SourceCircuitBreaker::new(
+            config.source_circuit_breaker_failures,
+            Duration::from_secs(config.source_circuit_breaker_reset_secs),
+        );
+        Ok(Self {
+            client,
+            config,
+            circuit_breaker,
+        })
     }
 
     /// Fetch BridgeDB HTML and extract `#bridgelines` text for one transport/IP
@@ -44,19 +157,24 @@ impl SourceFetcher {
             self.config.bridgedb_base_url.trim_end_matches('/'),
             transport.bridgedb_name()
         );
-        // BridgeDB has accepted both `yes/no` and boolean query spellings in
-        // different deployments. Try a redundant spelling when the primary
-        // response is empty so WebTunnel IPv4 and Vanilla IPv6 do not depend
-        // on one server-side parameter parser.
         let urls = if ipv6 {
             vec![format!("{base}&ipv6=yes"), format!("{base}&ipv6=true")]
         } else {
             vec![format!("{base}&ipv6=no"), base]
         };
+        let source_key = SourceCircuitBreaker::key_from_url(&self.config.bridgedb_base_url);
+        if !self.circuit_breaker.allow(&source_key) {
+            return Err(anyhow!(
+                "BridgeDB source circuit-broken for {source_key} (skipped after {} consecutive failures)",
+                self.config.source_circuit_breaker_failures
+            ));
+        }
+
         let mut last_error = None;
         for url in urls {
             match self.fetch_text(&url).await {
                 Ok(body) => {
+                    self.circuit_breaker.record(&source_key, true);
                     let lines = filter_variant(extract_bridgedb_lines(&body)?, ipv6);
                     if !lines.is_empty() {
                         return Ok(lines);
@@ -66,7 +184,10 @@ impl SourceFetcher {
                         ip = if ipv6 { "IPv6" } else { "IPv4" }
                     ));
                 }
-                Err(error) => last_error = Some(error),
+                Err(error) => {
+                    self.circuit_breaker.record(&source_key, false);
+                    last_error = Some(error);
+                }
             }
         }
         Err(last_error.unwrap_or_else(|| anyhow!("BridgeDB returned no usable lines")))
@@ -87,9 +208,64 @@ impl SourceFetcher {
         ))
     }
 
+    /// Validate each configured mirror URL at startup with a lightweight HEAD
+    /// request.  Unreachable mirrors are removed from the active source list
+    /// for this run instead of being retried blindly.
+    pub async fn validate_mirrors(&self, bases: &[String]) -> Vec<String> {
+        let mut valid = Vec::new();
+        let mut tasks = JoinSet::new();
+        for base in bases {
+            let client = self.client.clone();
+            let base_url = base.clone();
+            let timeout_secs = self.config.per_source_timeout_secs.min(10);
+            tasks.spawn(async move {
+                let result = timeout(
+                    Duration::from_secs(timeout_secs),
+                    client.head(&base_url).send(),
+                )
+                .await;
+                (base_url, result)
+            });
+        }
+        while let Some(joined) = tasks.join_next().await {
+            match joined {
+                Ok((base, Ok(Ok(response)))) if response.status().is_success() => {
+                    tracing::info!(mirror = %base, "mirror validated (HEAD OK)");
+                    valid.push(base);
+                }
+                Ok((base, Ok(Ok(response)))) => {
+                    let status = response.status();
+                    tracing::warn!(
+                        mirror = %base,
+                        http_status = %status,
+                        "mirror HEAD check returned non-success; removing from active list"
+                    );
+                }
+                Ok((base, Ok(Err(error)))) => {
+                    tracing::warn!(
+                        mirror = %base,
+                        %error,
+                        "mirror HEAD check network error; removing from active list"
+                    );
+                }
+                Ok((base, Err(_timeout))) => {
+                    tracing::warn!(
+                        mirror = %base,
+                        "mirror HEAD check timed out; removing from active list"
+                    );
+                }
+                Err(error) => {
+                    tracing::warn!(%error, "mirror validation task failed");
+                }
+            }
+        }
+        valid
+    }
+
     /// Fetch and merge every configured public mirror for one transport/IP
     /// family. The result is source-diverse and deduplicated; a single outage
     /// is not allowed to suppress lines returned by a healthy mirror.
+    /// Mirrors that are circuit-broken are skipped with a structured log entry.
     pub async fn fetch_community_sources(
         &self,
         transport: Transport,
@@ -97,11 +273,24 @@ impl SourceFetcher {
     ) -> Result<Vec<String>> {
         let urls = self.source_urls(transport, ipv6);
         let mut tasks = JoinSet::new();
+        let mut skipped_count = 0u32;
         for url in urls {
             let fetcher = self.clone();
+            let source_key = SourceCircuitBreaker::key_from_url(&url);
+            if !fetcher.circuit_breaker.allow(&source_key) {
+                tracing::warn!(
+                    source = %source_key,
+                    url = %url,
+                    transport = %transport,
+                    ipv6,
+                    "community mirror circuit-broken; skipping this run"
+                );
+                skipped_count = skipped_count.saturating_add(1);
+                continue;
+            }
             tasks.spawn(async move {
                 let result = fetcher.fetch_text(&url).await;
-                (url, result)
+                (url, source_key, result)
             });
         }
 
@@ -109,8 +298,14 @@ impl SourceFetcher {
         let mut failures = Vec::new();
         while let Some(joined) = tasks.join_next().await {
             match joined {
-                Ok((_url, Ok(body))) => fetched.extend(body.lines().map(clean_output_line)),
-                Ok((url, Err(error))) => failures.push(format!("{url}: {error}")),
+                Ok((_url, source_key, Ok(body))) => {
+                    self.circuit_breaker.record(&source_key, true);
+                    fetched.extend(body.lines().map(clean_output_line));
+                }
+                Ok((url, source_key, Err(error))) => {
+                    self.circuit_breaker.record(&source_key, false);
+                    failures.push(format!("{url}: {error}"));
+                }
                 Err(error) => failures.push(format!("source task failed: {error}")),
             }
         }
@@ -121,6 +316,14 @@ impl SourceFetcher {
                 failures.join("; ")
             ));
         }
+        if skipped_count > 0 {
+            tracing::info!(
+                skipped = skipped_count,
+                transport = %transport,
+                ipv6,
+                "mirrors skipped by circuit breaker"
+            );
+        }
         Ok(filtered)
     }
 
@@ -130,6 +333,11 @@ impl SourceFetcher {
     /// by BridgeDB/community archives (`meek`, `meek_lite`, and `meek-azure`).
     fn source_urls(&self, transport: Transport, ipv6: bool) -> Vec<String> {
         let mut bases = vec![self.config.delta_raw_base_url.clone()];
+        // Add the resolved raw_repo_url as a secondary mirror (self-host)
+        let raw = self.config.raw_repo_url.clone();
+        if !raw.contains("UNRESOLVED") && raw != self.config.delta_raw_base_url {
+            bases.push(raw);
+        }
         // A test/controlled deployment that overrides the primary endpoint
         // must not unexpectedly contact public mirrors. Production defaults
         // retain the redundant second mirror.
@@ -174,22 +382,69 @@ impl SourceFetcher {
     /// Fetch text with exponential backoff and full jitter. Empty successful
     /// responses are errors rather than replacement data, ensuring an upstream
     /// outage can never wipe an existing archive.
+    ///
+    /// HTTP 429 (Too Many Requests) and 403 (Forbidden → possible CAPTCHA wall)
+    /// are detected and treated with a longer backoff so rate-limited sources
+    /// are not hammered with rapid retries.
     async fn fetch_text(&self, url: &str) -> Result<String> {
+        let source_key = SourceCircuitBreaker::key_from_url(url);
         let mut last_error = None;
         for attempt in 0..self.config.fetch_retries {
-            match self.client.get(url).send().await {
-                Ok(response) if response.status().is_success() => match response.text().await {
-                    Ok(text) if !text.trim().is_empty() => return Ok(text),
-                    Ok(_) => last_error = Some(anyhow!("upstream returned an empty body")),
-                    Err(error) => {
-                        last_error = Some(anyhow!("unable to read response body: {error}"))
+            let fetch_result = timeout(
+                Duration::from_secs(self.config.per_source_timeout_secs),
+                self.client.get(url).send(),
+            )
+            .await;
+
+            match fetch_result {
+                Ok(Ok(response)) => {
+                    let status = response.status();
+                    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                        // 429 — rate-limited; back off significantly
+                        last_error = Some(anyhow!("upstream rate-limited (HTTP 429)"));
+                        let delay_secs =
+                            std::cmp::min(30_u64.saturating_mul(1_u64 << attempt.min(3)), 120);
+                        tracing::warn!(
+                            source = %source_key,
+                            attempt = attempt + 1,
+                            delay_secs,
+                            "upstream returned HTTP 429; backing off longer"
+                        );
+                        sleep(Duration::from_secs(delay_secs)).await;
+                        continue;
                     }
-                },
-                Ok(response) => {
-                    last_error = Some(anyhow!("upstream HTTP status {}", response.status()));
+                    if status == reqwest::StatusCode::FORBIDDEN {
+                        // 403 — possible CAPTCHA wall
+                        last_error = Some(anyhow!(
+                            "upstream returned HTTP 403 (possible CAPTCHA/bot detection)"
+                        ));
+                        tracing::warn!(
+                            source = %source_key,
+                            attempt = attempt + 1,
+                            "upstream returned HTTP 403; treating as CAPTCHA wall"
+                        );
+                        continue;
+                    }
+                    if status.is_success() {
+                        match response.text().await {
+                            Ok(text) if !text.trim().is_empty() => return Ok(text),
+                            Ok(_) => last_error = Some(anyhow!("upstream returned an empty body")),
+                            Err(error) => {
+                                last_error = Some(anyhow!("unable to read response body: {error}"))
+                            }
+                        }
+                    } else {
+                        last_error = Some(anyhow!("upstream HTTP status {status}"));
+                    }
                 }
-                Err(error) => {
+                Ok(Err(error)) => {
                     last_error = Some(anyhow!("upstream request failed: {error}"));
+                }
+                Err(_elapsed) => {
+                    last_error = Some(anyhow!(
+                        "upstream request timed out after {}s",
+                        self.config.per_source_timeout_secs
+                    ));
                 }
             }
 
@@ -201,6 +456,7 @@ impl SourceFetcher {
                     attempt = attempt + 1,
                     retries = self.config.fetch_retries,
                     delay_ms,
+                    source = %source_key,
                     "source fetch failed; retrying with jitter"
                 );
                 sleep(Duration::from_millis(delay_ms)).await;
@@ -286,5 +542,40 @@ mod tests {
         ];
         assert_eq!(filter_variant(lines.clone(), false).len(), 1);
         assert_eq!(filter_variant(lines, true).len(), 1);
+    }
+
+    #[test]
+    fn circuit_breaker_opens_after_threshold_failures() {
+        let cb = SourceCircuitBreaker::new(3, Duration::from_secs(60));
+        let key = "test.example.com";
+        assert!(cb.allow(key));
+        cb.record(key, false);
+        assert!(cb.allow(key));
+        cb.record(key, false);
+        assert!(cb.allow(key));
+        cb.record(key, false);
+        assert!(!cb.allow(key), "breaker should open after 3 failures");
+    }
+
+    #[test]
+    fn circuit_breaker_resets_on_success() {
+        let cb = SourceCircuitBreaker::new(3, Duration::from_secs(60));
+        let key = "test.example.com";
+        cb.record(key, false);
+        cb.record(key, false);
+        assert!(cb.allow(key));
+        cb.record(key, true);
+        cb.record(key, false);
+        assert!(cb.allow(key), "breaker should be reset after a success");
+    }
+
+    #[test]
+    fn key_from_url_extracts_hostname() {
+        assert_eq!(
+            SourceCircuitBreaker::key_from_url(
+                "https://raw.githubusercontent.com/Delta-Kronecker/Repo/main/bridge/obfs4.txt"
+            ),
+            "raw.githubusercontent.com"
+        );
     }
 }
