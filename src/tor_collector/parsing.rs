@@ -572,50 +572,7 @@ fn parse_port(value: &str) -> Option<u16> {
     (port != 0).then_some(port)
 }
 
-fn is_documentation_or_reserved_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(ipv4) => {
-            let octets = ipv4.octets();
-            octets[0] == 0
-                || octets[0] == 10
-                || octets[0] == 127
-                || (octets[0] == 100 && (64..=127).contains(&octets[1]))
-                || (octets[0] == 169 && octets[1] == 254)
-                || (octets[0] == 172 && (16..=31).contains(&octets[1]))
-                || (octets[0] == 192 && octets[1] == 0 && octets[2] == 0)
-                || (octets[0] == 192 && octets[1] == 0 && octets[2] == 2)
-                || (octets[0] == 192 && octets[1] == 88 && octets[2] == 99)
-                || (octets[0] == 192 && octets[1] == 168)
-                || (octets[0] == 198 && (18..=19).contains(&octets[1]))
-                || (octets[0] == 198 && octets[1] == 51 && octets[2] == 100)
-                || (octets[0] == 203 && octets[1] == 0 && octets[2] == 113)
-                || octets[0] >= 224
-        }
-        IpAddr::V6(ipv6) => {
-            let seg = ipv6.segments();
-            ipv6.is_unspecified()
-                || ipv6.is_loopback()
-                || (seg[0] & 0xffc0) == 0xfe80
-                || (seg[0] & 0xfe00) == 0xfc00
-                || (seg[0] & 0xff00) == 0xff00
-                || (seg[0] == 0x2001 && seg[1] == 0x0db8)
-        }
-    }
-}
-
-pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
-    let trimmed = strip_bridge_prefix(line);
-    for token in trimmed.split_whitespace() {
-        if let Some(endpoint) = endpoint_from_token(token) {
-            if let Ok(ip) = endpoint.host.parse::<IpAddr>() {
-                if is_documentation_or_reserved_ip(ip) {
-                    return true;
-                }
-            }
-        }
-    }
-    false
-}
+pub use crate::ip_guard::contains_documentation_or_reserved_endpoint;
 
 pub fn is_canonical_fingerprint(value: &str) -> bool {
     let cleaned = value.trim().trim_matches(|c| matches!(c, ',' | ';' | '"'));

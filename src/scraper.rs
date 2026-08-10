@@ -41,7 +41,6 @@
 
 use std::collections::BTreeSet;
 use std::fs;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::path::Path;
 use std::time::Duration;
 
@@ -261,69 +260,16 @@ pub fn is_valid_line(line: &str) -> bool {
 /// Return true when `ip` is a documentation, benchmarking, or otherwise
 /// reserved/non-routable address that must never be counted as a production
 /// bridge candidate.
-#[must_use]
-pub fn is_documentation_or_reserved_ip(ip: IpAddr) -> bool {
-    match ip {
-        IpAddr::V4(v4) => is_documentation_or_reserved_ipv4(v4),
-        IpAddr::V6(v6) => is_documentation_or_reserved_ipv6(v6),
-    }
-}
-
-fn is_documentation_or_reserved_ipv4(ip: Ipv4Addr) -> bool {
-    let o = ip.octets();
-    ip.is_private()
-        || ip.is_loopback()
-        || ip.is_link_local()
-        || ip.is_multicast()
-        || ip.is_broadcast()
-        || ip.is_unspecified()
-        || o[0] == 0
-        || o[0] == 10
-        || o[0] == 127
-        || (o[0] == 100 && (64..=127).contains(&o[1]))
-        || (o[0] == 169 && o[1] == 254)
-        || (o[0] == 172 && (16..=31).contains(&o[1]))
-        || (o[0] == 192 && o[1] == 0 && o[2] == 0)
-        || (o[0] == 192 && o[1] == 0 && o[2] == 2)
-        || (o[0] == 192 && o[1] == 88 && o[2] == 99)
-        || (o[0] == 192 && o[1] == 168)
-        || (o[0] == 198 && (18..=19).contains(&o[1]))
-        || (o[0] == 198 && o[1] == 51 && o[2] == 100)
-        || (o[0] == 203 && o[1] == 0 && o[2] == 113)
-        || o[0] >= 224
-}
-
-fn is_documentation_or_reserved_ipv6(ip: Ipv6Addr) -> bool {
-    let seg = ip.segments();
-    ip.is_unspecified()
-        || ip.is_loopback()
-        || (seg[0] & 0xffc0) == 0xfe80
-        || (seg[0] & 0xfe00) == 0xfc00
-        || (seg[0] & 0xff00) == 0xff00
-        || seg[0] == 0x2001 && seg[1] == 0x0db8
-}
+///
+/// Re-exported from the single shared [`crate::ip_guard`] module.
+pub use crate::ip_guard::is_documentation_or_reserved_ip;
 
 /// Extract the first bridge endpoint address and reject known placeholder or
 /// reserved ranges. Lines without a direct IP endpoint (for example Snowflake
 /// broker-only lines or URL-fronted WebTunnel entries) are allowed through.
-#[must_use]
-pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
-    if let Some(caps) = ip4_port_re().captures(line) {
-        if let Some(host) = caps.get(1).map(|m| m.as_str()) {
-            if let Ok(ip) = host.parse::<Ipv4Addr>() {
-                return is_documentation_or_reserved_ip(IpAddr::V4(ip));
-            }
-        }
-    }
-    if let Some(caps) = ipv6_bracket_re().captures(line) {
-        let raw = caps.get(0).map(|m| m.as_str()).unwrap_or("");
-        let host = raw.trim_start_matches('[').trim_end_matches(']');
-        if let Ok(ip) = host.parse::<Ipv6Addr>() {
-            return is_documentation_or_reserved_ip(IpAddr::V6(ip));
-        }
-    }
-    false
-}
+///
+/// Re-exported from the single shared [`crate::ip_guard`] module.
+pub use crate::ip_guard::contains_documentation_or_reserved_endpoint;
 
 fn accept_ingested_bridge(line: &str, source: &str, transport: &str) -> bool {
     if contains_documentation_or_reserved_endpoint(line) {

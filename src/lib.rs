@@ -32,6 +32,7 @@ pub mod generated_json_loader;
 pub mod history;
 pub mod history_utils;
 pub mod injected_failure_tests;
+pub mod ip_guard;
 pub mod iran_advanced_dpi_evasion;
 pub mod iran_anti_siam;
 pub mod iran_bridge_prioritizer;
