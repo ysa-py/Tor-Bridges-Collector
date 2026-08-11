@@ -187,6 +187,58 @@ fn stage_results(input: &Path) -> StageResult {
         println!("webtunnel-probe: probed={probed} ws_101={ws_ok} ws_fail={ws_fail}");
     }
     let stats = results_writer::write_result_files(Path::new("bridge"), &bridges)?;
+    // v2.6.3: Persist webtunnel probe results back to iran_results.json
+    // so downstream stages (bridge_publication.rs) read the updated
+    // tcp_reachable / iran_status fields. Without this, publication
+    // rebuilds output files from the stale original iran_results.json
+    // and the in-memory probe results are silently discarded.
+    if probed > 0 {
+        match std::fs::read_to_string(input) {
+            Ok(text) => {
+                if let Ok(mut root) = serde_json::from_str::<Value>(&text) {
+                    if let Some(obj) = root.as_object_mut() {
+                        let webtunnel_working = bridges
+                            .iter()
+                            .filter(|b| {
+                                b.get("transport").and_then(Value::as_str) == Some("webtunnel")
+                                    && b.get("iran_status").and_then(Value::as_str)
+                                        == Some("iran_unknown")
+                            })
+                            .count();
+                        let bridge_count = bridges.len();
+                        obj.insert("bridges".to_string(), json!(bridges));
+                        if let Some(summary) =
+                            obj.get_mut("summary").and_then(|s| s.as_object_mut())
+                        {
+                            summary.insert(
+                                "webtunnel_ws_probed".to_string(),
+                                json!(webtunnel_working),
+                            );
+                        }
+                        if let Err(e) = write_json(input, &root) {
+                            eprintln!(
+                                "webtunnel-probe: failed to persist updated bridges to {}: {e}",
+                                input.display()
+                            );
+                        } else {
+                            println!(
+                                "webtunnel-probe: persisted {} updated bridges ({} webtunnel working) to {}",
+                                bridge_count,
+                                webtunnel_working,
+                                input.display()
+                            );
+                        }
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!(
+                    "webtunnel-probe: could not read {} for persistence: {e}",
+                    input.display()
+                );
+            }
+        }
+    }
     let mut detail = json!({ "files": stats });
     if probed > 0 {
         detail["webtunnel_probe"] = json!({
