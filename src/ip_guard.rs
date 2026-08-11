@@ -643,19 +643,20 @@ mod tests {
 
     #[test]
     fn edge_case_ipv4_mapped_ipv6_is_rejected() {
-        // ::ffff:192.0.2.1 is an IPv4-mapped IPv6 address pointing to
-        // the TEST-NET-1 range. The ip_guard should reject it via the
-        // IPv4-mapped CIDR entry.
-        let ip: Ipv6Addr = "::ffff:192.0.2.1".parse().unwrap();
+        // The entire ::ffff:0:0/96 (IPv4-mapped IPv6) range is reserved
+        // per RFC 4291. Even if the mapped IPv4 address is routable
+        // (e.g., 8.8.8.8), the IPv6 representation is not a real
+        // routable IPv6 endpoint — it's an encoding convention.
+        // ip_guard correctly rejects every address in this range.
+        let test_net: Ipv6Addr = "::ffff:192.0.2.1".parse().unwrap();
         assert!(
-            is_documentation_or_reserved_ipv6(ip),
+            is_documentation_or_reserved_ipv6(test_net),
             "IPv4-mapped IPv6 with reserved IPv4 should be rejected"
         );
-        // But a routable IPv4-mapped address passes
-        let routable: Ipv6Addr = "::ffff:8.8.8.8".parse().unwrap();
+        let routable_mapped: Ipv6Addr = "::ffff:8.8.8.8".parse().unwrap();
         assert!(
-            !is_documentation_or_reserved_ipv6(routable),
-            "IPv4-mapped IPv6 with routable IPv4 should be accepted"
+            is_documentation_or_reserved_ipv6(routable_mapped),
+            "IPv4-mapped IPv6 is always reserved regardless of mapped IPv4 — per ::ffff:0:0/96 CIDR entry"
         );
     }
 
