@@ -94,7 +94,11 @@ mod tls_ws {
     /// Synchronous TLS+WebSocket Upgrade probe for a single WebTunnel
     /// front domain. Returns (raw HTTP status line, resolved IP) on success,
     /// or an error string describing the failure mode.
-    pub fn probe_sync(host: &str, port: u16, timeout: Duration) -> Result<(String, String), String> {
+    pub fn probe_sync(
+        host: &str,
+        port: u16,
+        timeout: Duration,
+    ) -> Result<(String, String), String> {
         // 1. DNS + TCP connect
         let addr = format!("{host}:{port}");
         let socket_addr = addr
@@ -208,7 +212,8 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                 // Format: webtunnel <IP>:<PORT> <FINGERPRINT> url=<URL> ver=<VERSION>
                 if !line.is_empty() && !resolved_ip.is_empty() {
                     if let Some(rest) = line.strip_prefix("webtunnel ") {
-                        let new_line = format!("webtunnel {}:{} {}", resolved_ip, port, rest.trim());
+                        let new_line =
+                            format!("webtunnel {}:{} {}", resolved_ip, port, rest.trim());
                         obj.insert("line".to_string(), json!(new_line));
                     }
                 }
