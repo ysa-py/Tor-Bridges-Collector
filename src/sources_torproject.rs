@@ -595,8 +595,11 @@ mod tests {
     }
 
     #[test]
-    fn is_valid_line_rejects_url_only_webtunnel() {
-        assert!(!is_valid_line("webtunnel url=https://example.com/path"));
+    fn is_valid_line_accepts_url_only_webtunnel() {
+        // URL-only webtunnel bridges are valid production bridges that use
+        // domain-fronted CDN transport. They must be accepted so they enter
+        // the probe pipeline and get tested.
+        assert!(is_valid_line("webtunnel url=https://example.com/path"));
         // Valid webtunnel with a routable IPv4 endpoint passes.
         assert!(is_valid_line(
             "webtunnel 8.8.4.4:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
@@ -653,7 +656,9 @@ mod tests {
     }
 
     #[test]
-    fn parse_html_rejects_url_only_webtunnel_code_block() {
+    fn parse_html_accepts_url_only_webtunnel_code_block() {
+        // URL-only webtunnel bridges are valid production bridges.
+        // The parser must accept them so they can be probed.
         let html = r#"
         <html><body>
             <code>
@@ -662,7 +667,8 @@ mod tests {
         </body></html>
         "#;
         let lines = parse_html(html);
-        assert!(lines.is_empty());
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("url=https"));
     }
 
     #[test]
