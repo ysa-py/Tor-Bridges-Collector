@@ -267,8 +267,7 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                                 format!("{}:{}", resolved_ip, port)
                             }
                         };
-                        let new_line =
-                            format!("webtunnel {} {}", ip_str, rest_no_endpoint);
+                        let new_line = format!("webtunnel {} {}", ip_str, rest_no_endpoint);
                         obj.insert("line".to_string(), json!(new_line));
                     }
                 }
