@@ -483,7 +483,10 @@ mod tests {
         ];
         let mut bridges = bridges;
         let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
-        assert_eq!(p, 0, "IP-host webtunnel bridges should be skipped by domain-front probe");
+        assert_eq!(
+            p, 0,
+            "IP-host webtunnel bridges should be skipped by domain-front probe"
+        );
         assert_eq!(s, 0);
         assert_eq!(f, 0);
     }
