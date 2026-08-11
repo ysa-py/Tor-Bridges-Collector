@@ -497,7 +497,7 @@ mod tests {
             json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "", "line": "webtunnel FINGERPRINT url=https://example.com/x ver=0.0.4"}),
         ];
         let mut bridges = bridges;
-        let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
+        let (p, _s, _f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
         assert_eq!(p, 0, "Empty host should be skipped");
     }
 }

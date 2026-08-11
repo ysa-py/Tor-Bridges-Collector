@@ -1057,7 +1057,9 @@ mod tests {
         // The endpoint parser rejects non-IPv6 addresses after the bracket
         assert!(p.ipv6.is_none(), "zone ID should not be accepted as IPv6");
         // fe80:: is link-local and should be rejected by ip_guard
-        assert!(!is_valid_bridge_line("obfs4 [fe80::1%eth0]:443 FINGER cert=abc"));
+        assert!(!is_valid_bridge_line(
+            "obfs4 [fe80::1%eth0]:443 FINGER cert=abc"
+        ));
     }
 
     #[test]
@@ -1080,9 +1082,7 @@ mod tests {
     fn edge_case_missing_port_falls_back_to_url_default() {
         // A domain-only WebTunnel line with no literal endpoint. The port
         // is inferred from the URL (443 for HTTPS).
-        let p = parse_bridge_line(
-            "webtunnel FINGERPRINT url=https://example.com/path ver=0.0.4",
-        );
+        let p = parse_bridge_line("webtunnel FINGERPRINT url=https://example.com/path ver=0.0.4");
         assert_eq!(p.transport, "webtunnel");
         assert!(p.ipv4.is_none());
         assert!(p.ipv6.is_none());
@@ -1092,9 +1092,8 @@ mod tests {
 
     #[test]
     fn edge_case_missing_port_with_http_url() {
-        let p = parse_bridge_line(
-            "webtunnel FINGERPRINT url=http://example.com:8080/path ver=0.0.3",
-        );
+        let p =
+            parse_bridge_line("webtunnel FINGERPRINT url=http://example.com:8080/path ver=0.0.3");
         assert_eq!(p.transport, "webtunnel");
         assert_eq!(p.port, Some(8080));
     }
@@ -1104,9 +1103,7 @@ mod tests {
         // A WebTunnel line without ver= is treated as invalid by
         // is_valid_bridge_line. The dynamic parser still extracts
         // whatever tokens it can find.
-        let p = parse_bridge_line(
-            "webtunnel 1.2.3.4:443 FINGERPRINT url=https://example.com/path",
-        );
+        let p = parse_bridge_line("webtunnel 1.2.3.4:443 FINGERPRINT url=https://example.com/path");
         // The transport and endpoint are still parsed
         assert_eq!(p.transport, "webtunnel");
         assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
@@ -1123,7 +1120,10 @@ mod tests {
         // url= without a scheme (http:// or https://) is captured in kv_pairs
         // but does not produce a parsed URL for SNI/port extraction.
         let p = parse_bridge_line("webtunnel FINGERPRINT url=badurl/path ver=0.0.3");
-        assert_eq!(p.kv_pairs.get("url").map(|s| s.as_str()), Some("badurl/path"));
+        assert_eq!(
+            p.kv_pairs.get("url").map(|s| s.as_str()),
+            Some("badurl/path")
+        );
         // No https:// scheme means no URL parsing, so no SNI from URL
         // (sni was never set because the URL doesn't start with https://)
         assert!(p.sni.is_none());
@@ -1136,10 +1136,7 @@ mod tests {
         let p = parse_bridge_line(
             "webtunnel FINGERPRINT url=https://example.com/path with spaces ver=0.0.3",
         );
-        assert_eq!(
-            p.url.as_deref(),
-            Some("https://example.com/path")
-        );
+        assert_eq!(p.url.as_deref(), Some("https://example.com/path"));
     }
 
     #[test]

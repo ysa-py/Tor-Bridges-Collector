@@ -723,15 +723,7 @@ mod tests {
     fn edge_case_check_endpoint_does_not_panic_on_garbage() {
         // The check_endpoint function should never panic
         for input in &[
-            "",
-            " ",
-            "::::",
-            "[",
-            "[]",
-            "[::]",
-            "[::]:",
-            "[::]:0",
-            "[:]:443",
+            "", " ", "::::", "[", "[]", "[::]", "[::]:", "[::]:0", "[:]:443",
         ] {
             let _ = check_endpoint(input);
             let _ = contains_documentation_or_reserved_endpoint(input);
