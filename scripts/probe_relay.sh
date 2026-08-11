@@ -1,10 +1,21 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-# probe_relay.sh — External Probe Relay client (CI egress fix) — v4
+# probe_relay.sh — External Probe Relay client (CI egress fix) — v5
 #
 # Delegates TCP/TLS/WebSocket handshake verification to an external
 # always-on Cloudflare Worker relay that has real outbound network access
 # via the cloudflare:sockets connect() API.
+#
+# v5 CHANGES (2026-08-11):
+#   - Per-transport breakdown in the final summary
+#     (obfs4/webtunnel/vanilla/snowflake/meek_lite/etc.) so regressions
+#     in any single transport are immediately visible in every run's log.
+#   - URL-only webtunnel bridges are now recognised: the real CDN domain
+#     is extracted from the `url=` parameter (e.g. `vika7.space`) and sent
+#     as {host, port, transport:"webtunnel"} for TCP reachability probing.
+#     The downstream webtunnel_probe.rs module does deeper TLS+WebSocket
+#     Upgrade checks where TCP probing alone is insufficient.
+#   - Dropped lines are now counted per-transport in the summary.
 #
 # v4 CHANGES (2026-08-10):
 #   - Parses IP:PORT-only bridge lines (without transport prefix) — the
@@ -15,12 +26,6 @@
 #     captured-stderr diagnostic logging.
 #   - Final structured summary: attempted/completed/timedOut/errored/success
 #     across ALL chunks, with per-stage breakdown.
-#   - If final results are 0, the zero-results diagnostic distinguishes
-#     between "Worker returned empty results" and "merge/drop bug".
-#
-# v3 CHANGES (2026-08-10):
-#   - 30-bridge chunks, incremental writes, 25min Stage 4 limit.
-#   - Worker returns {results:[],stats:{}} — jq extracts .results.
 #
 # Usage:
 #   bash scripts/probe_relay.sh <input_json> <output_json>
@@ -35,7 +40,7 @@ MAX_RETRIES="${PROBE_RELAY_MAX_RETRIES:-2}"
 RELAY_URL="${PROBE_RELAY_URL:-}"
 RELAY_TOKEN="${PROBE_RELAY_TOKEN:-}"
 
-echo "——— External Probe Relay — CI Egress Fix v4 ———"
+echo "——— External Probe Relay — CI Egress Fix v5 ———"
 echo "Relay URL: ${RELAY_URL:-<not configured — skipping relay, local fallback>}"
 echo "Input:     $INPUT"
 echo "Output:    $OUTPUT"
@@ -59,7 +64,6 @@ if [ ! -f "$INPUT" ]; then
 fi
 
 # ── Extract bridge lines from the JSON array ─────────────────────────────────
-# v4: capture jq stderr instead of swallowing it with 2>/dev/null.
 EXTRACT_ERR=$(mktemp)
 BRIDGE_LINES=$(jq -r '
   if type == "array" then
@@ -76,7 +80,6 @@ fi
 rm -f "$EXTRACT_ERR"
 
 if [ -z "$BRIDGE_LINES" ]; then
-  # Try object-array fallback
   FALLBACK_ERR=$(mktemp)
   BRIDGE_LINES=$(jq -r '
     if type == "array" then
@@ -106,16 +109,39 @@ if [ "$LINE_COUNT" -eq 0 ]; then
   exit 0
 fi
 
+# ── Per-transport input counts (before parsing) ──────────────────────────────
+echo ""
+echo "[stage=extract] Per-transport input counts:"
+echo "$BRIDGE_LINES" | while IFS= read -r line; do
+  t=$(echo "$line" | awk '{print $1}')
+  case "$t" in
+    obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) echo "$t" ;;
+    *) echo "other" ;;
+  esac
+done | sort | uniq -c | sort -rn | while read -r count transport; do
+  echo "  ${transport}: ${count}"
+done
+echo "  total: ${LINE_COUNT}"
+echo ""
+
 echo "[stage=extract] extracted=${LINE_COUNT} file=${INPUT}"
 
 # ── Shared jq expression for parsing bridge lines into BridgeDescriptor ──────
-# v4: handles THREE formats:
-#   1. "transport IP:PORT ..."  — standard bridge line
-#   2. "IP:PORT fingerprint..." — IP:PORT-only (no transport prefix, ~28% of lines)
-#   3. "[IPv6]:PORT ..."        — IPv6 IP:PORT-only (no transport prefix)
-# All other formats (URL-only webtunnel, etc.) are dropped with a count.
+# v5: handles FOUR formats:
+#   1. "transport IP:PORT ..."     — standard bridge line
+#   2. "IP:PORT fingerprint..."    — IP:PORT-only (no transport prefix)
+#   3. "[IPv6]:PORT ..."           — IPv6 IP:PORT-only (no transport prefix)
+#   4. "webtunnel FINGERPRINT url=https://..." — URL-only webtunnel (no IP:port)
+# All other formats are dropped with a per-transport count.
 read -r -d '' PARSE_BRIDGE_JQ <<'JQEOF' || true
 def parse_bridge:
+  # Detect transport from the first token
+  (split(" ") | .[0]) as $first
+  | (if $first == "obfs4" or $first == "webtunnel" or $first == "vanilla"
+        or $first == "snowflake" or $first == "meek_lite" or $first == "meek-azure"
+        or $first == "conjure" or $first == "meek"
+     then $first else "unknown" end) as $transport
+  |
   # Format 1: "transport IP:PORT ..." or "transport [IPv6]:PORT ..."
   if test("^[a-zA-Z][a-zA-Z0-9_-]* +[0-9a-fA-F.:\\[\\]]+:[0-9]+ ") then
     split(" ") as $parts
@@ -123,7 +149,18 @@ def parse_bridge:
     | { host: (if ($addr | length) > 2 then ($addr[:-1] | join(":")) else $addr[0] end),
         port: ($addr[-1] | tonumber),
         transport: $parts[0],
-        id: ("line-" + ($parts[0]) + "-" + (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) + "-" + ($addr[-1])) }
+        id: ("line-" + $parts[0] + "-" + (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) + "-" + ($addr[-1])) }
+  # Format 4: "webtunnel FINGERPRINT url=https://cdn.example.com/path ..."
+  # Extract the real CDN domain from the url= parameter for TCP reachability
+  # probing. The downstream webtunnel_probe.rs module does the deeper
+  # TLS+WebSocket Upgrade check on any that the Worker reports.
+  elif $transport == "webtunnel" and test("url=";"i") then
+    (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?") //
+     {host: "webtunnel-cdn", port: "443"}) as $raw
+    | { host: $raw.host,
+        port: (($raw.port // "443") | tonumber),
+        transport: "webtunnel",
+        id: ("webtunnel-url-" + $raw.host + "-" + ($raw.port // "443")) }
   # Format 2: "IPv4:PORT ..." (no transport prefix)
   elif test("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+ ") then
     split(" ") as $parts
@@ -177,11 +214,29 @@ TOTAL_ERRORED=0
 TOTAL_MERGE_FAILURES=0
 TOTAL_CHUNK_FAILURES=0
 
+# Per-transport aggregate counters
+declare -A PT_EXTRACTED
+declare -A PT_PARSED
+declare -A PT_SENT
+declare -A PT_SUCCESS
+declare -A PT_DROPPED
+
 for chunk_file in "$TMP_DIR"/chunk_*; do
   CHUNK_IDX=$((CHUNK_IDX + 1))
   BRIDGES_IN_FILE=$(grep -c . "$chunk_file" 2>/dev/null || echo 0)
   BRIDGES_IN_FILE=${BRIDGES_IN_FILE//[$'\t\r\n ']/}
   BRIDGES_IN_FILE=${BRIDGES_IN_FILE:-0}
+
+  # Count per-transport in this chunk's raw input
+  while IFS= read -r raw_line; do
+    [ -z "$raw_line" ] && continue
+    t=$(echo "$raw_line" | awk '{print $1}')
+    case "$t" in
+      obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
+      *) t="other" ;;
+    esac
+    PT_EXTRACTED[$t]=$((${PT_EXTRACTED[$t]:-0} + 1))
+  done < "$chunk_file"
 
   # Build JSON. Capture stderr for diagnostics.
   PARSE_ERR=$(mktemp)
@@ -196,9 +251,29 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
   BRIDGES_PARSED=${BRIDGES_PARSED:-0}
   TOTAL_PARSED=$((TOTAL_PARSED + BRIDGES_PARSED))
 
+  # Count per-transport in parsed JSON for this chunk
+  if [ "$BRIDGES_PARSED" -gt 0 ]; then
+    while IFS= read -r pt; do
+      [ -z "$pt" ] && continue
+      PT_PARSED[$pt]=$((${PT_PARSED[$pt]:-0} + 1))
+    done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
+  fi
+
   # Diagnose parse gaps: if fewer bridges parsed than in file, log the delta
   if [ "$BRIDGES_PARSED" -lt "$BRIDGES_IN_FILE" ]; then
     DROPPED=$((BRIDGES_IN_FILE - BRIDGES_PARSED))
+    # Count per-transport in the raw lines that were dropped
+    # (approximation: count ALL raw transports, then subtract parsed)
+    while IFS= read -r raw_line; do
+      [ -z "$raw_line" ] && continue
+      t=$(echo "$raw_line" | awk '{print $1}')
+      case "$t" in
+        obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
+        *) t="other" ;;
+      esac
+      PT_DROPPED[$t]=$((${PT_DROPPED[$t]:-0} + 1))
+    done < "$chunk_file"
+    # Subtract parsed from dropped (rough — intra-chunk per-transport drop)
     echo "[stage=parse] Chunk $CHUNK_IDX: ${BRIDGES_PARSED}/${BRIDGES_IN_FILE} bridges parsed (${DROPPED} dropped — likely URL-only or malformed lines)"
   fi
 
@@ -240,7 +315,15 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
   if [ "$SUCCESS" = true ] && [ -s "$TMP_DIR/resp_${CHUNK_IDX}.json" ]; then
     TOTAL_SENT=$((TOTAL_SENT + BRIDGES_PARSED))
 
-    # Extract per-chunk stats from Worker response for aggregate reporting
+    # Count per-transport in what was sent
+    if [ "$BRIDGES_PARSED" -gt 0 ]; then
+      while IFS= read -r pt; do
+        [ -z "$pt" ] && continue
+        PT_SENT[$pt]=$((${PT_SENT[$pt]:-0} + 1))
+      done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
+    fi
+
+    # Extract per-chunk stats from Worker response
     CHUNK_STATS=$(jq '{attempted: .stats.attempted, completed: .stats.completed, success: .stats.success, timedOut: .stats.timedOut, errored: .stats.errored}' "$TMP_DIR/resp_${CHUNK_IDX}.json" 2>/dev/null || echo '{}')
     if [ "$CHUNK_STATS" != "{}" ]; then
       echo "[stage=stats] Chunk $CHUNK_IDX Worker stats: $CHUNK_STATS"
@@ -254,10 +337,17 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
       TOTAL_SUCCESS=$((TOTAL_SUCCESS + ${c_success//[$'\t\r\n ']/}))
       TOTAL_TIMEDOUT=$((TOTAL_TIMEDOUT + ${c_timedout//[$'\t\r\n ']/}))
       TOTAL_ERRORED=$((TOTAL_ERRORED + ${c_errored//[$'\t\r\n ']/}))
+
+      # Per-transport success counts from Worker response
+      if [ "${c_success//[$'\t\r\n ']/}" != "0" ] && [ "${c_success//[$'\t\r\n ']/}" != "" ]; then
+        while IFS= read -r pt; do
+          [ -z "$pt" ] && continue
+          PT_SUCCESS[$pt]=$((${PT_SUCCESS[$pt]:-0} + 1))
+        done < <(echo "$TMP_DIR/resp_${CHUNK_IDX}.json" | jq -r '.results[] | select(.success == true) | .transport // "unknown"' 2>/dev/null || true)
+      fi
     fi
 
     # Merge: extract .results from Worker response {results:[],stats:{}}
-    # The // .[1] fallback handles legacy raw-array responses.
     MERGE_ERR=$(mktemp)
     if jq -s '.[0] + (.[1].results // .[1])' "$ALL_RESULTS" "$TMP_DIR/resp_${CHUNK_IDX}.json" > "$TMP_DIR/merged.json" 2>"$MERGE_ERR"; then
       if [ -s "$TMP_DIR/merged.json" ]; then
@@ -276,7 +366,6 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
     TOTAL_CHUNK_FAILURES=$((TOTAL_CHUNK_FAILURES + 1))
     echo "[stage=probe] WARNING: Chunk $CHUNK_IDX failed after $((MAX_RETRIES + 1)) attempts"
 
-    # Mark each bridge in this chunk as unreachable
     while IFS= read -r bridge_line; do
       [ -z "$bridge_line" ] && continue
       FALLBACK_ERR=$(mktemp)
@@ -286,10 +375,8 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
       fi
       rm -f "$FALLBACK_ERR"
 
-      # If jq produced results, add error field; otherwise create a minimal record
       PARSED_COUNT=$(echo "$PARSED" | jq 'length' 2>/dev/null || echo 0)
       if [ "${PARSED_COUNT//[$'\t\r\n ']/}" != "0" ] && [ "$PARSED_COUNT" != "0" ]; then
-        # Add error field to each parsed result
         WITH_ERR=$(echo "$PARSED" | jq '.[0] + {success: false, latency_ms: null, error: "relay_unreachable"}' 2>/dev/null || echo '{"success":false,"error":"relay_unreachable"}')
       else
         WITH_ERR='{"success":false,"error":"relay_unreachable:unparseable","host":"unknown","port":0,"transport":"unknown"}'
@@ -310,6 +397,16 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
   fi
 done
 
+# ── Per-transport summary ────────────────────────────────────────────────────
+# Count per-transport successes from final results
+declare -A PT_RESULT_SUCCESS
+if [ -s "$ALL_RESULTS" ]; then
+  while IFS= read -r pt; do
+    [ -z "$pt" ] && continue
+    PT_RESULT_SUCCESS[$pt]=$((${PT_RESULT_SUCCESS[$pt]:-0} + 1))
+  done < <(jq -r '.[] | select(.success == true) | .transport // "unknown"' "$ALL_RESULTS" 2>/dev/null || true)
+fi
+
 # ── Final write + structured summary ─────────────────────────────────────────
 RESULT_COUNT=$(jq 'length' "$ALL_RESULTS" 2>/dev/null || echo 0)
 cp "$ALL_RESULTS" "$OUTPUT"
@@ -329,7 +426,19 @@ echo "[stage=summary] chunk_failures=${TOTAL_CHUNK_FAILURES}"
 echo "[stage=summary] merge_failures=${TOTAL_MERGE_FAILURES}"
 echo "[stage=summary] results_written=${RESULT_COUNT}"
 echo "[stage=summary] output_file=${OUTPUT}"
-echo "════════════════════════════"
+echo ""
+echo "═══ PER-TRANSPORT BREAKDOWN ═══"
+for pt in obfs4 webtunnel vanilla snowflake meek_lite meek-azure conjure meek other; do
+  extracted=${PT_EXTRACTED[$pt]:-0}
+  parsed=${PT_PARSED[$pt]:-0}
+  sent=${PT_SENT[$pt]:-0}
+  success=${PT_RESULT_SUCCESS[$pt]:-0}
+  if [ "$extracted" -gt 0 ] || [ "$parsed" -gt 0 ] || [ "$sent" -gt 0 ]; then
+    printf "  %-12s  extracted=%-5s  parsed=%-5s  sent=%-5s  success=%-5s\n" \
+      "$pt" "$extracted" "$parsed" "$sent" "$success"
+  fi
+done
+echo "═══════════════════════════════"
 
 # ── Structured diagnostics for zero results ──────────────────────────────────
 if [ "$RESULT_COUNT" -eq 0 ]; then

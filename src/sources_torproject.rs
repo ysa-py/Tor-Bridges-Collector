@@ -201,15 +201,45 @@ pub fn is_valid_line(line: &str) -> bool {
     // Reject documentation-range / reserved IP addresses (RFC 3849 `2001:db8::/32`,
     // RFC 5737 TEST-NET, link-local, loopback, multicast, etc.) for ALL transports.
     if contains_documentation_or_reserved_endpoint(line) {
+        tracing::warn!(
+            target: "bridge_ingest",
+            event = "rejected_documentation_or_reserved_ip",
+            transport = line.split_whitespace().next().unwrap_or("unknown"),
+            bridge_line = line,
+            "rejected bridge with documentation-range or reserved IP address"
+        );
         return false;
     }
     if line
         .split_whitespace()
         .next()
         .is_some_and(|token| token.eq_ignore_ascii_case("webtunnel"))
-        && !has_literal_webtunnel_endpoint(line)
     {
-        return false;
+        // WebTunnel bridges can use either a literal IP:port endpoint
+        // (e.g. `[2001:db8::1]:443`) or a URL-based endpoint
+        // (e.g. `url=https://cdn.example.com/path`). Both are valid;
+        // only reject when neither form is present.
+        let has_ip_endpoint = has_literal_webtunnel_endpoint(line);
+        let has_url_endpoint = has_webtunnel_url_endpoint(line);
+        if !has_ip_endpoint && !has_url_endpoint {
+            tracing::warn!(
+                target: "bridge_ingest",
+                event = "rejected_webtunnel_no_endpoint",
+                transport = "webtunnel",
+                bridge_line = line,
+                "rejected webtunnel bridge with no IP:port or URL endpoint"
+            );
+            return false;
+        }
+        if !has_url_endpoint {
+            tracing::debug!(
+                target: "bridge_ingest",
+                event = "webtunnel_ip_endpoint",
+                transport = "webtunnel",
+                bridge_line = line,
+                "webtunnel bridge with IP:port endpoint (no URL)"
+            );
+        }
     }
     bridge_line_re().is_match(line)
 }
@@ -229,6 +259,26 @@ fn has_literal_webtunnel_endpoint(line: &str) -> bool {
         };
         host.parse::<std::net::Ipv4Addr>().is_ok()
             && port.parse::<u16>().is_ok_and(|value| value != 0)
+    })
+}
+
+/// Check whether a webtunnel bridge line contains a URL-based endpoint.
+/// WebTunnel bridges from Tor Project's BridgeDB use `url=https://...`
+/// to specify the CDN/domain-fronted endpoint — this is the primary
+/// connection method for production webtunnel bridges.
+///
+/// Handles reasonable real-world variation:
+///   - `url=https://example.com/path` (standard)
+///   - `URL=https://example.com` (case-insensitive prefix)
+///   - `url=http://example.com` (non-TLS scheme — unusual but valid)
+///   - `url=example.com` (bare hostname without scheme)
+fn has_webtunnel_url_endpoint(line: &str) -> bool {
+    line.split_whitespace().any(|token| {
+        let lower = token.to_ascii_lowercase();
+        if let Some(rest) = lower.strip_prefix("url=") {
+            return !rest.is_empty();
+        }
+        false
     })
 }
 
