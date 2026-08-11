@@ -57,12 +57,14 @@ fn strip_existing_ip_port(body: &str) -> &str {
     // IPv4 form: addr:port ...
     // Check if the first token looks like IP:PORT (contains a colon and
     // the part before it parses as IPv4)
-    if let Some(first_space) = body.find(' ') {
-        let first_token = &body[..first_space];
-        if let Some((host, _port_str)) = first_token.rsplit_once(':') {
+    if let Some((host, rest)) = body.split_once(':') {
+        if let Some((_port_str, after_port)) = rest.split_once(' ') {
             if host.parse::<std::net::Ipv4Addr>().is_ok() {
-                return body[first_space..].trim_start();
+                return after_port.trim_start();
             }
+        } else if host.parse::<std::net::Ipv4Addr>().is_ok() {
+            // Body is just "IPv4:PORT" with nothing after — return empty
+            return "";
         }
     }
     body
