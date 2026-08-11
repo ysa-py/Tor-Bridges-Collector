@@ -330,6 +330,20 @@ pub fn run_main_with_probe_budget(
     let mut probe_budget_exhausted = false;
     let mut results: Vec<Value> = Vec::with_capacity(ceiling.min(bridges.len()));
     for bridge_line in bridges.iter().take(ceiling) {
+        // ── CI cancellation guard ──────────────────────────────────────
+        // GitHub Actions sends SIGTERM → the pipeline binary's signal
+        // handler sets the shared `cancellation::CANCELLED` flag.  Check it
+        // after every bridge so we can flush *partial* results to disk
+        // before the runner escalates to SIGKILL (which cannot be caught).
+        if crate::cancellation::is_cancelled() {
+            tracing::warn!(
+                "NIN bypass: cancellation detected after {} / {} bridges — flushing partial report",
+                results.len(),
+                ceiling.min(bridges.len()),
+            );
+            break;
+        }
+
         if !probe_budget_exhausted && probe_start.elapsed() < probe_budget {
             probed_count += 1;
             results.push(score_for_nin(bridge_line, tcp_probe));

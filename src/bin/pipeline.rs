@@ -22,9 +22,12 @@
 use std::collections::BTreeMap;
 use std::error::Error;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::Ordering;
 
 use chrono::Utc;
 use serde_json::{json, Value};
+
+use torshield_ir_ultra::cancellation::CANCELLED;
 
 use torshield_ir_ultra::{
     adaptive_transport, anti_ai_dpi,
@@ -554,6 +557,16 @@ fn main() {
         std::process::exit(2);
     });
 
+    // Install a SIGTERM / SIGINT handler that sets the CANCELLED flag.
+    // GitHub Actions sends SIGTERM when cancelling a job; the pipeline
+    // then flushes a partial report so downstream stages that depend on
+    // the report file (e.g. data/nin_advanced_pipeline_report.json) don't
+    // fail because the file is missing or corrupt.
+    let _ = ctrlc::set_handler(move || {
+        eprintln!("\npipeline: received cancellation signal — will flush partial report");
+        CANCELLED.store(true, Ordering::SeqCst);
+    });
+
     // Every stage writes somewhere under these roots.
     for dir in ["data", "export", "docs", "bridge"] {
         let _ = std::fs::create_dir_all(dir);
@@ -564,6 +577,22 @@ fn main() {
     let (mut ok, mut skipped, mut failed) = (0usize, 0usize, 0usize);
 
     for stage in &options.stages {
+        // Check the cancellation flag *before* every stage.  If the CI
+        // runner sent SIGTERM we skip remaining stages, flush the partial
+        // report, and exit cleanly instead of dying mid-stage.
+        if CANCELLED.load(Ordering::SeqCst) {
+            eprintln!("pipeline: [cancel]  {stage} — pipeline was cancelled");
+            entries.push(json!({
+                "stage": stage,
+                "required": REQUIRED.contains(&stage.as_str()),
+                "status": "cancelled",
+                "started_at": Utc::now().to_rfc3339(),
+                "detail": json!({"reason": "pipeline cancelled before stage started"}),
+            }));
+            skipped += 1;
+            continue;
+        }
+
         let started = Utc::now();
         let required = REQUIRED.contains(&stage.as_str());
         let (status, detail) = match dispatch(stage, &options.input) {
