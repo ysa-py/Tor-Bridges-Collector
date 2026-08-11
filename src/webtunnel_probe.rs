@@ -8,6 +8,7 @@
 //! Probe is gated behind `#[cfg]` for the ARMv7-musl CI-only target
 //! (which excludes ring/rustls).
 
+use std::collections::HashSet;
 use std::time::Duration;
 
 use regex::Regex;
@@ -17,6 +18,24 @@ use serde_json::{json, Value};
 use std::io::{Read, Write};
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use std::net::{TcpStream, ToSocketAddrs};
+#[cfg(not(all(target_arch = "arm", target_env = "musl")))]
+use std::thread::sleep;
+
+/// Maximum retry attempts for domain-fronted WebTunnel probes.
+const MAX_PROBE_RETRIES: u32 = 3;
+/// Base backoff between retries (milliseconds), doubled each attempt.
+const RETRY_BASE_MS: u64 = 500;
+
+/// Check whether an IPv6 address string is in the RFC 3849 documentation
+/// prefix `2001:db8::/32`. BridgeDB intentionally substitutes these for
+/// webtunnel IPv6 entries as an anti-enumeration measure.
+pub fn is_documentation_ipv6(addr: &str) -> bool {
+    let lower = addr.to_lowercase();
+    // Strip brackets if present
+    let stripped = lower.strip_prefix('[').unwrap_or(&lower);
+    let stripped = stripped.strip_suffix(']').unwrap_or(stripped);
+    stripped.starts_with("2001:db8:") || stripped == "2001:db8"
+}
 
 /// Extract the front domain host and port from a WebTunnel bridge line.
 /// Returns None if the line doesn't contain a url= parameter.
@@ -198,7 +217,8 @@ fn probe_sync(_host: &str, _port: u16, _timeout: Duration) -> Result<(String, St
 }
 
 /// Probe a single WebTunnel bridge line and return an updated bridge record
-/// with evidence from the WebSocket Upgrade probe.
+/// with evidence from the WebSocket Upgrade probe. Retries with exponential
+/// backoff on transient failures (connection refused, timeout, DNS).
 pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
     let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
 
@@ -210,7 +230,44 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
         }
     };
 
-    match probe_sync(&host, port, timeout) {
+    // Retry with exponential backoff for transient failures
+    let mut last_result: Option<Result<(String, String), String>> = None;
+    for attempt in 0..MAX_PROBE_RETRIES {
+        if attempt > 0 {
+            let delay_ms = RETRY_BASE_MS * (1u64 << (attempt - 1));
+            eprintln!(
+                "webtunnel-probe: {host}:{port} retry {attempt}/{max} after {delay_ms}ms",
+                max = MAX_PROBE_RETRIES - 1
+            );
+            #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
+            sleep(Duration::from_millis(delay_ms));
+            #[cfg(all(target_arch = "arm", target_env = "musl"))]
+            drop(delay_ms); // no-op on ARM musl (no std::thread::sleep in CI stub)
+        }
+
+        let result = probe_sync(&host, port, timeout);
+        match &result {
+            Ok(_) => {
+                last_result = Some(result);
+                break; // success — don't retry
+            }
+            Err(error) => {
+                let is_transient = error.contains("timed out")
+                    || error.contains("Connection refused")
+                    || error.contains("DNS resolve")
+                    || error.contains("Temporary failure")
+                    || error.contains("HandshakeFailure");
+                if !is_transient || attempt + 1 >= MAX_PROBE_RETRIES {
+                    last_result = Some(result);
+                    break;
+                }
+                // Transient failure — will retry
+                last_result = Some(result);
+            }
+        }
+    }
+
+    match last_result.unwrap_or(Err("probe did not execute".to_string())) {
         Ok((response, resolved_ip)) => {
             let has_101 = response.contains("101");
             let mut result = bridge.clone();
@@ -295,6 +352,9 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
 
 /// Probe all domain-fronted WebTunnel bridges in the results, updating
 /// their statuses in-place. Returns (probed, succeeded, failed) counts.
+///
+/// Also reports front-domain diversity and reasons for skipped bridges
+/// (documentation-prefix IPv6, non-domain host, etc.).
 pub fn probe_all_webtunnel_bridges(
     bridges: &mut [Value],
     timeout: Duration,
@@ -302,6 +362,10 @@ pub fn probe_all_webtunnel_bridges(
     let mut probed = 0;
     let mut succeeded = 0;
     let mut failed = 0;
+    let mut doc_ipv6_skipped = 0u32;
+    let mut ip_host_skipped = 0u32;
+    let mut already_working_skipped = 0u32;
+    let mut front_domains: HashSet<String> = HashSet::new();
 
     for bridge in bridges.iter_mut() {
         let transport = bridge
@@ -315,19 +379,43 @@ pub fn probe_all_webtunnel_bridges(
             .get("iran_status")
             .and_then(Value::as_str)
             .unwrap_or("");
-        // Only probe bridges that the Go tester marked unreachable
-        if status != "tcp_unreachable" {
+        // Probe bridges marked unreachable AND bridges not yet probed (iran_unknown)
+        let needs_probe =
+            status == "tcp_unreachable" || status.is_empty() || status == "iran_unknown";
+        if !needs_probe {
+            already_working_skipped += 1;
             continue;
         }
         let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
+
+        // Detect documentation-prefix IPv6 (RFC 3849: 2001:db8::/32)
+        if !host.is_empty() && is_documentation_ipv6(host) {
+            doc_ipv6_skipped += 1;
+            eprintln!(
+                "webtunnel-probe: skipping documentation-prefix IPv6 host [{}] — \
+                 this is an intentional BridgeDB anti-enumeration placeholder, not a real bridge address",
+                host
+            );
+            continue;
+        }
+
         // Only probe domain-fronted bridges (host is a domain, not an IP)
         if host.is_empty() || host.parse::<std::net::IpAddr>().is_ok() {
+            if !host.is_empty() {
+                ip_host_skipped += 1;
+                eprintln!(
+                    "webtunnel-probe: skipping IP-host bridge [{}] — \
+                     webtunnel requires domain fronting via url= parameter",
+                    host
+                );
+            }
             continue;
         }
 
         let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
         let (front_host, front_port) =
             extract_front_domain(line).unwrap_or((host.to_string(), 443));
+        front_domains.insert(front_host.clone());
 
         probed += 1;
         let updated = probe_webtunnel_bridge(bridge, timeout);
@@ -348,6 +436,15 @@ pub fn probe_all_webtunnel_bridges(
         }
         *bridge = updated;
     }
+
+    // Emit diversity summary
+    println!(
+        "webtunnel-probe: summary probed={probed} ws_101={succeeded} ws_fail={failed} \
+         doc_ipv6_skipped={doc_ipv6_skipped} ip_host_skipped={ip_host_skipped} \
+         already_working_skipped={already_working_skipped} \
+         unique_front_domains={front_domains}",
+        front_domains = front_domains.len(),
+    );
 
     (probed, succeeded, failed)
 }
@@ -415,15 +512,26 @@ mod tests {
     }
 
     #[test]
-    fn probe_skips_already_working() {
+    fn is_doc_prefix_detects_2001_db8() {
+        assert!(is_documentation_ipv6("2001:db8::1"));
+        assert!(is_documentation_ipv6("2001:DB8:1234::1"));
+        assert!(is_documentation_ipv6("[2001:db8::1]"));
+        assert!(is_documentation_ipv6("2001:db8"));
+        assert!(!is_documentation_ipv6("2001:4860:4860::8888"));
+        assert!(!is_documentation_ipv6("2a00:1450::1"));
+        assert!(!is_documentation_ipv6(""));
+        assert!(!is_documentation_ipv6("example.com"));
+    }
+
+    #[test]
+    fn probe_skips_doc_ipv6_host() {
+        // Bridges with documentation-range IPv6 hosts are skipped
         let bridges = vec![
-            json!({"transport": "webtunnel", "iran_status": "iran_unknown", "host": "example.com", "line": "webtunnel ... url=https://example.com/x"}),
+            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "2001:db8::1", "line": "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://example.com/x ver=0.0.3"}),
         ];
         let mut bridges = bridges;
-        let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
-        assert_eq!(p, 0);
-        assert_eq!(s, 0);
-        assert_eq!(f, 0);
+        let (p, _s, _f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
+        assert_eq!(p, 0, "doc-prefix IPv6 bridge should be skipped");
     }
 
     // ── PART B: Edge-case regression tests for WebTunnel probe ──────────
