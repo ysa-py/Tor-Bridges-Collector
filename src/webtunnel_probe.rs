@@ -425,4 +425,76 @@ mod tests {
         assert_eq!(s, 0);
         assert_eq!(f, 0);
     }
+
+    // ── PART B: Edge-case regression tests for WebTunnel probe ──────────
+
+    #[test]
+    fn edge_case_no_url_returns_none() {
+        // A webtunnel line without url= has no front domain to probe
+        let line = "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4";
+        assert!(extract_front_domain(line).is_none());
+    }
+
+    #[test]
+    fn edge_case_malformed_url_returns_none() {
+        // A url= with no real URL structure should not be extracted
+        let line = "webtunnel FINGERPRINT url=not-a-url ver=0.0.3";
+        assert!(extract_front_domain(line).is_none());
+    }
+
+    #[test]
+    fn edge_case_url_with_ip_instead_of_domain() {
+        // url=https://1.2.3.4:8443/path — should still extract
+        let line = "webtunnel FINGERPRINT url=https://1.2.3.4:8443/path ver=0.0.3";
+        let (host, port) = extract_front_domain(line).unwrap();
+        assert_eq!(host, "1.2.3.4");
+        assert_eq!(port, 8443);
+    }
+
+    #[test]
+    fn edge_case_url_with_no_path() {
+        let line = "webtunnel FINGERPRINT url=https://example.com ver=0.0.4";
+        let (host, port) = extract_front_domain(line).unwrap();
+        assert_eq!(host, "example.com");
+        assert_eq!(port, 443);
+    }
+
+    #[test]
+    fn edge_case_strip_existing_ipv6_with_no_fingerprint() {
+        // IPv6 endpoint with nothing after, returns empty
+        let body = "[2001:db8::1]:443";
+        let result = strip_existing_ip_port(body);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn edge_case_strip_existing_ipv6_keeps_passthrough() {
+        // When body starts with [ but doesn't match the pattern, pass through
+        let body = "[not-an-ipv6";
+        let result = strip_existing_ip_port(body);
+        assert_eq!(result, "[not-an-ipv6");
+    }
+
+    #[test]
+    fn edge_case_probe_skips_ip_host_webtunnel() {
+        // A webtunnel bridge whose host is an IP (not domain-fronted) should be skipped
+        let bridges = vec![
+            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "1.2.3.4", "line": "webtunnel 1.2.3.4:443 FINGERPRINT url=https://example.com/x ver=0.0.4"}),
+        ];
+        let mut bridges = bridges;
+        let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
+        assert_eq!(p, 0, "IP-host webtunnel bridges should be skipped by domain-front probe");
+        assert_eq!(s, 0);
+        assert_eq!(f, 0);
+    }
+
+    #[test]
+    fn edge_case_probe_skips_empty_host() {
+        let bridges = vec![
+            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "", "line": "webtunnel FINGERPRINT url=https://example.com/x ver=0.0.4"}),
+        ];
+        let mut bridges = bridges;
+        let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
+        assert_eq!(p, 0, "Empty host should be skipped");
+    }
 }

@@ -638,4 +638,103 @@ mod tests {
             "Both rejected lines must carry DOCUMENTATION_RFC3849_2001_DB8 reason"
         );
     }
+
+    // ── PART B: Edge-case regression tests ───────────────────────────────
+
+    #[test]
+    fn edge_case_ipv4_mapped_ipv6_is_rejected() {
+        // ::ffff:192.0.2.1 is an IPv4-mapped IPv6 address pointing to
+        // the TEST-NET-1 range. The ip_guard should reject it via the
+        // IPv4-mapped CIDR entry.
+        let ip: Ipv6Addr = "::ffff:192.0.2.1".parse().unwrap();
+        assert!(
+            is_documentation_or_reserved_ipv6(ip),
+            "IPv4-mapped IPv6 with reserved IPv4 should be rejected"
+        );
+        // But a routable IPv4-mapped address passes
+        let routable: Ipv6Addr = "::ffff:8.8.8.8".parse().unwrap();
+        assert!(
+            !is_documentation_or_reserved_ipv6(routable),
+            "IPv4-mapped IPv6 with routable IPv4 should be accepted"
+        );
+    }
+
+    #[test]
+    fn edge_case_ipv6_with_zone_id_in_line() {
+        // Zone IDs (%eth0) cannot be parsed as IPv6 by Rust's stdlib
+        let result = "fe80::1%eth0".parse::<Ipv6Addr>();
+        assert!(result.is_err(), "Zone ID should fail IPv6 parsing");
+        // The line check should not panic
+        assert!(!contains_documentation_or_reserved_endpoint(
+            "obfs4 [fe80::1%eth0]:443 FINGER cert=abc"
+        ));
+    }
+
+    #[test]
+    fn edge_case_teredo_address_rejected() {
+        // Teredo addresses (2001::/32) are rejected
+        let teredo: Ipv6Addr = "2001::1".parse().unwrap();
+        assert!(is_documentation_or_reserved_ipv6(teredo));
+    }
+
+    #[test]
+    fn edge_case_six_to_four_rejected() {
+        // 6to4 addresses (2002::/16) are rejected
+        let six_to_four: Ipv6Addr = "2002:c000:0204::1".parse().unwrap();
+        assert!(is_documentation_or_reserved_ipv6(six_to_four));
+    }
+
+    #[test]
+    fn edge_case_benchmark_v6_rejected() {
+        // Benchmark range (2001:2::/48) is rejected
+        let bench: Ipv6Addr = "2001:2::1".parse().unwrap();
+        assert!(is_documentation_or_reserved_ipv6(bench));
+    }
+
+    #[test]
+    fn edge_case_discard_only_v6_rejected() {
+        let discard: Ipv6Addr = "100::1".parse().unwrap();
+        assert!(is_documentation_or_reserved_ipv6(discard));
+    }
+
+    #[test]
+    fn edge_case_cgnat_ipv4_rejected() {
+        let cgnat = Ipv4Addr::new(100, 64, 0, 1);
+        assert!(is_documentation_or_reserved_ipv4(cgnat));
+        // Boundary: just below CGNAT range
+        let below_cgnat = Ipv4Addr::new(100, 63, 255, 255);
+        assert!(!is_documentation_or_reserved_ipv4(below_cgnat));
+    }
+
+    #[test]
+    fn edge_case_ietf_protocol_assignment_rejected() {
+        let ietf = Ipv4Addr::new(192, 0, 0, 1);
+        assert!(is_documentation_or_reserved_ipv4(ietf));
+    }
+
+    #[test]
+    fn edge_case_ipv6_to_ipv4_relay_rejected() {
+        let relay = Ipv4Addr::new(192, 88, 99, 1);
+        assert!(is_documentation_or_reserved_ipv4(relay));
+    }
+
+    #[test]
+    fn edge_case_check_endpoint_does_not_panic_on_garbage() {
+        // The check_endpoint function should never panic
+        for input in &[
+            "",
+            " ",
+            "::::",
+            "[",
+            "[]",
+            "[::]",
+            "[::]:",
+            "[::]:0",
+            "[:]:443",
+        ] {
+            let _ = check_endpoint(input);
+            let _ = contains_documentation_or_reserved_endpoint(input);
+            let _ = reject_if_reserved(input, "obfs4");
+        }
+    }
 }

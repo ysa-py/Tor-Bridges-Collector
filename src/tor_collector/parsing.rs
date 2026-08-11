@@ -1045,4 +1045,194 @@ mod tests {
         let p = parse_bridge_line("obfs4 1.2.3.4:443 FINGER cert=obfs4test-abc iat-mode=0");
         assert_eq!(p.transport, "obfs4");
     }
+
+    // ── PART B: Edge-case regression tests ───────────────────────────────
+
+    #[test]
+    fn edge_case_ipv6_with_zone_id() {
+        // IPv6 addresses with zone IDs (%eth0) are valid in some contexts
+        // but not valid bridge endpoints. The parser should reject them
+        // because zone IDs are not routable.
+        let p = parse_bridge_line("obfs4 [fe80::1%eth0]:443 FINGER cert=abc");
+        // The endpoint parser rejects non-IPv6 addresses after the bracket
+        assert!(p.ipv6.is_none(), "zone ID should not be accepted as IPv6");
+        // fe80:: is link-local and should be rejected by ip_guard
+        assert!(!is_valid_bridge_line("obfs4 [fe80::1%eth0]:443 FINGER cert=abc"));
+    }
+
+    #[test]
+    fn edge_case_ipv4_mapped_ipv6() {
+        // IPv4-mapped IPv6 (::ffff:192.0.2.1) is detected as IPv6 by the
+        // endpoint parser but its underlying IPv4 address falls in TEST-NET-1.
+        // The ip_guard layer catches this by rejecting the entire reserved range.
+        let p = parse_bridge_line("obfs4 [::ffff:192.0.2.1]:443 FINGER cert=abc");
+        // The parser extracts the IPv6 host but does not validate routability —
+        // that is ip_guard's responsibility.
+        assert_eq!(p.ipv6.as_deref(), Some("::ffff:192.0.2.1"));
+        // ip_guard::contains_documentation_or_reserved_endpoint checks the
+        // extracted endpoint against reserved CIDR tables.
+        assert!(contains_documentation_or_reserved_endpoint(
+            "obfs4 [::ffff:192.0.2.1]:443 FINGER cert=abc"
+        ));
+    }
+
+    #[test]
+    fn edge_case_missing_port_falls_back_to_url_default() {
+        // A domain-only WebTunnel line with no literal endpoint. The port
+        // is inferred from the URL (443 for HTTPS).
+        let p = parse_bridge_line(
+            "webtunnel FINGERPRINT url=https://example.com/path ver=0.0.4",
+        );
+        assert_eq!(p.transport, "webtunnel");
+        assert!(p.ipv4.is_none());
+        assert!(p.ipv6.is_none());
+        // Port 443 is the default for HTTPS URLs
+        assert_eq!(p.port, Some(443));
+    }
+
+    #[test]
+    fn edge_case_missing_port_with_http_url() {
+        let p = parse_bridge_line(
+            "webtunnel FINGERPRINT url=http://example.com:8080/path ver=0.0.3",
+        );
+        assert_eq!(p.transport, "webtunnel");
+        assert_eq!(p.port, Some(8080));
+    }
+
+    #[test]
+    fn edge_case_missing_ver_still_parses() {
+        // A WebTunnel line without ver= is treated as invalid by
+        // is_valid_bridge_line. The dynamic parser still extracts
+        // whatever tokens it can find.
+        let p = parse_bridge_line(
+            "webtunnel 1.2.3.4:443 FINGERPRINT url=https://example.com/path",
+        );
+        // The transport and endpoint are still parsed
+        assert_eq!(p.transport, "webtunnel");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+        assert_eq!(p.port, Some(443));
+        // ver= is missing
+        assert!(p.version.is_none());
+        // But is_valid_bridge_line rejects lines without ver= for webtunnel
+        let line = "webtunnel 1.2.3.4:443 FINGERPRINT url=https://example.com/path";
+        assert!(!is_valid_bridge_line(line));
+    }
+
+    #[test]
+    fn edge_case_malformed_url_without_scheme() {
+        // url= without a scheme (http:// or https://) is captured in kv_pairs
+        // but does not produce a parsed URL for SNI/port extraction.
+        let p = parse_bridge_line("webtunnel FINGERPRINT url=badurl/path ver=0.0.3");
+        assert_eq!(p.kv_pairs.get("url").map(|s| s.as_str()), Some("badurl/path"));
+        // No https:// scheme means no URL parsing, so no SNI from URL
+        // (sni was never set because the URL doesn't start with https://)
+        assert!(p.sni.is_none());
+    }
+
+    #[test]
+    fn edge_case_malformed_url_with_spaces() {
+        // A url= value containing spaces would be split by the tokenizer.
+        // Only the part before the first space is captured as url=.
+        let p = parse_bridge_line(
+            "webtunnel FINGERPRINT url=https://example.com/path with spaces ver=0.0.3",
+        );
+        assert_eq!(
+            p.url.as_deref(),
+            Some("https://example.com/path")
+        );
+    }
+
+    #[test]
+    fn edge_case_ipv6_with_port_zero() {
+        // Port 0 is explicitly rejected by parse_port() which requires
+        // port != 0.
+        let p = parse_bridge_line("obfs4 [2001:db8::1]:0 FINGER cert=abc");
+        assert!(p.ipv6.is_none());
+        assert!(p.port.is_none());
+    }
+
+    #[test]
+    fn edge_case_ipv4_with_port_zero() {
+        let p = parse_bridge_line("obfs4 1.2.3.4:0 FINGER cert=abc");
+        assert!(p.ipv4.is_none());
+        assert!(p.port.is_none());
+    }
+
+    #[test]
+    fn edge_case_missing_both_ip_and_url() {
+        // A bridge line with no endpoint and no URL cannot be validated
+        let p = parse_bridge_line("obfs4 FINGER cert=abc");
+        assert_eq!(p.transport, "obfs4");
+        assert!(p.ipv4.is_none());
+        assert!(p.ipv6.is_none());
+        assert!(p.sni.is_none());
+    }
+
+    #[test]
+    fn edge_case_bare_url_only_line() {
+        // A line that is only a URL with no transport token
+        let p = parse_bridge_line("https://example.com/path");
+        assert_eq!(p.transport, "vanilla");
+        assert_eq!(p.url.as_deref(), Some("https://example.com/path"));
+        assert_eq!(p.sni.as_deref(), Some("example.com"));
+    }
+
+    #[test]
+    fn edge_case_vanilla_ipv6_without_brackets() {
+        // IPv6 without brackets should not be parsed as an endpoint
+        let p = parse_bridge_line("vanilla 2001:db8::1:443 FINGER");
+        // The rsplit_once(':') may misparse this — it's an invalid format
+        // that the endpoint parser should handle gracefully
+        assert!(p.ipv6.is_none());
+    }
+
+    #[test]
+    fn edge_case_very_long_line() {
+        // Extremely long bridge lines should not cause panics
+        let long = format!("obfs4 1.2.3.4:443 FINGER cert={}", "a".repeat(10000));
+        let p = parse_bridge_line(&long);
+        assert_eq!(p.transport, "obfs4");
+        assert_eq!(p.ipv4.as_deref(), Some("1.2.3.4"));
+    }
+
+    #[test]
+    fn edge_case_webtunnel_ipv6_with_url_defaults_port_to_443() {
+        // WebTunnel IPv6 bridge with url=; the endpoint port and URL port
+        // are independently extracted. The literal endpoint port wins.
+        let p = parse_bridge_line(
+            "webtunnel [2606:4700:4700::1111]:8443 FINGERPRINT url=https://cdn.example.com/path ver=0.0.4",
+        );
+        assert_eq!(p.transport, "webtunnel");
+        assert_eq!(p.ipv6.as_deref(), Some("2606:4700:4700::1111"));
+        // Endpoint port from the literal [IPv6]:port takes precedence
+        assert_eq!(p.port, Some(8443));
+        // SNI extracted from URL
+        assert_eq!(p.sni.as_deref(), Some("cdn.example.com"));
+    }
+
+    #[test]
+    fn edge_case_parse_does_not_panic_on_arbitrary_input() {
+        // Fuzz-like test: the parser should never panic on arbitrary input
+        for input in &[
+            "",
+            " ",
+            "\t",
+            "webtunnel",
+            "obfs4",
+            "::::",
+            "[::]",
+            "[::]:",
+            "[::]:abc",
+            "=====",
+            "url= url= url=",
+            "webtunnel url=https://x ver=",
+            "webtunnel url=https://x ver=0.0.4",
+            concat!("obfs4 1.2.3.4:443 FINGER cert=", "\0"),
+        ] {
+            let _ = parse_bridge_line(input);
+            let _ = is_valid_bridge_line(input);
+            let _ = detect_transport(input);
+            let _ = extract_endpoint(input);
+        }
+    }
 }
