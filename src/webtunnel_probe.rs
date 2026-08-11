@@ -92,9 +92,9 @@ mod tls_ws {
     }
 
     /// Synchronous TLS+WebSocket Upgrade probe for a single WebTunnel
-    /// front domain. Returns the raw HTTP status line on success, or
-    /// an error string describing the failure mode.
-    pub fn probe_sync(host: &str, port: u16, timeout: Duration) -> Result<String, String> {
+    /// front domain. Returns (raw HTTP status line, resolved IP) on success,
+    /// or an error string describing the failure mode.
+    pub fn probe_sync(host: &str, port: u16, timeout: Duration) -> Result<(String, String), String> {
         // 1. DNS + TCP connect
         let addr = format!("{host}:{port}");
         let socket_addr = addr
@@ -102,6 +102,7 @@ mod tls_ws {
             .map_err(|e| format!("DNS resolve {host}: {e}"))?
             .next()
             .ok_or_else(|| format!("DNS returned no addresses for {host}"))?;
+        let resolved_ip = socket_addr.ip().to_string();
         let mut tcp = TcpStream::connect_timeout(&socket_addr, timeout)
             .map_err(|e| format!("TCP connect failed: {e}"))?;
         tcp.set_read_timeout(Some(timeout))
@@ -141,7 +142,7 @@ mod tls_ws {
             .read(&mut buf)
             .map_err(|e| format!("read response: {e}"))?;
         let response = String::from_utf8_lossy(&buf[..n]).to_string();
-        Ok(response)
+        Ok((response, resolved_ip))
     }
 }
 
@@ -149,7 +150,7 @@ mod tls_ws {
 use tls_ws::probe_sync;
 
 #[cfg(all(target_arch = "arm", target_env = "musl"))]
-fn probe_sync(_host: &str, _port: u16, _timeout: Duration) -> Result<String, String> {
+fn probe_sync(_host: &str, _port: u16, _timeout: Duration) -> Result<(String, String), String> {
     // ARMv7-musl CI-only type-check target — no ring/rustls available
     Err("unsupported_target: ARMv7-musl CI-only".to_string())
 }
@@ -168,7 +169,7 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
     };
 
     match probe_sync(&host, port, timeout) {
-        Ok(response) => {
+        Ok((response, resolved_ip)) => {
             let has_101 = response.contains("101");
             let mut result = bridge.clone();
             if let Some(obj) = result.as_object_mut() {
@@ -201,6 +202,16 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                     "composite_score".to_string(),
                     json!(if has_101 { 0.7 } else { 0.45 }),
                 );
+                // Rebuild the bridge line to include the resolved IP:PORT.
+                // Domain-fronted webtunnel bridges from upstream lack the
+                // mandatory <IP>:<PORT> field that Tor Browser requires.
+                // Format: webtunnel <IP>:<PORT> <FINGERPRINT> url=<URL> ver=<VERSION>
+                if !line.is_empty() && !resolved_ip.is_empty() {
+                    if let Some(rest) = line.strip_prefix("webtunnel ") {
+                        let new_line = format!("webtunnel {}:{} {}", resolved_ip, port, rest.trim());
+                        obj.insert("line".to_string(), json!(new_line));
+                    }
+                }
             }
             result
         }
