@@ -32,6 +32,42 @@ fn extract_front_domain(line: &str) -> Option<(String, u16)> {
     })
 }
 
+/// Strip any existing IP:PORT or [IPv6]:PORT endpoint from the beginning
+/// of a webtunnel bridge body (the part after "webtunnel ").
+/// Returns the remainder after the fingerprint/url/ver fields.
+///
+/// Examples:
+///   "FINGERPRINT url=... ver=..." → "FINGERPRINT url=... ver=..." (no IP:PORT)
+///   "1.2.3.4:443 FINGERPRINT url=..." → "FINGERPRINT url=..." (strips IPv4:port)
+///   "[2001:db8::1]:443 FINGERPRINT url=..." → "FINGERPRINT url=..." (strips [IPv6]:port)
+fn strip_existing_ip_port(body: &str) -> &str {
+    // IPv6 bracket form: [addr]:port ...
+    if body.starts_with('[') {
+        if let Some(after_bracket) = body.strip_prefix('[') {
+            if let Some((_ipv6_part, rest)) = after_bracket.split_once("]:") {
+                // Skip past the port number too
+                if let Some(after_port) = rest.find(' ') {
+                    return rest[after_port..].trim_start();
+                }
+                return "";
+            }
+        }
+        return body;
+    }
+    // IPv4 form: addr:port ...
+    // Check if the first token looks like IP:PORT (contains a colon and
+    // the part before it parses as IPv4)
+    if let Some(first_space) = body.find(' ') {
+        let first_token = &body[..first_space];
+        if let Some((host, _port_str)) = first_token.rsplit_once(':') {
+            if host.parse::<std::net::Ipv4Addr>().is_ok() {
+                return body[first_space..].trim_start();
+            }
+        }
+    }
+    body
+}
+
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use std::sync::Arc;
 
@@ -210,10 +246,27 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                 // Domain-fronted webtunnel bridges from upstream lack the
                 // mandatory <IP>:<PORT> field that Tor Browser requires.
                 // Format: webtunnel <IP>:<PORT> <FINGERPRINT> url=<URL> ver=<VERSION>
+                //
+                // Per Tor spec, IPv6 addresses MUST be bracketed:
+                //   webtunnel [IPv6]:PORT ...
+                // IPv4 addresses are bare:
+                //   webtunnel IPv4:PORT ...
                 if !line.is_empty() && !resolved_ip.is_empty() {
                     if let Some(rest) = line.strip_prefix("webtunnel ") {
+                        // Strip any existing IP:PORT from the original line
+                        // (URL-only bridges have none; IPv6 bridges may have one)
+                        // so we don't duplicate the endpoint field.
+                        let rest_no_endpoint = strip_existing_ip_port(rest.trim());
+                        let ip_str: String = match resolved_ip.parse::<std::net::IpAddr>() {
+                            Ok(std::net::IpAddr::V6(_)) => {
+                                format!("[{}]:{}", resolved_ip, port)
+                            }
+                            _ => {
+                                format!("{}:{}", resolved_ip, port)
+                            }
+                        };
                         let new_line =
-                            format!("webtunnel {}:{} {}", resolved_ip, port, rest.trim());
+                            format!("webtunnel {} {}", ip_str, rest_no_endpoint);
                         obj.insert("line".to_string(), json!(new_line));
                     }
                 }
@@ -316,6 +369,36 @@ mod tests {
         let (host, port) = extract_front_domain(line).unwrap();
         assert_eq!(host, "example.com");
         assert_eq!(port, 8443);
+    }
+
+    #[test]
+    fn strip_ipv4_endpoint_from_body() {
+        let body = "1.2.3.4:443 FINGERPRINT url=https://x ver=0.0.4";
+        let result = strip_existing_ip_port(body);
+        assert_eq!(result, "FINGERPRINT url=https://x ver=0.0.4");
+    }
+
+    #[test]
+    fn strip_ipv6_endpoint_from_body() {
+        let body = "[2001:db8::1]:443 FINGERPRINT url=https://x ver=0.0.3";
+        let result = strip_existing_ip_port(body);
+        assert_eq!(result, "FINGERPRINT url=https://x ver=0.0.3");
+    }
+
+    #[test]
+    fn strip_no_endpoint_from_body() {
+        let body = "FINGERPRINT url=https://x ver=0.0.4";
+        let result = strip_existing_ip_port(body);
+        // No IP:PORT to strip — body returned as-is
+        assert_eq!(result, "FINGERPRINT url=https://x ver=0.0.4");
+    }
+
+    #[test]
+    fn strip_ipv4_no_fingerprint_returns_empty() {
+        // If body starts with IP:PORT but has nothing after, returns empty
+        let body = "1.2.3.4:443";
+        let result = strip_existing_ip_port(body);
+        assert!(result.is_empty());
     }
 
     #[test]
