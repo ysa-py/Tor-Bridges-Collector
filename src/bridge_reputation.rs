@@ -1,6 +1,6 @@
 //! Bridge Reputation Engine (§4 of the 15-point spec).
 //!
-//! Maintains rolling statistics windows (1h, 24h, 7d, 30d) per bridge and
+//! Maintains rolling statistics windows (1h, 6h, 24h, 7d, 30d, 90d) per bridge and
 //! generates long-term reliability metrics. Recent performance is weighted
 //! higher than stale observations.
 //!
@@ -27,22 +27,26 @@ use crate::history::{BridgeRecord, HistoryManager};
 // Rolling window definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// The four rolling time windows for reputation analysis.
+/// The six rolling time windows for reputation analysis.
 pub const WINDOWS: &[(i64, &str)] = &[
     (1, "1h"),
+    (6, "6h"),
     (24, "24h"),
-    (168, "7d"),  // 7 * 24
-    (720, "30d"), // 30 * 24
+    (168, "7d"),   // 7 * 24
+    (720, "30d"),  // 30 * 24
+    (2160, "90d"), // 90 * 24
 ];
 
 /// Weight multiplier for recent observations vs stale ones.
-/// Window weights: 1h=1.0, 24h=0.8, 7d=0.5, 30d=0.3
+/// Window weights: 1h=1.0, 6h=0.9, 24h=0.8, 7d=0.5, 30d=0.3, 90d=0.2
 pub fn window_weight(hours: i64) -> f64 {
     match hours {
         1 => 1.0,
+        6 => 0.9,
         24 => 0.8,
         168 => 0.5,
         720 => 0.3,
+        2160 => 0.2,
         _ => 0.1,
     }
 }
@@ -113,7 +117,7 @@ pub struct BridgeReputation {
     pub first_seen: Option<String>,
     /// Last seen timestamp.
     pub last_seen: Option<String>,
-    /// Per-window statistics, keyed by window label ("1h", "24h", "7d", "30d").
+    /// Per-window statistics, keyed by window label ("1h", "6h", "24h", "7d", "30d", "90d").
     pub windows: BTreeMap<String, WindowStats>,
     /// Composite stability score (0–100).
     pub stability_score: f64,
@@ -436,10 +440,56 @@ mod tests {
     #[test]
     fn window_weight_decreases_with_age() {
         assert_eq!(window_weight(1), 1.0);
+        assert_eq!(window_weight(6), 0.9);
         assert_eq!(window_weight(24), 0.8);
         assert_eq!(window_weight(168), 0.5);
         assert_eq!(window_weight(720), 0.3);
+        assert_eq!(window_weight(2160), 0.2);
         assert_eq!(window_weight(999), 0.1);
+    }
+
+    #[test]
+    fn six_hour_and_ninety_day_windows_bucket_by_age() {
+        let now = fixed_now();
+        let engine = ReputationEngine::new(now);
+        let record = BridgeRecord {
+            raw: "obfs4 1.2.3.4:443".to_string(),
+            transport: "obfs4".to_string(),
+            first_seen: "2026-03-20T12:00:00+00:00".to_string(),
+            last_seen: "2026-06-28T12:00:00+00:00".to_string(),
+            test_pass: Some(true),
+            test_time: Some("2026-06-28T12:00:00+00:00".to_string()),
+            latency_ms: Some(50),
+            score: 80,
+        };
+        // Fixture: three probes at known ages relative to `now`:
+        //   - 30 minutes old -> inside 1h, 6h, 24h, 7d, 30d, 90d
+        //   - 5 hours old    -> inside 6h, 24h, 7d, 30d, 90d (NOT 1h)
+        //   - 40 days old    -> inside 90d only (NOT 30d or shorter)
+        let history: Vec<(DateTime<Utc>, bool, Option<f64>)> = vec![
+            (now - Duration::minutes(30), true, Some(50.0)),
+            (now - Duration::hours(5), true, Some(60.0)),
+            (now - Duration::days(40), false, None),
+        ];
+        let rep = engine.compute_reputation(&record, &history);
+
+        // Known expected bucket counts per window.
+        let expected: &[(&str, usize)] = &[
+            ("1h", 1),
+            ("6h", 2),
+            ("24h", 2),
+            ("7d", 2),
+            ("30d", 2),
+            ("90d", 3),
+        ];
+        for &(label, probes) in expected {
+            let ws = rep.windows.get(label).unwrap();
+            assert_eq!(ws.probes, probes, "window {label} probe count");
+        }
+        // Only the 90d window sees the failed 40-day probe.
+        assert_eq!(rep.windows.get("90d").unwrap().failures, 1);
+        assert_eq!(rep.windows.get("90d").unwrap().successes, 2);
+        assert_eq!(rep.windows.get("6h").unwrap().failures, 0);
     }
 
     #[test]
