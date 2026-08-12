@@ -41,6 +41,39 @@ const RECOVERY_THRESHOLD: f64 = 0.5;
 /// Maximum number of consecutive failures before hard quarantine.
 const MAX_CONSECUTIVE_FAILURES: u32 = 5;
 
+// ─── Adaptive polling cadence (seconds) ────────────────────────────────────
+//
+// Sources with a higher historical hit-rate are polled more frequently. The
+// tiers below follow the source-cadence model (critical → archive); a
+// quarantined source is skipped rather than scheduled, so it has no cadence.
+
+/// Critical source: polled every 15 minutes.
+pub const CRITICAL_CADENCE_SECS: u64 = 15 * 60;
+/// High-priority source: polled every 30 minutes.
+pub const HIGH_CADENCE_SECS: u64 = 30 * 60;
+/// Normal source: polled every 1 hour.
+pub const NORMAL_CADENCE_SECS: u64 = 60 * 60;
+/// Archive source: polled every 6 hours.
+pub const ARCHIVE_CADENCE_SECS: u64 = 6 * 60 * 60;
+
+/// Map a health score (0.0–1.0) to a polling cadence in seconds.
+///
+/// Pure and deterministic: separated from [`SourceHealthRecord`] so the
+/// tiering can be unit-tested directly with exact inputs. Higher health
+/// (better hit-rate) yields a shorter interval. The archive cadence is the
+/// floor for every non-quarantined source.
+pub fn cadence_for_health(health: f64) -> u64 {
+    if health >= 0.8 {
+        CRITICAL_CADENCE_SECS
+    } else if health >= 0.6 {
+        HIGH_CADENCE_SECS
+    } else if health >= 0.4 {
+        NORMAL_CADENCE_SECS
+    } else {
+        ARCHIVE_CADENCE_SECS
+    }
+}
+
 /// Errors from the source health tracking system.
 #[derive(Debug, thiserror::Error)]
 pub enum SourceHealthError {
@@ -174,6 +207,21 @@ impl SourceHealthRecord {
         }
     }
 
+    /// Polling interval (seconds) for this source, derived from its rolling
+    /// health score (hit-rate / yield / latency).
+    ///
+    /// This is the adaptive-scheduling hook: a higher historical hit-rate
+    /// produces a shorter interval. A quarantined source returns `None`
+    /// (it is skipped, not scheduled). Deterministic: a pure function of the
+    /// recorded history.
+    #[must_use]
+    pub fn polling_interval_secs(&self) -> Option<u64> {
+        if self.quarantined {
+            return None;
+        }
+        Some(cadence_for_health(self.health_score()))
+    }
+
     /// Convert to JSON for telemetry/reporting.
     #[must_use]
     pub fn to_json(&self) -> Value {
@@ -277,6 +325,15 @@ impl SourceHealthTracker {
             .get(source_id)
             .map(|r| if r.quarantined { 0.0 } else { r.health_score() })
             .unwrap_or(1.0)
+    }
+
+    /// Polling interval (seconds) for a source, or `None` if it is unknown
+    /// or quarantined. Mirrors [`SourceHealthRecord::polling_interval_secs`].
+    #[must_use]
+    pub fn polling_interval_secs(&self, source_id: &str) -> Option<u64> {
+        self.records
+            .get(source_id)
+            .and_then(SourceHealthRecord::polling_interval_secs)
     }
 
     /// Get full status report as JSON.
@@ -488,5 +545,55 @@ mod tests {
             "EMA should converge: got {}",
             record.success_rate_ema
         );
+    }
+
+    #[test]
+    fn cadence_for_health_tiers_are_monotonic() {
+        // Exact, off-boundary inputs map to the four non-quarantined cadences.
+        assert_eq!(cadence_for_health(1.0), CRITICAL_CADENCE_SECS);
+        assert_eq!(cadence_for_health(0.8), CRITICAL_CADENCE_SECS);
+        assert_eq!(cadence_for_health(0.6), HIGH_CADENCE_SECS);
+        assert_eq!(cadence_for_health(0.4), NORMAL_CADENCE_SECS);
+        assert_eq!(cadence_for_health(0.2), ARCHIVE_CADENCE_SECS);
+        assert_eq!(cadence_for_health(0.0), ARCHIVE_CADENCE_SECS);
+    }
+
+    #[test]
+    fn polling_interval_reflects_hit_rate_history() {
+        // Fresh source: no observations yet → benefit of the doubt → critical.
+        let fresh = SourceHealthRecord::new("fresh");
+        assert_eq!(fresh.polling_interval_secs(), Some(CRITICAL_CADENCE_SECS));
+
+        // Four clean failures drop health to ~0.37 → archive cadence, still
+        // not quarantined (consecutive_failures == 4 < MAX).
+        let mut weak = SourceHealthRecord::new("weak");
+        for i in 0..4 {
+            weak.record_failure(&format!("t{i}"));
+        }
+        assert!(!weak.quarantined);
+        assert_eq!(weak.polling_interval_secs(), Some(ARCHIVE_CADENCE_SECS));
+
+        // A source that keeps succeeding fast and high-yield stays critical.
+        let mut healthy = SourceHealthRecord::new("healthy");
+        for i in 0..10 {
+            healthy.record_success(Duration::from_millis(100), 100, &format!("s{i}"));
+        }
+        assert_eq!(healthy.polling_interval_secs(), Some(CRITICAL_CADENCE_SECS));
+    }
+
+    #[test]
+    fn quarantined_source_is_not_scheduled() {
+        let mut source = SourceHealthRecord::new("dead");
+        for i in 0..MAX_CONSECUTIVE_FAILURES {
+            source.record_failure(&format!("t{i}"));
+        }
+        assert!(source.quarantined);
+        assert_eq!(source.polling_interval_secs(), None);
+    }
+
+    #[test]
+    fn tracker_polling_interval_for_unknown_source_is_none() {
+        let tracker = SourceHealthTracker::new();
+        assert_eq!(tracker.polling_interval_secs("missing"), None);
     }
 }
