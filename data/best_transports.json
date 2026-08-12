@@ -1,6 +1,6 @@
 {
   "analysis_window_days": 7,
-  "generated_at": "2026-08-12T13:49:26.192058229+00:00",
+  "generated_at": "2026-08-12T21:04:14.706830785+00:00",
   "note": "Weights are recomputed on every CI run from OONI measurements. For internet cut (شبکه ملی), use only: snowflake → webtunnel → meek_lite.",
   "recommended_order": [
     "snowflake",
@@ -13,12 +13,12 @@
     {
       "blocked": 0,
       "iran_dpi_resistance": "maximum — WebRTC/DTLS, hardest to fingerprint",
-      "scorer_score": 30,
+      "scorer_score": 21,
       "success_rate": 1.0,
       "survives_nic": true,
       "total_tested": 4,
       "transport": "snowflake",
-      "weight": 1.0,
+      "weight": 0.0043,
       "working": 4
     },
     {
@@ -27,7 +27,7 @@
       "scorer_score": 20,
       "success_rate": 0.0,
       "survives_nic": true,
-      "total_tested": 14,
+      "total_tested": 8,
       "transport": "webtunnel",
       "weight": 0.0,
       "working": 0
@@ -38,7 +38,7 @@
       "scorer_score": 18,
       "success_rate": 0.0,
       "survives_nic": false,
-      "total_tested": 1992,
+      "total_tested": 1996,
       "transport": "obfs4",
       "weight": 0.0,
       "working": 0
@@ -46,10 +46,10 @@
     {
       "blocked": 0,
       "iran_dpi_resistance": "high — CDN domain fronting",
-      "scorer_score": 16,
+      "scorer_score": 14,
       "success_rate": 0.0,
       "survives_nic": true,
-      "total_tested": 0,
+      "total_tested": 4,
       "transport": "meek_lite",
       "weight": 0.0,
       "working": 0
@@ -60,7 +60,7 @@
       "scorer_score": 4,
       "success_rate": 0.0,
       "survives_nic": false,
-      "total_tested": 930,
+      "total_tested": 0,
       "transport": "vanilla",
       "weight": 0.0,
       "working": 0

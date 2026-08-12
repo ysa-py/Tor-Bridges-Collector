@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-08-12T14:01:15Z` · **Archive payload SHA-256:** `f5d982148505826e2f42d6468c1b7b4a1f82d8541c94e4155daa051d4da4d73e`
+> **Last publication:** `2026-08-12T21:16:16Z` · **Archive payload SHA-256:** `2d0770e24ed53be03a3832299d2ba7df9d88cdf4dd898663fa4900b73318dc7d`
 
 ## Quick use for Iran
 
@@ -15,10 +15,10 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `487` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `316` | obfs4-oriented fallback for conventional DPI |
-| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `2` | WebTunnel candidates |
-| [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `2` | Snowflake capability candidates |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `490` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `317` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `0` | WebTunnel candidates |
+| [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `4` | Snowflake capability candidates |
 | [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `4` | NIN/cut-mode priority candidates |
 | [iran_blocked.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_blocked.txt) | `0` | Observations classified as blocked |
 | [tor_bridges.zip](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tor_bridges.zip) | `54` files | Same verified payload used for Telegram delivery |
@@ -39,6 +39,19 @@ The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipe
 The Rust whole-run self-healing engine audits every retained job-log line for swallowed errors, empty/short source responses, MOAT schema failures, rate limits, handshake failures, stale caches, artifact mismatches, skipped toolchains, and static FAILSAFE use. It emits affected-stage retry plans and records idempotent safe repairs without fabricating bridge data.
 
 BridgeDB query variants, MOAT top-level/settings schemas, and redundant community mirrors are merged with adaptive concurrency. `MAX_TEST_PER_LIST=0` tests the complete deduplicated source pool; a positive value is an explicit safety ceiling. See `data/collector_yield_report.json`, `data/collector_yield_summary.md`, `data/collector_yield_history.json`, and `data/failsafe_activations.json` for per-transport yield trends and fallback telemetry. Stage 8q installs and verifies its pinned Zig toolchain instead of silently skipping.
+
+## Machine-readable changelog and per-entry test evidence
+
+Every successful publication appends a timestamped entry to
+`data/publication_changelog.json` (schema version, ISO-8601 UTC run time, the
+verified archive SHA-256, per-file entry counts, and evidence tier/result
+counts). Each entry in `bridge/iran_results.json` is stamped with `tested_at`
+(the run timestamp), `test_tier` (`tier_2_pt_handshake` / `tier_1_tcp` /
+`untested`), and `test_result` (`tested_working` / `tested_failing` /
+`untested (rate-limited)`) derived from the recorded probe observations; the
+run-level `evidence` block summarises the stamping pass. Tiers and results are
+per-observation — they record *how* an endpoint was tested, never an assertion
+of Iranian reachability.
 
 ## Telegram dual persistence
 
