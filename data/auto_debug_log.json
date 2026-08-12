@@ -1,171 +1,5 @@
 [
   {
-    "duration_seconds": 0.15,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-11T12:39:43.616449+00:00"
-  },
-  {
-    "duration_seconds": 0.02,
-    "fixes": [],
-    "recommendations": [
-      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
-      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
-    ],
-    "results": [
-      {
-        "category": "python_syntax",
-        "message": "All 179 Python files have valid syntax",
-        "status": "ok"
-      },
-      {
-        "category": "python_imports",
-        "message": "All 30 project modules import successfully",
-        "status": "ok"
-      },
-      {
-        "category": "yaml_workflows",
-        "message": "PyYAML not installed — cannot validate workflow files",
-        "status": "warning"
-      },
-      {
-        "category": "config_integrity",
-        "details": {
-          "error": "python config module not available in rust port"
-        },
-        "message": "Cannot load config: Rust port does not import Python config module",
-        "status": "error"
-      },
-      {
-        "category": "ai_gateway",
-        "details": {
-          "error": "torshield_ai_gateway module not available in rust port"
-        },
-        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
-        "status": "error"
-      },
-      {
-        "category": "bridge_pipeline",
-        "details": {
-          "error": "core.collector module not available in rust port"
-        },
-        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
-        "status": "error"
-      },
-      {
-        "category": "dependencies",
-        "details": {
-          "missing": [
-            "requests",
-            "beautifulsoup4",
-            "aiohttp",
-            "lxml",
-            "cryptography"
-          ]
-        },
-        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
-        "status": "warning"
-      },
-      {
-        "category": "file_integrity",
-        "message": "All 13 critical files present",
-        "status": "ok"
-      },
-      {
-        "category": "directory_structure",
-        "message": "All 8 required directories exist",
-        "status": "ok"
-      }
-    ],
-    "summary": {
-      "auto_fixes_applied": 0,
-      "errors": 3,
-      "fixed": 0,
-      "ok": 4,
-      "overall_status": "critical",
-      "total_checks": 9,
-      "warnings": 2
-    },
-    "timestamp": "2026-07-11T12:41:25.143544+00:00"
-  },
-  {
     "duration_seconds": 0.04,
     "fixes": [],
     "recommendations": [
@@ -1658,5 +1492,238 @@
       "warnings": 2
     },
     "timestamp": "2026-07-30T08:25:46.605853+00:00"
+  },
+  {
+    "duration_seconds": 0.01,
+    "fixes": [
+      {
+        "message": "Created missing directory: core",
+        "target": "core",
+        "type": "mkdir"
+      },
+      {
+        "message": "Created missing directory: sources",
+        "target": "sources",
+        "type": "mkdir"
+      },
+      {
+        "message": "Created missing directory: torshield_ai_gateway",
+        "target": "torshield_ai_gateway",
+        "type": "mkdir"
+      }
+    ],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 0 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "details": {
+          "missing": [
+            "main.py",
+            "config.py",
+            "core/__init__.py",
+            "core/collector.py",
+            "core/tester.py",
+            "core/scorer.py",
+            "core/formatter.py",
+            "sources/__init__.py",
+            "torshield_ai_gateway/__init__.py",
+            "torshield_ai_gateway/gateway.py",
+            "torshield_ai_gateway/providers.py",
+            "torshield_ai_gateway/local_ai_engine.py"
+          ]
+        },
+        "message": "Missing critical files: main.py, config.py, core/__init__.py, core/collector.py, core/tester.py, core/scorer.py, core/formatter.py, sources/__init__.py, torshield_ai_gateway/__init__.py, torshield_ai_gateway/gateway.py, torshield_ai_gateway/providers.py, torshield_ai_gateway/local_ai_engine.py",
+        "status": "error"
+      },
+      {
+        "category": "directory_structure",
+        "details": {
+          "directory": "core"
+        },
+        "message": "Missing directory: core",
+        "status": "warning"
+      },
+      {
+        "category": "directory_structure",
+        "details": {
+          "directory": "sources"
+        },
+        "message": "Missing directory: sources",
+        "status": "warning"
+      },
+      {
+        "category": "directory_structure",
+        "details": {
+          "directory": "torshield_ai_gateway"
+        },
+        "message": "Missing directory: torshield_ai_gateway",
+        "status": "warning"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 3,
+      "errors": 4,
+      "fixed": 0,
+      "ok": 2,
+      "overall_status": "critical",
+      "total_checks": 11,
+      "warnings": 5
+    },
+    "timestamp": "2026-08-12T06:06:44.155229+00:00"
+  },
+  {
+    "duration_seconds": 0.03,
+    "fixes": [],
+    "recommendations": [
+      "AI Gateway: External providers unavailable. LocalAIEngine fallback is active. Update API keys in GitHub Secrets when available.",
+      "Missing dependencies. Run 'pip install -r requirements.txt' to install."
+    ],
+    "results": [
+      {
+        "category": "python_syntax",
+        "message": "All 0 Python files have valid syntax",
+        "status": "ok"
+      },
+      {
+        "category": "python_imports",
+        "message": "All 30 project modules import successfully",
+        "status": "ok"
+      },
+      {
+        "category": "yaml_workflows",
+        "message": "PyYAML not installed — cannot validate workflow files",
+        "status": "warning"
+      },
+      {
+        "category": "config_integrity",
+        "details": {
+          "error": "python config module not available in rust port"
+        },
+        "message": "Cannot load config: Rust port does not import Python config module",
+        "status": "error"
+      },
+      {
+        "category": "ai_gateway",
+        "details": {
+          "error": "torshield_ai_gateway module not available in rust port"
+        },
+        "message": "AI Gateway check failed: Rust port does not import torshield_ai_gateway",
+        "status": "error"
+      },
+      {
+        "category": "bridge_pipeline",
+        "details": {
+          "error": "core.collector module not available in rust port"
+        },
+        "message": "Bridge pipeline check failed: Rust port does not import core.collector",
+        "status": "error"
+      },
+      {
+        "category": "dependencies",
+        "details": {
+          "missing": [
+            "requests",
+            "beautifulsoup4",
+            "aiohttp",
+            "lxml",
+            "cryptography"
+          ]
+        },
+        "message": "Missing packages: requests, beautifulsoup4, aiohttp, lxml, cryptography",
+        "status": "warning"
+      },
+      {
+        "category": "file_integrity",
+        "details": {
+          "missing": [
+            "main.py",
+            "config.py",
+            "core/__init__.py",
+            "core/collector.py",
+            "core/tester.py",
+            "core/scorer.py",
+            "core/formatter.py",
+            "sources/__init__.py",
+            "torshield_ai_gateway/__init__.py",
+            "torshield_ai_gateway/gateway.py",
+            "torshield_ai_gateway/providers.py",
+            "torshield_ai_gateway/local_ai_engine.py"
+          ]
+        },
+        "message": "Missing critical files: main.py, config.py, core/__init__.py, core/collector.py, core/tester.py, core/scorer.py, core/formatter.py, sources/__init__.py, torshield_ai_gateway/__init__.py, torshield_ai_gateway/gateway.py, torshield_ai_gateway/providers.py, torshield_ai_gateway/local_ai_engine.py",
+        "status": "error"
+      },
+      {
+        "category": "directory_structure",
+        "message": "All 8 required directories exist",
+        "status": "ok"
+      }
+    ],
+    "summary": {
+      "auto_fixes_applied": 0,
+      "errors": 4,
+      "fixed": 0,
+      "ok": 3,
+      "overall_status": "critical",
+      "total_checks": 9,
+      "warnings": 2
+    },
+    "timestamp": "2026-08-12T06:39:12.243443+00:00"
   }
 ]

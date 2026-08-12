@@ -10,6 +10,7 @@ use anyhow::{anyhow, Context, Result};
 use rand::Rng;
 use reqwest::Client;
 use scraper::{Html, Selector};
+use serde_json::Value;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, timeout};
 
@@ -359,9 +360,11 @@ impl SourceFetcher {
             );
         }
 
+        let meek_azure_names: &[&str] = &["meek-azure", "meek_lite", "meek"];
+        let default_arr = [transport.file_name()];
         let names: &[&str] = match transport {
-            Transport::MeekAzure => &["meek-azure", "meek_lite", "meek"],
-            _ => &[transport.file_name()],
+            Transport::MeekAzure => meek_azure_names,
+            _ => &default_arr,
         };
         let suffix = if ipv6 { "_ipv6" } else { "" };
         let mut urls = BTreeSet::new();
@@ -377,6 +380,68 @@ impl SourceFetcher {
             }
         }
         urls.into_iter().collect()
+    }
+
+    /// Pull bridge lines from Telegram when a bot token is configured.
+    ///
+    /// Activation is automatic: whenever `TELEGRAM_BOT_TOKEN` is set (and
+    /// optionally `TELEGRAM_CHAT_ID` to restrict the source to one chat), the
+    /// collector polls the Bot API `getUpdates` endpoint and every line pulled
+    /// passes the identical format gate ([`is_valid_bridge_line`]) plus the
+    /// downstream probe pipeline before it can be published. Without a token
+    /// this returns an error with an explicit "not available" message so the
+    /// caller logs the exact reason instead of fabricating data.
+    pub async fn fetch_telegram(&self) -> Result<Vec<String>> {
+        let token = match self.config.telegram_bot_token.as_deref() {
+            Some(token) if !token.trim().is_empty() => token.trim(),
+            _ => {
+                return Err(anyhow!(
+                    "Telegram bridge source not available (no TELEGRAM_BOT_TOKEN configured)"
+                ))
+            }
+        };
+        let url = format!("https://api.telegram.org/bot{token}/getUpdates");
+        let source_key = SourceCircuitBreaker::key_from_url("api.telegram.org");
+        if !self.circuit_breaker.allow(&source_key) {
+            return Err(anyhow!("Telegram API circuit-broken; skipped this run"));
+        }
+
+        let response = timeout(
+            Duration::from_secs(self.config.per_source_timeout_secs),
+            self.client
+                .get(&url)
+                .query(&[
+                    ("limit", "100"),
+                    ("timeout", "0"),
+                    ("allowed_updates", r#"["message","channel_post"]"#),
+                ])
+                .send(),
+        )
+        .await
+        .map_err(|_| anyhow!("Telegram getUpdates request timed out"))?;
+
+        let response = response.map_err(|error| anyhow!("Telegram getUpdates failed: {error}"))?;
+        let status = response.status();
+        if !status.is_success() {
+            self.circuit_breaker.record(&source_key, false);
+            return Err(anyhow!("Telegram API returned HTTP {status}"));
+        }
+        let body = response
+            .text()
+            .await
+            .map_err(|error| anyhow!("unable to read Telegram response: {error}"))?;
+        let parsed = response_json(&body);
+        if !parsed.get("ok").and_then(Value::as_bool).unwrap_or(false) {
+            self.circuit_breaker.record(&source_key, false);
+            return Err(anyhow!(
+                "Telegram API rejected the request (check the bot token)"
+            ));
+        }
+        self.circuit_breaker.record(&source_key, true);
+        Ok(parse_telegram_updates(
+            &body,
+            self.config.telegram_chat_id.as_deref(),
+        ))
     }
 
     /// Fetch text with exponential backoff and full jitter. Empty successful
@@ -465,6 +530,75 @@ impl SourceFetcher {
         Err(last_error.unwrap_or_else(|| anyhow!("source fetch failed without an error")))
             .with_context(|| format!("fetching {url}"))
     }
+}
+
+/// Best-effort JSON parse returning `Value::Null` on failure (never panics).
+fn response_json(body: &str) -> Value {
+    serde_json::from_str(body).unwrap_or(Value::Null)
+}
+
+/// Extract bridge lines from a Telegram Bot API `getUpdates` payload.
+///
+/// Accepts `message` and `channel_post` updates and reads `text`/`caption`.
+/// Every candidate line is run through the same [`is_valid_bridge_line`]
+/// format gate used for BridgeDB and community sources, then deduplicated.
+/// When `chat_id` is set, only updates whose chat matches are accepted.
+pub fn parse_telegram_updates(body: &str, chat_id: Option<&str>) -> Vec<String> {
+    let payload = response_json(body);
+    if !payload.get("ok").and_then(Value::as_bool).unwrap_or(false) {
+        return Vec::new();
+    }
+    let Some(updates) = payload.get("result").and_then(Value::as_array) else {
+        return Vec::new();
+    };
+    let mut lines = Vec::new();
+    for update in updates {
+        let message = update.get("channel_post").or_else(|| update.get("message"));
+        let Some(message) = message else { continue };
+        if let Some(chat_id) = chat_id {
+            if !chat_matches(message.get("chat"), chat_id) {
+                continue;
+            }
+        }
+        let text = message
+            .get("text")
+            .or_else(|| message.get("caption"))
+            .and_then(Value::as_str);
+        if let Some(text) = text {
+            for raw in text.lines() {
+                let line = clean_output_line(raw);
+                if is_valid_bridge_line(&line) {
+                    lines.push(line);
+                }
+            }
+        }
+    }
+    deduplicate(lines)
+}
+
+/// Whether a Telegram `chat` object matches the configured chat id.
+///
+/// Accepts numeric ids (`"12345"`) and public usernames (`"@my_channel"`,
+/// matched against `chat.username` with or without the leading `@`).
+fn chat_matches(chat: Option<&Value>, chat_id: &str) -> bool {
+    let Some(chat) = chat else { return false };
+    if let Some(id) = chat.get("id") {
+        if let Some(number) = id.as_i64() {
+            if number.to_string() == chat_id {
+                return true;
+            }
+        }
+        if let Some(text) = id.as_str() {
+            if text == chat_id {
+                return true;
+            }
+        }
+    }
+    if let Some(username) = chat.get("username").and_then(Value::as_str) {
+        let expected = chat_id.trim_start_matches('@');
+        return username.eq_ignore_ascii_case(expected);
+    }
+    false
 }
 
 /// Parse BridgeDB HTML using `scraper`, with a plain-text fallback for harmless
@@ -576,6 +710,73 @@ mod tests {
                 "https://raw.githubusercontent.com/Delta-Kronecker/Repo/main/bridge/obfs4.txt"
             ),
             "raw.githubusercontent.com"
+        );
+    }
+
+    #[test]
+    fn telegram_parser_extracts_valid_bridge_lines_from_updates() {
+        let body = r##"{
+            "ok": true,
+            "result": [
+                {"update_id": 1, "message": {"text": "obfs4 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc iat-mode=0"}},
+                {"update_id": 2, "channel_post": {"text": "webtunnel 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://front.example.com/x ver=0.0.4"}},
+                {"update_id": 3, "channel_post": {"text": "# a comment with a host:443 inside"}},
+                {"update_id": 4, "message": {"text": "obfs4 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc iat-mode=0"}}
+            ]
+        }"##;
+        let lines = parse_telegram_updates(body, None);
+        assert_eq!(lines.len(), 2, "comment and duplicate must be dropped");
+        assert!(lines[0].starts_with("obfs4 "));
+        assert!(lines[1].contains("url=https://front.example.com/x"));
+    }
+
+    #[test]
+    fn telegram_parser_rejects_non_ok_payload() {
+        let body = r#"{"ok": false, "error_code": 401, "description": "Unauthorized"}"#;
+        assert!(parse_telegram_updates(body, None).is_empty());
+    }
+
+    #[test]
+    fn telegram_parser_filters_by_numeric_chat_id() {
+        let body = r#"{
+            "ok": true,
+            "result": [
+                {"update_id": 1, "message": {"chat": {"id": 42}, "text": "obfs4 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=a"}},
+                {"update_id": 2, "message": {"chat": {"id": 99}, "text": "obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=a"}}
+            ]
+        }"#;
+        let lines = parse_telegram_updates(body, Some("42"));
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("1.2.3.4"));
+    }
+
+    #[test]
+    fn telegram_parser_filters_by_username_chat() {
+        let body = r#"{
+            "ok": true,
+            "result": [
+                {"update_id": 1, "channel_post": {"chat": {"username": "iranbridges"}, "text": "obfs4 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=a"}},
+                {"update_id": 2, "channel_post": {"chat": {"username": "other"}, "text": "obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=a"}}
+            ]
+        }"#;
+        let lines = parse_telegram_updates(body, Some("@iranbridges"));
+        assert_eq!(lines.len(), 1);
+        assert!(lines[0].contains("1.2.3.4"));
+    }
+
+    #[test]
+    fn telegram_parser_drops_placeholder_endpoints() {
+        // RFC3849 documentation-range endpoints must not enter the pipeline.
+        let body = r#"{
+            "ok": true,
+            "result": [
+                {"update_id": 1, "message": {"text": "webtunnel [2001:db8::1]:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://front.example.com/x ver=0.0.4"}}
+            ]
+        }"#;
+        let lines = parse_telegram_updates(body, None);
+        assert!(
+            lines.is_empty(),
+            "documentation-range placeholders must be rejected"
         );
     }
 }
