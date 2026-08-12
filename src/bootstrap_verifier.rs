@@ -228,22 +228,27 @@ impl VerificationOutcome {
             };
         }
 
-        let tcp_ok = tcp.unwrap().passed;
-        let tls_ok = tls.unwrap().passed;
-        let transport_ok = transport.unwrap().passed;
-        let bootstrap_ok = bootstrap.unwrap().passed;
-        let circuit_ok = circuit.unwrap().passed;
-
-        if tcp_ok && tls_ok && transport_ok && bootstrap_ok && circuit_ok {
-            Self::Healthy
-        } else if tcp_ok && tls_ok && transport_ok {
-            Self::ReachableButUnusable
-        } else if tcp_ok && tls_ok {
-            Self::TlsOnly
-        } else if tcp_ok {
-            Self::TcpOnly
-        } else {
-            Self::Unreachable
+        // all_present guard above ensures every stage is Some
+        match (tcp, tls, transport, bootstrap, circuit) {
+            (Some(tcp), Some(tls), Some(transport), Some(bootstrap), Some(circuit)) => {
+                if tcp.passed
+                    && tls.passed
+                    && transport.passed
+                    && bootstrap.passed
+                    && circuit.passed
+                {
+                    Self::Healthy
+                } else if tcp.passed && tls.passed && transport.passed {
+                    Self::ReachableButUnusable
+                } else if tcp.passed && tls.passed {
+                    Self::TlsOnly
+                } else if tcp.passed {
+                    Self::TcpOnly
+                } else {
+                    Self::Unreachable
+                }
+            }
+            _ => Self::Incomplete, // unreachable: all_present guard above
         }
     }
 }

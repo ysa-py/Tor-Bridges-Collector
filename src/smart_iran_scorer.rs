@@ -220,9 +220,17 @@ fn level_weights(level: i64) -> LevelWeights {
             port: 0.05,
             level: 0.10,
         },
-        _ => unreachable!(
-            "censorship_level is clamped to 1..=5 in SmartIranScorer::new; see module doc comment"
-        ),
+        // censorship_level is clamped to 1..=5 in SmartIranScorer::new,
+        // so this arm is unreachable under normal conditions. A default
+        // level-1 fallback is returned instead of a panic so a future
+        // caller that bypasses the constructor guard does not crash.
+        _ => LevelWeights {
+            base: 0.50,
+            nin: 0.05,
+            dpi: 0.25,
+            port: 0.15,
+            level: 0.05,
+        },
     }
 }
 

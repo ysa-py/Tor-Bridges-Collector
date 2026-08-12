@@ -149,10 +149,12 @@ fn cdn_siam_bypass_patterns() -> &'static [Regex] {
             r"global\.ssl\.fastly\.net",
         ]
         .iter()
-        .map(|p| {
-            Regex::new(&format!("(?i){p}")).unwrap_or_else(|e| {
-                panic!("cdn_siam_bypass_patterns: pattern {p:?} must compile: {e}")
-            })
+        .filter_map(|p| match Regex::new(&format!("(?i){p}")) {
+            Ok(re) => Some(re),
+            Err(e) => {
+                tracing::warn!("cdn_siam_bypass_patterns: skipping pattern {p:?}: {e}");
+                None
+            }
         })
         .collect()
     })

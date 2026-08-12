@@ -772,7 +772,9 @@ pub fn record_bridge_with_now(
             }),
         );
     } else {
-        let entry = map.get_mut(bridge).expect("present");
+        let Some(entry) = map.get_mut(bridge) else {
+            return Ok(());
+        };
         let actual = type_name_of_value(entry);
         let obj = entry
             .as_object_mut()

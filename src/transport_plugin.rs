@@ -138,10 +138,10 @@ impl TransportPlugin for Obfs4Plugin {
         })
     }
     fn validate_bridge_line(&self, line: &str) -> Result<(), String> {
-        if !line.starts_with("obfs4 ") {
-            return Err("not obfs4".into());
-        }
-        let body = line.strip_prefix("obfs4 ").unwrap().trim();
+        let body = line
+            .strip_prefix("obfs4 ")
+            .ok_or_else(|| "not obfs4".to_string())?
+            .trim();
         if body.is_empty() {
             return Err("empty obfs4 body".into());
         }
@@ -249,10 +249,10 @@ impl TransportPlugin for WebTunnelPlugin {
         })
     }
     fn validate_bridge_line(&self, line: &str) -> Result<(), String> {
-        if !line.starts_with("webtunnel ") {
-            return Err("not webtunnel".into());
-        }
-        let body = line.strip_prefix("webtunnel ").unwrap().trim();
+        let body = line
+            .strip_prefix("webtunnel ")
+            .ok_or_else(|| "not webtunnel".to_string())?
+            .trim();
         if body.is_empty() {
             return Err("empty webtunnel body".into());
         }

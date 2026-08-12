@@ -710,11 +710,7 @@ impl TelemetryWatcher {
         };
 
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.dpi_events.push(event.clone());
             state.bump("dpi_total", 1);
             match action {
@@ -753,11 +749,7 @@ impl TelemetryWatcher {
         };
 
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.slot_events.push(event.clone());
             state.bump("slot_failures", 1);
             let slot_key = format!("slot_{slot_index}_failures");
@@ -789,11 +781,7 @@ impl TelemetryWatcher {
         };
 
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.slot_events.push(event.clone());
             state.bump("slot_recoveries", 1);
         }
@@ -822,11 +810,7 @@ impl TelemetryWatcher {
         };
 
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.self_heal_events.push(event.clone());
             state.bump("self_heal_total", 1);
             let heal_key = format!("self_heal_{action_type}");
@@ -862,11 +846,7 @@ impl TelemetryWatcher {
         // `write_monitor_log` preserves the same observable ordering (counter
         // is incremented, then log line is written) without deadlocking.
         let (consec, triggered) = {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.consecutive_model_failures += 1;
             state.bump("model_resolution_failures", 1);
             let consec = state.consecutive_model_failures;
@@ -882,11 +862,7 @@ impl TelemetryWatcher {
     /// Reset the consecutive model failure counter on success. Mirror of
     /// Python's `log_model_resolution_success`.
     pub fn log_model_resolution_success(&self) -> Result<(), TelemetryError> {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.consecutive_model_failures = 0;
         Ok(())
     }
@@ -894,11 +870,7 @@ impl TelemetryWatcher {
     /// Track overall request success/failure for uptime calculation. Mirror
     /// of Python's `log_request`.
     pub fn log_request(&self, success: bool) -> Result<(), TelemetryError> {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.total_requests += 1;
         if success {
             state.successful_requests += 1;
@@ -929,11 +901,7 @@ impl TelemetryWatcher {
             total_requests,
             successful_requests,
         ) = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             let recent_dpi: Vec<DPIEvent> = state
                 .dpi_events
                 .iter()
@@ -1085,11 +1053,7 @@ impl TelemetryWatcher {
     /// failures >= threshold).
     pub fn check_auto_debug(&self) -> Result<bool, TelemetryError> {
         let consec = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.consecutive_model_failures
         };
         if consec >= AUTO_DEBUG_TRIGGER_THRESHOLD {
@@ -1108,11 +1072,7 @@ impl TelemetryWatcher {
     /// failure counter.
     pub fn trigger_auto_debug(&self) -> Result<(), TelemetryError> {
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.bump("auto_debug_triggered", 1);
         }
         let _ = self.write_monitor_log("AUTO_DEBUG_TRIGGERED | Starting deep self-diagnostic");
@@ -1148,11 +1108,7 @@ impl TelemetryWatcher {
         // Reset counter after diagnostic (matches Python
         // `self._consecutive_model_failures = 0` at the end).
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.consecutive_model_failures = 0;
         }
         Ok(())
@@ -1339,11 +1295,7 @@ impl TelemetryWatcher {
         // Append to the log file under the lock to match the Python
         // `with self._lock: with open(...) as f: f.write(...)` block.
         {
-            let _state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let _state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             if let Some(parent) = self.inner.monitor_log_path.parent() {
                 if !parent.as_os_str().is_empty() {
                     fs::create_dir_all(parent).map_err(|source| TelemetryError::CreateDir {
@@ -1403,11 +1355,7 @@ impl TelemetryWatcher {
     /// `_persist_state`.
     pub fn persist_state(&self) -> Result<(), TelemetryError> {
         let serialized = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             let recent_dpi: Vec<Value> = state
                 .dpi_events
                 .iter()
@@ -1558,11 +1506,7 @@ impl TelemetryWatcher {
             total_requests,
             successful_requests,
         ) = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("telemetry state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             (
                 state.counter("dpi_total"),
                 state.counter("dpi_blocked"),
@@ -1608,11 +1552,7 @@ impl TelemetryWatcher {
     /// Get list of currently poisoned (failed) slot indices. Mirror of
     /// Python's `get_poisoned_slots`.
     pub fn get_poisoned_slots(&self) -> Result<Vec<i32>, TelemetryError> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         // A slot is "poisoned" iff its most recent event is a failure (not a
         // recovery). Iterate events in order, tracking per-slot state; the
         // final state per slot determines membership in the poisoned set.
@@ -1633,66 +1573,42 @@ impl TelemetryWatcher {
     /// Get the current consecutive model failure counter. Used by parity tests
     /// and the CLI to mirror Python's `watcher._consecutive_model_failures` access.
     pub fn consecutive_model_failures(&self) -> i64 {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.consecutive_model_failures
     }
 
     /// Get the current value of a named counter, or 0 if absent. Used by
     /// parity tests to mirror Python's `watcher._counters.get(key, 0)`.
     pub fn counter(&self, key: &str) -> i64 {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.counter(key)
     }
 
     /// Get a snapshot of the current DPI events list. Used by parity tests
     /// to mirror Python's `watcher._dpi_events` direct access.
     pub fn dpi_events_snapshot(&self) -> Vec<DPIEvent> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.dpi_events.clone()
     }
 
     /// Get a snapshot of the current slot events list. Used by parity tests
     /// to mirror Python's `watcher._slot_events` direct access.
     pub fn slot_events_snapshot(&self) -> Vec<SlotEvent> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.slot_events.clone()
     }
 
     /// Get a snapshot of the current self-heal events list. Used by parity
     /// tests to mirror Python's `watcher._self_heal_events` direct access.
     pub fn self_heal_events_snapshot(&self) -> Vec<SelfHealEvent> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.self_heal_events.clone()
     }
 
     /// Get a snapshot of the current counters map. Used by parity tests to
     /// mirror Python's `dict(watcher._counters)`.
     pub fn counters_snapshot(&self) -> BTreeMap<String, i64> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("telemetry state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.counters.clone()
     }
 }

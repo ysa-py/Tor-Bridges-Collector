@@ -18,10 +18,10 @@
 #   _vercel_cleanup.py         -> vercel_cleanup              (src/vercel_cleanup.rs)
 #   scripts/ai_bridge_reranker.py (retired) -> ai_bridge_reranker binary
 #
-# build-go job: the `iran_tester` and `probe_scheduler` binaries are committed
-# at the repository root, so recompiling them here every hour was redundant;
-# the stages below run the committed binaries directly. Go source vetting/
-# tests remain fully covered by main-ci.yml (autonomous-sentinel-validation).
+# build-go: the `iran_tester` and `probe_scheduler` binaries are now built
+# from source by the scrape-and-test job (via `go build`) before Stages 2
+# and 3 every run — no longer trusting committed pre-built binaries. Go
+# source vetting/tests remain fully covered by main-ci.yml.
 #
 # NOTHING ELSE WAS DROPPED: every pipeline stage (0→11), every artifact,
 # every output path (bridge/, data/, export/, docs/), the Telegram sync,
@@ -317,8 +317,8 @@ jobs:
   # ────────────────────────────────────────────────────────────────────────────
   scrape-and-test:
     # Full bridge collection + testing pipeline. All stages preserved.
-    # iran_tester / probe_scheduler run from the binaries committed at the
-    # repository root (no rebuild needed).
+    # iran_tester / probe_scheduler are built from source via `go build` before
+    # Stages 2 and 3 every run — no longer trusting committed pre-built binaries.
     # NOTE: timeout raised from 50→90 min because the full pipeline
     # (collect → test → probe → nin-advanced → scoring → export) needs
     # ~74+ min; the old 50-min budget killed Stage 8h before it finished.
@@ -397,9 +397,7 @@ jobs:
         run: |
           set -euo pipefail
           for file in \
-            bridge-probe/target/release/bridge-probe \
-            iran_tester \
-            probe_scheduler; do
+            bridge-probe/target/release/bridge-probe; do
             if ! test -f "$file"; then
               echo "::error::Missing expected executable: $file"
               find bridge-probe -maxdepth 5 -type f -print
@@ -470,6 +468,17 @@ jobs:
         run: |
           set -euo pipefail
           cargo run --quiet --bin failsafe_bridges
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build iran_tester and probe_scheduler from source
+        run: |
+          set -euo pipefail
+          CGO_ENABLED=0 GOOS=linux go build -o iran_tester ./cmd/iran_tester/
+          CGO_ENABLED=0 GOOS=linux go build -o probe_scheduler ./cmd/probe_scheduler/
+          echo "✅ iran_tester and probe_scheduler built from source"
 
       - name: Stage 2 — iran_tester (TCP/ASN/OONI/CDN analysis)
         timeout-minutes: 12

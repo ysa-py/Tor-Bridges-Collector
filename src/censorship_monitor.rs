@@ -211,11 +211,17 @@ pub fn level_recommendations(level: i64) -> Value {
             "pack_file": "export/iran_cut_pack.txt",
             "urgency": "critical",
         }),
-        other => panic!(
-            "level_recommendations called with {other}, outside 1..=5 — \
-             mirrors Python's LEVEL_RECOMMENDATIONS[level] KeyError; see \
-             module doc comment"
-        ),
+        other => {
+            tracing::warn!("level_recommendations called with {other}, outside 1..=5");
+            json!({
+                "label": "unknown censorship level",
+                "description": "Censorship level out of range (1..=5)",
+                "best_transports": [],
+                "avoid": [],
+                "pack_file": "",
+                "urgency": "unknown"
+            })
+        }
     }
 }
 

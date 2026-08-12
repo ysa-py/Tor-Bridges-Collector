@@ -15,6 +15,7 @@ use std::thread;
 use std::time::Duration;
 
 use torshield_ir_ultra::bridge_publication::{publish, verify_publication, PublishOptions};
+use torshield_ir_ultra::publication_changelog::{append_entry, ChangelogEntry};
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
     Box::new(io::Error::new(io::ErrorKind::InvalidInput, message.into()))
@@ -259,6 +260,37 @@ fn main() {
         report.archive_entries,
     );
 
+    // Directive v37 §1: commit a machine-readable, timestamped changelog with
+    // the verified publication. Evidence tier/result counts come from the
+    // stamped iran_results.json when present; a missing or unparsable
+    // evidence block is reported loudly but does not fail the publication.
+    let changelog_path = PathBuf::from("data").join("publication_changelog.json");
+    let (tiers, results) = load_stamp_evidence(&options.publication.bridge_dir);
+    if let Err(error) = append_entry(
+        &changelog_path,
+        ChangelogEntry {
+            run_timestamp: report.generated_at.to_rfc3339(),
+            producer: "sync_bridge_outputs".to_string(),
+            archive_sha256: report.archive_sha256.clone(),
+            history_records: report.history_records,
+            probe_records: report.probe_records,
+            file_counts: report.file_counts.clone(),
+            tiers,
+            results,
+            status: "ok".to_string(),
+        },
+    ) {
+        eprintln!(
+            "sync_bridge_outputs: changelog append to {} failed: {error}",
+            changelog_path.display()
+        );
+        std::process::exit(1);
+    }
+    println!(
+        "sync_bridge_outputs: changelog entry appended to {}",
+        changelog_path.display()
+    );
+
     if options.telegram_upload {
         let working = report
             .file_counts
@@ -283,4 +315,63 @@ fn main() {
             std::process::exit(1);
         }
     }
+}
+
+/// Read the evidence tier/result counts stamped into `iran_results.json` by
+/// the results stage (see `src/evidence_stamp.rs`). Missing or malformed
+/// evidence is reported to stderr and returns empty maps; the publication
+/// itself is unaffected.
+fn load_stamp_evidence(
+    bridge_dir: &std::path::Path,
+) -> (
+    std::collections::BTreeMap<String, usize>,
+    std::collections::BTreeMap<String, usize>,
+) {
+    let path = bridge_dir.join("iran_results.json");
+    let text = match std::fs::read_to_string(&path) {
+        Ok(text) => text,
+        Err(error) => {
+            eprintln!(
+                "sync_bridge_outputs: no stamp evidence available ({}): {error}",
+                path.display()
+            );
+            return (
+                std::collections::BTreeMap::new(),
+                std::collections::BTreeMap::new(),
+            );
+        }
+    };
+    let doc: serde_json::Value = match serde_json::from_str(&text) {
+        Ok(doc) => doc,
+        Err(error) => {
+            eprintln!(
+                "sync_bridge_outputs: stamp evidence unparsable ({}): {error}",
+                path.display()
+            );
+            return (
+                std::collections::BTreeMap::new(),
+                std::collections::BTreeMap::new(),
+            );
+        }
+    };
+    let evidence = doc.get("evidence");
+    let tiers = evidence
+        .and_then(|e| e.get("tiers"))
+        .and_then(serde_json::Value::as_object)
+        .map(|obj| {
+            obj.iter()
+                .filter_map(|(k, v)| v.as_u64().map(|n| (k.clone(), n as usize)))
+                .collect()
+        })
+        .unwrap_or_default();
+    let results = evidence
+        .and_then(|e| e.get("results"))
+        .and_then(serde_json::Value::as_object)
+        .map(|obj| {
+            obj.iter()
+                .filter_map(|(k, v)| v.as_u64().map(|n| (k.clone(), n as usize)))
+                .collect()
+        })
+        .unwrap_or_default();
+    (tiers, results)
 }

@@ -718,7 +718,8 @@ pub fn splitlines_keepends(s: &str) -> Vec<String> {
             // `\r\n` is a single boundary in Python — consume the paired
             // `\n` before closing this line, if present.
             if chars.peek() == Some(&'\n') {
-                current.push(chars.next().expect("peeked Some"));
+                chars.next(); // consume the peeked '\n'
+                current.push('\n');
             }
             out.push(std::mem::take(&mut current));
         } else if is_line_boundary(c) {

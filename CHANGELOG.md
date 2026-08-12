@@ -3,6 +3,33 @@
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
+## [Session 19] — 2026-08-12 — Directive v37 evidence stamps + machine-readable publication changelog
+
+- **Per-entry test evidence (v37 §2):** new `src/evidence_stamp.rs` stamps every
+  `bridge/iran_results.json` entry with `tested_at`, `test_tier`
+  (`tier_2_pt_handshake` / `tier_1_tcp` / `untested`), and `test_result`
+  (`tested_working` / `tested_failing` / `untested (rate-limited)`), derived
+  only from recorded probe observations. Wired into `pipeline --stage results`;
+  the run-level `evidence` block summarises the stamping pass. Verified
+  end-to-end on the real dataset (1,459/1,459 entries stamped).
+- **Machine-readable changelog (v37 §1):** new `src/publication_changelog.rs`
+  appends one bounded (≤1000 entries) JSON entry per publication to
+  `data/publication_changelog.json` — ISO-8601 UTC timestamp, verified archive
+  SHA-256, per-file counts, evidence tier/result counts. Wired into
+  `sync_bridge_outputs`; committed by Stage 11 with the bridge payload.
+- **No bare unwraps on untrusted input:** removed the two guarded
+  `strip_prefix(...).unwrap()` calls in `src/transport_plugin.rs`
+  (obfs4/webtunnel `validate_bridge_line`) in favour of typed error returns.
+- **README template** now documents the changelog and the per-entry evidence
+  fields.
+- Honest audit reports added: `ULTIMATE_AUDIT_REPORT.md`,
+  `ARCHITECTURE_GAPS.md`, `RELIABILITY_REPORT.md`, `SECURITY_REPORT.md`,
+  `TRANSPORT_REPORT.md`, `PRODUCTION_READINESS.md`, `IRAN_READINESS_REPORT.md`,
+  `SELF_HEALING_REPORT.md`.
+- Verified in-sandbox: `cargo fmt --check` clean, `cargo clippy --workspace
+  --all-targets --all-features -- -D warnings` clean, `cargo test --workspace
+  --all-features` = 1,269 lib + 69 integration tests, 0 failures.
+
 ## [Session 18] — 2026-08-06 — Dynamic multi-mirror pool + AI error visibility + Anti-DPI elite export
 
 - **Dynamic multi-mirror bridge seeding (`scripts/refresh_bridge_seed.sh`):**

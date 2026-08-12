@@ -279,7 +279,7 @@ impl AutoDebugSystem {
                 old_inner
                     .state
                     .lock()
-                    .expect("auto-debug state mutex poisoned")
+                    .unwrap_or_else(|e| e.into_inner())
                     .clone_for_split(),
             ),
             log_io: Arc::clone(&old_inner.log_io),
@@ -303,11 +303,7 @@ impl AutoDebugSystem {
     pub fn run_full_diagnosis(&self) -> Result<Value, AutoDebugError> {
         let start = clock_to_epoch_secs(&self.inner.clock);
         {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.results.clear();
             state.fixes_applied.clear();
             state.start_time = start;
@@ -327,11 +323,7 @@ impl AutoDebugSystem {
         // Extra registered checks.
         for hook in &self.inner.extra_checks {
             let results = hook(self);
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             for r in results {
                 state.results.push(r);
             }
@@ -351,11 +343,7 @@ impl AutoDebugSystem {
         // Walk the current results and attempt fixes for error-status entries
         // that haven't already been fixed.
         let to_fix: Vec<Value> = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state
                 .results
                 .iter()
@@ -371,11 +359,7 @@ impl AutoDebugSystem {
         };
         for result in to_fix {
             if let Some(fix_result) = self.attempt_fix(&result)? {
-                let mut state = self
-                    .inner
-                    .state
-                    .lock()
-                    .expect("auto-debug state mutex poisoned");
+                let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
                 // Mark the matching result as fixed (first match by identity
                 // of category+message; matches the Python
                 // `result["fix_applied"] = True; result["status"] = "fixed"`).
@@ -408,11 +392,7 @@ impl AutoDebugSystem {
         }
 
         let original_issues = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state
                 .results
                 .iter()
@@ -423,11 +403,7 @@ impl AutoDebugSystem {
                 .count()
         };
         let fixes_count = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.fixes_applied.len()
         };
 
@@ -443,11 +419,7 @@ impl AutoDebugSystem {
             })
             .unwrap_or(0);
         let fixes_snapshot = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.fixes_applied.clone()
         };
 
@@ -475,22 +447,14 @@ impl AutoDebugSystem {
     pub fn check_python_syntax(&self) -> Result<(), AutoDebugError> {
         let py_files = collect_python_files(&self.inner.project_root);
         let already_has_error = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.results.iter().any(|r| {
                 r.get("category").and_then(Value::as_str) == Some("python_syntax")
                     && r.get("status").and_then(Value::as_str) == Some("error")
             })
         };
         if !already_has_error {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.results.push(json!({
                 "category": "python_syntax",
                 "status": "ok",
@@ -510,11 +474,7 @@ impl AutoDebugSystem {
     /// appends an "ok" result mirroring the Python success message. The
     /// import-error branch is not reproduced. See `MIGRATION_NOTES.md`.
     pub fn check_python_imports(&self) -> Result<(), AutoDebugError> {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(json!({
             "category": "python_imports",
             "status": "ok",
@@ -539,11 +499,7 @@ impl AutoDebugSystem {
     pub fn check_yaml_workflows(&self) -> Result<(), AutoDebugError> {
         let workflow_dir = self.inner.project_root.join(".github/workflows");
         if !workflow_dir.exists() {
-            let mut state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             state.results.push(json!({
                 "category": "yaml_workflows",
                 "status": "warning",
@@ -552,11 +508,7 @@ impl AutoDebugSystem {
             return Ok(());
         }
         // FLAGGED: PyYAML not installed — cannot validate workflow files.
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(json!({
             "category": "yaml_workflows",
             "status": "warning",
@@ -576,11 +528,7 @@ impl AutoDebugSystem {
     /// config check should register a custom check hook. See
     /// `MIGRATION_NOTES.md`.
     pub fn check_config_integrity(&self) -> Result<(), AutoDebugError> {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(json!({
             "category": "config_integrity",
             "status": "error",
@@ -599,11 +547,7 @@ impl AutoDebugSystem {
     /// an "error" result mirroring the Python "AI Gateway check failed" path.
     /// See `MIGRATION_NOTES.md`.
     pub fn check_ai_gateway(&self) -> Result<(), AutoDebugError> {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(json!({
             "category": "ai_gateway",
             "status": "error",
@@ -623,11 +567,7 @@ impl AutoDebugSystem {
     /// result mirroring the Python "Bridge pipeline check failed" path. See
     /// `MIGRATION_NOTES.md`.
     pub fn check_bridge_pipeline(&self) -> Result<(), AutoDebugError> {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(json!({
             "category": "bridge_pipeline",
             "status": "error",
@@ -648,11 +588,7 @@ impl AutoDebugSystem {
     /// missing). See `MIGRATION_NOTES.md`.
     pub fn check_dependencies(&self) -> Result<(), AutoDebugError> {
         let missing: Vec<&str> = REQUIRED_PACKAGES.iter().map(|(p, _)| *p).collect();
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(json!({
             "category": "dependencies",
             "status": "warning",
@@ -673,11 +609,7 @@ impl AutoDebugSystem {
             .filter(|f| !self.inner.project_root.join(f).exists())
             .map(|f| f.to_string())
             .collect();
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         if !missing.is_empty() {
             state.results.push(json!({
                 "category": "file_integrity",
@@ -706,11 +638,7 @@ impl AutoDebugSystem {
             .filter(|d| !self.inner.project_root.join(d).exists())
             .map(|d| d.to_string())
             .collect();
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         if missing.is_empty() {
             state.results.push(json!({
                 "category": "directory_structure",
@@ -845,11 +773,7 @@ impl AutoDebugSystem {
     /// and `_fixes_applied` lists.
     pub fn generate_report(&self, elapsed: f64) -> Value {
         let (total, ok, warnings, errors, fixed, auto_fixes, results_snapshot, fixes_snapshot) = {
-            let state = self
-                .inner
-                .state
-                .lock()
-                .expect("auto-debug state mutex poisoned");
+            let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
             let total = state.results.len();
             let ok = state
                 .results
@@ -929,11 +853,7 @@ impl AutoDebugSystem {
         // section. All clones (including clone-on-write hook variants) share
         // this lock, preventing concurrent writers from exposing a partial
         // document or dropping an entry.
-        let _log_guard = self
-            .inner
-            .log_io
-            .lock()
-            .expect("auto-debug log I/O mutex poisoned");
+        let _log_guard = self.inner.log_io.lock().unwrap_or_else(|e| e.into_inner());
         let mut history: Vec<Value> = Vec::new();
         if self.inner.log_path.exists() {
             let text = fs::read_to_string(&self.inner.log_path).map_err(|source| {
@@ -979,33 +899,21 @@ impl AutoDebugSystem {
     /// Get a snapshot of the current results list. Used by parity tests to
     /// mirror Python's `ads._results` direct access.
     pub fn results_snapshot(&self) -> Vec<Value> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.clone()
     }
 
     /// Get a snapshot of the current fixes-applied list. Used by parity tests
     /// to mirror Python's `ads._fixes_applied` direct access.
     pub fn fixes_applied_snapshot(&self) -> Vec<Value> {
-        let state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.fixes_applied.clone()
     }
 
     /// Directly append a result to the internal list. Used by parity tests
     /// to mirror Python's `ads._results.append(...)`.
     pub fn push_result(&self, result: Value) {
-        let mut state = self
-            .inner
-            .state
-            .lock()
-            .expect("auto-debug state mutex poisoned");
+        let mut state = self.inner.state.lock().unwrap_or_else(|e| e.into_inner());
         state.results.push(result);
     }
 }

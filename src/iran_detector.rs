@@ -352,12 +352,13 @@ impl NinDetector {
             .parent()
             .filter(|p| !p.as_os_str().is_empty())
         {
-            std::fs::create_dir_all(parent).unwrap_or_else(|e| {
-                panic!(
+            if let Err(e) = std::fs::create_dir_all(parent) {
+                tracing::warn!(
                     "record_event: could not create directory {}: {e}",
                     parent.display()
-                )
-            });
+                );
+                return;
+            }
         }
 
         let mut events: Vec<Value> = match std::fs::read_to_string(&self.events_path) {

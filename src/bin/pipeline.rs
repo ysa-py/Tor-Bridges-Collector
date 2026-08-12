@@ -32,8 +32,8 @@ use torshield_ir_ultra::cancellation::CANCELLED;
 use torshield_ir_ultra::{
     adaptive_transport, anti_ai_dpi,
     ech_fingerprint_evasion::{self, NoProbe},
-    iran_anti_siam, iran_nin_bypass, iran_smart_rotation, ja3_intelligence, ml_predictor,
-    nin_advanced_bypass, nin_cut_tester,
+    evidence_stamp, iran_anti_siam, iran_nin_bypass, iran_smart_rotation, ja3_intelligence,
+    ml_predictor, nin_advanced_bypass, nin_cut_tester,
     nin_internet_cut_classifier::NINInternetCutClassifier,
     nin_selector, results_writer, root_modules, webtunnel_probe, webtunnel_v2,
 };
@@ -192,54 +192,67 @@ fn stage_results(input: &Path) -> StageResult {
     // tcp_reachable / iran_status fields. Without this, publication
     // rebuilds output files from the stale original iran_results.json
     // and the in-memory probe results are silently discarded.
-    if probed > 0 {
-        match std::fs::read_to_string(input) {
-            Ok(text) => {
-                if let Ok(mut root) = serde_json::from_str::<Value>(&text) {
-                    if let Some(obj) = root.as_object_mut() {
-                        let webtunnel_working = bridges
-                            .iter()
-                            .filter(|b| {
-                                b.get("transport").and_then(Value::as_str) == Some("webtunnel")
-                                    && b.get("iran_status").and_then(Value::as_str)
-                                        == Some("iran_unknown")
-                            })
-                            .count();
-                        let bridge_count = bridges.len();
-                        obj.insert("bridges".to_string(), json!(bridges));
-                        if let Some(summary) =
-                            obj.get_mut("summary").and_then(|s| s.as_object_mut())
-                        {
-                            summary.insert(
-                                "webtunnel_ws_probed".to_string(),
-                                json!(webtunnel_working),
-                            );
-                        }
-                        if let Err(e) = write_json(input, &root) {
-                            eprintln!(
-                                "webtunnel-probe: failed to persist updated bridges to {}: {e}",
-                                input.display()
-                            );
-                        } else {
-                            println!(
-                                "webtunnel-probe: persisted {} updated bridges ({} webtunnel working) to {}",
-                                bridge_count,
-                                webtunnel_working,
-                                input.display()
-                            );
-                        }
+    // v37 §2: while persisting, stamp every entry with per-bridge test
+    // evidence (tested_at / test_tier / test_result) derived from the
+    // recorded observations, so published entries carry a timestamp, a
+    // result tag, and the tier of test that produced it.
+    let fallback_now = Utc::now().to_rfc3339();
+    let mut stamp = evidence_stamp::StampSummary {
+        stamped: 0,
+        tiers: BTreeMap::new(),
+        results: BTreeMap::new(),
+    };
+    match std::fs::read_to_string(input) {
+        Ok(text) => {
+            if let Ok(mut root) = serde_json::from_str::<Value>(&text) {
+                let webtunnel_working = bridges
+                    .iter()
+                    .filter(|b| {
+                        b.get("transport").and_then(Value::as_str) == Some("webtunnel")
+                            && b.get("iran_status").and_then(Value::as_str) == Some("iran_unknown")
+                    })
+                    .count();
+                let bridge_count = bridges.len();
+                if let Some(obj) = root.as_object_mut() {
+                    obj.insert("bridges".to_string(), json!(bridges));
+                    if let Some(summary) = obj.get_mut("summary").and_then(|s| s.as_object_mut()) {
+                        summary.insert("webtunnel_ws_probed".to_string(), json!(webtunnel_working));
                     }
                 }
-            }
-            Err(e) => {
-                eprintln!(
-                    "webtunnel-probe: could not read {} for persistence: {e}",
-                    input.display()
-                );
+                stamp = evidence_stamp::stamp_results(&mut root, &fallback_now);
+                if let Some(obj) = root.as_object_mut() {
+                    obj.insert(
+                        "evidence".to_string(),
+                        json!({
+                            "stamped_entries": stamp.stamped,
+                            "tiers": stamp.tiers,
+                            "results": stamp.results,
+                        }),
+                    );
+                }
+                if let Err(e) = write_json(input, &root) {
+                    eprintln!(
+                        "results-stage: failed to persist stamped bridges to {}: {e}",
+                        input.display()
+                    );
+                } else {
+                    println!(
+                        "results-stage: persisted {} stamped bridges ({} webtunnel working) to {}",
+                        bridge_count,
+                        webtunnel_working,
+                        input.display()
+                    );
+                }
             }
         }
+        Err(e) => {
+            eprintln!(
+                "results-stage: could not read {} for persistence: {e}",
+                input.display()
+            );
+        }
     }
-    let mut detail = json!({ "files": stats });
+    let mut detail = json!({ "files": stats, "evidence": stamp });
     if probed > 0 {
         detail["webtunnel_probe"] = json!({
             "probed": probed,

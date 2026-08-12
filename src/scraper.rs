@@ -1216,8 +1216,7 @@ pub fn update_history_with_now(
                     "tcp_reachable": Value::Null,
                 }),
             );
-        } else {
-            let entry = map.get_mut(&key).expect("present");
+        } else if let Some(entry) = map.get_mut(&key) {
             if let Some(obj) = entry.as_object_mut() {
                 obj.insert("last_seen".to_string(), Value::String(now_iso.clone()));
             }
@@ -1271,8 +1270,7 @@ pub fn merge_raw_into_history_with_now(
                     "tcp_reachable": Value::Null,
                 }),
             );
-        } else {
-            let entry = map.get_mut(&key).expect("present");
+        } else if let Some(entry) = map.get_mut(&key) {
             let actual = type_name_of_value(entry);
             let obj = entry
                 .as_object_mut()
