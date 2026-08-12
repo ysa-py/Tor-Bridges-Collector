@@ -281,6 +281,12 @@ pub enum CensorshipMonitorError {
         #[source]
         source: std::io::Error,
     },
+
+    #[error("failed to start a tokio runtime: {source}")]
+    RuntimeInit {
+        #[source]
+        source: std::io::Error,
+    },
 }
 
 fn io_err(path: &Path, source: std::io::Error) -> CensorshipMonitorError {
@@ -330,7 +336,13 @@ pub async fn probe_category(
 
     let mut slots: Vec<Option<ProbeResult>> = vec![None; targets.len()];
     while let Some(joined) = set.join_next().await {
-        let (idx, host, port, ok, lat) = joined.expect("probe task must not panic");
+        let (idx, host, port, ok, lat) = match joined {
+            Ok(task_output) => task_output,
+            Err(join_err) => {
+                tracing::warn!("censorship probe task panicked: {join_err}; skipping its slot");
+                continue;
+            }
+        };
         slots[idx] = Some(ProbeResult {
             category: category.to_string(),
             target: host,
@@ -339,10 +351,9 @@ pub async fn probe_category(
             latency_ms: lat,
         });
     }
-    let results: Vec<ProbeResult> = slots
-        .into_iter()
-        .map(|s| s.expect("every index filled"))
-        .collect();
+    // flatten drops any slot whose task panicked (logged above) instead
+    // of panicking on a missing index.
+    let results: Vec<ProbeResult> = slots.into_iter().flatten().collect();
     let ok_count = results.iter().filter(|r| r.reachable).count();
     (ok_count, results.len(), results)
 }
@@ -532,7 +543,8 @@ pub async fn measure_censorship_level_with_categories(
 pub fn measure_censorship_level_sync(
     write_state: bool,
 ) -> Result<CensorshipState, CensorshipMonitorError> {
-    let rt = tokio::runtime::Runtime::new().expect("failed to start a tokio runtime");
+    let rt = tokio::runtime::Runtime::new()
+        .map_err(|source| CensorshipMonitorError::RuntimeInit { source })?;
     rt.block_on(measure_censorship_level(write_state))
 }
 
