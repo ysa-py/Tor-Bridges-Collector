@@ -191,14 +191,22 @@ pub async fn check_connectivity_with_targets(
     // `asyncio.gather(gather(*int_tasks), gather(*nin_tasks))`.
     let mut int_ok = false;
     while let Some(res) = int_set.join_next().await {
-        if res.expect("probe task must not panic") {
-            int_ok = true;
+        match res {
+            Ok(true) => int_ok = true,
+            Ok(false) => {}
+            Err(join_err) => {
+                tracing::warn!("international probe task panicked: {join_err}; skipping");
+            }
         }
     }
     let mut nin_ok = false;
     while let Some(res) = nin_set.join_next().await {
-        if res.expect("probe task must not panic") {
-            nin_ok = true;
+        match res {
+            Ok(true) => nin_ok = true,
+            Ok(false) => {}
+            Err(join_err) => {
+                tracing::warn!("NIN probe task panicked: {join_err}; skipping");
+            }
         }
     }
 
@@ -300,33 +308,42 @@ impl NinDetector {
     /// Callers already inside an async context should call
     /// [`check_connectivity`] directly instead of this method.
     ///
-    /// **Unguarded error path, preserved on purpose:** Python's
-    /// `_on_nin_detected()` — and the `record_event` call inside it — run
-    /// *outside* `is_nin_active`'s own `try/except Exception`, which only
-    /// wraps the connectivity-check portion. A directory-creation failure
-    /// in `record_event` (`os.makedirs`, itself unguarded) therefore
-    /// propagates all the way out of `is_nin_active`, uncaught, in the
-    /// Python original — an undeclared exception path despite the `->
-    /// bool` return type. This port preserves that faithfully via a panic
-    /// at the same point (see [`Self::record_event`]) rather than
-    /// silently swallowing it, which would be a real behavior change, or
-    /// changing the return type to `Result`, which the Python signature
-    /// gives no indication of either.
+    /// **Error path now degrades gracefully (documented divergence):**
+    /// Python's `_on_nin_detected()` — and the `record_event` call inside
+    /// it — run *outside* `is_nin_active`'s own `try/except Exception`,
+    /// so a directory-creation failure in `record_event` (`os.makedirs`)
+    /// propagates uncaught in the Python original. This port logs
+    /// directory-creation failures in [`Self::record_event`] and returns
+    /// early instead, and [`Self::is_nin_active`] logs a tokio
+    /// runtime-init failure and returns `false` instead of panicking.
+    /// The valid-input path is unchanged; only the formerly-panicking
+    /// failure path now degrades to a logged, non-crashing outcome.
     pub fn is_nin_active(&self, force_refresh: bool) -> bool {
         {
-            let state = self.state.lock().expect("state mutex poisoned");
+            let state = self.state.lock().unwrap_or_else(|e| e.into_inner());
             let elapsed = state.last_check.map(|t| t.elapsed());
             if cache_still_valid(elapsed, force_refresh) {
                 return state.cached;
             }
         }
 
-        let rt = tokio::runtime::Runtime::new().expect("failed to start a tokio runtime");
+        // Graceful fallback instead of the former panic: if a runtime cannot
+        // be created (e.g. called from inside an already-running tokio runtime),
+        // log the error and return `false` (no NIN detected) rather than
+        // crashing. This only diverges from the Python original on the
+        // runtime-init failure path; the valid-input path is unchanged.
+        let rt = match tokio::runtime::Runtime::new() {
+            Ok(rt) => rt,
+            Err(e) => {
+                tracing::error!("failed to start a tokio runtime: {e}; returning no-NIN");
+                return false;
+            }
+        };
         let (_international_ok, nin_active) = rt.block_on(check_connectivity());
         let cached = nin_active;
 
         {
-            let mut state = self.state.lock().expect("state mutex poisoned");
+            let mut state = self.state.lock().unwrap_or_else(|e| e.into_inner());
             state.cached = cached;
             state.last_check = Some(Instant::now());
         }

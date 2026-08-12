@@ -289,8 +289,14 @@ pub fn extract_endpoint(raw: &str) -> (String, i64, String) {
     }
 
     if let Some(caps) = ip_port_re().captures(raw) {
-        let host = caps.get(1).unwrap().as_str().to_string();
-        let port: i64 = caps.get(2).unwrap().as_str().parse().unwrap_or(0);
+        let host = caps
+            .get(1)
+            .map(|m| m.as_str().to_string())
+            .unwrap_or_default();
+        let port: i64 = caps
+            .get(2)
+            .and_then(|m| m.as_str().parse::<i64>().ok())
+            .unwrap_or(0);
         (host, port, transport)
     } else {
         (String::new(), 0, transport)
