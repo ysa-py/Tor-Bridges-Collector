@@ -237,7 +237,7 @@ impl Attribution {
 ///
 /// The classifier uses a layered decision tree:
 /// 1. DNS failure → DnsAnomaly
-/// 2. TCP reset → TcpReset (high confidence if OS error confirmed)
+/// 2. TCP reset → TcpReset (ActiveBlocking when the reset recurs across retries)
 /// 3. TCP refused → TcpRefused
 /// 4. TCP timeout → Timeout
 /// 5. TLS failure → TlsFailure
@@ -296,10 +296,41 @@ impl FailureClassifier {
                         .unwrap_or(false);
 
                 if is_reset {
+                    // Repeated RST on a retry attempt is the classic RST-injection
+                    // (active DPI) signature: the same target failed the same way
+                    // before, which a one-off dead-host reset would not show.
+                    let recurring = evidence.is_retry == Some(true)
+                        && evidence
+                            .retry_attempt
+                            .map(|attempt| attempt >= 1)
+                            .unwrap_or(false);
+                    if recurring {
+                        let code = evidence
+                            .os_error_code
+                            .map(|c| format!("errno {c}"))
+                            .or_else(|| evidence.os_error_message.clone())
+                            .unwrap_or_else(|| "RST".to_string());
+                        return Attribution {
+                            category: FailureCategory::ActiveBlocking,
+                            confidence: 0.70,
+                            reason: format!(
+                                "Repeated TCP reset (RST, {code}) on retry attempt {} — pattern consistent with active DPI blocking",
+                                evidence.retry_attempt.unwrap_or(0)
+                            ),
+                            evidence,
+                        };
+                    }
+                    let reason = if let Some(code) = evidence.os_error_code {
+                        format!("TCP connection reset (RST, errno {code}) — actively rejected")
+                    } else if let Some(msg) = evidence.os_error_message.as_deref() {
+                        format!("TCP connection reset (RST, {msg}) — actively rejected")
+                    } else {
+                        "TCP connection reset (RST) — actively rejected".to_string()
+                    };
                     return Attribution {
                         category: FailureCategory::TcpReset,
                         confidence: 0.90,
-                        reason: "TCP connection reset (RST) — actively rejected".to_string(),
+                        reason,
                         evidence,
                     };
                 }
@@ -320,10 +351,17 @@ impl FailureClassifier {
                         .unwrap_or(false);
 
                 if is_refused {
+                    let reason = if let Some(code) = evidence.os_error_code {
+                        format!("TCP connection refused (errno {code}) — port closed or filtered")
+                    } else if let Some(msg) = evidence.os_error_message.as_deref() {
+                        format!("TCP connection refused ({msg}) — port closed or filtered")
+                    } else {
+                        "TCP connection refused — port closed or filtered".to_string()
+                    };
                     return Attribution {
                         category: FailureCategory::TcpRefused,
                         confidence: 0.90,
-                        reason: "TCP connection refused — port closed or filtered".to_string(),
+                        reason,
                         evidence,
                     };
                 }
@@ -392,11 +430,18 @@ impl FailureClassifier {
                                 // TCP + TLS both OK but probe still considered failed?
                                 // This is ReachabilityFailure — the bridge is reachable
                                 // but something about the transport didn't validate.
+                                // Cite whatever transport detail was recorded so the
+                                // classification carries its evidence in the same line.
+                                let transport_err = evidence
+                                    .transport_error
+                                    .as_deref()
+                                    .unwrap_or("no transport detail recorded");
                                 Attribution {
                                     category: FailureCategory::ReachabilityFailure,
                                     confidence: 0.60,
-                                    reason: "TCP and TLS succeeded but transport validation failed"
-                                        .to_string(),
+                                    reason: format!(
+                                        "TCP and TLS succeeded but transport validation failed: {transport_err}"
+                                    ),
                                     evidence,
                                 }
                             }
@@ -681,6 +726,104 @@ mod tests {
         assert_eq!(attr.category, FailureCategory::TcpRefused);
         assert!(attr.confidence > 0.85);
         assert!(attr.reason.contains("refused"));
+    }
+
+    #[test]
+    fn tcp_reset_reason_cites_errno() {
+        let evidence = ProbeEvidence {
+            host: Some("1.2.3.4".to_string()),
+            port: Some(443),
+            tcp_connect_ok: Some(false),
+            os_error_code: Some(104),
+            ..Default::default()
+        };
+        let attr = FailureClassifier::classify(evidence);
+        assert_eq!(attr.category, FailureCategory::TcpReset);
+        assert!(attr.reason.contains("errno 104"));
+    }
+
+    #[test]
+    fn tcp_refused_reason_cites_errno() {
+        let evidence = ProbeEvidence {
+            host: Some("1.2.3.4".to_string()),
+            port: Some(9001),
+            tcp_connect_ok: Some(false),
+            os_error_code: Some(111),
+            ..Default::default()
+        };
+        let attr = FailureClassifier::classify(evidence);
+        assert_eq!(attr.category, FailureCategory::TcpRefused);
+        assert!(attr.reason.contains("errno 111"));
+    }
+
+    #[test]
+    fn single_reset_without_retry_stays_tcp_reset() {
+        // Guard: a one-off RST without retry evidence must NOT escalate to
+        // ActiveBlocking — that requires recurrence across attempts.
+        let evidence = ProbeEvidence {
+            host: Some("1.2.3.4".to_string()),
+            port: Some(9001),
+            tcp_connect_ok: Some(false),
+            os_error_code: Some(104),
+            ..Default::default()
+        };
+        let attr = FailureClassifier::classify(evidence);
+        assert_eq!(attr.category, FailureCategory::TcpReset);
+        assert!(attr.reason.contains("errno 104"));
+    }
+
+    #[test]
+    fn active_blocking_on_repeated_reset_across_retries() {
+        // RST-injection (active DPI) signature: the same target RSTs again on a
+        // retry attempt. The classification cites the errno and the attempt in
+        // the reason, so the label carries its evidence in the same line.
+        let evidence = ProbeEvidence {
+            host: Some("1.2.3.4".to_string()),
+            port: Some(9001),
+            transport: Some("obfs4".to_string()),
+            tcp_connect_ok: Some(false),
+            os_error_code: Some(104),
+            is_retry: Some(true),
+            retry_attempt: Some(2),
+            ..Default::default()
+        };
+        let attr = FailureClassifier::classify(evidence);
+        assert_eq!(attr.category, FailureCategory::ActiveBlocking);
+        assert!(attr.confidence > 0.65);
+        assert!(attr.reason.contains("retry attempt 2"));
+        assert!(attr.reason.contains("errno 104"));
+    }
+
+    #[test]
+    fn active_blocking_falls_back_to_message_when_no_errno() {
+        let evidence = ProbeEvidence {
+            host: Some("1.2.3.4".to_string()),
+            port: Some(9001),
+            tcp_connect_ok: Some(false),
+            os_error_message: Some("Connection reset by peer".to_string()),
+            is_retry: Some(true),
+            retry_attempt: Some(1),
+            ..Default::default()
+        };
+        let attr = FailureClassifier::classify(evidence);
+        assert_eq!(attr.category, FailureCategory::ActiveBlocking);
+        assert!(attr.reason.contains("Connection reset by peer"));
+    }
+
+    #[test]
+    fn reachability_failure_cites_transport_error() {
+        let evidence = ProbeEvidence {
+            host: Some("bridge.example.com".to_string()),
+            port: Some(443),
+            transport: Some("webtunnel".to_string()),
+            tcp_connect_ok: Some(true),
+            tls_ok: Some(true),
+            transport_error: Some("WebSocket upgrade rejected".to_string()),
+            ..Default::default()
+        };
+        let attr = FailureClassifier::classify(evidence);
+        assert_eq!(attr.category, FailureCategory::ReachabilityFailure);
+        assert!(attr.reason.contains("WebSocket"));
     }
 
     #[test]
