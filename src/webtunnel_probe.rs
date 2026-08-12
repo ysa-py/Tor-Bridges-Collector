@@ -208,7 +208,7 @@ mod tls_ws {
 }
 
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
-use tls_ws::probe_sync;
+pub(crate) use tls_ws::probe_sync;
 
 #[cfg(all(target_arch = "arm", target_env = "musl"))]
 fn probe_sync(_host: &str, _port: u16, _timeout: Duration) -> Result<(String, String), String> {

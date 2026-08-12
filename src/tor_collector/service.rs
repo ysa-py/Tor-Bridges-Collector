@@ -14,7 +14,7 @@ use tokio::time::timeout;
 
 use super::config::{fronted_defaults, CollectorConfig, ListSpec, Transport};
 use super::fetch::{deduplicate, SourceFetcher};
-use super::parsing::{clean_output_line, is_valid_bridge_line};
+use super::parsing::{clean_output_line, detect_transport, is_ipv6_line, is_valid_bridge_line};
 use super::readme::{
     build_zip, existing_zip_entries, render_readme, telegram_caption, upload_telegram, ListStats,
     StatsMap,
@@ -145,6 +145,26 @@ impl CollectorService {
             }
         }
 
+        // Optional Telegram bridge source. Activates automatically when a
+        // bot token is configured; every line it yields is merged into the
+        // per-transport seed lists below and therefore passes the identical
+        // format + DNS + probe pipeline as every other source before it can
+        // be published. Without credentials this logs a clear "not available"
+        // message and contributes nothing.
+        let telegram_lines = match self.fetcher.fetch_telegram().await {
+            Ok(lines) => {
+                log(&format!(
+                    "Telegram bridge source active: {} candidate line(s) pulled (format gate applied)",
+                    lines.len()
+                ));
+                lines
+            }
+            Err(error) => {
+                log(&format!("WARNING: {error}"));
+                Vec::new()
+            }
+        };
+
         // Convert the acquired source results into independent list jobs. The
         // old implementation probed these lists one after another, so an
         // adaptive/unbounded pool of slow endpoints could exhaust Stage 0b's
@@ -157,12 +177,26 @@ impl CollectorService {
                 ));
                 Vec::new()
             });
-            let seeded = community.unwrap_or_else(|error| {
+            let mut seeded = community.unwrap_or_else(|error| {
                 log(&format!(
                     "WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"
                 ));
                 Vec::new()
             });
+            // Telegram lines are routed to the transport/IP family they belong
+            // to so they share the exact same probe + publication path.
+            let telegram_for_list: Vec<String> = telegram_lines
+                .iter()
+                .filter(|line| detect_transport(line) == transport && is_ipv6_line(line) == ipv6)
+                .cloned()
+                .collect();
+            if !telegram_for_list.is_empty() {
+                log(&format!(
+                    "Telegram source contributed {} {transport} ipv6={ipv6} line(s)",
+                    telegram_for_list.len()
+                ));
+                seeded.extend(telegram_for_list);
+            }
             let defaults =
                 if transport.is_fronted() && fetched.is_empty() && seeded.is_empty() && !ipv6 {
                     fronted_defaults(transport)
