@@ -32,6 +32,7 @@
 //! - `REGIONAL_DEGRADED`: <50% regions pass, bridge may be geo-blocked
 //! - `REGIONAL_FAIL`: ≥1 region reports active blocking pattern
 //! - `UNREACHABLE`: No region can connect at all
+//! - `REGIONAL_UNKNOWN`: exactly one probe observation (never a verdict)
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::IpAddr;
@@ -176,8 +177,11 @@ pub enum MultiVantageStatus {
     RegionalFail,
     /// No region could connect at any level.
     Unreachable,
-    /// Insufficient probe data to classify (fewer than MIN_REGIONS).
+    /// No probe observations at all — nothing to classify.
     InsufficientData,
+    /// Exactly one independent probe observation: not enough to conclude
+    /// PASS/DEGRADED/FAIL. Never treated as a reachability verdict.
+    RegionalUnknown,
 }
 
 impl MultiVantageStatus {
@@ -190,6 +194,7 @@ impl MultiVantageStatus {
             Self::RegionalFail => "REGIONAL_FAIL",
             Self::Unreachable => "UNREACHABLE",
             Self::InsufficientData => "INSUFFICIENT_DATA",
+            Self::RegionalUnknown => "REGIONAL_UNKNOWN",
         }
     }
 
@@ -201,7 +206,10 @@ impl MultiVantageStatus {
             Self::RegionalDegraded => "Regional Degraded — minority reachable, possible geo-block",
             Self::RegionalFail => "Regional Fail — active blocking detected in ≥1 region",
             Self::Unreachable => "Unreachable — no region could connect",
-            Self::InsufficientData => "Insufficient Data — fewer than minimum regions probed",
+            Self::InsufficientData => "Insufficient Data — no probe observations recorded",
+            Self::RegionalUnknown => {
+                "Regional Unknown — single observation, insufficient to conclude"
+            }
         }
     }
 
@@ -214,6 +222,7 @@ impl MultiVantageStatus {
             Self::RegionalFail => 0.15,
             Self::Unreachable => 0.0,
             Self::InsufficientData => 0.0,
+            Self::RegionalUnknown => 0.0,
         }
     }
 }
@@ -296,26 +305,35 @@ impl MultiVantageAggregator {
     ///
     /// # Decision Logic
     ///
-    /// 1. If fewer than [`Region::MIN_REGIONS_FOR_ASSESSMENT`] regions are
-    ///    probed, return [`MultiVantageStatus::InsufficientData`].
-    /// 2. If all probed regions report full reachability →
+    /// 1. If zero probe observations are recorded →
+    ///    [`MultiVantageStatus::InsufficientData`].
+    /// 2. If exactly one independent probe observation is recorded →
+    ///    [`MultiVantageStatus::RegionalUnknown`] (a single observation is
+    ///    never treated as a PASS/DEGRADED/FAIL verdict).
+    /// 3. If all probed regions report full reachability →
     ///    [`MultiVantageStatus::GlobalPass`].
-    /// 3. If ≥1 region reports active blocking →
+    /// 4. If ≥1 region reports active blocking →
     ///    [`MultiVantageStatus::RegionalFail`].
-    /// 4. If ≥threshold fraction of regions report full reachability →
+    /// 5. If ≥threshold fraction of regions report full reachability →
     ///    [`MultiVantageStatus::GlobalDegraded`].
-    /// 5. If any region reports TCP reachable →
+    /// 6. If any region reports TCP reachable →
     ///    [`MultiVantageStatus::RegionalDegraded`].
-    /// 6. Otherwise → [`MultiVantageStatus::Unreachable`].
+    /// 7. Otherwise → [`MultiVantageStatus::Unreachable`].
     pub fn assess(&self) -> MultiVantageStatus {
         let probed = self.regions_probed();
         let failed = self.failed_regions.len();
 
-        // Account for regions that were attempted but failed entirely.
-        let effective_regions = probed + failed;
-        if effective_regions < Region::MIN_REGIONS_FOR_ASSESSMENT {
+        // A PASS/DEGRADED/FAIL conclusion requires at least
+        // MIN_REGIONS_FOR_ASSESSMENT independent probe observations.
+        if probed == 0 {
             return MultiVantageStatus::InsufficientData;
         }
+        if probed < Region::MIN_REGIONS_FOR_ASSESSMENT {
+            return MultiVantageStatus::RegionalUnknown;
+        }
+
+        // Account for regions that were attempted but failed entirely.
+        let effective_regions = probed + failed;
 
         let fully_reachable = self.fully_reachable_regions();
 
@@ -534,20 +552,36 @@ mod tests {
     }
 
     #[test]
-    fn insufficient_data_too_few_regions() {
+    fn single_observation_is_regional_unknown_not_a_verdict() {
         let mut agg = MultiVantageAggregator::new();
         agg.record(make_outcome(Region::Europe, true, true, true, false));
-        // Only 1 region probed — below MIN_REGIONS_FOR_ASSESSMENT
+        // Only 1 region probed — below MIN_REGIONS_FOR_ASSESSMENT.
+        // A single observation must be REGIONAL_UNKNOWN, never PASS/FAIL.
+        assert_eq!(agg.assess(), MultiVantageStatus::RegionalUnknown);
+    }
+
+    #[test]
+    fn single_failing_observation_is_regional_unknown_not_fail() {
+        let mut agg = MultiVantageAggregator::new();
+        agg.record(make_outcome(Region::Europe, false, false, false, true));
+        // Even an active-blocking observation is not a verdict on its own.
+        assert_eq!(agg.assess(), MultiVantageStatus::RegionalUnknown);
+    }
+
+    #[test]
+    fn zero_observations_is_insufficient_data() {
+        let agg = MultiVantageAggregator::new();
         assert_eq!(agg.assess(), MultiVantageStatus::InsufficientData);
     }
 
     #[test]
-    fn insufficient_data_with_failed_regions_counts() {
+    fn one_observation_plus_region_failure_is_still_regional_unknown() {
         let mut agg = MultiVantageAggregator::new();
         agg.record(make_outcome(Region::Europe, true, true, true, false));
         agg.record_region_failure(Region::NorthAmerica);
-        // 1 success + 1 failure = 2 regions attempted — meets threshold
-        assert_ne!(agg.assess(), MultiVantageStatus::InsufficientData);
+        // One probe observation + one infra failure is still only a single
+        // observation — REGIONAL_UNKNOWN, not a verdict.
+        assert_eq!(agg.assess(), MultiVantageStatus::RegionalUnknown);
     }
 
     #[test]
@@ -567,6 +601,7 @@ mod tests {
             MultiVantageStatus::RegionalFail.numeric_score(),
             MultiVantageStatus::Unreachable.numeric_score(),
             MultiVantageStatus::InsufficientData.numeric_score(),
+            MultiVantageStatus::RegionalUnknown.numeric_score(),
         ];
         for i in 1..scores.len() {
             assert!(scores[i - 1] >= scores[i], "scores should be descending");
@@ -693,10 +728,11 @@ mod tests {
             MultiVantageStatus::RegionalFail,
             MultiVantageStatus::Unreachable,
             MultiVantageStatus::InsufficientData,
+            MultiVantageStatus::RegionalUnknown,
         ]
         .iter()
         .map(|s| s.code())
         .collect();
-        assert_eq!(codes.len(), 6);
+        assert_eq!(codes.len(), 7);
     }
 }
