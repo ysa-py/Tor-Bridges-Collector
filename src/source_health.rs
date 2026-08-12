@@ -336,6 +336,30 @@ impl SourceHealthTracker {
             .and_then(SourceHealthRecord::polling_interval_secs)
     }
 
+    /// Next poll timestamp (unix seconds) for a source, or `None` if it is
+    /// unknown or quarantined. Pure and deterministic: the caller supplies
+    /// `now_unix_secs`, so the result has no real-clock dependence.
+    #[must_use]
+    pub fn next_poll_at(&self, source_id: &str, now_unix_secs: u64) -> Option<u64> {
+        self.polling_interval_secs(source_id)
+            .map(|secs| now_unix_secs.saturating_add(secs))
+    }
+
+    /// Deterministic schedule plan for every tracked source: source id →
+    /// next poll timestamp (unix seconds), or `None` when the source is
+    /// quarantined and therefore skipped.
+    ///
+    /// This is the consumer of [`SourceHealthRecord::polling_interval_secs`]:
+    /// a scheduler can take the returned map and poll whichever source has
+    /// the earliest timestamp without re-deriving the cadence itself.
+    #[must_use]
+    pub fn schedule(&self, now_unix_secs: u64) -> BTreeMap<String, Option<u64>> {
+        self.records
+            .keys()
+            .map(|id| (id.clone(), self.next_poll_at(id, now_unix_secs)))
+            .collect()
+    }
+
     /// Get full status report as JSON.
     #[must_use]
     pub fn status_report(&self) -> Value {
@@ -595,5 +619,42 @@ mod tests {
     fn tracker_polling_interval_for_unknown_source_is_none() {
         let tracker = SourceHealthTracker::new();
         assert_eq!(tracker.polling_interval_secs("missing"), None);
+    }
+
+    #[test]
+    fn next_poll_at_adds_cadence_to_now() {
+        let mut tracker = SourceHealthTracker::new();
+        tracker.register_source("healthy");
+        tracker.register_source("weak");
+        // "weak" accumulates four failures (still not quarantined) → archive cadence.
+        for i in 0..4 {
+            tracker.record_failure("weak", &format!("t{i}"));
+        }
+        // "healthy" stays fresh (no observations) → critical cadence.
+        assert_eq!(
+            tracker.next_poll_at("healthy", 1_000),
+            Some(1_000 + CRITICAL_CADENCE_SECS)
+        );
+        assert_eq!(
+            tracker.next_poll_at("weak", 1_000),
+            Some(1_000 + ARCHIVE_CADENCE_SECS)
+        );
+        assert_eq!(tracker.next_poll_at("missing", 1_000), None);
+    }
+
+    #[test]
+    fn schedule_plan_covers_all_sources_and_marks_quarantined_skipped() {
+        let mut tracker = SourceHealthTracker::new();
+        tracker.register_source("alive");
+        tracker.register_source("dead");
+        for i in 0..MAX_CONSECUTIVE_FAILURES {
+            tracker.record_failure("dead", &format!("t{i}"));
+        }
+
+        let plan = tracker.schedule(500);
+        assert_eq!(plan.len(), 2);
+        // Fresh "alive" polls at critical cadence; quarantined "dead" is skipped.
+        assert_eq!(plan.get("alive"), Some(&Some(500 + CRITICAL_CADENCE_SECS)));
+        assert_eq!(plan.get("dead"), Some(&None));
     }
 }
