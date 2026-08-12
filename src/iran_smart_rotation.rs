@@ -41,13 +41,6 @@ pub const DEFAULT_ROTATION_SIZE: usize = 25;
 /// Maximum number of entries accepted from a single ASN surrogate prefix.
 const MAX_PER_PREFIX: usize = 3;
 
-/// Transport preference order for censorship levels 1-3 (normal internet).
-const PREFERENCE_NORMAL: [&str; 5] = ["obfs4", "webtunnel", "snowflake", "meek_lite", "vanilla"];
-
-/// Transport preference order for censorship levels 4-5 (SIAM escalation /
-/// NIN internet-cut): fronting- and morphing-capable transports first.
-const PREFERENCE_ESCALATED: [&str; 5] = ["snowflake", "webtunnel", "meek_lite", "obfs4", "vanilla"];
-
 /// One scored rotation candidate extracted from a raw bridge record.
 #[derive(Debug, Clone)]
 struct Candidate {
@@ -133,18 +126,19 @@ fn prefix_of(ip: &str) -> String {
     ip.to_string()
 }
 
-/// Rank of a transport inside the censorship-appropriate preference list;
-/// unknown transports sort after all known ones, in input order.
+/// Rank of a transport inside the censorship-appropriate preference order.
+///
+/// Priorities come from the pluggable transport registry
+/// (`crate::transport_plugin`), so a newly registered transport is ranked
+/// without editing this function. Unranked transports sort after every ranked
+/// one, preserving the historical fallback of the hardcoded preference lists.
 fn transport_rank(transport: &str, censorship_level: u8) -> usize {
-    let preference = if censorship_level >= 4 {
-        &PREFERENCE_ESCALATED
-    } else {
-        &PREFERENCE_NORMAL
-    };
-    preference
-        .iter()
-        .position(|t| *t == transport)
-        .unwrap_or(preference.len())
+    let registry = crate::transport_plugin::global_registry()
+        .read()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    registry
+        .rank_of(transport, censorship_level)
+        .unwrap_or_else(|| registry.fallback_rank(censorship_level))
 }
 
 /// Build the rotation plan from scored bridge records.
@@ -436,5 +430,74 @@ mod tests {
         assert_eq!(export.lines().count(), 2);
         assert!(export.contains("webtunnel"));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn newly_registered_transport_is_picked_up_by_ranking() {
+        use crate::transport_plugin::{
+            global_registry, BridgeEndpoint, TransportCapabilities, TransportPlugin,
+            TransportPriority, TransportVersion,
+        };
+
+        struct FakePt;
+        impl TransportPlugin for FakePt {
+            fn name(&self) -> &str {
+                "fake_pt"
+            }
+            fn version(&self) -> TransportVersion {
+                TransportVersion::new("fake_pt", "1.0.0")
+            }
+            fn capabilities(&self) -> TransportCapabilities {
+                TransportCapabilities::default()
+            }
+            fn parse_bridge_line(&self, _line: &str) -> Option<BridgeEndpoint> {
+                None
+            }
+            fn validate_bridge_line(&self, _line: &str) -> Result<(), String> {
+                Ok(())
+            }
+            fn extract_front_domain(&self, _line: &str) -> Option<String> {
+                None
+            }
+            fn format_bridge_line(&self, ep: &BridgeEndpoint) -> String {
+                format!("fake_pt {}:{}", ep.host, ep.port)
+            }
+            fn is_compatible_with(&self, _v: &str) -> bool {
+                true
+            }
+            fn description(&self) -> &str {
+                "fake test transport"
+            }
+            fn priority(&self) -> Option<TransportPriority> {
+                Some(TransportPriority::new(0, 0))
+            }
+        }
+
+        // Before registration, "fake_pt" is unranked: it sorts after every
+        // ranked transport.
+        let fallback = global_registry()
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .fallback_rank(3);
+        assert_eq!(transport_rank("fake_pt", 3), fallback);
+
+        // Register the fake transport; the planner's ranking logic now picks
+        // it up at its declared priority without any edit to `transport_rank`.
+        global_registry()
+            .write()
+            .unwrap_or_else(|p| p.into_inner())
+            .register(Box::new(FakePt));
+        assert_eq!(transport_rank("fake_pt", 3), 0);
+
+        // Clean up so no other test observes the registration.
+        global_registry()
+            .write()
+            .unwrap_or_else(|p| p.into_inner())
+            .unregister("fake_pt");
+        assert!(global_registry()
+            .read()
+            .unwrap_or_else(|p| p.into_inner())
+            .get("fake_pt")
+            .is_none());
     }
 }

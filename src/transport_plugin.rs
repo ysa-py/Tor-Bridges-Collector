@@ -5,8 +5,36 @@
 //! versioned definitions, independent tests, backward compatibility.
 
 use std::collections::BTreeMap;
+use std::sync::{OnceLock, RwLock};
 
 use serde::{Deserialize, Serialize};
+
+/// Censorship-aware ranking priority of a transport.
+///
+/// `normal` is the preference rank at censorship levels 1–3; `escalated` is
+/// the rank at levels 4–5 (SIAM escalation / NIN internet-cut), where
+/// fronting- and traffic-morphing-capable transports are promoted. Lower
+/// sorts earlier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TransportPriority {
+    pub normal: usize,
+    pub escalated: usize,
+}
+
+impl TransportPriority {
+    pub const fn new(normal: usize, escalated: usize) -> Self {
+        Self { normal, escalated }
+    }
+
+    /// The priority to use at a given censorship level.
+    pub fn for_level(&self, censorship_level: u8) -> usize {
+        if censorship_level >= 4 {
+            self.escalated
+        } else {
+            self.normal
+        }
+    }
+}
 
 /// A versioned transport protocol definition.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -86,6 +114,17 @@ pub trait TransportPlugin: Send + Sync {
     fn format_bridge_line(&self, endpoint: &BridgeEndpoint) -> String;
     fn is_compatible_with(&self, version: &str) -> bool;
     fn description(&self) -> &str;
+
+    /// Censorship-aware ranking priority for this transport, if it should
+    /// participate in the rotation planner's transport preference order.
+    ///
+    /// `None` (the default) means the transport is detected/validated but not
+    /// ranked — it sorts after every ranked transport. Override this in a
+    /// plugin to have it picked up by the ranking logic without touching the
+    /// core dispatch/ranking code.
+    fn priority(&self) -> Option<TransportPriority> {
+        None
+    }
 }
 
 // ─── Built-in plugins ─────────────────────────────────────────────────
@@ -182,6 +221,9 @@ impl TransportPlugin for Obfs4Plugin {
     }
     fn description(&self) -> &str {
         "obfs4 — Tor obfuscation layer 4"
+    }
+    fn priority(&self) -> Option<TransportPriority> {
+        Some(TransportPriority::new(0, 3))
     }
 }
 
@@ -299,6 +341,9 @@ impl TransportPlugin for WebTunnelPlugin {
     fn description(&self) -> &str {
         "WebTunnel — Tor bridge via WebSocket domain fronting"
     }
+    fn priority(&self) -> Option<TransportPriority> {
+        Some(TransportPriority::new(1, 1))
+    }
 }
 
 pub struct SnowflakePlugin;
@@ -364,6 +409,9 @@ impl TransportPlugin for SnowflakePlugin {
     fn description(&self) -> &str {
         "Snowflake — Tor bridge via WebRTC"
     }
+    fn priority(&self) -> Option<TransportPriority> {
+        Some(TransportPriority::new(2, 0))
+    }
 }
 
 pub struct VanillaPlugin;
@@ -411,6 +459,9 @@ impl TransportPlugin for VanillaPlugin {
     }
     fn description(&self) -> &str {
         "Vanilla — plain Tor relay"
+    }
+    fn priority(&self) -> Option<TransportPriority> {
+        Some(TransportPriority::new(4, 4))
     }
 }
 
@@ -481,6 +532,9 @@ impl TransportPlugin for MeekPlugin {
     }
     fn description(&self) -> &str {
         "Meek Lite — domain-fronted HTTP bridge"
+    }
+    fn priority(&self) -> Option<TransportPriority> {
+        Some(TransportPriority::new(3, 2))
     }
 }
 
@@ -561,6 +615,13 @@ impl TransportRegistry {
         self.order.push(name.clone());
         self.plugins.insert(name, plugin);
     }
+    /// Deregister a transport by name, returning the removed plugin if it was
+    /// registered. Primarily used by tests that register a fake transport.
+    pub fn unregister(&mut self, name: &str) -> Option<Box<dyn TransportPlugin>> {
+        let removed = self.plugins.remove(name);
+        self.order.retain(|s| s != name);
+        removed
+    }
     pub fn get(&self, name: &str) -> Option<&dyn TransportPlugin> {
         self.plugins.get(name).map(|p| p.as_ref())
     }
@@ -598,12 +659,46 @@ impl TransportRegistry {
     pub fn is_empty(&self) -> bool {
         self.plugins.is_empty()
     }
+
+    /// The ranking priority of a transport at the given censorship level, or
+    /// `None` if the transport is not registered or declares no priority
+    /// (i.e. it is not ranked). This is the ranking lookup consumed by the
+    /// rotation planner.
+    pub fn rank_of(&self, name: &str, censorship_level: u8) -> Option<usize> {
+        self.plugins
+            .get(name)
+            .and_then(|p| p.priority())
+            .map(|p| p.for_level(censorship_level))
+    }
+
+    /// The rank assigned to any unranked transport at the given level: one
+    /// past the highest declared priority, so unranked transports sort after
+    /// every ranked one.
+    pub fn fallback_rank(&self, censorship_level: u8) -> usize {
+        self.plugins
+            .values()
+            .filter_map(|p| p.priority())
+            .map(|p| p.for_level(censorship_level))
+            .max()
+            .map_or(0, |m| m + 1)
+    }
 }
 
 impl Default for TransportRegistry {
     fn default() -> Self {
         Self::with_builtins()
     }
+}
+
+// ─── Process-wide registry (ranking source of truth) ───────────────────────
+
+static GLOBAL_REGISTRY: OnceLock<RwLock<TransportRegistry>> = OnceLock::new();
+
+/// The process-wide transport registry used by ranking/dispatch code, seeded
+/// with the built-in plugins. New transports register here at startup so the
+/// ranking logic picks them up without editing the core dispatch code.
+pub fn global_registry() -> &'static RwLock<TransportRegistry> {
+    GLOBAL_REGISTRY.get_or_init(|| RwLock::new(TransportRegistry::with_builtins()))
 }
 
 // ─── Shared helpers ──────────────────────────────────────────────────
@@ -832,6 +927,74 @@ mod tests {
         r.register(Box::new(Obfs4Plugin));
         assert_eq!(r.len(), 1);
         assert!(r.get("webtunnel").is_none());
+    }
+
+    struct FakeRankedPlugin;
+    impl TransportPlugin for FakeRankedPlugin {
+        fn name(&self) -> &str {
+            "fake_pt"
+        }
+        fn version(&self) -> TransportVersion {
+            TransportVersion::new("fake_pt", "1.0.0")
+        }
+        fn capabilities(&self) -> TransportCapabilities {
+            TransportCapabilities::default()
+        }
+        fn parse_bridge_line(&self, _line: &str) -> Option<BridgeEndpoint> {
+            None
+        }
+        fn validate_bridge_line(&self, _line: &str) -> Result<(), String> {
+            Ok(())
+        }
+        fn extract_front_domain(&self, _line: &str) -> Option<String> {
+            None
+        }
+        fn format_bridge_line(&self, ep: &BridgeEndpoint) -> String {
+            format!("fake_pt {}:{}", ep.host, ep.port)
+        }
+        fn is_compatible_with(&self, _v: &str) -> bool {
+            true
+        }
+        fn description(&self) -> &str {
+            "fake ranked transport"
+        }
+        fn priority(&self) -> Option<TransportPriority> {
+            Some(TransportPriority::new(0, 0))
+        }
+    }
+
+    #[test]
+    fn rank_of_reads_plugin_priority() {
+        let r = TransportRegistry::with_builtins();
+        // Normal order: obfs4=0, webtunnel=1, snowflake=2, meek_lite=3, vanilla=4
+        assert_eq!(r.rank_of("obfs4", 3), Some(0));
+        assert_eq!(r.rank_of("webtunnel", 3), Some(1));
+        // Escalated order: snowflake=0, webtunnel=1, meek_lite=2, obfs4=3, vanilla=4
+        assert_eq!(r.rank_of("snowflake", 5), Some(0));
+        assert_eq!(r.rank_of("obfs4", 5), Some(3));
+        // Conjure is registered but declares no priority → unranked.
+        assert_eq!(r.rank_of("conjure", 3), None);
+        // Unknown transports are not ranked either.
+        assert_eq!(r.rank_of("nope", 3), None);
+    }
+
+    #[test]
+    fn fallback_rank_is_one_past_highest_priority() {
+        let r = TransportRegistry::with_builtins();
+        // Highest declared priority in both levels is 4 (vanilla) → fallback 5.
+        assert_eq!(r.fallback_rank(3), 5);
+        assert_eq!(r.fallback_rank(5), 5);
+    }
+
+    #[test]
+    fn registering_a_plugin_makes_its_priority_ranked() {
+        let mut r = TransportRegistry::with_builtins();
+        assert_eq!(r.rank_of("fake_pt", 3), None);
+        r.register(Box::new(FakeRankedPlugin));
+        assert_eq!(r.rank_of("fake_pt", 3), Some(0));
+        r.unregister("fake_pt");
+        assert!(r.get("fake_pt").is_none());
+        assert_eq!(r.rank_of("fake_pt", 3), None);
     }
 
     #[test]
