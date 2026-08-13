@@ -276,7 +276,7 @@ impl ReputationEngine {
     ///
     /// `probe_history` is a list of (timestamp, success, latency_ms) tuples
     /// for each probe attempt against this bridge. The engine buckets these
-    /// into the four rolling windows relative to `self.now`.
+    /// into the six rolling windows relative to `self.now`.
     pub fn compute_reputation(
         &self,
         record: &BridgeRecord,
@@ -618,5 +618,74 @@ mod tests {
         // avg = (50+60+70+80+90)/5 = 70
         let avg = report["avg_stability"].as_f64().unwrap();
         assert!((avg - 70.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn exact_fixture_yields_known_window_stats_and_stability() {
+        let now = fixed_now();
+        let engine = ReputationEngine::new(now);
+        let record = BridgeRecord {
+            raw: "obfs4 9.9.9.9:443".to_string(),
+            transport: "obfs4".to_string(),
+            first_seen: "2026-06-27T12:00:00+00:00".to_string(),
+            last_seen: "2026-06-28T11:30:00+00:00".to_string(), // 30 min before now
+            test_pass: Some(true),
+            test_time: Some("2026-06-28T11:30:00+00:00".to_string()),
+            latency_ms: Some(200),
+            score: 80,
+        };
+
+        // Fixture: 6 probes all within the last 30 minutes, so every rolling
+        // window sees the identical set: 4 successes @ 200.0 ms, 2 failures.
+        let history: Vec<(DateTime<Utc>, bool, Option<f64>)> = vec![
+            (now - Duration::minutes(5), true, Some(200.0)),
+            (now - Duration::minutes(10), true, Some(200.0)),
+            (now - Duration::minutes(15), true, Some(200.0)),
+            (now - Duration::minutes(20), true, Some(200.0)),
+            (now - Duration::minutes(25), false, None),
+            (now - Duration::minutes(30), false, None),
+        ];
+        let rep = engine.compute_reputation(&record, &history);
+
+        // Every window sees all 6 probes: 4 success, 2 failure, flat 200.0 ms.
+        for &(label, probes, successes, failures) in &[
+            ("1h", 6, 4, 2),
+            ("6h", 6, 4, 2),
+            ("24h", 6, 4, 2),
+            ("7d", 6, 4, 2),
+            ("30d", 6, 4, 2),
+            ("90d", 6, 4, 2),
+        ] {
+            let ws = rep.windows.get(label).expect("window present");
+            assert_eq!(ws.probes, probes, "{label} probe count");
+            assert_eq!(ws.successes, successes, "{label} successes");
+            assert_eq!(ws.failures, failures, "{label} failures");
+            assert_eq!(ws.min_latency_ms, Some(200.0), "{label} min latency");
+            assert_eq!(ws.max_latency_ms, Some(200.0), "{label} max latency");
+            assert_eq!(ws.avg_latency_ms(), Some(200.0), "{label} avg latency");
+        }
+
+        // Composite stability for this fixture, by hand:
+        //   success rate 2/3 in every window -> weighted rate 2/3
+        //   flat latency -> variance 0 -> latency bonus 20.0
+        //   last_seen 30 min old (<= 24h) -> freshness bonus 10.0
+        //   36 total probes (>= 10) -> probe bonus 5.0
+        //   stability = (2/3)*60 + 20 + 10 + 5 = 75.0
+        assert_eq!(rep.total_probes, 36);
+        assert!((rep.weighted_success_rate - 2.0 / 3.0).abs() < 1e-9);
+        assert_eq!(rep.overall_avg_latency_ms, Some(200.0));
+        assert!((rep.stability_score - 75.0).abs() < 1e-9);
+
+        // JSON surface pins the rounded rendering of the same values.
+        let json = rep.to_json();
+        assert_eq!(json["total_probes"], 36);
+        assert_eq!(json["stability_score"], 75.0);
+        let one_h = &json["windows"]["1h"];
+        assert_eq!(one_h["probes"], 6);
+        assert_eq!(one_h["successes"], 4);
+        assert_eq!(one_h["success_rate"], 66.7);
+        assert_eq!(one_h["avg_latency_ms"], 200.0);
+        assert_eq!(one_h["min_latency_ms"], 200.0);
+        assert_eq!(one_h["max_latency_ms"], 200.0);
     }
 }
