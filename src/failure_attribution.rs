@@ -1000,4 +1000,179 @@ mod tests {
         .collect();
         assert_eq!(codes.len(), 9);
     }
+
+    #[test]
+    fn every_category_carries_confidence_evidence_and_explanation() {
+        // Deterministic fixture: one evidence vector per FailureCategory,
+        // mirroring the proven fixtures in the tests above. For each row we
+        // assert the classification lands on the expected category AND that
+        // the Attribution carries all three mandated fields: confidence in
+        // [0,1], a non-empty reason (explanation), and evidence that includes
+        // the distinguishing observation. JSON surface is pinned as well.
+        let rows: Vec<(ProbeEvidence, FailureCategory, &str, &str)> = vec![
+            (
+                ProbeEvidence {
+                    host: Some("10.0.0.1".to_string()),
+                    port: Some(443),
+                    tcp_connect_ok: Some(false),
+                    probe_timeout: Some(Duration::from_secs(3)),
+                    total_latency_ms: Some(2900.0),
+                    ..Default::default()
+                },
+                FailureCategory::Timeout,
+                "timeout",
+                "total_latency_ms",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("1.2.3.4".to_string()),
+                    port: Some(9001),
+                    transport: Some("obfs4".to_string()),
+                    tcp_connect_ok: Some(false),
+                    os_error_code: Some(104),
+                    ..Default::default()
+                },
+                FailureCategory::TcpReset,
+                "tcp_reset",
+                "os_error_code",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("1.2.3.4".to_string()),
+                    port: Some(9001),
+                    tcp_connect_ok: Some(false),
+                    os_error_code: Some(111),
+                    ..Default::default()
+                },
+                FailureCategory::TcpRefused,
+                "tcp_refused",
+                "os_error_code",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("bridge.example.com".to_string()),
+                    port: Some(443),
+                    transport: Some("webtunnel".to_string()),
+                    tcp_connect_ok: Some(true),
+                    tls_ok: Some(false),
+                    tls_error: Some("received fatal alert: HandshakeFailure".to_string()),
+                    ..Default::default()
+                },
+                FailureCategory::TlsFailure,
+                "tls_failure",
+                "tls_error",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("bridge.example.com".to_string()),
+                    port: Some(443),
+                    transport: Some("webtunnel".to_string()),
+                    tcp_connect_ok: Some(true),
+                    tls_ok: Some(true),
+                    transport_handshake_ok: Some(false),
+                    transport_error: Some("WebSocket upgrade rejected".to_string()),
+                    ..Default::default()
+                },
+                FailureCategory::HandshakeFailure,
+                "handshake_failure",
+                "transport_error",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("example.com".to_string()),
+                    port: Some(443),
+                    transport: Some("webtunnel".to_string()),
+                    dns_ok: Some(false),
+                    dns_error: Some("NXDOMAIN".to_string()),
+                    ..Default::default()
+                },
+                FailureCategory::DnsAnomaly,
+                "dns_anomaly",
+                "dns_error",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("bridge.example.com".to_string()),
+                    port: Some(443),
+                    transport: Some("webtunnel".to_string()),
+                    tcp_connect_ok: Some(true),
+                    tls_ok: Some(true),
+                    transport_error: Some("WebSocket upgrade rejected".to_string()),
+                    ..Default::default()
+                },
+                FailureCategory::ReachabilityFailure,
+                "reachability_failure",
+                "transport_error",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("1.2.3.4".to_string()),
+                    port: Some(9001),
+                    transport: Some("obfs4".to_string()),
+                    tcp_connect_ok: Some(false),
+                    os_error_code: Some(104),
+                    is_retry: Some(true),
+                    retry_attempt: Some(2),
+                    ..Default::default()
+                },
+                FailureCategory::ActiveBlocking,
+                "active_blocking",
+                "os_error_code",
+            ),
+            (
+                ProbeEvidence {
+                    host: Some("???".to_string()),
+                    port: Some(0),
+                    ..Default::default()
+                },
+                FailureCategory::Unknown,
+                "unknown",
+                "host",
+            ),
+        ];
+
+        for (evidence, expected, expected_code, distinguishing_field) in rows {
+            let attr = FailureClassifier::classify(evidence.clone());
+            let label = expected.code();
+
+            // 1. Correct classification.
+            assert_eq!(attr.category, expected, "{label}: category");
+
+            // 2. Confidence is a bounded probability.
+            assert!(
+                (0.0..=1.0).contains(&attr.confidence),
+                "{label}: confidence {}",
+                attr.confidence
+            );
+
+            // 3. Explanation (reason) is present and non-empty.
+            assert!(!attr.reason.is_empty(), "{label}: reason must not be empty");
+
+            // 4. Evidence is carried through and includes the distinguishing
+            //    observation that drove the classification.
+            let ev = attr.evidence.to_json();
+            assert!(
+                ev.get(distinguishing_field).is_some(),
+                "{label}: evidence must retain {distinguishing_field}"
+            );
+
+            // 5. JSON surface pins category, label, confidence, reason, evidence.
+            let json = attr.to_json();
+            assert_eq!(json["category"], expected_code, "{label}: json code");
+            assert_eq!(
+                json["category_label"],
+                expected.label(),
+                "{label}: json label"
+            );
+            assert!(
+                json["confidence"].as_f64().is_some(),
+                "{label}: json confidence"
+            );
+            assert!(
+                json["reason"].as_str().map_or(false, |r| !r.is_empty()),
+                "{label}: json reason"
+            );
+            assert!(json["evidence"].is_object(), "{label}: json evidence");
+        }
+    }
 }
