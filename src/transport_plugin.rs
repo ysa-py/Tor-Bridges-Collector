@@ -963,6 +963,60 @@ mod tests {
         }
     }
 
+    /// A detectable, escalation-aware fixture transport: least-resistant under
+    /// normal censorship (rank 5, behind every built-in) and most-resistant
+    /// under escalation (rank 0, tied with snowflake). This mirrors the shape of
+    /// the `FakeDetectablePlugin` scaffold that lives on the unmerged PR #215
+    /// branch; it is re-implemented here as a self-contained fixture because
+    /// that scaffold is not present on `main`.
+    struct FakeEscalationAwarePlugin;
+    impl TransportPlugin for FakeEscalationAwarePlugin {
+        fn name(&self) -> &str {
+            "fake_front"
+        }
+        fn version(&self) -> TransportVersion {
+            TransportVersion::new("fake_front", "1.0.0")
+        }
+        fn capabilities(&self) -> TransportCapabilities {
+            TransportCapabilities {
+                domain_fronting: true,
+                ..Default::default()
+            }
+        }
+        fn parse_bridge_line(&self, line: &str) -> Option<BridgeEndpoint> {
+            let body = line.strip_prefix("fake_front ")?.trim();
+            let (host, port) = parse_addr_port(body)?;
+            Some(BridgeEndpoint {
+                host,
+                port,
+                fingerprint: None,
+                params: BTreeMap::new(),
+            })
+        }
+        fn validate_bridge_line(&self, line: &str) -> Result<(), String> {
+            if line.starts_with("fake_front ") {
+                Ok(())
+            } else {
+                Err("not fake_front".into())
+            }
+        }
+        fn extract_front_domain(&self, _line: &str) -> Option<String> {
+            None
+        }
+        fn format_bridge_line(&self, ep: &BridgeEndpoint) -> String {
+            format!("fake_front {}:{}", ep.host, ep.port)
+        }
+        fn is_compatible_with(&self, _v: &str) -> bool {
+            true
+        }
+        fn description(&self) -> &str {
+            "fake escalation-aware fronting transport"
+        }
+        fn priority(&self) -> Option<TransportPriority> {
+            Some(TransportPriority::new(5, 0))
+        }
+    }
+
     #[test]
     fn rank_of_reads_plugin_priority() {
         let r = TransportRegistry::with_builtins();
@@ -984,6 +1038,68 @@ mod tests {
         // Highest declared priority in both levels is 4 (vanilla) → fallback 5.
         assert_eq!(r.fallback_rank(3), 5);
         assert_eq!(r.fallback_rank(5), 5);
+    }
+
+    #[test]
+    fn for_level_switches_at_escalation_threshold() {
+        // Levels 1–3 use the normal rank; levels 4–5 use the escalated rank.
+        let p = TransportPriority::new(0, 3);
+        for level in 1..=3u8 {
+            assert_eq!(p.for_level(level), 0, "level {level} must use normal rank");
+        }
+        for level in 4..=5u8 {
+            assert_eq!(
+                p.for_level(level),
+                3,
+                "level {level} must use escalated rank"
+            );
+        }
+        // Snowflake is fronting/WebRTC-capable: promoted under escalation (2 → 0).
+        let snowflake = TransportPriority::new(2, 0);
+        assert_eq!(snowflake.for_level(3), 2);
+        assert_eq!(snowflake.for_level(4), 0);
+    }
+
+    #[test]
+    fn ranking_monotonicity_across_censorship_levels() {
+        let mut r = TransportRegistry::with_builtins();
+        r.register(Box::new(FakeEscalationAwarePlugin));
+
+        // A more-resistant transport must never regress below a less-resistant
+        // one as the censorship level escalates.
+        for level in 1..=5u8 {
+            let obfs4 = r.rank_of("obfs4", level).unwrap_or(usize::MAX);
+            let snowflake = r.rank_of("snowflake", level).unwrap_or(usize::MAX);
+            if level >= 4 {
+                // Escalated censorship: fronting transports are promoted, so
+                // snowflake (rank 0) outranks obfs4 (rank 3).
+                assert!(
+                    snowflake < obfs4,
+                    "level {level}: snowflake regressed below obfs4"
+                );
+            } else {
+                // Normal censorship: obfs4 (rank 0) outranks snowflake (rank 2).
+                assert!(
+                    obfs4 < snowflake,
+                    "level {level}: obfs4 regressed below snowflake"
+                );
+            }
+        }
+
+        // The newly registered escalation-aware transport is ranked with its
+        // declared priority at every level: least resistant (5) under normal
+        // censorship, most resistant (0) under escalation.
+        for level in 1..=3u8 {
+            assert_eq!(r.rank_of("fake_front", level), Some(5), "level {level}");
+        }
+        for level in 4..=5u8 {
+            assert_eq!(r.rank_of("fake_front", level), Some(0), "level {level}");
+        }
+
+        // A registered-but-unranked transport (conjure) has no rank at any level.
+        for level in 1..=5u8 {
+            assert_eq!(r.rank_of("conjure", level), None, "level {level}");
+        }
     }
 
     #[test]
