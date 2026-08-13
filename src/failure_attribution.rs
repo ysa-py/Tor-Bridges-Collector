@@ -1169,7 +1169,7 @@ mod tests {
                 "{label}: json confidence"
             );
             assert!(
-                json["reason"].as_str().map_or(false, |r| !r.is_empty()),
+                json["reason"].as_str().is_some_and(|r| !r.is_empty()),
                 "{label}: json reason"
             );
             assert!(json["evidence"].is_object(), "{label}: json evidence");
