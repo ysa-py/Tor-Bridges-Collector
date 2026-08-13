@@ -360,6 +360,28 @@ impl SourceHealthTracker {
             .collect()
     }
 
+    /// Execution-ordered poll plan for every schedulable tracked source.
+    ///
+    /// Turns [`SourceHealthTracker::schedule`] into an ordered work queue a
+    /// scheduler can iterate directly: `(source_id, next_poll_at)` pairs
+    /// sorted by next poll timestamp ascending (ties broken by source id for
+    /// determinism). Quarantined or unknown sources are excluded — they are
+    /// skipped, never scheduled. Pure and deterministic: the caller supplies
+    /// `now_unix_secs`, so the plan has no real-clock dependence.
+    #[must_use]
+    pub fn ordered_poll_plan(&self, now_unix_secs: u64) -> Vec<(String, u64)> {
+        let mut plan: Vec<(String, u64)> = self
+            .records
+            .keys()
+            .filter_map(|id| {
+                self.next_poll_at(id, now_unix_secs)
+                    .map(|ts| (id.clone(), ts))
+            })
+            .collect();
+        plan.sort_by(|a, b| a.1.cmp(&b.1).then_with(|| a.0.cmp(&b.0)));
+        plan
+    }
+
     /// Get full status report as JSON.
     #[must_use]
     pub fn status_report(&self) -> Value {
@@ -656,5 +678,83 @@ mod tests {
         // Fresh "alive" polls at critical cadence; quarantined "dead" is skipped.
         assert_eq!(plan.get("alive"), Some(&Some(500 + CRITICAL_CADENCE_SECS)));
         assert_eq!(plan.get("dead"), Some(&None));
+    }
+
+    /// Integration: "all known sources + their current health → ordered poll
+    /// plan". Builds a tracker with sources at each health tier (critical,
+    /// high, normal, archive, quarantined), then asserts the emitted plan is
+    /// sorted by next-poll time with quarantined sources excluded. Pure and
+    /// deterministic — no network, no clock.
+    #[test]
+    fn ordered_poll_plan_schedules_all_known_sources_by_health() {
+        let mut tracker = SourceHealthTracker::new();
+        tracker.register_source("critical");
+        tracker.register_source("high");
+        tracker.register_source("normal");
+        tracker.register_source("archive");
+        tracker.register_source("quarantined");
+
+        // critical: fresh (no observations yet) → benefit of the doubt → 1.0.
+        // high: one mid-latency, low-yield success → health ~0.76 → HIGH.
+        tracker.record_success("high", Duration::from_millis(2000), 10, "t1");
+        // normal: four clean failures (not yet quarantined) then one modest
+        // success → health ~0.52 → NORMAL.
+        for i in 0..4 {
+            tracker.record_failure("normal", &format!("t{i}"));
+        }
+        tracker.record_success("normal", Duration::from_millis(2000), 20, "t4");
+        // archive: four clean failures (no success yet) → health ~0.37 →
+        // ARCHIVE, still above the quarantine threshold so it is schedulable.
+        for i in 0..4 {
+            tracker.record_failure("archive", &format!("a{i}"));
+        }
+        // quarantined: hard-quarantined by consecutive failures.
+        for i in 0..MAX_CONSECUTIVE_FAILURES {
+            tracker.record_failure("quarantined", &format!("t{i}"));
+        }
+
+        // Confirm the fixture actually lands in each cadence tier.
+        assert_eq!(
+            tracker.polling_interval_secs("critical"),
+            Some(CRITICAL_CADENCE_SECS)
+        );
+        assert_eq!(
+            tracker.polling_interval_secs("high"),
+            Some(HIGH_CADENCE_SECS)
+        );
+        assert_eq!(
+            tracker.polling_interval_secs("normal"),
+            Some(NORMAL_CADENCE_SECS)
+        );
+        assert_eq!(
+            tracker.polling_interval_secs("archive"),
+            Some(ARCHIVE_CADENCE_SECS)
+        );
+        assert_eq!(tracker.polling_interval_secs("quarantined"), None);
+
+        let now = 1_700_000_000_u64;
+        let plan = tracker.ordered_poll_plan(now);
+
+        // Quarantined source is excluded; every other known source appears.
+        assert!(
+            !plan.iter().any(|(id, _)| id == "quarantined"),
+            "quarantined source must not be scheduled"
+        );
+        assert_eq!(plan.len(), 4);
+
+        // Timestamps match next_poll_at for each source individually.
+        for (id, ts) in &plan {
+            assert_eq!(*ts, tracker.next_poll_at(id, now).unwrap());
+        }
+
+        // The plan is ordered by next-poll time ascending.
+        let mut sorted = plan.clone();
+        sorted.sort_by_key(|(id, ts)| (*ts, id.clone()));
+        assert_eq!(plan, sorted, "plan must be sorted by next-poll time");
+
+        // Earliest poll is the highest-priority (critical) source.
+        assert_eq!(plan.first().unwrap().0, "critical");
+        // Latest poll is the slowest (archive) source.
+        assert_eq!(plan.last().unwrap().0, "archive");
     }
 }
