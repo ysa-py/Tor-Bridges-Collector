@@ -997,6 +997,102 @@ mod tests {
         assert_eq!(r.rank_of("fake_pt", 3), None);
     }
 
+    struct FakeDetectablePlugin;
+    impl TransportPlugin for FakeDetectablePlugin {
+        fn name(&self) -> &str {
+            "fake_detect"
+        }
+        fn version(&self) -> TransportVersion {
+            TransportVersion::new("fake_detect", "1.0.0")
+        }
+        fn capabilities(&self) -> TransportCapabilities {
+            TransportCapabilities {
+                required_fields: vec!["fingerprint".into()],
+                ..Default::default()
+            }
+        }
+        fn parse_bridge_line(&self, line: &str) -> Option<BridgeEndpoint> {
+            let body = line.strip_prefix("fake_detect ")?;
+            let mut parts = body.split_whitespace();
+            let addr = parts.next()?;
+            let (host, port) = parse_addr_port(addr)?;
+            let fp = parts.next().map(|s| s.to_string());
+            Some(BridgeEndpoint {
+                host,
+                port,
+                fingerprint: fp,
+                params: BTreeMap::new(),
+            })
+        }
+        fn validate_bridge_line(&self, line: &str) -> Result<(), String> {
+            if !line.starts_with("fake_detect ") {
+                return Err("not fake_detect".into());
+            }
+            let ep = self
+                .parse_bridge_line(line)
+                .ok_or_else(|| "could not parse fake_detect line".to_string())?;
+            match ep.fingerprint {
+                Some(fp) if fp.len() == 40 && fp.chars().all(|c| c.is_ascii_hexdigit()) => Ok(()),
+                _ => Err("fake_detect needs 40-char hex fingerprint".into()),
+            }
+        }
+        fn extract_front_domain(&self, _line: &str) -> Option<String> {
+            None
+        }
+        fn format_bridge_line(&self, ep: &BridgeEndpoint) -> String {
+            let mut line = format!("fake_detect {}:{}", ep.host, ep.port);
+            if let Some(ref fp) = ep.fingerprint {
+                line.push_str(&format!(" {fp}"));
+            }
+            line
+        }
+        fn is_compatible_with(&self, _v: &str) -> bool {
+            true
+        }
+        fn description(&self) -> &str {
+            "fake detectable transport"
+        }
+        fn priority(&self) -> Option<TransportPriority> {
+            Some(TransportPriority::new(0, 0))
+        }
+    }
+
+    #[test]
+    fn newly_registered_transport_is_detected_and_roundtrips() {
+        let mut r = TransportRegistry::with_builtins();
+        let line = "fake_detect 198.51.100.7:8443 0123456789abcdef0123456789abcdef01234567";
+        // Before registration, no built-in transport claims the line.
+        assert!(r.detect(line).is_none());
+
+        r.register(Box::new(FakeDetectablePlugin));
+
+        // detect() routes to the newly registered plugin, not a built-in.
+        let (t, ep) = r.detect(line).expect("new transport should be detected");
+        assert_eq!(t, "fake_detect");
+        assert_eq!(ep.host, "198.51.100.7");
+        assert_eq!(ep.port, 8443);
+
+        // validate() routes through the same detection path.
+        assert_eq!(r.validate(line).unwrap(), "fake_detect");
+
+        // format -> detect round-trip preserves host/port/fingerprint.
+        let formatted = r.get("fake_detect").unwrap().format_bridge_line(&ep);
+        let (t2, ep2) = r
+            .detect(&formatted)
+            .expect("formatted line should round-trip");
+        assert_eq!(t2, "fake_detect");
+        assert_eq!(ep2.host, ep.host);
+        assert_eq!(ep2.port, ep.port);
+        assert_eq!(ep2.fingerprint, ep.fingerprint);
+
+        // Ranking also picks up the newly registered transport.
+        assert_eq!(r.rank_of("fake_detect", 3), Some(0));
+
+        // Cleanup so other tests observe the built-in registry unchanged.
+        r.unregister("fake_detect");
+        assert!(r.get("fake_detect").is_none());
+    }
+
     #[test]
     fn obfs4_roundtrip() {
         let line =
