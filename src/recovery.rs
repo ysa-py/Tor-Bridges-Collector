@@ -274,6 +274,66 @@ mod tests {
     }
 
     #[test]
+    fn self_healing_failure_sequence_exact_values() {
+        let mut engine = SelfHealingEngine::new();
+        assert_eq!(engine.max_retries, 3);
+
+        // Two failures: below the 3-consecutive-failure threshold — no heal.
+        engine.record_failure("bridge-scraper");
+        engine.record_failure("bridge-scraper");
+        assert_eq!(engine.failure_count, 2);
+        assert!(!engine.healing_active);
+        assert_eq!(engine.heal_history.len(), 0);
+
+        // Third consecutive failure crosses the threshold: auto_heal fires
+        // and the failure counter resets (exact, hand-derived behavior).
+        engine.record_failure("bridge-scraper");
+        assert!(engine.healing_active);
+        assert_eq!(engine.heal_history.len(), 1);
+        assert_eq!(engine.failure_count, 0);
+        let event = &engine.heal_history[0];
+        assert_eq!(event.component, "bridge-scraper");
+        assert_eq!(event.action, "auto_heal");
+        assert!(event.success);
+
+        // While healing is active, failures accumulate but never re-trigger.
+        engine.record_failure("bridge-scraper");
+        engine.record_failure("bridge-scraper");
+        engine.record_failure("bridge-scraper");
+        assert_eq!(engine.failure_count, 3);
+        assert_eq!(engine.heal_history.len(), 1);
+        assert!(engine.healing_active);
+
+        // get_status() reports the exact accumulated state.
+        let status = engine.get_status();
+        assert_eq!(status["failure_count"], 3);
+        assert_eq!(status["max_retries"], 3);
+        assert_eq!(status["healing_active"], true);
+        assert_eq!(status["total_heals"], 1);
+        assert!(status["last_heal_time"].is_string());
+
+        // Recovery: heal completes, engine is available again, and the
+        // already-accumulated failures make the next failure re-trigger.
+        engine.complete_healing();
+        assert!(!engine.healing_active);
+        engine.record_failure("bridge-scraper");
+        assert!(engine.healing_active);
+        assert_eq!(engine.heal_history.len(), 2);
+        assert_eq!(engine.failure_count, 0);
+    }
+
+    #[test]
+    fn heal_event_records_component_that_crossed_threshold() {
+        let mut engine = SelfHealingEngine::new();
+        engine.record_failure("collector-a");
+        engine.record_failure("collector-a");
+        engine.record_failure("collector-b"); // 3rd overall — b crosses
+        assert_eq!(engine.heal_history.len(), 1);
+        assert_eq!(engine.heal_history[0].component, "collector-b");
+        assert_eq!(engine.failure_count, 0);
+    }
+
+    #[test]
     fn test_self_healing_v2() {
         let mut v2 = SelfHealingEngineV2::new();
         v2.apply_patch("fix: updated TLS config");

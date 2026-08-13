@@ -277,6 +277,44 @@ mod tests {
     }
 
     #[test]
+    fn full_429_ladder_exact_delays_then_rotate_slot() {
+        // Exponential backoff 2^attempt, no jitter: delays 1,2,4,8,16 for
+        // attempts 0-4, then RotateSlot at attempt 5 (max_attempts_429 = 5).
+        let engine = default_engine();
+        let expected_delays = [1.0, 2.0, 4.0, 8.0, 16.0];
+        for (attempt, &delay) in expected_delays.iter().enumerate() {
+            let d = engine.decide(429, attempt as i64, "", 0, "");
+            assert_eq!(d.action, RetryAction::RetrySame, "attempt {attempt}");
+            assert_eq!(d.delay_secs, delay, "attempt {attempt} delay");
+            assert_eq!(d.attempt_number, attempt as i64);
+            assert_eq!(d.max_attempts, 5);
+        }
+        let d = engine.decide(429, 5, "", 0, "");
+        assert_eq!(d.action, RetryAction::RotateSlot);
+        assert_eq!(d.delay_secs, 0.0);
+        assert_eq!(d.max_attempts, 5);
+    }
+
+    #[test]
+    fn full_5xx_ladder_exact_delays_then_rotate_slot() {
+        // 5xx retries at attempts 0-2 with delays 1,2,4, then RotateSlot at
+        // attempt 3 (max_attempts_5xx = 3).
+        let engine = default_engine();
+        let expected_delays = [1.0, 2.0, 4.0];
+        for (attempt, &delay) in expected_delays.iter().enumerate() {
+            let d = engine.decide(500 + attempt as i64, attempt as i64, "", 0, "");
+            assert_eq!(d.action, RetryAction::RetrySame, "attempt {attempt}");
+            assert_eq!(d.delay_secs, delay, "attempt {attempt} delay");
+            assert_eq!(d.attempt_number, attempt as i64);
+            assert_eq!(d.max_attempts, 3);
+        }
+        let d = engine.decide(503, 3, "", 0, "");
+        assert_eq!(d.action, RetryAction::RotateSlot);
+        assert_eq!(d.delay_secs, 0.0);
+        assert_eq!(d.max_attempts, 3);
+    }
+
+    #[test]
     fn http_401_and_403_rotate_slot_immediately() {
         let engine = default_engine();
         assert_eq!(
