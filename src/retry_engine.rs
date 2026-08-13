@@ -101,14 +101,21 @@ pub struct RetryEngine<F: Fn(i64) -> f64> {
 }
 
 impl RetryEngine<fn(i64) -> f64> {
-    /// Construct a retry engine with the default deterministic backoff
-    /// function (no jitter). Used in production when jitter is added by the
-    /// caller, or in tests where determinism is required.
+    /// Construct a retry engine whose default backoff curve is `2^attempt`
+    /// capped at `config.backoff_cap_secs` (no jitter). Used in production
+    /// when jitter is added by the caller, or in tests where determinism is
+    /// required.
+    ///
+    /// The cap is read from the config instead of a hardcoded constant, so
+    /// the previously-ignored `backoff_cap_secs` field now controls the
+    /// curve. Engines built with [`RetryConfig::default()`] (cap 60.0)
+    /// behave identically to the pre-change engine.
     #[must_use]
-    pub fn new(config: RetryConfig) -> Self {
-        Self {
+    pub fn new(config: RetryConfig) -> RetryEngine<impl Fn(i64) -> f64> {
+        let cap = config.backoff_cap_secs;
+        RetryEngine {
             config,
-            compute_backoff: default_backoff,
+            compute_backoff: move |attempt| default_backoff_with_cap(attempt, cap),
         }
     }
 }
@@ -228,18 +235,27 @@ impl<F: Fn(i64) -> f64> RetryEngine<F> {
     }
 }
 
-/// Default backoff curve: 2^attempt capped at `backoff_cap`. No jitter.
-/// Used when callers want a deterministic delay (e.g. tests).
+/// Default backoff curve: `2^attempt` capped at 60.0 seconds. No jitter.
+///
+/// Equivalent to [`default_backoff_with_cap`] at the historical 60.0 cap and
+/// retained for callers that hardcode the historical curve. Engines built via
+/// [`RetryEngine::new`] respect the configured `backoff_cap_secs` instead.
 pub fn default_backoff(attempt: i64) -> f64 {
+    default_backoff_with_cap(attempt, 60.0)
+}
+
+/// Exponential backoff curve `2^attempt` capped at `cap_secs`. No jitter.
+/// Mirrors the Python original's `min(2 ** attempt, self._backoff_cap)`.
+pub fn default_backoff_with_cap(attempt: i64, cap_secs: f64) -> f64 {
     let base = (2_i64).pow(attempt as u32) as f64;
-    base.min(60.0)
+    base.min(cap_secs)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    fn default_engine() -> RetryEngine<fn(i64) -> f64> {
+    fn default_engine() -> RetryEngine<impl Fn(i64) -> f64> {
         RetryEngine::new(RetryConfig::default())
     }
 
@@ -357,5 +373,56 @@ mod tests {
         assert_eq!(default_backoff(2), 4.0);
         assert_eq!(default_backoff(3), 8.0);
         assert_eq!(default_backoff(10), 60.0); // 2^10 = 1024 capped to 60
+    }
+
+    #[test]
+    fn default_backoff_with_cap_mirrors_python_algorithm() {
+        // Python: base = min(2 ** attempt, self._backoff_cap).
+        assert_eq!(default_backoff_with_cap(0, 60.0), 1.0);
+        assert_eq!(default_backoff_with_cap(3, 60.0), 8.0);
+        assert_eq!(default_backoff_with_cap(6, 60.0), 60.0); // 64 capped to 60
+        assert_eq!(default_backoff_with_cap(2, 3.0), 3.0); // 4 capped to 3
+        assert_eq!(default_backoff_with_cap(5, 3.0), 3.0); // 32 capped to 3
+                                                           // The standalone default is the 60.0-cap instance of the same curve.
+        assert_eq!(default_backoff(4), default_backoff_with_cap(4, 60.0));
+        assert_eq!(default_backoff(10), 60.0);
+    }
+
+    #[test]
+    fn configured_cap_is_respected() {
+        // Cap 3.0s: the 429 ladder becomes 1, 2, then 4 capped to 3 for the
+        // remaining attempts, then rotate slot at attempt 5 (max 429).
+        let config = RetryConfig {
+            backoff_cap_secs: 3.0,
+            ..RetryConfig::default()
+        };
+        let engine = RetryEngine::new(config);
+        let expected_delays = [1.0, 2.0, 3.0, 3.0, 3.0];
+        for (attempt, &delay) in expected_delays.iter().enumerate() {
+            let d = engine.decide(429, attempt as i64, "", 0, "");
+            assert_eq!(d.action, RetryAction::RetrySame, "attempt {attempt}");
+            assert_eq!(d.delay_secs, delay, "attempt {attempt} delay");
+        }
+        let d = engine.decide(429, 5, "", 0, "");
+        assert_eq!(d.action, RetryAction::RotateSlot);
+        assert_eq!(d.delay_secs, 0.0);
+    }
+
+    #[test]
+    fn default_config_keeps_previous_60s_behavior() {
+        // Callers that do NOT set backoff_cap_secs get the exact historical
+        // ladder — 1/2/4/8/16 then rotate slot — identical to the pre-change
+        // engine, because RetryConfig::default() keeps cap 60.0.
+        let engine = RetryEngine::new(RetryConfig::default());
+        let expected_delays = [1.0, 2.0, 4.0, 8.0, 16.0];
+        for (attempt, &delay) in expected_delays.iter().enumerate() {
+            let d = engine.decide(429, attempt as i64, "", 0, "");
+            assert_eq!(d.action, RetryAction::RetrySame, "attempt {attempt}");
+            assert_eq!(d.delay_secs, delay, "attempt {attempt} delay");
+            assert_eq!(d.max_attempts, 5);
+        }
+        let d = engine.decide(429, 5, "", 0, "");
+        assert_eq!(d.action, RetryAction::RotateSlot);
+        assert_eq!(d.delay_secs, 0.0);
     }
 }
