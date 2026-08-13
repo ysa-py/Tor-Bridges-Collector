@@ -217,19 +217,19 @@
       "transport": "obfs4"
     },
     {
+      "ip": "138.201.135.248",
+      "port": 8443,
+      "raw": "obfs4 138.201.135.248:8443 B936843580813CCE420C4FC545638FC26531DB7B cert=Zk9OeKkdAEtMCy+kL4joLl6UEURZLpHLnzcuf4IuFCy8Hh/Lzb/GME4F0Bvg4xRdY+MMMw iat-mode=1",
+      "sni": "",
+      "tier": "YELLOW",
+      "transport": "obfs4"
+    },
+    {
       "ip": "139.144.209.47",
       "port": 8000,
       "raw": "obfs4 139.144.209.47:8000 02E4E04C425EA273FE248E432758F8370101F1DB cert=j9N4ICLlx5Mj6xNi5yzqUcDvd4bOHu7fJ0F/Ev/7DlNK/MmC8pAgK7d2LLWpJ2SX/jyLYQ iat-mode=0",
       "sni": "",
       "tier": "RED",
-      "transport": "obfs4"
-    },
-    {
-      "ip": "14.201.215.82",
-      "port": 443,
-      "raw": "obfs4 14.201.215.82:443 7AE3A45F5A83B9AB91D5CF9B531104C6A3412611 cert=ztCfqQg1TKtEw96tdfr1ksniXtQV3r5JXNhyyAllS6wa/FDBl5zX+JMA7k/c1ZcuJjexKQ iat-mode=0",
-      "sni": "",
-      "tier": "YELLOW",
       "transport": "obfs4"
     },
     {
@@ -2662,7 +2662,7 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-13T07:19:36.297987+00:00",
+  "generated_at": "2026-08-13T08:22:11.501728+00:00",
   "green_count": 5,
   "red_count": 225,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
