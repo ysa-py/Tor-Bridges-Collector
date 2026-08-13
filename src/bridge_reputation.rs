@@ -344,10 +344,32 @@ impl ReputationEngine {
 
     /// Compute reputations for all bridges in a history manager.
     /// Returns a map of bridge_key → BridgeReputation.
+    ///
+    /// This is the live producer path: each bridge's stored multi-probe log
+    /// (via [`HistoryManager::probe_history`]) is fed into the six-window
+    /// aggregation, replacing the previous single-record synthesis. Bridges
+    /// with no stored probe history fall back to [`Self::compute_from_record`]
+    /// so single-record-only data (and records persisted before the
+    /// multi-probe feature) still yields a reputation instead of an empty one.
     pub fn compute_all(&self, history: &HistoryManager) -> BTreeMap<String, BridgeReputation> {
         let mut results = BTreeMap::new();
         for (key, record) in history.get_all() {
-            let rep = self.compute_from_record(&record);
+            let probes = history.probe_history(&record.raw);
+            let rep = if probes.is_empty() {
+                self.compute_from_record(&record)
+            } else {
+                let probe_history: Vec<(DateTime<Utc>, bool, Option<f64>)> = probes
+                    .iter()
+                    .map(|p| {
+                        (
+                            coerce_utc_dt(Some(&p.timestamp), DEFAULT_FALLBACK),
+                            p.passed,
+                            p.latency_ms.map(|l| l as f64),
+                        )
+                    })
+                    .collect();
+                self.compute_reputation(&record, &probe_history)
+            };
             results.insert(key, rep);
         }
         results
@@ -430,11 +452,24 @@ impl ReputationEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::VecDeque;
 
     fn fixed_now() -> DateTime<Utc> {
         chrono::DateTime::parse_from_rfc3339("2026-06-28T12:00:00+00:00")
             .unwrap()
             .with_timezone(&Utc)
+    }
+
+    fn temp_manager(now: DateTime<Utc>) -> HistoryManager {
+        let dir = std::env::temp_dir().join(format!("rep_hist_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        HistoryManager::new(
+            &dir.join("hist.json"),
+            &dir.join("bridge"),
+            &dir.join("export"),
+            now,
+        )
+        .unwrap()
     }
 
     #[test]
@@ -461,6 +496,7 @@ mod tests {
             test_time: Some("2026-06-28T12:00:00+00:00".to_string()),
             latency_ms: Some(50),
             score: 80,
+            probes: VecDeque::new(),
         };
         // Fixture: three probes at known ages relative to `now`:
         //   - 30 minutes old -> inside 1h, 6h, 24h, 7d, 30d, 90d
@@ -504,6 +540,7 @@ mod tests {
             test_time: None,
             latency_ms: None,
             score: 0,
+            probes: VecDeque::new(),
         };
         let rep = engine.compute_reputation(&record, &[]);
         assert_eq!(rep.total_probes, 0);
@@ -523,6 +560,7 @@ mod tests {
             test_time: Some("2026-06-28T12:00:00+00:00".to_string()),
             latency_ms: Some(50),
             score: 80,
+            probes: VecDeque::new(),
         };
         // Recent successful probes with low latency
         let now = fixed_now();
@@ -553,6 +591,7 @@ mod tests {
             test_time: None,
             latency_ms: None,
             score: 0,
+            probes: VecDeque::new(),
         };
         let now = fixed_now();
         let history: Vec<_> = vec![
@@ -580,6 +619,7 @@ mod tests {
             test_time: Some("2026-06-28T11:00:00+00:00".to_string()),
             latency_ms: Some(42),
             score: 75,
+            probes: VecDeque::new(),
         };
         let rep = engine.compute_from_record(&record);
         assert_eq!(rep.transport, "obfs4");
@@ -633,6 +673,7 @@ mod tests {
             test_time: Some("2026-06-28T11:30:00+00:00".to_string()),
             latency_ms: Some(200),
             score: 80,
+            probes: VecDeque::new(),
         };
 
         // Fixture: 6 probes all within the last 30 minutes, so every rolling
@@ -687,5 +728,140 @@ mod tests {
         assert_eq!(one_h["avg_latency_ms"], 200.0);
         assert_eq!(one_h["min_latency_ms"], 200.0);
         assert_eq!(one_h["max_latency_ms"], 200.0);
+    }
+
+    #[test]
+    fn compute_all_aggregates_stored_probe_history_per_window() {
+        let now = fixed_now();
+        let mut mgr = temp_manager(now);
+        mgr.add_bridge("obfs4 1.2.3.4:443", "obfs4");
+        // Stored multi-probe history across ages, matching the known bucket
+        // fixture: 30m (pass 50ms), 5h (pass 60ms), 40d (fail).
+        mgr.record_probe_at(
+            "obfs4 1.2.3.4:443",
+            now - Duration::minutes(30),
+            true,
+            Some(50),
+        );
+        mgr.record_probe_at(
+            "obfs4 1.2.3.4:443",
+            now - Duration::hours(5),
+            true,
+            Some(60),
+        );
+        mgr.record_probe_at("obfs4 1.2.3.4:443", now - Duration::days(40), false, None);
+
+        let engine = ReputationEngine::new(now);
+        let reps = engine.compute_all(&mgr);
+        let rep = reps
+            .get("obfs4 1.2.3.4:443")
+            .expect("bridge has reputation");
+        // Real per-window aggregation from the STORED log. Single-record
+        // synthesis would put exactly one probe in the 1h window only.
+        let expected: &[(&str, usize)] = &[
+            ("1h", 1),
+            ("6h", 2),
+            ("24h", 2),
+            ("7d", 2),
+            ("30d", 2),
+            ("90d", 3),
+        ];
+        for &(label, probes) in expected {
+            let ws = rep.windows.get(label).unwrap();
+            assert_eq!(ws.probes, probes, "window {label} probe count");
+        }
+        assert_eq!(rep.windows.get("90d").unwrap().failures, 1);
+        assert_eq!(rep.windows.get("6h").unwrap().failures, 0);
+        assert_eq!(rep.total_probes, 12); // 1+2+2+2+2+3
+    }
+
+    #[test]
+    fn compute_all_exact_fixture_via_stored_history() {
+        let now = fixed_now();
+        let mut mgr = temp_manager(now);
+        mgr.add_bridge("obfs4 9.9.9.9:443", "obfs4");
+        // 6 probes all within the last 30 minutes: 4 successes @ 200ms, 2 fails.
+        let probes: &[(i64, bool, Option<i64>)] = &[
+            (5, true, Some(200)),
+            (10, true, Some(200)),
+            (15, true, Some(200)),
+            (20, true, Some(200)),
+            (25, false, None),
+            (30, false, None),
+        ];
+        for &(mins, passed, lat) in probes {
+            mgr.record_probe_at(
+                "obfs4 9.9.9.9:443",
+                now - Duration::minutes(mins),
+                passed,
+                lat,
+            );
+        }
+        let engine = ReputationEngine::new(now);
+        let reps = engine.compute_all(&mgr);
+        let rep = reps
+            .get("obfs4 9.9.9.9:443")
+            .expect("bridge has reputation");
+        // Identical hand-derived values to the direct-tuple fixture: every
+        // window sees 6 probes (4 ok / 2 fail), stability 75.0.
+        for &(label, probes, successes, failures) in &[
+            ("1h", 6, 4, 2),
+            ("6h", 6, 4, 2),
+            ("24h", 6, 4, 2),
+            ("7d", 6, 4, 2),
+            ("30d", 6, 4, 2),
+            ("90d", 6, 4, 2),
+        ] {
+            let ws = rep.windows.get(label).expect("window present");
+            assert_eq!(ws.probes, probes, "{label} probe count");
+            assert_eq!(ws.successes, successes, "{label} successes");
+            assert_eq!(ws.failures, failures, "{label} failures");
+            assert_eq!(ws.min_latency_ms, Some(200.0), "{label} min latency");
+            assert_eq!(ws.max_latency_ms, Some(200.0), "{label} max latency");
+        }
+        assert_eq!(rep.total_probes, 36);
+        assert!((rep.stability_score - 75.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn compute_all_falls_back_to_single_record_without_probe_history() {
+        let now = fixed_now();
+        // Simulate a legacy on-disk record (no probes) via a JSON file so the
+        // manager loads it exactly as pre-feature data would.
+        let dir = std::env::temp_dir().join(format!("rep_legacy_{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let path = dir.join("hist.json");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            &path,
+            serde_json::to_string_pretty(&json!({
+                "obfs4 1.2.3.4:443": {
+                    "raw": "obfs4 1.2.3.4:443",
+                    "transport": "obfs4",
+                    "first_seen": "2026-06-27T12:00:00+00:00",
+                    "last_seen": "2026-06-28T11:00:00+00:00",
+                    "test_pass": true,
+                    "test_time": "2026-06-28T11:00:00+00:00",
+                    "latency_ms": 42,
+                    "score": 75,
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let mgr =
+            HistoryManager::new(&path, &dir.join("bridge"), &dir.join("export"), now).unwrap();
+        let engine = ReputationEngine::new(now);
+        let reps = engine.compute_all(&mgr);
+        let rep = reps
+            .get("obfs4 1.2.3.4:443")
+            .expect("legacy bridge gets a reputation");
+        // Fallback synthesis: the single test_time probe (exactly 1h old) is
+        // within all six windows, so each window counts 1 probe/success and
+        // `total_probes` — the sum across windows — is 6, not 1.
+        assert_eq!(rep.windows.get("1h").unwrap().probes, 1);
+        assert_eq!(rep.windows.get("1h").unwrap().successes, 1);
+        assert_eq!(rep.total_probes, 6);
+        assert!(rep.stability_score > 0.0);
     }
 }
