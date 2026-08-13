@@ -32,6 +32,7 @@
 //! - `REGIONAL_DEGRADED`: <50% regions pass, bridge may be geo-blocked
 //! - `REGIONAL_FAIL`: ≥1 region reports active blocking pattern
 //! - `UNREACHABLE`: No region can connect at all
+//! - `INSUFFICIENT_DATA`: no probe observations recorded (nothing to classify)
 //! - `REGIONAL_UNKNOWN`: exactly one probe observation (never a verdict)
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -734,5 +735,187 @@ mod tests {
         .map(|s| s.code())
         .collect();
         assert_eq!(codes.len(), 7);
+    }
+
+    /// Build an aggregator from deterministic fixture tuples and a set of
+    /// infra-failed regions. Fully reachable = (tcp, tls, transport) all true.
+    fn agg_from(
+        outcomes: &[(Region, bool, bool, bool, bool)],
+        failed: &[Region],
+    ) -> MultiVantageAggregator {
+        let mut agg = MultiVantageAggregator::new();
+        for &(region, tcp, tls, transport, blocking) in outcomes {
+            agg.record(make_outcome(region, tcp, tls, transport, blocking));
+        }
+        for &region in failed {
+            agg.record_region_failure(region);
+        }
+        agg
+    }
+
+    /// (name, expected status, expected score, probe outcomes, failed regions)
+    type FixtureCase = (
+        &'static str,
+        MultiVantageStatus,
+        f64,
+        &'static [(Region, bool, bool, bool, bool)],
+        &'static [Region],
+    );
+
+    #[test]
+    fn full_spectrum_verdicts_with_hand_derived_values() {
+        // Deterministic, no network. Every verdict and its numeric_score is
+        // hand-derived from the documented decision logic in `assess()`.
+        let cases: &[FixtureCase] = &[
+            (
+                "all probed regions fully reachable, no infra failure -> GLOBAL_PASS",
+                MultiVantageStatus::GlobalPass,
+                1.0,
+                &[
+                    (Region::Europe, true, true, true, false),
+                    (Region::NorthAmerica, true, true, true, false),
+                    (Region::Asia, true, true, true, false),
+                ],
+                &[],
+            ),
+            (
+                "2/4 fully reachable = exactly the 0.5 threshold -> GLOBAL_DEGRADED",
+                MultiVantageStatus::GlobalDegraded,
+                0.75,
+                &[
+                    (Region::Europe, true, true, true, false),
+                    (Region::NorthAmerica, true, true, true, false),
+                    (Region::Asia, true, false, false, false),
+                    (Region::MiddleEast, true, false, false, false),
+                ],
+                &[],
+            ),
+            (
+                "1/4 fully reachable < 0.5 but TCP reachable -> REGIONAL_DEGRADED",
+                MultiVantageStatus::RegionalDegraded,
+                0.4,
+                &[
+                    (Region::Europe, true, true, true, false),
+                    (Region::NorthAmerica, false, false, false, false),
+                    (Region::Asia, false, false, false, false),
+                    (Region::MiddleEast, false, false, false, false),
+                ],
+                &[],
+            ),
+            (
+                "active blocking in one region trumps majority pass -> REGIONAL_FAIL",
+                MultiVantageStatus::RegionalFail,
+                0.15,
+                &[
+                    (Region::Europe, true, true, true, false),
+                    (Region::NorthAmerica, true, true, true, false),
+                    (Region::MiddleEast, true, false, false, true),
+                ],
+                &[],
+            ),
+            (
+                "no region connects at any level -> UNREACHABLE",
+                MultiVantageStatus::Unreachable,
+                0.0,
+                &[
+                    (Region::Europe, false, false, false, false),
+                    (Region::NorthAmerica, false, false, false, false),
+                ],
+                &[],
+            ),
+            (
+                "zero observations -> INSUFFICIENT_DATA",
+                MultiVantageStatus::InsufficientData,
+                0.0,
+                &[],
+                &[],
+            ),
+            (
+                "single fully-reachable observation -> REGIONAL_UNKNOWN, never a verdict",
+                MultiVantageStatus::RegionalUnknown,
+                0.0,
+                &[(Region::Europe, true, true, true, false)],
+                &[],
+            ),
+            (
+                "single active-blocking observation -> REGIONAL_UNKNOWN, never a verdict",
+                MultiVantageStatus::RegionalUnknown,
+                0.0,
+                &[(Region::Europe, true, false, false, true)],
+                &[],
+            ),
+            (
+                "single observation + one infra-failed region -> REGIONAL_UNKNOWN",
+                MultiVantageStatus::RegionalUnknown,
+                0.0,
+                &[(Region::Europe, true, true, true, false)],
+                &[Region::NorthAmerica],
+            ),
+            (
+                "all probed pass but one region infra-failed -> GLOBAL_DEGRADED, not GLOBAL_PASS",
+                MultiVantageStatus::GlobalDegraded,
+                0.75,
+                &[
+                    (Region::Europe, true, true, true, false),
+                    (Region::NorthAmerica, true, true, true, false),
+                ],
+                &[Region::MiddleEast],
+            ),
+        ];
+
+        for (name, expected_status, expected_score, outcomes, failed) in cases {
+            let agg = agg_from(outcomes, failed);
+            let actual = agg.assess();
+            assert_eq!(
+                actual,
+                *expected_status,
+                "case `{name}`: expected {} got {}",
+                expected_status.code(),
+                actual.code()
+            );
+            assert_eq!(
+                actual.numeric_score(),
+                *expected_score,
+                "case `{name}`: numeric_score mismatch"
+            );
+        }
+    }
+
+    #[test]
+    fn evidence_report_exact_values_for_deterministic_fixture() {
+        // Deterministic timestamps so probe_window_secs is hand-computable.
+        let mut o1 = make_outcome(Region::Europe, true, true, true, false);
+        o1.probed_at = 1000.0;
+        let mut o2 = make_outcome(Region::NorthAmerica, true, true, true, false);
+        o2.probed_at = 1050.0;
+        let mut o3 = make_outcome(Region::Asia, true, true, true, false);
+        o3.probed_at = 1100.0;
+
+        let mut agg = MultiVantageAggregator::new();
+        agg.record(o1);
+        agg.record(o2);
+        agg.record(o3);
+        agg.record_region_failure(Region::MiddleEast);
+
+        // 3 fully reachable of 3 probed + 1 infra-failed region: fraction is
+        // 3/4 = 0.75 >= 0.5, but failed != 0 so GLOBAL_PASS is excluded ->
+        // GLOBAL_DEGRADED with exact, hand-derived report values.
+        let report = agg.evidence_report();
+        assert_eq!(report["status"], "GLOBAL_DEGRADED");
+        assert_eq!(report["regions_probed"], 3);
+        assert_eq!(report["regions_failed"], 1);
+        assert_eq!(report["fully_reachable"], 3);
+        assert_eq!(report["active_blocking_detected"], 0);
+        assert_eq!(report["numeric_score"], 0.75);
+        assert_eq!(report["probe_window_secs"], 100.0);
+        assert_eq!(report["pass_threshold"], 0.5);
+        let regions = report["regions"].as_object().unwrap();
+        assert_eq!(regions.len(), 3);
+        for label in ["EU", "NA", "AS"] {
+            assert!(regions.contains_key(label), "missing region {label}");
+        }
+        let failed_ids = report["failed_region_ids"].as_array().unwrap();
+        assert_eq!(failed_ids.len(), 1);
+        assert_eq!(failed_ids[0], "ME");
     }
 }
