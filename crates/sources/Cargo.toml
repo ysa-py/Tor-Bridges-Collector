@@ -1,0 +1,22 @@
+[package]
+name = "tbc-sources"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Pluggable bridge collectors behind a trait Source, with rate limits, backoff, circuit breakers, ETag caching, and provenance."
+
+[dependencies]
+tbc-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+url = "=2.5.8"
+rand = "=0.8.6"
+
+[dev-dependencies]
+proptest = "=1.4.0"
