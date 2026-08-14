@@ -1,0 +1,33 @@
+[package]
+name = "tbc-vantage"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "In-country measurement adapters (RIPE Atlas, Globalping, OONI, volunteer agent) behind a quota-guarded trait Vantage."
+
+[dependencies]
+tbc-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+url = "=2.5.8"
+
+# Mirror the root crate's arm-musl pattern: the hosted ARMv7-musl CI job is
+# a Rust type-check with no C cross-compiler, so TLS deps (rustls/ring) must
+# stay out of that graph. HTTP APIs used by this crate (Client/headers) are
+# TLS-agnostic, so the feature-less reqwest compiles identically.
+[target.'cfg(not(all(target_arch = "arm", target_env = "musl")))'.dependencies]
+reqwest = { workspace = true }
+
+[target.'cfg(all(target_arch = "arm", target_env = "musl"))'.dependencies]
+reqwest = { version = "=0.12.22", default-features = false, features = ["json", "multipart", "blocking"] }
+
+[dev-dependencies]
+tbc-core = { path = "../core" }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }

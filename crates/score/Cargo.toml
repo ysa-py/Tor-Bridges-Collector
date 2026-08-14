@@ -1,0 +1,17 @@
+[package]
+name = "tbc-score"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Deterministic per-ASN bridge scoring: freshness decay, burn-rate penalty, confidence, and tiering."
+
+[dependencies]
+tbc-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+proptest = "=1.4.0"

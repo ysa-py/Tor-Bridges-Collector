@@ -1,0 +1,19 @@
+[package]
+name = "tbc-publish"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Deterministic multi-format publication: text lists, versioned JSON snapshots, reproducible ZIP archives, and SHA-256 manifests."
+
+[dependencies]
+tbc-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+sha2 = "=0.10.9"
+zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
+
+[dev-dependencies]
+proptest = "=1.4.0"

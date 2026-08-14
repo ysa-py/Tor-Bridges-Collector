@@ -1,0 +1,21 @@
+[package]
+name = "tbc-transports"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Wire-format codecs for the Tor pluggable transports: obfs4, WebTunnel, vanilla OR, Snowflake rendezvous, and meek."
+
+[dependencies]
+tbc-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+base64 = "=0.22.1"
+sha2 = "=0.10.9"
+hmac = "=0.12.1"
+url = "=2.5.8"
+
+[dev-dependencies]
+chrono = { workspace = true }
+proptest = "=1.4.0"

@@ -1,0 +1,20 @@
+[package]
+name = "xtask"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Build/release/schema-gen automation for the workspace (crate 11)."
+
+[[bin]]
+name = "xtask"
+path = "src/bin/xtask.rs"
+
+[dependencies]
+tbc-core = { path = "../core" }
+tbc-publish = { path = "../publish" }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }

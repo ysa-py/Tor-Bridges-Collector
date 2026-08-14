@@ -1,0 +1,25 @@
+[package]
+name = "tbc-agent"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Volunteer in-country agent: serves the AgentVantage POST /probe wire protocol and runs reachability measurements with rate and concurrency guards."
+
+[dependencies]
+tbc-core = { path = "../core" }
+tbc-prober = { path = "../prober" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+tokio = { workspace = true, features = ["net", "sync"] }
+chrono = { workspace = true }
+rand = "=0.8.6"
+
+[dev-dependencies]
+tbc-core = { path = "../core" }
+tbc-prober = { path = "../prober" }
+serde_json = { workspace = true }
+tokio = { workspace = true, features = ["net", "sync"] }
