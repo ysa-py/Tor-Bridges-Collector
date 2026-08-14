@@ -1,0 +1,20 @@
+[package]
+name = "tbc-k-anonymity"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "k-anonymity threshold enforcement for anonymized measurement reports (Phase-2 item 2)."
+
+[[bin]]
+name = "k-anon-check"
+path = "src/bin/k-anon-check.rs"
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true, features = ["serde"] }
+
+[dev-dependencies]
+serde_json = { workspace = true }
