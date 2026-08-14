@@ -2391,6 +2391,45 @@ dependencies = [
 ]
 
 [[package]]
+name = "tbc-agent"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "rand 0.8.6",
+ "serde",
+ "serde_json",
+ "tbc-core",
+ "tbc-prober",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "tbc-cli"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde_json",
+ "tbc-agent",
+ "tbc-core",
+ "tbc-publish",
+ "tbc-score",
+ "thiserror",
+]
+
+[[package]]
+name = "tbc-consent"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "tbc-core"
 version = "0.1.0"
 dependencies = [
@@ -2400,6 +2439,47 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror",
+ "url",
+]
+
+[[package]]
+name = "tbc-field-allowlist"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tbc-agent",
+ "tbc-core",
+ "thiserror",
+]
+
+[[package]]
+name = "tbc-k-anonymity"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "tbc-prober"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "chrono",
+ "hmac",
+ "rand 0.8.6",
+ "serde",
+ "serde_json",
+ "sha1",
+ "sha2",
+ "tbc-core",
+ "tbc-transports",
+ "thiserror",
+ "tokio",
+ "tracing",
  "url",
 ]
 
@@ -2459,6 +2539,37 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+]
+
+[[package]]
+name = "tbc-transports"
+version = "0.1.0"
+dependencies = [
+ "base64",
+ "chrono",
+ "hmac",
+ "proptest",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tbc-core",
+ "thiserror",
+ "url",
+]
+
+[[package]]
+name = "tbc-vantage"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "tbc-core",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "url",
 ]
 
 [[package]]
@@ -3299,6 +3410,16 @@ name = "writeable"
 version = "0.5.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e9df38ee2d2c3c5948ea468a8406ff0db0b29ae1ffde1bcf20ef305bcc95c51"
+
+[[package]]
+name = "xtask"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tbc-core",
+ "tbc-publish",
+ "thiserror",
+]
 
 [[package]]
 name = "yoke"

@@ -1,0 +1,25 @@
+[package]
+name = "tbc-field-allowlist"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "Schema-enforced reported-field allowlist for anonymized Phase-5 reports (Phase-2 item 3)."
+
+[[bin]]
+name = "field-check"
+path = "src/bin/field-check.rs"
+
+[dependencies]
+# The real upstream producer types (Outcome, RttBucket, AsnClass,
+# ReportSource, OneTimeToken) are the contract source of truth — this crate
+# enforces their wire format at the ingestion boundary instead of redefining
+# stub copies.
+tbc-agent = { path = "../agent" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tbc-core = { path = "../core" }
