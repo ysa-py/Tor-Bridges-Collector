@@ -1,0 +1,25 @@
+# cargo-audit configuration — accepted-risk advisory exemptions.
+#
+# `cargo audit` (run in CI by the security-audit job of main-ci.yml) scans
+# the full Cargo.lock. The two advisories below are **accepted-risk with a
+# written reason**, not skipped checks: each is transitive, has NO fixed
+# upgrade available, and is not on any sensitive runtime path. The audit
+# gate still runs and fails on any new advisory.
+[advisories]
+ignore = [
+    # RUSTSEC-2023-0071 — rsa 0.9.10 "Marvin Attack" (timing side channel).
+    # The advisory database reports "No fixed upgrade is available!" for this
+    # line. rsa is pulled transitively by sqlx-sqlite 0.8.6 (tbc-store's
+    # pinned SQLite driver); the collector performs no RSA signing, RSA key
+    # handling, or RSA-based TLS, so the Marvin side channel cannot be
+    # reached from any code path in this workspace. Tracked: re-evaluate when
+    # sqlx publishes a release with an updated rsa.
+    "RUSTSEC-2023-0071",
+
+    # RUSTSEC-2025-0057 — fxhash 0.2.1 unmaintained. There is no maintained
+    # replacement version. fxhash is pulled transitively by selectors →
+    # scraper → the legacy source parser; it is a non-cryptographic hash used
+    # for HTML parsing caches only. Tracked: re-evaluate when html5ever/
+    # scraper move off fxhash.
+    "RUSTSEC-2025-0057",
+]
