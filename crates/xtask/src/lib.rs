@@ -43,7 +43,11 @@ pub use task::{
 };
 
 /// Dispatch a parsed [`Task`], writing human-readable progress to `out`.
-pub fn dispatch(task: &Task, runner: &dyn Runner, writer: &mut dyn Write) -> Result<(), XtaskError> {
+pub fn dispatch(
+    task: &Task,
+    runner: &dyn Runner,
+    writer: &mut dyn Write,
+) -> Result<(), XtaskError> {
     match task {
         Task::Help => {
             let text = args::usage();

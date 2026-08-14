@@ -29,8 +29,15 @@
 
 pub mod error;
 pub mod snapshot;
+// The SQLite-backed `Store` depends on `sqlx`'s `sqlite` feature, which pulls
+// `libsqlite3-sys`'s bundled C build. The hosted ARMv7-musl CI job is a Rust
+// type-check with no C cross-compiler, so that module is excluded from the
+// arm-musl graph (mirroring how the root crate keeps `ring` out of it). The
+// snapshot/error surface still type-checks on that target.
+#[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 pub mod store;
 
 pub use error::StoreError;
 pub use snapshot::{write_atomic, ScoredBridge, Snapshot, SNAPSHOT_SCHEMA_VERSION};
+#[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 pub use store::{BridgeRecord, Store};

@@ -10,10 +10,17 @@ use thiserror::Error;
 #[derive(Debug, Error)]
 pub enum StoreError {
     /// A query, connection, or transaction failure reported by SQLx.
+    ///
+    /// Excluded from the ARMv7-musl type-check graph: `sqlx::Error` only
+    /// exists there if the `sqlite` feature is compiled, and that feature
+    /// pulls `libsqlite3-sys`'s bundled C build (no arm-musl cross compiler
+    /// on the hosted runner). See `Cargo.toml` for the target-gated `sqlx`.
+    #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
     #[error("database error: {0}")]
     Database(#[from] sqlx::Error),
 
     /// A schema migration failure (e.g. a versioned migration did not apply).
+    #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
     #[error("schema migration error: {0}")]
     Migration(#[from] sqlx::migrate::MigrateError),
 

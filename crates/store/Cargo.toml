@@ -14,11 +14,21 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
 chrono = { workspace = true }
+
+[dev-dependencies]
+tempfile = "=3.10.1"
+
 # SQLite only: bundled libsqlite3 (no system dependency), tokio runtime,
 # embedded migrations, and the derive/query macros. `macros` is pulled in for
 # `#[derive(FromRow)]`; queries themselves are runtime-checked and covered by
 # the integration test suite (see `src/store.rs` for the rationale).
+#
+# Mirror the root crate's arm-musl pattern: the hosted ARMv7-musl CI job is a
+# Rust type-check with no C cross-compiler. `sqlx`'s `sqlite` feature pulls
+# `libsqlite3-sys`, which compiles bundled sqlite3.c through `cc-rs` and needs
+# `arm-linux-musleabihf-gcc` (absent from ubuntu-latest and not installable
+# from Ubuntu repos). The SQLite-backed `Store` is therefore excluded from the
+# arm-musl type-check graph (`src/store.rs` is cfg-gated); the snapshot and
+# error surface still type-checks on that target.
+[target.'cfg(not(all(target_arch = "arm", target_env = "musl")))'.dependencies]
 sqlx = { version = "=0.8.6", default-features = false, features = ["sqlite", "runtime-tokio", "migrate", "macros"] }
-
-[dev-dependencies]
-tempfile = "=3.10.1"
