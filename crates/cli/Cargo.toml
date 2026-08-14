@@ -1,0 +1,24 @@
+[package]
+name = "tbc-cli"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "The `tbc` subcommand surface that wires the pipeline crates together."
+
+[[bin]]
+name = "tbc"
+path = "src/bin/tbc.rs"
+
+[dependencies]
+tbc-core = { path = "../core" }
+tbc-score = { path = "../score" }
+tbc-publish = { path = "../publish" }
+tbc-agent = { path = "../agent" }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+serde_json = { workspace = true }
+chrono = { workspace = true }

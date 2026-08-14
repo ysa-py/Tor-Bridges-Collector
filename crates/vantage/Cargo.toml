@@ -1,0 +1,24 @@
+[package]
+name = "tbc-vantage"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.75"
+publish = false
+description = "In-country measurement adapters (RIPE Atlas, Globalping, OONI, volunteer agent) behind a quota-guarded trait Vantage."
+
+[dependencies]
+tbc-core = { path = "../core" }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+tracing = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+url = "=2.5.8"
+
+[dev-dependencies]
+tbc-core = { path = "../core" }
+serde_json = { workspace = true }
+chrono = { workspace = true }
+tokio = { workspace = true }

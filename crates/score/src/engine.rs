@@ -322,9 +322,12 @@ impl ScoreEngine {
         let distinct_vantages = vantages.len() as u32;
         let working_count = working_vantages.len() as u32;
 
-        // Freshness-weighted score over the evidence classes.
+        // Freshness-weighted score over the evidence classes. The clamp is
+        // not cosmetic: `100 * working_weight / total` can round to
+        // `100.00000000000001` when the two weighted sums are equal, which
+        // would otherwise violate the `0.0..=100.0` invariant.
         let raw = if total > 0.0 {
-            100.0 * working_weight / total
+            (100.0 * working_weight / total).clamp(0.0, 100.0)
         } else {
             0.0
         };
