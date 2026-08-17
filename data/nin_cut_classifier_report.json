@@ -1529,6 +1529,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "31.104.35.172",
+      "port": 9877,
+      "raw": "obfs4 31.104.35.172:9877 E867187EE0B9D6F531395A41B5ECC4D5CD3BAB23 cert=EH1hAv/F7C51YMPJ6dqHFxgV2jjkbsbfCn2lndnXKXnSxYEJDkE5+058kdSXTh81RiiHBw iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "31.171.241.238",
       "port": 8414,
       "raw": "obfs4 31.171.241.238:8414 811115E721E9B530A3BA41D3FCE6B71D64E4DC5A cert=Sye+7gmUheN9ohPm8TV1pyNiuMwr4NMAKJXC3p6Du8m56VyorhG6S7u2NgklFS91rwpKBA iat-mode=0",
@@ -1716,6 +1724,14 @@
       "ip": "46.110.14.79",
       "port": 447,
       "raw": "obfs4 46.110.14.79:447 893F11D8F4E0874087DFEA265E04842894049D2D cert=avQJlcOmfVkbjGd1iVHHKljCgT2WIuW4OVavF5duLG/bNQB4nBUf4yCi0AMVVK4CImTWbw iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
+      "ip": "46.126.111.12",
+      "port": 4321,
+      "raw": "obfs4 46.126.111.12:4321 84EC89D94CD56DD7EE8B777403A0986C010E566D cert=mWrfxk4f+S5CwbRaEJKVtrkm8xBijpuDXEXedyKpyi961jCOyiarjlKl2AdBP4/CzFjIIQ iat-mode=0",
       "sni": "",
       "tier": "RED",
       "transport": "obfs4"
@@ -2020,14 +2036,6 @@
       "ip": "72.77.94.224",
       "port": 4158,
       "raw": "obfs4 72.77.94.224:4158 56A3F579D7F0285F66BE813BE2ED3665DC5152DC cert=ZTVUjntc/9Af5J1O3w89mEBBvTIDOprHpmuhU+V8c30cooHb5H/HDW7BLzqKm3rhKBtSWw iat-mode=0",
-      "sni": "",
-      "tier": "RED",
-      "transport": "obfs4"
-    },
-    {
-      "ip": "74.208.183.104",
-      "port": 46396,
-      "raw": "obfs4 74.208.183.104:46396 836E0FBF30228326555C6D483CE05FF2C9DBDB0C cert=GVzYnaq/9YmAkZJzkFeoBg2St6sQ0uogucBUT+ZE22Ad/FaABbqunulB5FmTb6reevP8SA iat-mode=0",
       "sni": "",
       "tier": "RED",
       "transport": "obfs4"
@@ -2894,10 +2902,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-17T07:46:10.763466+00:00",
+  "generated_at": "2026-08-17T10:37:15.684766+00:00",
   "green_count": 5,
-  "red_count": 249,
+  "red_count": 250,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 361,
+  "total_bridges": 362,
   "yellow_count": 107
 }
