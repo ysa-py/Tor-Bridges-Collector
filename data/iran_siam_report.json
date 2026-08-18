@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-18T10:30:10.293151+00:00",
+  "generated_at": "2026-08-18T13:38:49.452347+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -3204,6 +3204,30 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 217.230.175.233:8080 B7E8B832F055435293840D69FE476AA6143C0449 cert=X2IIgewaeED2fctW8uSAd9NTsq8fP3uhsm7yS6QUC3k/NdXvEMtJelEz/t3X5SnmFCnHJQ iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6395,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 8080,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 23.136.20.234:8443 2DF354DFB45E818F3437B525A312166ACE94D2F0 cert=bNk4dmMz77mVUxInj7ca7++JO8RceUxXzLkBAD3fQg3/yxoVfH5l0GtQ8FcNpjrkgyzhLQ iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
@@ -3325,6 +3349,30 @@
     },
     {
       "bridge_line": "obfs4 37.228.129.84:8443 6CE81F88D8C686EDB7A6CEBBF6FA257D4D4C0AF9 cert=2TzCqNYkQPFedZNEinALcWWz4aLdwgZbEwKze73fb7TdbGMQYecC1qHeTYMWuwsLl3XRAA iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6395,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 8443,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 37.27.221.199:8443 F027936AF60380D5C518840F56325580C3AA56AE cert=TWXG3gh/WWzgfwIlF6gfiTuMd3da3dqgZF4leSWj8z6g4JBYlBQMS1AO7FNm6gG3qh9oMQ iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -34293,14 +34341,14 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 991,
+    "COVERT": 993,
     "DETECTED": 470,
     "PHANTOM": 4,
     "STEALTH": 64
   },
-  "total_scored": 1529,
+  "total_scored": 1531,
   "transport_summary": {
-    "obfs4": 1050,
+    "obfs4": 1052,
     "snowflake": 2,
     "vanilla": 470,
     "webtunnel": 7
