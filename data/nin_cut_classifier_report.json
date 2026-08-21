@@ -753,6 +753,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "181.118.218.29",
+      "port": 4443,
+      "raw": "obfs4 181.118.218.29:4443 F1555089C07B70D7B9513FE19F2A630D03460FAC cert=T6S21IP6FyvyuE/07jJYmhp8Qtv6gUbUK6Pk2SPsnzHSt62zUBkbXFCmXdBdm8bl7syUEw iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "185.117.73.71",
       "port": 31337,
       "raw": "obfs4 185.117.73.71:31337 E315A7F8A5E2C1B4819D09D79C5A627D65C182AB cert=6A8hJlnBlk8wNW7PolPyT+i2RBsVLSrE8OS5ikV2d7tyHq0e3bO6coI6kAjRkJNtzZAmJA iat-mode=0",
@@ -2697,6 +2705,22 @@
       "transport": "obfs4"
     },
     {
+      "ip": "91.116.161.79",
+      "port": 8080,
+      "raw": "obfs4 91.116.161.79:8080 273CF59DF788E98F21D4A2449AFFC9A8A65327F9 cert=JIq3mrt5UR2N/5B2hLslJpcujxa3ThmdOUHVDjBSFbaW31hWRv5fn/gXBAKS81gqJT0iOg iat-mode=0",
+      "sni": "",
+      "tier": "YELLOW",
+      "transport": "obfs4"
+    },
+    {
+      "ip": "91.118.31.104",
+      "port": 1194,
+      "raw": "obfs4 91.118.31.104:1194 6705A703015B05CAD535D7CEE4D82581B7BDBA0A cert=D2L0LtHOwrhgVjk0/hlG7p1ydTm3aAMSGg6y+JkKCvqiHbGsY/3ULK0t2tgsYGDCZeTVdA iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "91.134.45.152",
       "port": 60506,
       "raw": "obfs4 91.134.45.152:60506 7AE2E2B622A5C1EAAB63C203B7C58788F502F4D0 cert=+r7Hj14Ox6vxKCQu5hkGPHp7f0NxAqE3hgysGruyC4yuMaU/9MJuNBXZy0znzk3q6O2cYw iat-mode=0",
@@ -3030,10 +3054,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-08-21T10:36:38.285981+00:00",
+  "generated_at": "2026-08-21T13:42:46.338654+00:00",
   "green_count": 5,
-  "red_count": 263,
+  "red_count": 265,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 378,
-  "yellow_count": 110
+  "total_bridges": 381,
+  "yellow_count": 111
 }
