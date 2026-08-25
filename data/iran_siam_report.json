@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-08-25T02:10:53.715925+00:00",
+  "generated_at": "2026-08-25T04:50:49.334322+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -1763,6 +1763,29 @@
       },
       "layers_bypassed": 5,
       "port": 990,
+      "recommendation": "⚠️ متوسط — برخی لایه‌های SIAM تشخیص می‌دهند | Moderate: some SIAM layers detect",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 [2a01:4f8:172:32c2::2]:8443 B936843580813CCE420C4FC545638FC26531DB7B cert=Zk9OeKkdAEtMCy+kL4joLl6UEURZLpHLnzcuf4IuFCy8Hh/Lzb/GME4F0Bvg4xRdY+MMMw iat-mode=1",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_1_evasion"
+      ],
+      "iran_siam_score": 0.7112,
+      "layer_scores": {
+        "L1_packet_length": 0.85,
+        "L2_iat_timing": 0.78,
+        "L3_flow_features": 0.8,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.72,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 5,
+      "port": null,
       "recommendation": "⚠️ متوسط — برخی لایه‌های SIAM تشخیص می‌دهند | Moderate: some SIAM layers detect",
       "transport": "obfs4"
     },
@@ -4139,6 +4162,30 @@
     },
     {
       "bridge_line": "obfs4 77.232.137.18:8080 0DED21AE18BC79B4CAA18F48F1A1916940A291FF cert=U1q52wj1uiMHEVtFb3GTu3M9yaGvHgYF62VJNmVSA4dfa/nupzBxc/HEqBKgCSTwgVf3TQ iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6395,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 8080,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 77.81.138.31:8080 F46D356081BB8857A972C2AF9253217B2F89A01F cert=djDcjoXEan+VCxDqBDrOMyArtYnMkpmU/0WvSor1j04Qtah1Z+Hj+2doaH7MbhUJhv+DRA iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -16158,6 +16205,29 @@
       },
       "layers_bypassed": 2,
       "port": 58243,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 89.58.39.201:55555 D05ADE9CF0D979211CAFB358633B9805D71B5361 cert=kpBioJVNiDLCnhAsQpk32UDmai41GxuR75QYT2KtmOF2ckQicKdYI4co1ggM4IMvQ//1Aw iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 55555,
       "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
       "transport": "obfs4"
     },
@@ -32750,6 +32820,26 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 87.62.98.28:9002 150530E71DF116D514AF6E04C2EC18F16803FF72",
+      "bypass_tier": "DETECTED",
+      "evasion_flags": [],
+      "iran_siam_score": 0.2171,
+      "layer_scores": {
+        "L1_packet_length": 0.02,
+        "L2_iat_timing": 0.05,
+        "L3_flow_features": 0.04,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.05,
+        "L6_alpn_anomaly": 0.03,
+        "L7_temporal": 0.02,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 1,
+      "port": 9002,
+      "recommendation": "🚫 بلاک می‌شود — سیستم SIAM کاملاً تشخیص می‌دهد | Will be blocked by SIAM system",
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 88.167.249.137:49000 C9C514004AC8F3AE8AC41135D7D125F19617C459",
       "bypass_tier": "DETECTED",
       "evasion_flags": [],
@@ -35593,16 +35683,16 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 1045,
-    "DETECTED": 470,
+    "COVERT": 1048,
+    "DETECTED": 471,
     "PHANTOM": 4,
     "STEALTH": 66
   },
-  "total_scored": 1585,
+  "total_scored": 1589,
   "transport_summary": {
-    "obfs4": 1106,
+    "obfs4": 1109,
     "snowflake": 2,
-    "vanilla": 470,
+    "vanilla": 471,
     "webtunnel": 7
   }
 }
