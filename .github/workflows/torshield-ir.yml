@@ -827,12 +827,16 @@ jobs:
       - name: Stage 8i-smart — Smart Iran AI re-ranker (v9.0)
         continue-on-error: true
         timeout-minutes: 8
+        env:
+          # 0 = dynamic: rank/publish the whole deduplicated pool (documented
+          # default); set the AI_RERANK_TOP_N repository variable to cap it.
+          AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
         run: |
           set -euo pipefail
           cargo run --quiet --bin ai_bridge_reranker -- \
             --input bridge/iran_results.json \
             --output data/smart_iran_results.json \
-            --top-n "${AI_RERANK_TOP_N:-20}"
+            --top-n "${AI_RERANK_TOP_N:-0}"
 
       # Stage 8j reads data/dpi_intelligence.json from Stage 8b and rewrites
       # obfuscation parameters when active blocking patterns are detected.
@@ -920,6 +924,23 @@ jobs:
         continue-on-error: true
         timeout-minutes: 6
         run: cargo run --quiet --bin iran_anti_siam
+
+      # Stage 8s fuses the per-run Iran intelligence reports (Stage 8i
+      # anti-AI-DPI scoring, Stage 8r SIAM evasion tiers, Stage 8i-smart
+      # Smart-Iran AI scores) into ONE deduplicated, DPI-hardened,
+      # priority-ordered pack. Deterministic and advisory (runner-side
+      # evidence). Emits the whole surviving pool unless the
+      # AI_ANTI_DPI_TOP_N repository variable caps it — dynamic by default.
+      - name: Stage 8s — Iran Anti-DPI Elite fusion (AI-consensus pack)
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          AI_ANTI_DPI_TOP_N: ${{ vars.AI_ANTI_DPI_TOP_N }}
+        run: |
+          set -euo pipefail
+          bash scripts/build_iran_anti_dpi_elite.sh
+          test -s export/iran_anti_dpi_elite.txt || { echo "::error::Stage 8s produced no elite pack"; exit 1; }
+          echo "✅ Iran Anti-DPI Elite pack: $(wc -l < export/iran_anti_dpi_elite.txt) bridges"
 
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites ALL 55 public bridge/ files, re-renders README.md from the
@@ -1166,6 +1187,8 @@ jobs:
             export/ech_top_bridges.txt
             export/nin_cut_bridges.txt
             export/anti_ai_dpi_bridges.txt
+            export/iran_anti_dpi_elite.txt
+            export/iran_anti_dpi_elite.json
             data/nin_cut_report.json
             data/reality_report.json
             data/ai_consensus_report.json
@@ -1257,13 +1280,18 @@ jobs:
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           BRIDGE_FILE: ${{ inputs.bridge_file || 'bridge/iran_results.json' }}
+          # 0 = dynamic (documented default): rank/publish the whole
+          # deduplicated pool. Cap via the AI_RERANK_TOP_N repository variable.
+          AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
         run: |
           set -euo pipefail
           cargo run --quiet --bin ai_bridge_reranker -- \
             --input "$BRIDGE_FILE" \
             --output bridge/bridges_ai_iran_ranked.json \
             --censorship-level 4 \
-            --top-n "${AI_RERANK_TOP_N:-20}" || true
+            --top-n "${AI_RERANK_TOP_N:-0}" || {
+              echo "::warning::ai_bridge_reranker failed (advisory rerank job) — not failing the workflow, but the failure is visible here"
+            }
           if [ -f bridge/bridges_ai_iran_ranked.json ]; then
             echo "bridge/bridges_ai_iran_ranked.json written (see scorer summary above)"
           fi
