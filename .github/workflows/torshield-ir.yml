@@ -711,7 +711,30 @@ jobs:
           PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
         run: |
           set -euo pipefail
-          bash scripts/probe_relay.sh bridge/bridge_list_for_testing.json data/pt_results.json
+
+          # The relay is supplementary and writes results after every completed
+          # chunk.  Bound the client *inside* the 25-minute Actions step so a
+          # slow/degraded Worker cannot let the platform kill the step and skip
+          # every downstream stage.  On timeout we preserve valid partial
+          # results; only an absent/invalid file is replaced with an empty array.
+          relay_status=0
+          timeout --signal=TERM --kill-after=30s 20m \
+            bash scripts/probe_relay.sh \
+              bridge/bridge_list_for_testing.json \
+              data/pt_results.json || relay_status=$?
+
+          if [ "$relay_status" -eq 124 ] || [ "$relay_status" -eq 137 ]; then
+            echo "::warning::Probe relay reached its 20-minute budget; continuing with partial results"
+          elif [ "$relay_status" -ne 0 ]; then
+            echo "::warning::Probe relay exited with status ${relay_status}; continuing with available results"
+          fi
+
+          if ! jq -e 'type == "array"' data/pt_results.json >/dev/null 2>&1; then
+            echo "::warning::Probe relay did not leave a valid result array; using an empty supplementary result set"
+            printf '[]\n' > data/pt_results.json
+          fi
+
+          echo "Stage 4 completed with $(jq 'length' data/pt_results.json) relay observations"
 
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
