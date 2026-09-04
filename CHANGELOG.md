@@ -3,6 +3,49 @@
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
+## [Session 21] — 2026-09-03 — NIN internet-cut pack finalizer (user-facing iran_cut_pack.txt)
+
+### Found by microscopic audit (data-contract violation)
+- `export/iran_cut_pack.txt` — the file README_FA and the pipeline's own
+  `formatter.rs`/`iran_detector.rs` docs tell Iranian users to use during a
+  **شبکه ملی / national internet cut** — was **empty (0 bridges)** in the
+  committed tree, even though 304 real survivable candidates existed across the
+  run's own NIN-cut artifacts (`data/nin_eligible.json`, `bridge/iran_likely_working_nin.txt`,
+  `export/nin_cut_bridges.txt`, `export/iran_nin_pack.txt`,
+  `export/nin_cut_survivable.txt` — the last alone held 295 probe-based
+  survivable lines).
+- Root cause: the pack is written multiple times by different stages with
+  different strictness. Stage 6b (formatter.rs) writes the broad export, then
+  Stage 8d `nin-pack` (nin_selector.rs) **overwrites the same path** with its
+  strict NIN-eligibility filter (snowflake/webtunnel/meek_lite with
+  CDN/DTLS reachability). In this runner-side snapshot exactly 0 of the 8
+  such bridges were reachable, so the later stage silently clobbered the
+  user-facing file with an empty pack — a real, user-visible error ("empty
+  file in the one place users look during a cut").
+
+### Fixed — additive, fully automatic
+- **`scripts/build_iran_cut_pack.sh` — Stage 8p2 "NIN cut-pack finalizer"**
+  (pure bash + python3 stdlib; touches no Rust) runs in
+  `.github/workflows/torshield-ir.yml` immediately after Stage 8p (the last
+  stage that can add NIN-cut data) and rebuilds `export/iran_cut_pack.txt`
+  from **all five** NIN-cut artifacts in documented priority order with
+  keep-first dedup. Deterministic (no timestamps in the body), honest header
+  with per-source contribution counts, `::error::` when every source is
+  missing. The pack can no longer be silently clobbered by an earlier strict
+  stage.
+- Committed regenerated artifact: **304 unique bridges** (4 from the
+  classifier, 5 from the GREEN pack, 295 probe-survivable) — the empty file
+  users were pointed to is gone.
+- **Invariant audit extended to C11** (`cutpack-freshness`): the committed
+  `export/iran_cut_pack.txt` must be byte-identical to a fresh regeneration —
+  a stale or silently-empty pack now fails CI automatically.
+
+### Verified in-sandbox
+- `scripts/verify_repo_invariants.sh` → **11/11 checks PASSED**, exit 0.
+- Regeneration deterministic (two runs byte-identical); `bash -n` clean on the
+  new script and on every embedded `run: |` block in the edited workflow.
+- 55-file `bridge/` publication contract unchanged; no Rust source touched.
+
 ## [Session 20] — 2026-09-03 — Restored Stage 8s Anti-DPI Elite fusion + always-on invariant audit + dynamic re-rank defaults
 
 Microscopic (line-by-line) audit of the committed tree against its own
