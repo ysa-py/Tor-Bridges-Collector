@@ -243,6 +243,26 @@ def c10_elite_count_consistency():
     record("C10 elite-count", lines == n, f"txt={lines}, json={n}")
 
 
+# ── C11. User-facing iran_cut_pack.txt == fresh Stage 8p2 regeneration ──────
+def c11_cutpack_freshness():
+    p = os.path.join(REPO, "export", "iran_cut_pack.txt")
+    if not os.path.exists(p):
+        record("C11 cutpack-freshness", False, "export/iran_cut_pack.txt missing")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        env = dict(os.environ)
+        env["NIN_CUT_PACK_OUT"] = tmp
+        subprocess.run(
+            ["bash", os.path.join(REPO, "scripts", "build_iran_cut_pack.sh")],
+            env=env, capture_output=True, cwd=REPO, check=True,
+        )
+        fresh = open(os.path.join(tmp, "iran_cut_pack.txt"), encoding="utf-8").read()
+        committed = open(p, encoding="utf-8").read()
+        record("C11 cutpack-freshness", fresh == committed,
+               "byte-identical to fresh regeneration" if fresh == committed
+               else "committed file is stale vs regeneration")
+
+
 def main():
     print("═══ verify_repo_invariants ═══")
     c1_json_parse()
@@ -255,6 +275,7 @@ def main():
     c8_elite_freshness()
     c9_no_panic_traps()
     c10_elite_count_consistency()
+    c11_cutpack_freshness()
     print(f"═══ {len(CHECKS) - len(FAILURES)}/{len(CHECKS)} checks passed ═══")
     if FAILURES:
         for f in FAILURES:
