@@ -3,6 +3,170 @@
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
+## [Session 22] — 2026-09-03 — Phantom-artifact elimination: PQ bridge scores + NIN recommended-transport manifests
+
+### Found by microscopic audit (artifact-contract violation)
+The `bridge-intelligence-report` upload block advertises 45 artifacts. Three
+had **no producer anywhere** — zero writers in `src/` or `scripts/`:
+- `data/pq_bridge_scores.json` (post-quantum bridge scores)
+- `export/nin_recommended_transport.json` (NIN recommended transport)
+- (the third, `diagnostics/torshield_ir_self_heal.json`, is legitimately
+  runtime-only: Stage 00 writes it fresh every run before the upload — not a
+  defect.)
+
+Because the upload uses `if-no-files-found: ignore`, those two files silently
+never existed in any published artifact — the exact silent-failure class this
+project is designed to eliminate.
+
+### Fixed — additive, fully automatic (Stage 8t)
+- **`scripts/build_pq_bridge_scores.sh`** → `data/pq_bridge_scores.json`:
+  post-quantum safety is scored per transport by Stage 8e
+  (`data/quantum_safe_report.json` → `quantum_safe_scores`); the whole
+  1,596-bridge pool + canonical transport comes from Stage 8i
+  (`data/anti_ai_dpi_report.json`). Each bridge inherits its transport's PQ
+  score; manifest is ranked `(pq_score desc, bridge_line asc)` — dynamic-yield,
+  same philosophy as every other pack. Committed artifact scored **1,596/1,596**
+  bridges.
+- **`scripts/build_nin_recommended_transport.sh`** →
+  `export/nin_recommended_transport.json`: per-regime recommendations
+  (normal / degraded / full internet cut) with evidence counts from the
+  NIN-cut artifacts (`nin_cut_survivable.txt` probe-survivable pool +
+  `nin_eligible.json`). Full-cut primary is evidence-derived: **obfs4** (294 of
+  295 probe-survivable lines this run) with top-10 copy-paste candidates.
+- Wired as **Stage 8t** in `.github/workflows/torshield-ir.yml` after Stage 8s,
+  before Stage 9 — both manifests regenerated every run, loudly failing if not
+  produced.
+- Both artifacts were already in the upload list, so they now upload for real.
+
+### Fixed inside the new generator (caught by the audit before commit)
+- The JSON source `data/nin_eligible.json` was text-scanned, so a bare `[]`
+  became a bogus bridge line classified `unknown`, polluting the manifest;
+  JSON sources are now parsed as JSON arrays of records.
+- Transport ordering used Python set iteration for tie-breaks (nondeterministic
+  across processes via hash randomization); ties are now broken
+  alphabetically → byte-deterministic regeneration.
+
+### Verified in-sandbox
+- `verify_repo_invariants.sh` → **13/13 checks PASSED** (new C12
+  `pq-scores-freshness` + C13 `nin-recommended-freshness` compare committed vs
+  fresh regeneration, timestamps excluded). exit 0.
+- Committed `export/iran_cut_pack.txt`, elite artifacts, 55-file `bridge/`
+  contract unchanged; no Rust source touched.
+
+## [Session 21] — 2026-09-03 — NIN internet-cut pack finalizer (user-facing iran_cut_pack.txt)
+
+### Found by microscopic audit (data-contract violation)
+- `export/iran_cut_pack.txt` — the file README_FA and the pipeline's own
+  `formatter.rs`/`iran_detector.rs` docs tell Iranian users to use during a
+  **شبکه ملی / national internet cut** — was **empty (0 bridges)** in the
+  committed tree, even though 304 real survivable candidates existed across the
+  run's own NIN-cut artifacts (`data/nin_eligible.json`, `bridge/iran_likely_working_nin.txt`,
+  `export/nin_cut_bridges.txt`, `export/iran_nin_pack.txt`,
+  `export/nin_cut_survivable.txt` — the last alone held 295 probe-based
+  survivable lines).
+- Root cause: the pack is written multiple times by different stages with
+  different strictness. Stage 6b (formatter.rs) writes the broad export, then
+  Stage 8d `nin-pack` (nin_selector.rs) **overwrites the same path** with its
+  strict NIN-eligibility filter (snowflake/webtunnel/meek_lite with
+  CDN/DTLS reachability). In this runner-side snapshot exactly 0 of the 8
+  such bridges were reachable, so the later stage silently clobbered the
+  user-facing file with an empty pack — a real, user-visible error ("empty
+  file in the one place users look during a cut").
+
+### Fixed — additive, fully automatic
+- **`scripts/build_iran_cut_pack.sh` — Stage 8p2 "NIN cut-pack finalizer"**
+  (pure bash + python3 stdlib; touches no Rust) runs in
+  `.github/workflows/torshield-ir.yml` immediately after Stage 8p (the last
+  stage that can add NIN-cut data) and rebuilds `export/iran_cut_pack.txt`
+  from **all five** NIN-cut artifacts in documented priority order with
+  keep-first dedup. Deterministic (no timestamps in the body), honest header
+  with per-source contribution counts, `::error::` when every source is
+  missing. The pack can no longer be silently clobbered by an earlier strict
+  stage.
+- Committed regenerated artifact: **304 unique bridges** (4 from the
+  classifier, 5 from the GREEN pack, 295 probe-survivable) — the empty file
+  users were pointed to is gone.
+- **Invariant audit extended to C11** (`cutpack-freshness`): the committed
+  `export/iran_cut_pack.txt` must be byte-identical to a fresh regeneration —
+  a stale or silently-empty pack now fails CI automatically.
+
+### Verified in-sandbox
+- `scripts/verify_repo_invariants.sh` → **11/11 checks PASSED**, exit 0.
+- Regeneration deterministic (two runs byte-identical); `bash -n` clean on the
+  new script and on every embedded `run: |` block in the edited workflow.
+- 55-file `bridge/` publication contract unchanged; no Rust source touched.
+
+## [Session 20] — 2026-09-03 — Restored Stage 8s Anti-DPI Elite fusion + always-on invariant audit + dynamic re-rank defaults
+
+Microscopic (line-by-line) audit of the committed tree against its own
+documentation and data contracts. **Nothing was removed.** Two documented
+behaviors from Session 18 turned out to be **missing from the committed
+workflow** (docs ran ahead of the merged code); both are now implemented and
+automatically guarded.
+
+### Fixed — documented feature was missing from the actual pipeline
+- **Stage 8s "Anti-DPI Elite fusion" never existed in
+  `.github/workflows/torshield-ir.yml`** — Session 18's changelog described the
+  stage, its outputs (`export/iran_anti_dpi_elite.txt` +
+  `export/iran_anti_dpi_elite.json`) and its artifact upload, but no stage,
+  helper, or artifact was present anywhere in the tree (grep proof: the only
+  occurrence of `anti_dpi_elite` was the CHANGELOG itself). A user following
+  the documentation could never obtain the advertised pack.
+  - Added `scripts/build_iran_anti_dpi_elite.sh` (pure bash + python3 stdlib;
+  touches no Rust, so the fmt/clippy/test gate is unaffected) and wired it in
+  as **Stage 8s** between Stage 8r and Stage 9. It fuses
+  `data/anti_ai_dpi_report.json` (Stage 8i), `data/iran_siam_report.json`
+  (Stage 8r), and `data/smart_iran_results.json` (Stage 8i-smart) into one
+  deduplicated, DPI-hardened pack: SIAM-`DETECTED` bridges are excluded;
+  priority PHANTOM → STEALTH → COVERT; composite score
+  `0.40·anti-AI-DPI + 0.35·SIAM + 0.25·Smart-Iran` (weights renormalized over
+  the signals present per bridge). Whole surviving pool by default
+  (`AI_ANTI_DPI_TOP_N` repo variable caps it).
+  - Generated and committed the artifacts from the current committed reports:
+  **1,125 elite bridges** (4 PHANTOM / 67 STEALTH / 1,054 COVERT; the 471
+  SIAM-DETECTED lines are excluded by design). Added both files to the
+  `bridge-intelligence-report` artifact upload list.
+- **AI Bridge Re-Ranker dynamic default was not wired in the workflow** —
+  Session 18 documented dynamic mode (`--top-n 0`, whole deduplicated pool)
+  with an `AI_RERANK_TOP_N` cap for both the collection stage and the
+  `ai-rerank` job. The committed workflow instead hard-coded `--top-n 20`
+  (`${AI_RERANK_TOP_N:-20}`), and `AI_RERANK_TOP_N` was never exported from
+  GitHub repo variables (`vars.AI_RERANK_TOP_N`), so the documented cap could
+  not take effect at all. Both call sites now default to `:-0` (dynamic) and
+  map `env.AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}`.
+- **`ai-rerank` job error visibility** — Session 18 also documented removal of
+  the `|| true` error-swallow in the `ai-rerank` job. The committed step still
+  swallowed silently. It now logs `::warning::` on failure (visible to the AI
+  Self-Healing workflow) while preserving the job's tolerance for
+  `rerank_only` / upstream-failure mode — a silent swallow became a loud,
+  categorized warning.
+
+### Added — always-on automated magnifier (fully automatic from now on)
+- **`scripts/verify_repo_invariants.sh` + `invariant-audit` job in
+  `.github/workflows/main-ci.yml` (Gate 10b)** — offline, ~1-second, fail-loud
+  battery that re-runs this session's entire audit on every push/PR/schedule:
+  C1 all committed JSON parses · C2 the 55-file `bridge/` publication contract
+  (missing **and** extra files) · C3 `lib.rs` module graph (declarations
+  resolve, no orphan root modules) · C4 `pipeline.rs` STAGES ↔ dispatch arms ↔
+  every workflow `--stage` · C5 per-entry evidence stamps on
+  `bridge/iran_results.json` · C6 no duplicate bridge lines in any
+  `bridge/*.txt` · C7 shell syntax across all 30 scripts · C8 Stage 8s
+  committed artifacts are **fresh** (byte-identical to a regeneration from the
+  committed reports) · C9 no `todo!()`/`unimplemented!()` traps · C10 elite
+  `.txt` line count == `.json` summary count. Exit 0 = all green; any failure
+  emits `::error::`.
+- **`SESSION20_REPORT.md`** — full audit trail with check-by-check evidence.
+
+### Verified in-sandbox (offline tooling only — no Rust toolchain / no network egress this session)
+- `verify_repo_invariants.sh` → **10/10 checks PASSED**, exit 0.
+- All 30 shell scripts `bash -n` clean; both edited workflows contain no tabs,
+  no trailing whitespace, and every embedded `run: |` block passes `bash -n`.
+- Stage 8s regeneration is deterministic (two runs byte-identical; cap 20
+  yields exactly 20 lines).
+- Rust source was **not** modified; the 55-file publication contract, stage
+  list, module graph, and 1,596 stamped evidence entries are unchanged and
+  verified.
+
 ## [Session 19] — 2026-08-12 — Directive v37 evidence stamps + machine-readable publication changelog
 
 - **Per-entry test evidence (v37 §2):** new `src/evidence_stamp.rs` stamps every

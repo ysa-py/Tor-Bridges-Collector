@@ -297,6 +297,25 @@ jobs:
           scandir: "./scripts"
 
   # ──────────────────────────────────────────────────────────────────────
+  # Gate 10b: invariant-audit — always-on static/data integrity magnifier.
+  # Verifies JSON parse-ability, the 55-file publication contract, the lib.rs
+  # module graph, pipeline STAGES<->dispatch<->workflow wiring, per-bridge
+  # evidence stamps, duplicate-free bridge lists, shell syntax, and that the
+  # committed Stage 8s Anti-DPI Elite artifacts are fresh (identical to a
+  # regeneration from the committed reports). Offline, fast, fail-loud.
+  # ──────────────────────────────────────────────────────────────────────
+  invariant-audit:
+    name: invariant-audit
+    runs-on: ubuntu-latest
+    needs: [quality-gate]
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Run repository invariant audit
+        run: bash scripts/verify_repo_invariants.sh
+
+  # ──────────────────────────────────────────────────────────────────────
   # Gate 11: go-quality-gate
   # ──────────────────────────────────────────────────────────────────────
   go-quality-gate:

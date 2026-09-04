@@ -827,12 +827,16 @@ jobs:
       - name: Stage 8i-smart — Smart Iran AI re-ranker (v9.0)
         continue-on-error: true
         timeout-minutes: 8
+        env:
+          # 0 = dynamic: rank/publish the whole deduplicated pool (documented
+          # default); set the AI_RERANK_TOP_N repository variable to cap it.
+          AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
         run: |
           set -euo pipefail
           cargo run --quiet --bin ai_bridge_reranker -- \
             --input bridge/iran_results.json \
             --output data/smart_iran_results.json \
-            --top-n "${AI_RERANK_TOP_N:-20}"
+            --top-n "${AI_RERANK_TOP_N:-0}"
 
       # Stage 8j reads data/dpi_intelligence.json from Stage 8b and rewrites
       # obfuscation parameters when active blocking patterns are detected.
@@ -884,6 +888,22 @@ jobs:
         timeout-minutes: 6
         run: cargo run --quiet --bin pipeline -- --stage nin-classify --report data/nin_classify_pipeline_report.json
 
+      # Stage 8p2 rebuilds the USER-FACING export/iran_cut_pack.txt (the file
+      # README points Iranian users to during a شبکه ملی / national internet
+      # cut) from every NIN-cut artifact produced so far — nin_eligible.json
+      # (8d), iran_likely_working_nin.txt + nin_cut_bridges.txt (8p),
+      # iran_nin_pack.txt (8d2), nin_cut_survivable.txt (8k). Earlier stages
+      # can overwrite the pack with a strict (often empty) filter; this
+      # finalizer guarantees the published pack always carries the full
+      # survivable candidate set. Deterministic; advisory (runner-side).
+      - name: Stage 8p2 — NIN cut-pack finalizer (user-facing iran_cut_pack.txt)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          bash scripts/build_iran_cut_pack.sh
+          echo "✅ Iran internet-cut pack: $(grep -c '^[^#]' export/iran_cut_pack.txt) bridges"
+
       # Install Zig 0.14.0 directly — replaces mlugg/setup-zig@v2 (which
       # targets Node 20, producing a deprecation annotation on Node 24
       # runners). A direct download is faster, more reliable, and
@@ -920,6 +940,40 @@ jobs:
         continue-on-error: true
         timeout-minutes: 6
         run: cargo run --quiet --bin iran_anti_siam
+
+      # Stage 8s fuses the per-run Iran intelligence reports (Stage 8i
+      # anti-AI-DPI scoring, Stage 8r SIAM evasion tiers, Stage 8i-smart
+      # Smart-Iran AI scores) into ONE deduplicated, DPI-hardened,
+      # priority-ordered pack. Deterministic and advisory (runner-side
+      # evidence). Emits the whole surviving pool unless the
+      # AI_ANTI_DPI_TOP_N repository variable caps it — dynamic by default.
+      - name: Stage 8s — Iran Anti-DPI Elite fusion (AI-consensus pack)
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          AI_ANTI_DPI_TOP_N: ${{ vars.AI_ANTI_DPI_TOP_N }}
+        run: |
+          set -euo pipefail
+          bash scripts/build_iran_anti_dpi_elite.sh
+          test -s export/iran_anti_dpi_elite.txt || { echo "::error::Stage 8s produced no elite pack"; exit 1; }
+          echo "✅ Iran Anti-DPI Elite pack: $(wc -l < export/iran_anti_dpi_elite.txt) bridges"
+
+      # Stage 8t produces the two auxiliary manifests the
+      # bridge-intelligence-report upload has always advertised but no stage
+      # ever wrote: data/pq_bridge_scores.json (post-quantum safety per
+      # bridge, mapped from Stage 8e transport scores onto the Stage 8i pool)
+      # and export/nin_recommended_transport.json (per-regime recommended
+      # transports with evidence counts from the NIN-cut artifacts). Both are
+      # deterministic, regenerated every run, advisory.
+      - name: Stage 8t — PQ bridge scores + NIN recommended-transport manifests
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          bash scripts/build_pq_bridge_scores.sh
+          test -s data/pq_bridge_scores.json || { echo "::error::Stage 8t produced no pq_bridge_scores.json"; exit 1; }
+          bash scripts/build_nin_recommended_transport.sh
+          test -s export/nin_recommended_transport.json || { echo "::error::Stage 8t produced no nin_recommended_transport.json"; exit 1; }
 
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites ALL 55 public bridge/ files, re-renders README.md from the
@@ -1166,6 +1220,8 @@ jobs:
             export/ech_top_bridges.txt
             export/nin_cut_bridges.txt
             export/anti_ai_dpi_bridges.txt
+            export/iran_anti_dpi_elite.txt
+            export/iran_anti_dpi_elite.json
             data/nin_cut_report.json
             data/reality_report.json
             data/ai_consensus_report.json
@@ -1257,13 +1313,18 @@ jobs:
         env:
           GITHUB_RUN_ID: ${{ github.run_id }}
           BRIDGE_FILE: ${{ inputs.bridge_file || 'bridge/iran_results.json' }}
+          # 0 = dynamic (documented default): rank/publish the whole
+          # deduplicated pool. Cap via the AI_RERANK_TOP_N repository variable.
+          AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
         run: |
           set -euo pipefail
           cargo run --quiet --bin ai_bridge_reranker -- \
             --input "$BRIDGE_FILE" \
             --output bridge/bridges_ai_iran_ranked.json \
             --censorship-level 4 \
-            --top-n "${AI_RERANK_TOP_N:-20}" || true
+            --top-n "${AI_RERANK_TOP_N:-0}" || {
+              echo "::warning::ai_bridge_reranker failed (advisory rerank job) — not failing the workflow, but the failure is visible here"
+            }
           if [ -f bridge/bridges_ai_iran_ranked.json ]; then
             echo "bridge/bridges_ai_iran_ranked.json written (see scorer summary above)"
           fi
