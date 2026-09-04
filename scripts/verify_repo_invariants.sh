@@ -263,6 +263,53 @@ def c11_cutpack_freshness():
                else "committed file is stale vs regeneration")
 
 
+# ── C12. pq_bridge_scores.json == fresh Stage 8t regeneration ───────────────
+def _json_without_ts(path):
+    doc = json.load(open(path, encoding="utf-8"))
+    doc.pop("generated_at", None)
+    return doc
+
+
+def c12_pq_scores_freshness():
+    p = os.path.join(REPO, "data", "pq_bridge_scores.json")
+    if not os.path.exists(p):
+        record("C12 pq-scores-freshness", False, "data/pq_bridge_scores.json missing")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        env = dict(os.environ)
+        env["PQ_SCORES_OUT"] = tmp
+        subprocess.run(
+            ["bash", os.path.join(REPO, "scripts", "build_pq_bridge_scores.sh")],
+            env=env, capture_output=True, cwd=REPO, check=True,
+        )
+        ok = _json_without_ts(os.path.join(tmp, "pq_bridge_scores.json")) \
+            == _json_without_ts(p)
+        record("C12 pq-scores-freshness", ok,
+               "identical to fresh regeneration (sans timestamp)" if ok
+               else "committed manifest is stale vs regeneration")
+
+
+# ── C13. nin_recommended_transport.json == fresh Stage 8t regeneration ──────
+def c13_nin_recommended_freshness():
+    p = os.path.join(REPO, "export", "nin_recommended_transport.json")
+    if not os.path.exists(p):
+        record("C13 nin-recommended-freshness", False,
+               "export/nin_recommended_transport.json missing")
+        return
+    with tempfile.TemporaryDirectory() as tmp:
+        env = dict(os.environ)
+        env["NIN_RECOMMENDED_OUT"] = tmp
+        subprocess.run(
+            ["bash", os.path.join(REPO, "scripts", "build_nin_recommended_transport.sh")],
+            env=env, capture_output=True, cwd=REPO, check=True,
+        )
+        ok = _json_without_ts(os.path.join(tmp, "nin_recommended_transport.json")) \
+            == _json_without_ts(p)
+        record("C13 nin-recommended-freshness", ok,
+               "identical to fresh regeneration (sans timestamp)" if ok
+               else "committed manifest is stale vs regeneration")
+
+
 def main():
     print("═══ verify_repo_invariants ═══")
     c1_json_parse()
@@ -276,6 +323,8 @@ def main():
     c9_no_panic_traps()
     c10_elite_count_consistency()
     c11_cutpack_freshness()
+    c12_pq_scores_freshness()
+    c13_nin_recommended_freshness()
     print(f"═══ {len(CHECKS) - len(FAILURES)}/{len(CHECKS)} checks passed ═══")
     if FAILURES:
         for f in FAILURES:

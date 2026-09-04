@@ -958,6 +958,23 @@ jobs:
           test -s export/iran_anti_dpi_elite.txt || { echo "::error::Stage 8s produced no elite pack"; exit 1; }
           echo "✅ Iran Anti-DPI Elite pack: $(wc -l < export/iran_anti_dpi_elite.txt) bridges"
 
+      # Stage 8t produces the two auxiliary manifests the
+      # bridge-intelligence-report upload has always advertised but no stage
+      # ever wrote: data/pq_bridge_scores.json (post-quantum safety per
+      # bridge, mapped from Stage 8e transport scores onto the Stage 8i pool)
+      # and export/nin_recommended_transport.json (per-regime recommended
+      # transports with evidence counts from the NIN-cut artifacts). Both are
+      # deterministic, regenerated every run, advisory.
+      - name: Stage 8t — PQ bridge scores + NIN recommended-transport manifests
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          bash scripts/build_pq_bridge_scores.sh
+          test -s data/pq_bridge_scores.json || { echo "::error::Stage 8t produced no pq_bridge_scores.json"; exit 1; }
+          bash scripts/build_nin_recommended_transport.sh
+          test -s export/nin_recommended_transport.json || { echo "::error::Stage 8t produced no nin_recommended_transport.json"; exit 1; }
+
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites ALL 55 public bridge/ files, re-renders README.md from the
       # verified snapshot, byte-verifies tor_bridges.zip, and then delivers
