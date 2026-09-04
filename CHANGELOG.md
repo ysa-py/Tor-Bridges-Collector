@@ -3,6 +3,56 @@
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
+## [Session 22] — 2026-09-03 — Phantom-artifact elimination: PQ bridge scores + NIN recommended-transport manifests
+
+### Found by microscopic audit (artifact-contract violation)
+The `bridge-intelligence-report` upload block advertises 45 artifacts. Three
+had **no producer anywhere** — zero writers in `src/` or `scripts/`:
+- `data/pq_bridge_scores.json` (post-quantum bridge scores)
+- `export/nin_recommended_transport.json` (NIN recommended transport)
+- (the third, `diagnostics/torshield_ir_self_heal.json`, is legitimately
+  runtime-only: Stage 00 writes it fresh every run before the upload — not a
+  defect.)
+
+Because the upload uses `if-no-files-found: ignore`, those two files silently
+never existed in any published artifact — the exact silent-failure class this
+project is designed to eliminate.
+
+### Fixed — additive, fully automatic (Stage 8t)
+- **`scripts/build_pq_bridge_scores.sh`** → `data/pq_bridge_scores.json`:
+  post-quantum safety is scored per transport by Stage 8e
+  (`data/quantum_safe_report.json` → `quantum_safe_scores`); the whole
+  1,596-bridge pool + canonical transport comes from Stage 8i
+  (`data/anti_ai_dpi_report.json`). Each bridge inherits its transport's PQ
+  score; manifest is ranked `(pq_score desc, bridge_line asc)` — dynamic-yield,
+  same philosophy as every other pack. Committed artifact scored **1,596/1,596**
+  bridges.
+- **`scripts/build_nin_recommended_transport.sh`** →
+  `export/nin_recommended_transport.json`: per-regime recommendations
+  (normal / degraded / full internet cut) with evidence counts from the
+  NIN-cut artifacts (`nin_cut_survivable.txt` probe-survivable pool +
+  `nin_eligible.json`). Full-cut primary is evidence-derived: **obfs4** (294 of
+  295 probe-survivable lines this run) with top-10 copy-paste candidates.
+- Wired as **Stage 8t** in `.github/workflows/torshield-ir.yml` after Stage 8s,
+  before Stage 9 — both manifests regenerated every run, loudly failing if not
+  produced.
+- Both artifacts were already in the upload list, so they now upload for real.
+
+### Fixed inside the new generator (caught by the audit before commit)
+- The JSON source `data/nin_eligible.json` was text-scanned, so a bare `[]`
+  became a bogus bridge line classified `unknown`, polluting the manifest;
+  JSON sources are now parsed as JSON arrays of records.
+- Transport ordering used Python set iteration for tie-breaks (nondeterministic
+  across processes via hash randomization); ties are now broken
+  alphabetically → byte-deterministic regeneration.
+
+### Verified in-sandbox
+- `verify_repo_invariants.sh` → **13/13 checks PASSED** (new C12
+  `pq-scores-freshness` + C13 `nin-recommended-freshness` compare committed vs
+  fresh regeneration, timestamps excluded). exit 0.
+- Committed `export/iran_cut_pack.txt`, elite artifacts, 55-file `bridge/`
+  contract unchanged; no Rust source touched.
+
 ## [Session 21] — 2026-09-03 — NIN internet-cut pack finalizer (user-facing iran_cut_pack.txt)
 
 ### Found by microscopic audit (data-contract violation)
