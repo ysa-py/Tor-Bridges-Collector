@@ -3,6 +3,43 @@
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
+## [Session 23] — 2026-09-05 — Fixed TorShield-IR Main CI invariant-audit failure (stale NIN cut-pack)
+
+### Root cause
+`TorShield-IR Main CI` was failing every scheduled run in the
+`invariant-audit` job, check **C11 cutpack-freshness**:
+`export/iran_cut_pack.txt` (committed) did not match a deterministic
+regeneration from the committed NIN-cut artifacts.
+
+The defect was a stage-ordering race in `.github/workflows/torshield-ir.yml`:
+
+1. **Stage 8p2 — NIN cut-pack finalizer** (`scripts/build_iran_cut_pack.sh`)
+   ran immediately after Stage 8p, while `bridge/iran_likely_working_nin.txt`
+   still contained the intermediate Stage 8p classifier output (122 lines).
+2. **Stage 9 — dual-persist bridge/ files** (`pipeline --stage results` →
+   `sync_bridge_outputs`), **Stage 9b** and the **FAILSAFE** step then rewrote
+   the 55 committed bridge/ projection files from the final verified snapshot,
+   reducing `bridge/iran_likely_working_nin.txt` to its committed 4 lines.
+3. Stage 11 committed the whole tree, so the published `export/iran_cut_pack.txt`
+   was built from a bridge set that no longer matched the committed `bridge/`
+   files. `verify_repo_invariants.sh` correctly flagged this as stale.
+
+### Fix (minimal, behavior-preserving)
+- Moved the **Stage 8p2** finalizer step in `torshield-ir.yml` to run **after
+  Stage 10** (the full bridge/ inventory) and immediately **before Stage 11**,
+  so the user-facing cut-pack is always built from the exact bridge/ sources
+  that get committed. The step name, command, `continue-on-error`, timeout and
+  deterministic output format are unchanged.
+- Regenerated `export/iran_cut_pack.txt` from the currently committed source
+  artifacts so the repository at HEAD is internally consistent again.
+
+### Verified
+- `bash scripts/verify_repo_invariants.sh` now reports **13/13 checks passed**
+  (previously C11 failed with `committed file is stale vs regeneration`).
+- The edited `torshield-ir.yml` parses cleanly with a real YAML parser.
+- Subsequent runs are validated by the `pull_request` trigger of
+  `TorShield-IR Main CI` on the fix branch.
+
 ## [Session 22] — 2026-09-03 — Phantom-artifact elimination: PQ bridge scores + NIN recommended-transport manifests
 
 ### Found by microscopic audit (artifact-contract violation)

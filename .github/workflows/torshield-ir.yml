@@ -888,22 +888,6 @@ jobs:
         timeout-minutes: 6
         run: cargo run --quiet --bin pipeline -- --stage nin-classify --report data/nin_classify_pipeline_report.json
 
-      # Stage 8p2 rebuilds the USER-FACING export/iran_cut_pack.txt (the file
-      # README points Iranian users to during a شبکه ملی / national internet
-      # cut) from every NIN-cut artifact produced so far — nin_eligible.json
-      # (8d), iran_likely_working_nin.txt + nin_cut_bridges.txt (8p),
-      # iran_nin_pack.txt (8d2), nin_cut_survivable.txt (8k). Earlier stages
-      # can overwrite the pack with a strict (often empty) filter; this
-      # finalizer guarantees the published pack always carries the full
-      # survivable candidate set. Deterministic; advisory (runner-side).
-      - name: Stage 8p2 — NIN cut-pack finalizer (user-facing iran_cut_pack.txt)
-        continue-on-error: true
-        timeout-minutes: 5
-        run: |
-          set -euo pipefail
-          bash scripts/build_iran_cut_pack.sh
-          echo "✅ Iran internet-cut pack: $(grep -c '^[^#]' export/iran_cut_pack.txt) bridges"
-
       # Install Zig 0.14.0 directly — replaces mlugg/setup-zig@v2 (which
       # targets Node 20, producing a deprecation annotation on Node 24
       # runners). A direct download is faster, more reliable, and
@@ -1156,6 +1140,29 @@ jobs:
           else
             echo "⚠️  Some advisory sets empty — check scraper/tester logs above."
           fi
+
+      # Stage 8p2 rebuilds the USER-FACING export/iran_cut_pack.txt (the file
+      # README points Iranian users to during a شبکه ملی / national internet
+      # cut) from every NIN-cut artifact produced so far — nin_eligible.json
+      # (8d), iran_likely_working_nin.txt + nin_cut_bridges.txt (8p),
+      # iran_nin_pack.txt (8d2), nin_cut_survivable.txt (8k). Earlier stages
+      # can overwrite the pack with a strict (often empty) filter; this
+      # finalizer guarantees the published pack always carries the full
+      # survivable candidate set. Deterministic; advisory (runner-side).
+      #
+      # This MUST run after Stage 9 (dual-persist bridge/ files), Stage 9b
+      # and the FAILSAFE step: those stages rewrite the 55 committed bridge/
+      # projection files (including bridge/iran_likely_working_nin.txt) from
+      # the final verified snapshot. Running the finalizer before them
+      # published a cut-pack built from an intermediate bridge set, which the
+      # invariant audit (C11 cutpack-freshness) then correctly rejected.
+      - name: Stage 8p2 — NIN cut-pack finalizer (user-facing iran_cut_pack.txt)
+        continue-on-error: true
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          bash scripts/build_iran_cut_pack.sh
+          echo "✅ Iran internet-cut pack: $(grep -c '^[^#]' export/iran_cut_pack.txt) bridges"
 
       # Commits are only possible from first-party push/schedule/dispatch
       # runs on the default branch — pull requests (especially forks) have a
