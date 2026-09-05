@@ -346,8 +346,15 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          # Scope the cache to the FULL workspace: any crate manifest or
+          # lockfile change invalidates the key. Hashing only the root
+          # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
+          # bridge-probe/ and rust/, so an unchanged lockfile with a changed
+          # member manifest silently reused a stale compiled target.
+          key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-pipeline-
+            ${{ runner.os }}-cargo-
 
       - name: Remove Vercel secrets (cleanup — additive step, Rust port)
         env:
@@ -472,6 +479,12 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: '1.24'
+          # Enable Go module + build-cache reuse across runs. go.sum is
+          # intentionally empty (the Go tools use only stdlib), so a
+          # go.sum-derived cache key would be a constant; key off the actual
+          # dependency manifest instead.
+          cache: true
+          cache-dependency-path: go.mod
 
       - name: Build iran_tester and probe_scheduler from source
         run: |
@@ -892,17 +905,51 @@ jobs:
       # targets Node 20, producing a deprecation annotation on Node 24
       # runners). A direct download is faster, more reliable, and
       # eliminates the Node.js action dependency entirely.
+      #
+      # Cache the pinned toolchain under RUNNER_TEMP so unchanged runs reuse
+      # the extracted ~40 MB download instead of re-fetching it every cron.
+      - name: Restore Zig toolchain cache
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/zig-linux-x86_64-0.14.0
+          key: ${{ runner.os }}-zig-toolchain-0.14.0
+
       - name: Install Zig toolchain for Stage 8q
         run: |
           set -euo pipefail
           ZIG_VERSION="0.14.0"
-          ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz"
-          echo "Fetching Zig ${ZIG_VERSION} from ${ZIG_URL}"
-          curl -fsSL --retry 3 --retry-delay 5 -o /tmp/zig.tar.xz "${ZIG_URL}"
-          tar -xJf /tmp/zig.tar.xz -C /tmp
-          echo "/tmp/zig-linux-x86_64-${ZIG_VERSION}" >> "${GITHUB_PATH}"
-          rm -f /tmp/zig.tar.xz
-          echo "Zig ${ZIG_VERSION} installed"
+          ZIG_CACHE="${{ runner.temp }}/zig-linux-x86_64-${ZIG_VERSION}"
+          if [ -x "${ZIG_CACHE}/zig" ]; then
+            echo "Using cached Zig ${ZIG_VERSION} at ${ZIG_CACHE}"
+          else
+            ZIG_URL="https://ziglang.org/download/${ZIG_VERSION}/zig-linux-x86_64-${ZIG_VERSION}.tar.xz"
+            echo "Fetching Zig ${ZIG_VERSION} from ${ZIG_URL}"
+            curl -fsSL --retry 3 --retry-delay 5 -o /tmp/zig.tar.xz "${ZIG_URL}"
+            rm -rf "${ZIG_CACHE}"
+            tar -xJf /tmp/zig.tar.xz -C "${{ runner.temp }}"
+            if [ ! -x "${ZIG_CACHE}/zig" ]; then
+              echo "::error::Zig toolchain extraction did not produce ${ZIG_CACHE}/zig"
+              exit 1
+            fi
+            rm -f /tmp/zig.tar.xz
+            echo "Zig ${ZIG_VERSION} installed"
+          fi
+          echo "${ZIG_CACHE}" >> "${GITHUB_PATH}"
+          zig version
+
+      # Cache zig build outputs (source tree is unchanged when the scan is
+      # re-run), so `zig build -Doptimize=ReleaseFast` in Stage 8q is an
+      # incremental no-op instead of a cold rebuild. The scan itself still runs
+      # every time and still produces data/zig_scan.json.
+      - name: Restore Zig scanner build cache
+        uses: actions/cache@v5
+        with:
+          path: |
+            zig-scanner/.zig-cache
+            zig-scanner/zig-cache
+            zig-scanner/zig-out
+          key: ${{ runner.os }}-zig-scanner-${{ hashFiles('zig-scanner/build.zig', 'zig-scanner/src/*.zig') }}
+          restore-keys: ${{ runner.os }}-zig-scanner-
 
       - name: Stage 8q — Zig ultra-fast TCP bridge pre-screener
         timeout-minutes: 6
