@@ -374,10 +374,7 @@ fn line_has_documentation_ipv6(line: &str) -> bool {
     let Some(after_bracket) = body.strip_prefix('[') else {
         return false;
     };
-    after_bracket
-        .split_once(']')
-        .map(|(addr, _)| is_documentation_ipv6(addr))
-        .unwrap_or(false)
+    after_bracket.split_once(']').map(|(addr, _)| is_documentation_ipv6(addr)).unwrap_or(false)
 }
 
 /// Pure gating logic for a single WebTunnel bridge record.
