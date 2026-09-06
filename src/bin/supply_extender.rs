@@ -27,11 +27,11 @@ use chrono::Utc;
 use serde_json::{json, Value};
 
 use torshield_ir_ultra::scraper::{
-    DEFAULT_BRIDGE_DIR, load_history, merge_raw_into_history, prune_history, save_history,
+    load_history, merge_raw_into_history, prune_history, save_history, DEFAULT_BRIDGE_DIR,
 };
 use torshield_ir_ultra::supply_extension::{
     count_added_lines, diagnostics_payload, fetch_html_supply, fetch_moat_supply,
-    history_family_counts, NOTICE_FOCUS_FAMILIES, SourceLines, SupplyConfig,
+    history_family_counts, SourceLines, SupplyConfig, NOTICE_FOCUS_FAMILIES,
 };
 
 /// New diagnostics snapshot written by every run (never overwrites an
@@ -117,14 +117,21 @@ fn write_outputs(
     total_added: usize,
 ) {
     if let Err(err) = fs::create_dir_all("data") {
-        tracing::warn!("supply diagnostics: could not create data directory: {}", err);
+        tracing::warn!(
+            "supply diagnostics: could not create data directory: {}",
+            err
+        );
         return;
     }
 
     match serde_json::to_vec_pretty(payload) {
         Ok(buf) => {
             if let Err(err) = fs::write(DIAGNOSTICS_FILE, buf) {
-                tracing::warn!("supply diagnostics: could not write {}: {}", DIAGNOSTICS_FILE, err);
+                tracing::warn!(
+                    "supply diagnostics: could not write {}: {}",
+                    DIAGNOSTICS_FILE,
+                    err
+                );
             }
         }
         Err(err) => tracing::warn!("supply diagnostics: could not serialize snapshot: {}", err),
@@ -173,14 +180,19 @@ fn emit_step_summary(payload: &Value, config: &SupplyConfig, total_added: usize)
     let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") else {
         return;
     };
-    let counts = payload.get("history_family_counts").and_then(Value::as_object);
+    let counts = payload
+        .get("history_family_counts")
+        .and_then(Value::as_object);
     let Some(counts) = counts else {
         return;
     };
-    let mut rows = String::from("| transport family | before | after | added |\n|---|---|---|---|\n");
+    let mut rows =
+        String::from("| transport family | before | after | added |\n|---|---|---|---|\n");
     let before = counts.get("before").and_then(Value::as_object);
     let after = counts.get("after").and_then(Value::as_object);
-    let added = counts.get("added_by_extended_sources").and_then(Value::as_object);
+    let added = counts
+        .get("added_by_extended_sources")
+        .and_then(Value::as_object);
     let mut families: Vec<&String> = Vec::new();
     for map in [before, after, added].into_iter().flatten() {
         for key in map.keys() {
@@ -192,7 +204,9 @@ fn emit_step_summary(payload: &Value, config: &SupplyConfig, total_added: usize)
     families.sort();
     for family in families {
         let get = |map: Option<&serde_json::Map<String, Value>>| -> u64 {
-            map.and_then(|m| m.get(family)).and_then(Value::as_u64).unwrap_or(0)
+            map.and_then(|m| m.get(family))
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
         };
         rows.push_str(&format!(
             "| {family} | {} | {} | {} |\n",
@@ -209,7 +223,11 @@ fn emit_step_summary(payload: &Value, config: &SupplyConfig, total_added: usize)
         rounds = config.moat_rounds,
         added = total_added,
     );
-    if let Ok(mut file) = fs::OpenOptions::new().create(true).append(true).open(&summary_path) {
+    if let Ok(mut file) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&summary_path)
+    {
         use std::io::Write;
         let _ = file.write_all(summary.as_bytes());
     }

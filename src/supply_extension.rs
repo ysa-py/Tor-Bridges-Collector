@@ -43,8 +43,8 @@ use std::time::Duration;
 use serde_json::{json, Value};
 
 use crate::scraper::{
-    HttpFetch, MOAT_BUILTIN_URL, moat_headers, MOAT_SETTINGS_URL, normalize_for_history,
-    parse_bridgelines_html, parse_moat_response, TORPROJECT_TARGETS,
+    moat_headers, normalize_for_history, parse_bridgelines_html, parse_moat_response, HttpFetch,
+    MOAT_BUILTIN_URL, MOAT_SETTINGS_URL, TORPROJECT_TARGETS,
 };
 
 /// Request timeout used by every extended fetch (mirrors the core scrapers).
@@ -266,7 +266,9 @@ pub fn fetch_html_supply(client: &dyn HttpFetch, draws: usize) -> Vec<SourceLine
                     "extended BridgeDB HTML draw"
                 );
                 for line in parsed {
-                    entry.lines.push((line, transport.to_string(), ip_version.to_string()));
+                    entry
+                        .lines
+                        .push((line, transport.to_string(), ip_version.to_string()));
                 }
             }
             Ok(resp) => {
@@ -330,11 +332,8 @@ pub fn fetch_moat_supply(client: &dyn HttpFetch, rounds: usize) -> Vec<SourceLin
                                         "extended MOAT draw"
                                     );
                                     for (line, transport) in pairs {
-                                        let ip_version = if line.contains('[') {
-                                            "ipv6"
-                                        } else {
-                                            "ipv4"
-                                        };
+                                        let ip_version =
+                                            if line.contains('[') { "ipv6" } else { "ipv4" };
                                         entry.lines.push((line, transport, ip_version.to_string()));
                                     }
                                 }
@@ -388,9 +387,17 @@ pub fn history_family_counts(history: &Value) -> BTreeMap<String, usize> {
         let Some(record) = entry.as_object() else {
             continue;
         };
-        let transport = record.get("transport").and_then(Value::as_str).unwrap_or("unknown");
-        let ip_version = record.get("ip_version").and_then(Value::as_str).unwrap_or("ipv4");
-        *counts.entry(transport_family_key(transport, ip_version)).or_insert(0) += 1;
+        let transport = record
+            .get("transport")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let ip_version = record
+            .get("ip_version")
+            .and_then(Value::as_str)
+            .unwrap_or("ipv4");
+        *counts
+            .entry(transport_family_key(transport, ip_version))
+            .or_insert(0) += 1;
     }
     counts
 }
@@ -415,7 +422,9 @@ pub fn count_added_lines(
             continue;
         }
         if !object.contains_key(&key) {
-            *added.entry(transport_family_key(transport, ip_version)).or_insert(0) += 1;
+            *added
+                .entry(transport_family_key(transport, ip_version))
+                .or_insert(0) += 1;
         }
     }
     added
@@ -485,7 +494,10 @@ mod tests {
     #[test]
     fn html_supply_plan_contains_extra_slugs_and_bounded_draws() {
         let plan = html_supply_plan(2);
-        assert_eq!(plan.len(), EXTRA_BRIDGEDB_TARGETS.len() + 2 * TORPROJECT_TARGETS.len());
+        assert_eq!(
+            plan.len(),
+            EXTRA_BRIDGEDB_TARGETS.len() + 2 * TORPROJECT_TARGETS.len()
+        );
         assert!(plan.iter().any(|row| row.2 == "snowflake"));
         let plan_zero = html_supply_plan(0);
         assert_eq!(plan_zero.len(), EXTRA_BRIDGEDB_TARGETS.len());
@@ -510,10 +522,7 @@ mod tests {
         for payload in &payloads {
             let transports = payload.get("transports").and_then(Value::as_array);
             assert_eq!(transports.map(Vec::len), Some(1));
-            assert_eq!(
-                payload.get("country").and_then(Value::as_str),
-                Some("ir")
-            );
+            assert_eq!(payload.get("country").and_then(Value::as_str), Some("ir"));
         }
     }
 
@@ -574,18 +583,14 @@ mod tests {
             moat_rounds: 1,
         };
         let before: BTreeMap<String, usize> = [("webtunnel".to_string(), 4)].into_iter().collect();
-        let after: BTreeMap<String, usize> = [
-            ("webtunnel".to_string(), 5),
-            ("snowflake".to_string(), 3),
-        ]
-        .into_iter()
-        .collect();
-        let added: BTreeMap<String, usize> = [
-            ("webtunnel".to_string(), 1),
-            ("snowflake".to_string(), 1),
-        ]
-        .into_iter()
-        .collect();
+        let after: BTreeMap<String, usize> =
+            [("webtunnel".to_string(), 5), ("snowflake".to_string(), 3)]
+                .into_iter()
+                .collect();
+        let added: BTreeMap<String, usize> =
+            [("webtunnel".to_string(), 1), ("snowflake".to_string(), 1)]
+                .into_iter()
+                .collect();
         let groups = vec![SourceLines {
             source: "bridgedb_html_snowflake",
             requests: 2,
@@ -604,9 +609,16 @@ mod tests {
             &added,
             "2026-09-06T00:00:00+00:00".to_string(),
         );
-        assert_eq!(payload.pointer("/config/html_extra_draws").and_then(Value::as_u64), Some(1));
         assert_eq!(
-            payload.pointer("/history_family_counts/before/webtunnel").and_then(Value::as_u64),
+            payload
+                .pointer("/config/html_extra_draws")
+                .and_then(Value::as_u64),
+            Some(1)
+        );
+        assert_eq!(
+            payload
+                .pointer("/history_family_counts/before/webtunnel")
+                .and_then(Value::as_u64),
             Some(4)
         );
         assert_eq!(
