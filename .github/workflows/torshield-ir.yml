@@ -1636,9 +1636,14 @@ jobs:
           UPLOAD=false
         fi
         if [ "$UPLOAD" = "true" ] && { [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; }; then
-          echo "::warning::TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not configured — Telegram"
-          echo "::warning::delivery skipped; the identical verified payload is still"
-          echo "::warning::committed to bridge/ + README.md by Stage 11."
+          # Informational, not a warning: the caller deliberately did not
+          # configure Telegram credentials, so delivery cannot run. The same
+          # verified payload is still persisted/committed via bridge/ +
+          # README.md (or artifact) by Stage 11, so no capability is removed —
+          # this is a configuration-dependent notice. Single ::notice:: line
+          # keeps the Actions annotations clean while keeping the reason in the
+          # log.
+          echo "::notice::TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not configured — Telegram delivery skipped; the identical verified payload is still committed to bridge/ + README.md by Stage 11."
           UPLOAD=false
         fi
         echo "Telegram dual-persist mode: $UPLOAD"
