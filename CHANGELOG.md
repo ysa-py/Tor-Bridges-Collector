@@ -1,5 +1,19 @@
 # Changelog
 
+## [Session 27] — 2026-09-06 — Stop Stage 0b silent truncation + raise probe concurrency
+
+- Live run `34010772126` showed Stage 0b stops at exactly 11:00 because the
+  collector's `STAGE_DEADLINE_SECS` default (660s) fires and publishes a
+  **partial** result set. This was the same silent-truncation class as the old
+  Stage 4 budget warning, and it meant some collection work was lost every run.
+- Stage 0b now sets `MAX_WORKERS=96` (higher probe concurrency; the existing
+  adaptive per-transport backoff still limits it, so classification is
+  unchanged) and `STAGE_DEADLINE_SECS=820`, with the step timeout raised
+  12→14 min so the collector can finish rather than be cut at 11:00.
+- Verified `verify_repo_invariants.sh` still 13/13 and all 43 Stage steps remain.
+- Stage 2 (5m17s) is OONI rate-limit bound (5 req/s, 2 calls per IP); it is
+  deliberately not changed because raising the limiter risks 429/accuracy.
+
 ## [Session 26] — 2026-09-06 — Overlap long pipeline with rust-parity gate
 
 - `scrape-and-test (core)` now depends only on `quality-gate` + `build-rust`.

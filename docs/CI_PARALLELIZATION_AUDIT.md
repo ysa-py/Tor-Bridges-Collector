@@ -367,3 +367,53 @@ validation.
 - Combined with the concurrent `probe_relay.sh` (Stage 4), the critical path
   is now: quality-gate/build-rust → core (collect + probe + export) → analytics
   → finalize, with the parity suite overlapping the core.
+
+---
+
+## 11. Stage 0b analysis (from live run 34010772126) + fix
+
+The clean run's core steps gave exact timings:
+
+| Step | Start | End | Duration |
+|---|---|---|---|
+| Stage 0s (seed) | 04:13:27 | 04:13:29 | 2s |
+| Stage 0 (direct scraper) | 04:13:29 | 04:13:36 | 7s |
+| **Stage 0b (collector)** | **04:13:36** | **04:24:36** | **660.0s** |
+| Stage 0c (enrichment) | 04:24:36 | 04:24:37 | 1s |
+| Stage 1 (scraper) | 04:24:37 | 04:24:44 | 7s |
+| Stage 2 (iran_tester) | 04:25:00 | 04:30:17 | 5m17s |
+| Stage 4 (probe relay) | 04:30:51 | 04:34:34 | 3m43s |
+| Stage 5 (OONI correlator) | 04:34:36 | 04:35:25 | 49s |
+
+**Root cause (verified in `src/tor_collector/config.rs:321`):** `STAGE_DEADLINE_SECS`
+defaults to `660`. `tor-bridges-collector`'s `run()` wraps the whole collection
+in `tokio::time::timeout(deadline, ...)`; on expiry it calls `flush_partial()`
+and publishes a *partial* set. Stage 0b landed at exactly `660.0s`, so it has
+been **silently truncating** on every run — the same class of bug as the old
+Stage 4 "20-minute budget". The workflow never set `STAGE_DEADLINE_SECS`, so the
+default always fired.
+
+**Applied fix (config-only, no stage/script/output changed):**
+- `MAX_WORKERS: '96'` — raise the probe ceiling above the runner-detected
+  ~16-32 (validation: `AdaptiveConcurrency` still backs off per transport on a
+  low success rate, so the candidate/classification set is unchanged).
+- `STAGE_DEADLINE_SECS: '820'` — let the collector use the full step budget
+  (step `timeout-minutes` raised 12→14 = 840s) instead of cutting at 11:00.
+  The 20s margin keeps the collector inside the GitHub step timeout.
+- Existing partial-result fallback remains as the hard safety net; it is no
+  longer the normal path.
+
+**Stage 2 (`5m17s`)** is NOT a CI tuning problem: it is bounded by the OONI
+API's global `5 req/s` ticker (`internal/ooni/client.go` `time.NewTicker(200ms)`),
+which makes **two** requests per reachable IP (7-day + 90-day). `--workers 100`
+does not help because the limiter is shared across all goroutines. Raising it
+would risk HTTP 429 / change classification accuracy, so it is deliberately **not
+changed** here.
+
+**Stage 2 / Stage 4 overlap:** both read `bridge/bridge_list_for_testing.json`
+(after Stage 1) and write independent files (`iran_results.json` vs
+`pt_results.json`), so they *are* independent. However `pt_results.json` is
+consumed by `probe_scheduler` (Stage 3) during its merge, and Stage 3 starts
+before Stage 4 in the same workspace. Splitting them into separate jobs would
+require carrying both artifacts plus the running scheduler between jobs — a
+much larger contract change that is not done here.

@@ -452,12 +452,28 @@ jobs:
       # invoked and no capability is duplicated in a second scraper stage.
     - name: Stage 0b — Unified OnionHop + VIP bridge collector
       continue-on-error: true
-      timeout-minutes: 12
+      # The collector probes many bridge endpoints asynchronously; 96 concurrent
+      # workers (over the runner-detected ~16-32 on the default 4-vCPU runner)
+      # lets it finish the same candidate set within the step instead of being
+      # cut at the stage deadline. AdaptiveConcurrency still backs off per
+      # transport when a transport has a low success rate, so this only raises
+      # the ceiling — it does not change which bridges are tested or how they
+      # are classified.
+      timeout-minutes: 14
       env:
         TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
         TELEGRAM_UPLOAD: ${{ secrets.TELEGRAM_UPLOAD }}
         RUST_LOG: info
+        MAX_WORKERS: '96'
+        # The collector's own graceful guard (STAGE_DEADLINE_SECS) defaults to
+        # 660s and writes a *partial* set when it fires, which is why the old
+        # Stage 0b always stopped at exactly 11:00. Give it the full step budget
+        # (14 min = 840s, minus a 20s safety margin) so the work completes and
+        # is published rather than truncated. The step above remains the hard
+        # outer bound; if the collector still cannot finish, the existing
+        # partial-result fallback fires as designed.
+        STAGE_DEADLINE_SECS: '820'
       run: |
         set -euo pipefail
         DETECTED_WORKERS=$(( $(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) * 8 ))
