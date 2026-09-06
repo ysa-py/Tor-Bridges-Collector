@@ -318,3 +318,15 @@ Validated on the first parallelized run (34004576340): the pipeline **succeeded*
 ### Stage/functionality confirmation
 - Still **43/43 unique `Stage *` steps**; no stage removed, merged or renamed.
 - Artifact names, ZIP/README/Telegram/cut-pack contract unchanged.
+
+---
+
+## 8. Live verification (post-fix runs)
+
+`gh` authentication was re-established; new runs were triggered on
+`60850b7`: `pull_request` 34008686329 and `push` 34008684346. The parallel
+job graph started cleanly (`build-rust`, `rust-parity-tests`, `Quality Gate`,
+then `scrape-and-test (core)` -> parallel analytics -> finalize). The run is
+still executing on GitHub and is expected to complete without the setup-go
+deprecation and probe-relay-budget warnings; this section will be updated when
+the run concludes.
