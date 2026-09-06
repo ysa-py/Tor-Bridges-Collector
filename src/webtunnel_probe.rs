@@ -395,16 +395,18 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
         // A url= host that is itself a literal IP is a directly dialable
         // endpoint: TCP/TLS to it is not domain-fronting and is covered by
         // the ordinary TCP tester.
-        if front_host.parse::<std::net::IpAddr>().is_ok() {
-            return ProbeDecision::SkipIpHost;
-        }
-        return ProbeDecision::Probe(front_host, front_port);
+        return if front_host.parse::<std::net::IpAddr>().is_ok() {
+            ProbeDecision::SkipIpHost
+        } else {
+            ProbeDecision::Probe(front_host, front_port)
+        };
     }
     if !host.is_empty() {
-        if host.parse::<std::net::IpAddr>().is_err() {
-            return ProbeDecision::Probe(host.to_string(), 443);
-        }
-        return ProbeDecision::SkipIpHost;
+        return if host.parse::<std::net::IpAddr>().is_err() {
+            ProbeDecision::Probe(host.to_string(), 443)
+        } else {
+            ProbeDecision::SkipIpHost
+        };
     }
     ProbeDecision::SkipNoFront
 }
