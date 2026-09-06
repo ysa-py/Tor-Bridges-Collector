@@ -210,8 +210,7 @@ fn url_only_webtunnel_tcp_unreachable_is_promoted_to_working() {
         "documentation-prefix IPv6 placeholder must not be promoted, got: {wt:?}"
     );
     assert_eq!(
-        stats["iran_likely_working_webtunnel.txt"],
-        1,
+        stats["iran_likely_working_webtunnel.txt"], 1,
         "exactly one URL-only webtunnel promoted"
     );
 

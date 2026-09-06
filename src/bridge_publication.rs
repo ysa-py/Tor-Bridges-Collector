@@ -1501,11 +1501,9 @@ mod tests {
             }
         });
         let legacy_candidates = candidates_from_history(&legacy, &[], cutoff).expect("legacy");
-        assert!(
-            legacy_candidates
-                .iter()
-                .any(|candidate| candidate.tested && candidate.transport == "obfs4")
-        );
+        assert!(legacy_candidates
+            .iter()
+            .any(|candidate| candidate.tested && candidate.transport == "obfs4"));
     }
 
     #[test]
