@@ -471,3 +471,29 @@ Resolution:
 
 Result: GitHub reports PR #223 `MERGEABLE`/`CLEAN`, `verify_repo_invariants.sh`
 13/13, and 43/43 Stage steps remain present.
+
+---
+
+## 14. Removed remaining "Telegram not configured" warnings (push run 34022910931)
+
+The green push run was still annotated with 3 warnings. Root cause confirmed in
+`.github/workflows/torshield-ir.yml` Stage 9: the guard that skips Telegram when
+credentials are absent printed a **three-line `::warning::` annotation**:
+
+- "TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not configured — Telegram"
+- "delivery skipped; the identical verified payload is still"
+- "committed to bridge/ + README.md by Stage 11."
+
+This is configuration-dependent, not an error: no Telegram secrets are present
+in this repo, so the verified payload is intentionally persisted/committed via
+`bridge/` + `README.md` (and artifacts) by Stage 11 instead. The Telegram
+behaviour/capability is **unchanged** — when the secrets are configured, the
+normal dual-persist delivery path still runs.
+
+**Fix:** replace the three `::warning::` lines with a single `::notice::` line
+that states the same information. This keeps the reason visible in the log /
+run summary while removing it from the warning annotation count.
+
+- `verify_repo_invariants.sh`: 13/13 green.
+- All 43 `Stage *` steps still present; no stage/feature/artifact changed.
+- Commit `d8a8199a`.
