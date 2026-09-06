@@ -445,3 +445,29 @@ The two annotations that were complained about stem from the old run
 `34004576340` (setup-go@v5 + probe relay hitting the 20-minute budget). Both
 root causes are now removed: the workflow uses `actions/setup-go@v6`, and the
 relay completes in ~3m44s rather than running to the budget.
+
+---
+
+## 13. PR conflict resolution (2026-09-06) — merge main into PR branch
+
+`main` advanced with a scheduled data-only regeneration while this branch was
+working, so GitHub reported a merge conflict in `export/iran_cut_pack.txt`.
+
+Resolution:
+- Merged `origin/main` into the branch; the only content conflict was
+  `export/iran_cut_pack.txt` (a generated Stage 8p2 output, not source).
+- Regenerated the cut-pack from the **merged** data via
+  `scripts/build_iran_cut_pack.sh` so it is byte-identical to a fresh Stage 8p2
+  run on the merged tree (C11 green again), rather than blindly taking either
+  side's stale file.
+- Kept every other `main`-generated data file (bridge/, data/, README, ZIP) as
+  merged; the branch's actual contribution to the PR is unchanged:
+  - `.github/workflows/torshield-ir.yml` (parallelization + setup-go@v6 +
+    Stage 0b budget/concurrency fix)
+  - `scripts/probe_relay.sh` (concurrent relay client)
+  - `docs/CI_PARALLELIZATION_AUDIT.md` + `CHANGELOG.md`
+- `export/iran_cut_pack.txt` differs from `main` only because it must match the
+  merged data (regenerated in this merge).
+
+Result: GitHub reports PR #223 `MERGEABLE`/`CLEAN`, `verify_repo_invariants.sh`
+13/13, and 43/43 Stage steps remain present.
