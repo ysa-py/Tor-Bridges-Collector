@@ -146,7 +146,10 @@ pub fn load_iran_results(path: &Path) -> Result<Value, ResultsWriterError> {
 ///
 /// These bridges cannot be TCP-probed and are currently assigned
 /// tcp_unreachable by the Go iran_tester, but that status is meaningless
-/// for domain-fronting — TCP is the wrong probe for them.
+/// for domain-fronting — TCP is the wrong probe for them. The Go parser
+/// leaves the `host` field empty for URL-only WebTunnel lines (the only
+/// endpoint it sees is the domain inside `url=`), so the front domain is
+/// derived from the bridge line's url= parameter first.
 fn is_domain_fronted_webtunnel(bridge: &Value) -> bool {
     let transport = bridge
         .get("transport")
@@ -155,13 +158,47 @@ fn is_domain_fronted_webtunnel(bridge: &Value) -> bool {
     if transport != "webtunnel" {
         return false;
     }
-    let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
-    if host.is_empty() {
+
+    let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
+    // Documentation-prefix IPv6 placeholders (RFC 3849, 2001:db8::/32) are
+    // BridgeDB anti-enumeration substitutes for a real IPv6 endpoint; the
+    // line carries a literal endpoint token and must not be treated as a
+    // domain-fronted URL-only bridge here.
+    if line.contains("2001:db8:") {
         return false;
     }
-    // If host parses as an IP address, it has a routable endpoint — not domain-fronted.
-    // Domain-fronted bridges have a domain name as the host (no routable IP).
-    host.parse::<std::net::IpAddr>().is_err()
+
+    // Prefer the explicit `host` field when the tester populated it with a
+    // domain name (e.g. an FQDN:PORT endpoint).
+    let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
+    if !host.is_empty() {
+        // If host parses as an IP address, it has a routable endpoint — not
+        // domain-fronted. Domain-fronted bridges carry a domain name.
+        return host.parse::<std::net::IpAddr>().is_err();
+    }
+
+    // URL-only WebTunnel: extract the front host from the url= parameter.
+    // Accept only when it is a domain name (a bare IP url host implies a
+    // directly dialable endpoint, which is not domain-fronting).
+    for token in line.split_whitespace() {
+        if let Some(rest) = token.strip_prefix("url=") {
+            let after_scheme = rest
+                .strip_prefix("https://")
+                .or_else(|| rest.strip_prefix("http://"))
+                .unwrap_or(rest);
+            let authority = after_scheme
+                .split(['/', '?', '#'])
+                .next()
+                .unwrap_or(after_scheme);
+            let front_host = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
+            let front_host = front_host.rsplit_once(':').map_or(front_host, |(h, _p)| h);
+            let front_host = front_host.trim_start_matches('[').trim_end_matches(']');
+            if !front_host.is_empty() && front_host.parse::<std::net::IpAddr>().is_err() {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// Categorise bridges and write all `results_writer.py` bridge text outputs.

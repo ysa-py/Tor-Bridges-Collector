@@ -350,6 +350,97 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
     }
 }
 
+/// Decision reached for one candidate WebTunnel bridge record.
+#[derive(Debug, PartialEq, Eq)]
+enum ProbeDecision {
+    /// Bridge carries a domain-front URL (or a literal FQDN host); probe it
+    /// via TLS+WebSocket Upgrade at `(front_host, front_port)`.
+    Probe(String, u16),
+    /// Bridge carries an RFC 3849 `2001:db8::/32` placeholder endpoint.
+    SkipDocIpv6,
+    /// Bridge has only a literal IP endpoint and no front domain — TCP is
+    /// the correct probe for it and the Go tester already ran that.
+    SkipIpHost,
+    /// Bridge has neither a url= front domain nor an FQDN host.
+    SkipNoFront,
+}
+
+/// True if the line's first endpoint token (immediately after the
+/// `webtunnel ` transport token) is a bracketed RFC 3849 documentation
+/// IPv6 address. BridgeDB substitutes these placeholders into webtunnel
+/// IPv6 lines as an anti-enumeration measure.
+fn line_has_documentation_ipv6(line: &str) -> bool {
+    let body = line.strip_prefix("webtunnel").unwrap_or(line).trim_start();
+    let Some(after_bracket) = body.strip_prefix('[') else {
+        return false;
+    };
+    after_bracket
+        .split_once(']')
+        .map(|(addr, _)| is_documentation_ipv6(addr))
+        .unwrap_or(false)
+}
+
+/// Pure gating logic for a single WebTunnel bridge record.
+///
+/// Domain-fronted WebTunnel bridges carry their reachable CDN endpoint
+/// inside `url=`; the Go iran_tester leaves the `host` field empty for
+/// these URL-only lines. The probe target therefore must be derived from
+/// the bridge line's url= parameter, falling back to the literal `host`
+/// field only when it is itself a domain name (e.g. an FQDN:PORT endpoint).
+/// True when the line carries a literal endpoint token directly after the
+/// `webtunnel ` transport token — either a bracketed `[IPv6]:PORT` form or a
+/// bare `IPv4:PORT` form. Such a line has a directly dialable address and is
+/// covered by the ordinary raw-TCP tester even if the tester's parsed
+/// `host` field was left empty; it is not a URL-only domain-front bridge.
+fn line_has_literal_ip_endpoint(line: &str) -> bool {
+    let body = line.strip_prefix("webtunnel").unwrap_or(line).trim_start();
+    if let Some(after_bracket) = body.strip_prefix('[') {
+        // [addr]:port form — take the address before the closing bracket.
+        if let Some((addr, _rest)) = after_bracket.split_once(']') {
+            return addr.parse::<std::net::IpAddr>().is_ok();
+        }
+        return false;
+    }
+    // Bare form: the first token must be IPv4:PORT (an FQDN:PORT first token
+    // is itself a frontable host and handled separately).
+    let first = body.split_whitespace().next().unwrap_or("");
+    if let Some((addr, _port)) = first.split_once(':') {
+        return addr.parse::<std::net::Ipv4Addr>().is_ok();
+    }
+    false
+}
+
+fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
+    if is_documentation_ipv6(host) || line_has_documentation_ipv6(line) {
+        return ProbeDecision::SkipDocIpv6;
+    }
+    if let Some((front_host, front_port)) = extract_front_domain(line) {
+        // A url= host that is itself a literal IP is a directly dialable
+        // endpoint: TCP/TLS to it is not domain-fronting and is covered by
+        // the ordinary TCP tester.
+        return if front_host.parse::<std::net::IpAddr>().is_ok() {
+            ProbeDecision::SkipIpHost
+        } else {
+            ProbeDecision::Probe(front_host, front_port)
+        };
+    }
+    if !host.is_empty() {
+        return if host.parse::<std::net::IpAddr>().is_err() {
+            ProbeDecision::Probe(host.to_string(), 443)
+        } else {
+            ProbeDecision::SkipIpHost
+        };
+    }
+    // The tester left `host` empty and there is no url= front domain. A
+    // literal IP:PORT token in the line is still covered by the raw-TCP
+    // tester; only a truly endpoint-less fingerprint line has nothing for
+    // the domain-front probe to dial.
+    if line_has_literal_ip_endpoint(line) {
+        return ProbeDecision::SkipIpHost;
+    }
+    ProbeDecision::SkipNoFront
+}
+
 /// Probe all domain-fronted WebTunnel bridges in the results, updating
 /// their statuses in-place. Returns (probed, succeeded, failed) counts.
 ///
@@ -387,34 +478,38 @@ pub fn probe_all_webtunnel_bridges(
             continue;
         }
         let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
+        let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
 
-        // Detect documentation-prefix IPv6 (RFC 3849: 2001:db8::/32)
-        if !host.is_empty() && is_documentation_ipv6(host) {
-            doc_ipv6_skipped += 1;
-            eprintln!(
-                "webtunnel-probe: skipping documentation-prefix IPv6 host [{}] — \
-                 this is an intentional BridgeDB anti-enumeration placeholder, not a real bridge address",
-                host
-            );
-            continue;
-        }
-
-        // Only probe domain-fronted bridges (host is a domain, not an IP)
-        if host.is_empty() || host.parse::<std::net::IpAddr>().is_ok() {
-            if !host.is_empty() {
+        let (front_host, front_port) = match front_probe_decision(host, line) {
+            ProbeDecision::Probe(front_host, front_port) => (front_host, front_port),
+            ProbeDecision::SkipDocIpv6 => {
+                doc_ipv6_skipped += 1;
+                let label = if host.is_empty() { line } else { host };
+                eprintln!(
+                    "webtunnel-probe: skipping documentation-prefix IPv6 bridge ({label}) — \
+                     this is an intentional BridgeDB anti-enumeration placeholder, not a \
+                     real bridge address"
+                );
+                continue;
+            }
+            ProbeDecision::SkipIpHost => {
                 ip_host_skipped += 1;
                 eprintln!(
-                    "webtunnel-probe: skipping IP-host bridge [{}] — \
-                     webtunnel requires domain fronting via url= parameter",
-                    host
+                    "webtunnel-probe: skipping IP-endpoint bridge (host={host}, \
+                     line={line}) — it is covered by the raw TCP tester; webtunnel \
+                     front-domain probing requires a domain in url="
                 );
+                continue;
             }
-            continue;
-        }
+            ProbeDecision::SkipNoFront => {
+                eprintln!(
+                    "webtunnel-probe: skipping bridge with no front domain (no url= \
+                     parameter): {line}"
+                );
+                continue;
+            }
+        };
 
-        let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
-        let (front_host, front_port) =
-            extract_front_domain(line).unwrap_or((host.to_string(), 443));
         front_domains.insert(front_host.clone());
 
         probed += 1;
@@ -584,28 +679,93 @@ mod tests {
     }
 
     #[test]
-    fn edge_case_probe_skips_ip_host_webtunnel() {
-        // A webtunnel bridge whose host is an IP (not domain-fronted) should be skipped
-        let bridges = vec![
-            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "1.2.3.4", "line": "webtunnel 1.2.3.4:443 FINGERPRINT url=https://example.com/x ver=0.0.4"}),
-        ];
-        let mut bridges = bridges;
-        let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
-        assert_eq!(
-            p, 0,
-            "IP-host webtunnel bridges should be skipped by domain-front probe"
+    fn edge_case_decision_skips_literal_ip_endpoint() {
+        // A webtunnel bridge with a literal IP endpoint (no url= front) is
+        // covered by the ordinary TCP tester and is skipped by the
+        // domain-front probe.
+        let decision =
+            front_probe_decision("1.2.3.4", "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4");
+        assert_eq!(decision, ProbeDecision::SkipIpHost);
+        // url= pointing at an IP rather than a front domain is also not
+        // domain-fronting.
+        let decision = front_probe_decision(
+            "",
+            "webtunnel FINGERPRINT url=https://1.2.3.4:8443/path ver=0.0.3",
         );
-        assert_eq!(s, 0);
-        assert_eq!(f, 0);
+        assert_eq!(decision, ProbeDecision::SkipIpHost);
     }
 
     #[test]
-    fn edge_case_probe_skips_empty_host() {
-        let bridges = vec![
-            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "", "line": "webtunnel FINGERPRINT url=https://example.com/x ver=0.0.4"}),
-        ];
-        let mut bridges = bridges;
-        let (p, _s, _f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
-        assert_eq!(p, 0, "Empty host should be skipped");
+    fn edge_case_decision_probes_url_only_webtunnel() {
+        // URL-only WebTunnel lines (the form published by BridgeDB with
+        // domain fronting) carry the reachable endpoint in url=; the Go
+        // tester leaves `host` empty. These MUST be probed against the url=
+        // front domain — this is the regression that previously produced
+        // empty webtunnel*_tested.txt and iran_likely_working_webtunnel.txt.
+        let decision = front_probe_decision(
+            "",
+            "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+        );
+        match decision {
+            ProbeDecision::Probe(host, port) => {
+                assert_eq!(host, "vika7.space");
+                assert_eq!(port, 443);
+            }
+            other => panic!("expected Probe(vika7.space, 443), got {other:?}"),
+        }
+
+        // Custom port in the front URL is preserved.
+        let decision = front_probe_decision(
+            "",
+            "webtunnel FINGERPRINT url=https://front.example.com:8443/p ver=0.0.3",
+        );
+        assert_eq!(
+            decision,
+            ProbeDecision::Probe("front.example.com".to_string(), 8443)
+        );
+    }
+
+    #[test]
+    fn edge_case_decision_falls_back_to_fqdn_host() {
+        // No url= but a literal FQDN host field: probe that domain.
+        let decision = front_probe_decision(
+            "cdn.example.com",
+            "webtunnel cdn.example.com:443 FINGERPRINT ver=0.0.3",
+        );
+        assert_eq!(
+            decision,
+            ProbeDecision::Probe("cdn.example.com".to_string(), 443)
+        );
+    }
+
+    #[test]
+    fn edge_case_decision_skips_when_no_front_and_no_host() {
+        // No url= front domain and empty host: nothing to probe.
+        let decision = front_probe_decision("", "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4");
+        assert_eq!(decision, ProbeDecision::SkipIpHost);
+
+        // A bare fingerprint-only line without url= and no host is skipped.
+        let decision = front_probe_decision("", "webtunnel FINGERPRINT ver=0.0.3");
+        assert_eq!(decision, ProbeDecision::SkipNoFront);
+    }
+
+    #[test]
+    fn edge_case_decision_skips_doc_ipv6_in_line() {
+        // BridgeDB placeholder endpoint in the line (host field empty) is
+        // detected from the bracketed token, not just the host field.
+        let decision = front_probe_decision(
+            "",
+            "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 FINGERPRINT url=https://coellen.xyz ver=0.0.3",
+        );
+        assert_eq!(decision, ProbeDecision::SkipDocIpv6);
+    }
+
+    #[test]
+    fn edge_case_decision_detects_doc_ipv6_in_host_field() {
+        let decision = front_probe_decision(
+            "2001:db8::1",
+            "webtunnel FINGERPRINT url=https://example.com/x ver=0.0.3",
+        );
+        assert_eq!(decision, ProbeDecision::SkipDocIpv6);
     }
 }

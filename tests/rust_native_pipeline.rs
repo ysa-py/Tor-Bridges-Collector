@@ -165,3 +165,54 @@ fn result_writer_preserves_all_bridge_output_capabilities() {
 
     let _ = std::fs::remove_dir_all(root);
 }
+
+/// Regression contract for the NIN cut-pack empty-webtunnel defect:
+/// URL-only WebTunnel bridges (the domain-fronted form BridgeDB publishes)
+/// reach the results stage with an empty `host`, `tcp_reachable: false`,
+/// and `iran_status: tcp_unreachable` because raw TCP cannot dial a bridge
+/// that has no routable IP. The results stage must reclassify them from
+/// the line's `url=` front domain so the WebTunnel special-case promotes
+/// them into `iran_likely_working_webtunnel.txt` instead of leaving every
+/// webtunnel tested/working projection empty.
+#[test]
+fn url_only_webtunnel_tcp_unreachable_is_promoted_to_working() {
+    let root = sandbox("url-only-webtunnel");
+    let records = vec![
+        json!({
+            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+            "transport": "webtunnel",
+            "host": "",
+            "iran_status": "tcp_unreachable",
+            "tcp_reachable": false
+        }),
+        json!({
+            // RFC 3849 documentation-prefix IPv6 placeholder: BridgeDB emits
+            // these into webtunnel_ipv6 lines as anti-enumeration decoys.
+            // They carry a literal placeholder endpoint and must NOT be
+            // reclassified as working domain-front bridges.
+            "line": "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
+            "transport": "webtunnel",
+            "host": "2001:db8:1218:1de7:3a91:22cc:8d7f:197c",
+            "iran_status": "tcp_unreachable",
+            "tcp_reachable": false
+        }),
+    ];
+    let stats = write_result_files(&root, &records).unwrap();
+
+    let wt = std::fs::read_to_string(root.join("iran_likely_working_webtunnel.txt"))
+        .expect("webtunnel working file written");
+    assert!(
+        wt.contains("vika7.space"),
+        "URL-only webtunnel must be promoted into iran_likely_working_webtunnel.txt, got: {wt:?}"
+    );
+    assert!(
+        !wt.contains("2001:db8"),
+        "documentation-prefix IPv6 placeholder must not be promoted, got: {wt:?}"
+    );
+    assert_eq!(
+        stats["iran_likely_working_webtunnel.txt"], 1,
+        "exactly one URL-only webtunnel promoted"
+    );
+
+    let _ = std::fs::remove_dir_all(root);
+}

@@ -237,3 +237,54 @@ fn parity_mixed_tiers_blocked_global_and_deduplication() {
 fn parity_empty_input_still_writes_mandatory_empty_files() {
     assert_parity("empty", json!([]));
 }
+
+/// Regression: URL-only domain-fronted WebTunnel bridges (the form published
+/// by BridgeDB — fingerprint + url=, no literal IP:PORT) arrive from the Go
+/// iran_tester with `host: ""`, `tcp_reachable: false`, and
+/// `iran_status: tcp_unreachable` because raw TCP cannot dial them. The
+/// results stage reclassifies them via the line's url= front domain so the
+/// WebTunnel special-case promotes them into
+/// `iran_likely_working_webtunnel.txt` instead of leaving that file empty.
+#[test]
+fn rust_url_only_webtunnel_tcp_unreachable_is_reclassified() {
+    let dir = case_dir("rust_url_only_webtunnel");
+    let bridges = json!([
+        {
+            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+            "transport": "webtunnel",
+            "host": "",
+            "iran_status": "tcp_unreachable",
+            "tcp_reachable": false
+        },
+        {
+            // Documentation-prefix IPv6 placeholder must NOT be reclassified:
+            // it carries a literal endpoint token.
+            "line": "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
+            "transport": "webtunnel",
+            "host": "2001:db8:1218:1de7:3a91:22cc:8d7f:197c",
+            "iran_status": "tcp_unreachable",
+            "tcp_reachable": false
+        }
+    ]);
+    let stats = write_result_files(
+        &dir,
+        bridges.as_array().expect("bridges list"),
+    )
+    .expect("rust writer succeeds");
+
+    let wt = fs::read_to_string(dir.join("iran_likely_working_webtunnel.txt"))
+        .expect("webtunnel working file written");
+    assert!(
+        wt.contains("vika7.space"),
+        "URL-only webtunnel must be promoted into iran_likely_working_webtunnel.txt, got: {wt:?}"
+    );
+    assert!(
+        !wt.contains("2001:db8"),
+        "documentation-prefix IPv6 placeholder must not be reclassified as a working domain-front bridge, got: {wt:?}"
+    );
+    let count = stats
+        .get("iran_likely_working_webtunnel.txt")
+        .copied()
+        .unwrap_or(0);
+    assert_eq!(count, 1, "exactly one URL-only webtunnel promoted");
+}
