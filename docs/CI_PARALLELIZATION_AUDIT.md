@@ -198,3 +198,84 @@ stage (large, but conclusive) before deciding.
 Because the request says **"When uncertain, stop and ask rather than make an
 assumption that could silently break a stage,"** Option A can be applied
 immediately and safely; Option B/C should be confirmed first.
+
+---
+
+## 6. APPLIED (2026-09-05, follow-up) — Structural job split
+
+The full 40+-step `scrape-and-test` pipeline was split into a **core** job,
+**parallel analytics jobs**, and a **finalize** job. This is a pure execution
+architecture change: **all 43 `Stage *` steps still exist exactly once, in the
+same step name/identity and with the same commands/env/outputs.** No stage was
+deleted, merged, or disabled; FAILSAFE, `Stage 9b` verification, self-heal,
+and every output contract are preserved.
+
+### New dependency graph
+
+```
+quality-gate / build-rust / rust-parity-tests
+        |
+        v
+   scrape-and-test (core)  [0s..0b..1, FAILSAFE, 2,3,4-prep,4,4-cleanup,5,6a,6b]
+        |  uploads bridge-snapshot
+        +---------------------------------------------------------------+
+        |                 |            |          |         |            |
+   analytics-       analytics-     analytics-   analytics- analytics-  analytics-
+   ml-zig           scoring        nin          nin-adv    ech         static
+   (7,8,zig,8q)     (8b,8n,8i,     (8d,8d2,     (8h)       (8g)        (8c,8e,8f,
+                    8i-smart,      8k,8p)                              8l,8m,8o)
+                    8j,8r)
+        +----------------+----------+------------+----------+------------+
+        |                                                         |
+        v                                                         v
+   scrape-and-test-finalize  [merge outputs -> 8s,8t,9,9b,FAILSAFE,10,8p2,11,upload]
+        |
+        v
+   ai-rerank -> package-final-artifact -> cleanup
+```
+
+### Why each group is safe to parallelize (data-proven)
+
+- **ml-zig (7,8,8q)**: 7 writes model + `data/latest-results.json`; 8 writes
+  only `data/transport_*`; 8q reads `data/latest-results.json` (so 7 must be
+  before 8q in the same job — preserved). None are read by scorers.
+- **scoring (8b,8n,8i,8i-smart,8j,8r)**: 8b -> 8j; 8n -> 8r (8r loads
+  `data/ja3_rotation_plan.json`); 8i/8i-smart/8j -> 8s. Kept in one job so the
+  exact order of the anti-AI/SIAM/rotation chain is unchanged.
+- **nin (8d,8d2,8k,8p)**: all read only `bridge/`+`data/` and write NIN
+  artifacts + `bridge/iran_likely_working_nin.txt`; 8p's `nin_cut_bridges.txt`
+  must win over 8h (see merge precedence below).
+- **nin-advanced (8h)**: writes `data/nin_advanced_report.json` and a transient
+  `export/nin_cut_bridges.txt`; merged BEFORE nin so 8p's classifier output wins.
+- **ech (8g)**: isolated (ech report + top bridges).
+- **static (8c,8e,8f,8l,8m,8o)**: provably no reads of freshly-collected
+  pipeline state (verified in `root_modules.rs` / `stage_*` functions). 8e is
+  consumed by 8t; the rest are artifact-only.
+- **finalize**: consumes all merged outputs and runs the consumer /
+  publication order that must stay sequential: 8s, 8t, 9, 9b, FAILSAFE, 10,
+  8p2, 11.
+
+### Merge precedence (deterministic)
+
+`snapshot` baseline -> ml-zig -> ech -> nin-advanced -> static -> scoring ->
+**nin** (last so the 8p classifier's `bridge/iran_likely_working_nin.txt`,
+`export/nin_cut_bridges.txt`, and `data/nin_eligible.json` are authoritative),
+then the unchanged fail-loud final stages run.
+
+### Before/after estimate
+
+- Before: single job, ~65 min observed (run 33996425901 = 1h5m22s).
+- After: core (~20-30 min) + max(analytics jobs ~20-25 min) + finalize (~8-12
+  min) ≈ **~50-60 min** on the same runner class. The 8g/8h/8i chain that was
+  previously serial (~35-40 min) now overlaps; static report generation is no
+  longer on the critical path. Actual wall-clock is validated by the
+  `pull_request`/`push` runs opened from this branch.
+
+### Stage/functionality confirmation
+
+- `Stage *` step count before = 43, after = 43 (unique, no duplicates).
+- No stage name text was changed; commands, env blocks, timeouts, and
+  `continue-on-error` flags were copied verbatim.
+- Final artifact names/paths (`bridge-intelligence-report`,
+  `ai-iran-ranked-bridges-*`, `TorShield-IR-Final-Package-*`,
+  `brand-probe-bin`) are unchanged.

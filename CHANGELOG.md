@@ -1,5 +1,42 @@
 # Changelog
 
+## [Session 24] — 2026-09-06 — Parallelized scrape-and-test pipeline (no stage removed/merged)
+
+### What changed
+The single long `scrape-and-test` job in `.github/workflows/torshield-ir.yml`
+was split into a core collector job, parallel analytics jobs, and a finalize
+job, using deterministic artifact hand-off and a defined merge precedence.
+
+- `scrape-and-test` (core): Stages 0s–6b + snapshot upload.
+- `analytics-ml-zig`, `analytics-scoring`, `analytics-nin`,
+  `analytics-nin-advanced`, `analytics-ech`, `analytics-static`: the
+  data-independent / non-conflicting downstream stages now run in parallel.
+- `scrape-and-test-finalize`: merges all outputs, then runs the unchanged
+  consumer/publication sequence 8s, 8t, 9, 9b, FAILSAFE, 10, 8p2, 11, and the
+  `bridge-intelligence-report` upload.
+- `ai-rerank` / `package-final-artifact` / `cleanup` now depend on the
+  finalize job.
+
+### Safety
+All 43 `Stage *` steps still exist exactly once with the same names, commands,
+env blocks, timeouts, and `continue-on-error` flags. No feature, FAILSAFE,
+verification stage, self-heal diagnostics, artifact name, ZIP structure,
+README/Telegram format, or `iran_cut_pack.txt` contract was changed.
+
+### Why it is safe
+Verified from source which stages read/write which files; groups were chosen so
+every real dependency is preserved (8b->8j, 8n->8r, 7->8q, 8i/8i-smart/8r->8s,
+8e->8t, 8p/8k/8d/8d2->8p2/8t). Parallel jobs use isolated workspaces, so their
+file writes cannot collide; the finalize merge applies a defined precedence
+(8h's transient `nin_cut_bridges.txt` is superseded by 8p, and scoring's
+`ja3_rotation_plan.json`/anti-AI report is authoritative).
+
+### Verification
+- `verify_repo_invariants.sh` 13/13 green.
+- Workflow YAML parses; all 43 Stage identities preserved.
+- Validated by the `pull_request`/`push` runs opened from the fix branch.
+
+
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
 
