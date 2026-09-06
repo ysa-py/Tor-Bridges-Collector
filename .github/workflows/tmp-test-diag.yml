@@ -1,0 +1,30 @@
+name: tmp-test-diag
+on:
+  push:
+    branches:
+      - arena/01a07697-tor-bridges-collector
+  workflow_dispatch: {}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: tmp-test-diag
+      - name: Run cargo test and capture output
+        run: |
+          set +e
+          cargo test --workspace 2>&1 | tee /tmp/test.log
+          echo "EXIT=${PIPESTATUS[0]}" | tee -a /tmp/test.log
+          # print only the failure-relevant lines to the job log too
+          grep -nE "error\[|error:|FAILED|panicked|assertion|cannot find|mismatched|test result|warning: unused" /tmp/test.log || true
+      - name: Upload test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-test-log
+          path: /tmp/test.log
+          if-no-files-found: warn
