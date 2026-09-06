@@ -40,6 +40,16 @@ The defect was a stage-ordering race in `.github/workflows/torshield-ir.yml`:
 - Subsequent runs are validated by the `pull_request` trigger of
   `TorShield-IR Main CI` on the fix branch.
 
+### Follow-up (2026-09-05, Cache/build-reuse optimization)
+- Added Cargo/Go/Zig cache/build reuse in `scrape-and-test` (Option A).
+- **Fixed the regression that cache change introduced**: the Zig install step
+  ran `zig version` in the same step after appending the toolchain directory to
+  `GITHUB_PATH`. GitHub Actions applies `GITHUB_PATH` only to the *next* step,
+  so `zig` was not on PATH and the step failed (which skipped Stages 8q–11).
+  The step now verifies the toolchain with its absolute path
+  (`"${ZIG_CACHE}/zig" version`), so it works in the current step and Stage 8q
+  still receives it via `GITHUB_PATH`. No stage/feature was removed or merged.
+
 ## [Session 22] — 2026-09-03 — Phantom-artifact elimination: PQ bridge scores + NIN recommended-transport manifests
 
 ### Found by microscopic audit (artifact-contract violation)

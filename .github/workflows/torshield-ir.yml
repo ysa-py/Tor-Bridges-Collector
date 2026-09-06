@@ -935,7 +935,10 @@ jobs:
             echo "Zig ${ZIG_VERSION} installed"
           fi
           echo "${ZIG_CACHE}" >> "${GITHUB_PATH}"
-          zig version
+          # GITHUB_PATH only applies to the NEXT step, so within this step Zig
+          # is not yet on PATH. Use the absolute path here so the toolchain is
+          # still verified, then Stage 8q picks it up from GITHUB_PATH.
+          "${ZIG_CACHE}/zig" version
 
       # Cache zig build outputs (source tree is unchanged when the scan is
       # re-run), so `zig build -Doptimize=ReleaseFast` in Stage 8q is an
