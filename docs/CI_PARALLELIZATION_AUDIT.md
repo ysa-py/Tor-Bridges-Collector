@@ -417,3 +417,31 @@ consumed by `probe_scheduler` (Stage 3) during its merge, and Stage 3 starts
 before Stage 4 in the same workspace. Splitting them into separate jobs would
 require carrying both artifacts plus the running scheduler between jobs — a
 much larger contract change that is not done here.
+
+---
+
+## 12. Verified result (push run 34022910931, commit 1499e64)
+
+Monitored to completion with no intervening push (so `cancel-in-progress` could
+not cancel it). **Conclusion: success**, 08:49:04Z → 09:31:44Z (~42m40s).
+
+Stage timings from the live job:
+
+| Stage | Duration |
+|---|---|
+| Stage 0b (collector) | **6m36s** (08:54:00→09:00:36) — down from a fixed 11:00 truncation |
+| Stage 2 (iran_tester) | 5m15s (09:01:02→09:06:17) |
+| Stage 4 (probe relay) | 3m44s (09:06:54→09:10:38) — no longer near the 20m budget |
+| Stage 5 (OONI correlator) | 3s (09:10:40→09:10:43) |
+| Stage 6a / 6b | ~2s each |
+
+All core stages succeeded, all six analytics jobs ran in parallel and succeeded,
+`scrape-and-test (finalize)` succeeded, `AI Bridge Re-Ranker (Iran)` succeeded,
+`Package Final Artifact` succeeded, and `AI Ultra-Pro Cleanup` succeeded. The
+fixed Stage 4 `PROBE_RELAY_PARALLELISM=8` and `actions/setup-go@v6` were both
+present in this run.
+
+The two annotations that were complained about stem from the old run
+`34004576340` (setup-go@v5 + probe relay hitting the 20-minute budget). Both
+root causes are now removed: the workflow uses `actions/setup-go@v6`, and the
+relay completes in ~3m44s rather than running to the budget.
