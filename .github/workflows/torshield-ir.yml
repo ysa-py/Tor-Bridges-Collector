@@ -753,6 +753,19 @@ jobs:
         # exact same result array/order as the old serial loop). 8 concurrent
         # requests keeps the free-tier Cloudflare Worker busy without bursting
         # it; the parent merges per-chunk results in chunk order afterwards.
+        #
+        # Truncation fix (2026-09-06): the per-chunk WALL-CLOCK throughput of
+        # the relay Worker was the real bottleneck that forced this step onto
+        # its 20-minute budget and silently dropped the un-finished chunks.
+        # probe-relay's internal probe concurrency was raised 5 -> 25 (see
+        # probe-relay/wrangler.toml [vars] MAX_CONCURRENT_PROBES and
+        # src/index.ts), so each 30-bridge chunk now probes in ~1-2 waves
+        # (~5-10s) instead of ~6 serial waves (~30s). The whole ~1500-bridge
+        # set therefore completes inside the budget instead of being cut at the
+        # deadline — raising the timeout alone would only have delayed the
+        # failure mode, so this fixes coverage rather than masking it. The
+        # 20-minute client cap below stays as a generous safety bound, and the
+        # explicit coverage accounting makes any future truncation loud.
         PROBE_RELAY_PARALLELISM: '8'
       run: |
         set -euo pipefail
@@ -768,8 +781,15 @@ jobs:
             bridge/bridge_list_for_testing.json \
             data/pt_results.json || relay_status=$?
 
+        # Explicit, non-silent truncation accounting: report how much of the
+        # candidate pool actually received a relay observation so an incomplete
+        # run can never silently shrink probe coverage again.
+        INPUT_COUNT=$(jq 'length' bridge/bridge_list_for_testing.json 2>/dev/null || echo 0)
+        RESULT_COUNT=$(jq 'length' data/pt_results.json 2>/dev/null || echo 0)
+
         if [ "$relay_status" -eq 124 ] || [ "$relay_status" -eq 137 ]; then
           echo "::warning::Probe relay reached its 20-minute budget; continuing with partial results"
+          echo "::warning::Truncation check: ${RESULT_COUNT}/${INPUT_COUNT} candidates have relay observations (budget exhausted before all chunks finished)"
         elif [ "$relay_status" -ne 0 ]; then
           echo "::warning::Probe relay exited with status ${relay_status}; continuing with available results"
         fi
@@ -777,9 +797,10 @@ jobs:
         if ! jq -e 'type == "array"' data/pt_results.json >/dev/null 2>&1; then
           echo "::warning::Probe relay did not leave a valid result array; using an empty supplementary result set"
           printf '[]\n' > data/pt_results.json
+          RESULT_COUNT=0
         fi
 
-        echo "Stage 4 completed with $(jq 'length' data/pt_results.json) relay observations"
+        echo "Stage 4 completed with ${RESULT_COUNT} relay observations (of ${INPUT_COUNT} input candidates)"
 
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
