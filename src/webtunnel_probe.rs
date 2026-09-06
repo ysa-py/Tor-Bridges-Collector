@@ -387,6 +387,29 @@ fn line_has_documentation_ipv6(line: &str) -> bool {
 /// these URL-only lines. The probe target therefore must be derived from
 /// the bridge line's url= parameter, falling back to the literal `host`
 /// field only when it is itself a domain name (e.g. an FQDN:PORT endpoint).
+/// True when the line carries a literal endpoint token directly after the
+/// `webtunnel ` transport token — either a bracketed `[IPv6]:PORT` form or a
+/// bare `IPv4:PORT` form. Such a line has a directly dialable address and is
+/// covered by the ordinary raw-TCP tester even if the tester's parsed
+/// `host` field was left empty; it is not a URL-only domain-front bridge.
+fn line_has_literal_ip_endpoint(line: &str) -> bool {
+    let body = line.strip_prefix("webtunnel").unwrap_or(line).trim_start();
+    if let Some(after_bracket) = body.strip_prefix('[') {
+        // [addr]:port form — take the address before the closing bracket.
+        if let Some((addr, _rest)) = after_bracket.split_once(']') {
+            return addr.parse::<std::net::IpAddr>().is_ok();
+        }
+        return false;
+    }
+    // Bare form: the first token must be IPv4:PORT (an FQDN:PORT first token
+    // is itself a frontable host and handled separately).
+    let first = body.split_whitespace().next().unwrap_or("");
+    if let Some((addr, _port)) = first.split_once(':') {
+        return addr.parse::<std::net::Ipv4Addr>().is_ok();
+    }
+    false
+}
+
 fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
     if is_documentation_ipv6(host) || line_has_documentation_ipv6(line) {
         return ProbeDecision::SkipDocIpv6;
@@ -407,6 +430,13 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
         } else {
             ProbeDecision::SkipIpHost
         };
+    }
+    // The tester left `host` empty and there is no url= front domain. A
+    // literal IP:PORT token in the line is still covered by the raw-TCP
+    // tester; only a truly endpoint-less fingerprint line has nothing for
+    // the domain-front probe to dial.
+    if line_has_literal_ip_endpoint(line) {
+        return ProbeDecision::SkipIpHost;
     }
     ProbeDecision::SkipNoFront
 }
