@@ -325,8 +325,14 @@ jobs:
     # NOTE: timeout raised from 50→90 min because the full pipeline
     # (collect → test → probe → nin-advanced → scoring → export) needs
     # ~74+ min; the old 50-min budget killed Stage 8h before it finished.
+    #
+    # Only quality-gate + build-rust are true prerequisites (bridge-probe-bin
+    # artifact + workflow validation). rust-parity-tests stays an independent
+    # gate: it still runs and any failure still fails the workflow, but it no
+    # longer delays the ~1h collection pipeline behind a full fmt/clippy/test
+    # suite that shares no files with it.
     runs-on: ubuntu-latest
-    needs: [quality-gate, build-rust, rust-parity-tests]
+    needs: [quality-gate, build-rust]
     timeout-minutes: 90
     name: scrape-and-test (core)
     steps:

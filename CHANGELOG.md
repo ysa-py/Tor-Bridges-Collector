@@ -1,5 +1,15 @@
 # Changelog
 
+## [Session 26] — 2026-09-06 — Overlap long pipeline with rust-parity gate
+
+- `scrape-and-test (core)` now depends only on `quality-gate` + `build-rust`.
+  `rust-parity-tests` still runs and still fails the workflow on any fmt/
+  clippy/test regression, but no longer serializes before the ~1h collection
+  pipeline. This shortens wall-clock without reducing any stage or gate.
+- Combined with the concurrent probe-relay (Stage 4), the critical path is
+  quality-gate/build-rust -> core -> analytics -> finalize, with parity tests
+  overlapping.
+
 ## [Session 25] — 2026-09-06 — Removed CI warnings + made probe relay concurrent
 
 ### Fixed

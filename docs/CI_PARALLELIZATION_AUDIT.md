@@ -330,3 +330,22 @@ then `scrape-and-test (core)` -> parallel analytics -> finalize). The run is
 still executing on GitHub and is expected to complete without the setup-go
 deprecation and probe-relay-budget warnings; this section will be updated when
 the run concludes.
+
+---
+
+## 9. Applied — overlap long pipeline with rust-parity-tests gate
+
+`scrape-and-test (core)` previously `needs: [quality-gate, build-rust,
+rust-parity-tests]`, so the ~1h collection pipeline waited for the full
+fmt/clippy/test suite to finish even though it only consumes the
+`bridge-probe-bin` artifact from `build-rust` and the (already-passing) YAML
+validation.
+
+- Changed core `needs` to `[quality-gate, build-rust]`.
+- `rust-parity-tests` remains an **independent gate**: it still runs in
+  parallel, and a failure still fails the overall workflow (GitHub fails the
+  run when any job fails). Only the ordering block is removed; coverage is
+  unchanged.
+- Combined with the concurrent `probe_relay.sh` (Stage 4), the critical path
+  is now: quality-gate/build-rust → core (collect + probe + export) → analytics
+  → finalize, with the parity suite overlapping the core.
