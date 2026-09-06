@@ -452,24 +452,27 @@ pub fn probe_all_webtunnel_bridges(
             ProbeDecision::Probe(front_host, front_port) => (front_host, front_port),
             ProbeDecision::SkipDocIpv6 => {
                 doc_ipv6_skipped += 1;
+                let label = if host.is_empty() { line } else { host };
                 eprintln!(
-                    "webtunnel-probe: skipping documentation-prefix IPv6 bridge ({}) — \
-                     this is an intentional BridgeDB anti-enumeration placeholder, not a real bridge address",
-                    if host.is_empty() { line } else { host }
+                    "webtunnel-probe: skipping documentation-prefix IPv6 bridge ({label}) — \
+                     this is an intentional BridgeDB anti-enumeration placeholder, not a \
+                     real bridge address"
                 );
                 continue;
             }
             ProbeDecision::SkipIpHost => {
                 ip_host_skipped += 1;
                 eprintln!(
-                    "webtunnel-probe: skipping IP-endpoint bridge (host={host}, line={line}) — \
-                     it is covered by the raw TCP tester; webtunnel front-domain probing requires a domain in url="
+                    "webtunnel-probe: skipping IP-endpoint bridge (host={host}, \
+                     line={line}) — it is covered by the raw TCP tester; webtunnel \
+                     front-domain probing requires a domain in url="
                 );
                 continue;
             }
             ProbeDecision::SkipNoFront => {
                 eprintln!(
-                    "webtunnel-probe: skipping bridge with no front domain (no url= parameter): {line}"
+                    "webtunnel-probe: skipping bridge with no front domain (no url= \
+                     parameter): {line}"
                 );
                 continue;
             }

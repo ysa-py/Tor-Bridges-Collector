@@ -1479,13 +1479,18 @@ mod tests {
             }
         });
         let candidates =
-            candidates_from_history(history.as_object().unwrap(), &[], cutoff).expect("candidates");
+            candidates_from_history(history.as_object().unwrap(), &[], cutoff)
+                .expect("candidates");
         let tested: Vec<&str> = candidates
             .iter()
             .filter(|candidate| candidate.tested)
             .map(|candidate| candidate.raw.as_str())
             .collect();
-        assert_eq!(tested, vec![raw], "only the reachable front-domain webtunnel is tested");
+        assert_eq!(
+            tested,
+            vec![raw],
+            "only the reachable front-domain webtunnel is tested"
+        );
 
         // Legacy `test_pass` schema still works unchanged.
         let legacy = serde_json::json!({
@@ -1498,10 +1503,13 @@ mod tests {
             }
         });
         let legacy_candidates =
-            candidates_from_history(legacy.as_object().unwrap(), &[], cutoff).expect("legacy");
-        assert!(legacy_candidates
-            .iter()
-            .any(|candidate| candidate.tested && candidate.transport == "obfs4"));
+            candidates_from_history(legacy.as_object().unwrap(), &[], cutoff)
+                .expect("legacy");
+        assert!(
+            legacy_candidates
+                .iter()
+                .any(|candidate| candidate.tested && candidate.transport == "obfs4")
+        );
     }
 
     #[test]

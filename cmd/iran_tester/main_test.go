@@ -50,8 +50,8 @@ func TestClassifyURLOnlyWebTunnelNotHardUnreachable(t *testing.T) {
 	defer ooniClient.Close()
 
 	lines := []struct {
-		name string
-		line string
+		name      string
+		line      string
 		transport string
 	}{
 		{
