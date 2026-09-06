@@ -713,8 +713,10 @@ mod tests {
     #[test]
     fn edge_case_decision_skips_when_no_front_and_no_host() {
         // No url= front domain and empty host: nothing to probe.
-        let decision =
-            front_probe_decision("", "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4");
+        let decision = front_probe_decision(
+            "",
+            "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4",
+        );
         assert_eq!(decision, ProbeDecision::SkipIpHost);
 
         // A bare fingerprint-only line without url= and no host is skipped.

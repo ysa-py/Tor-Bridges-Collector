@@ -1478,8 +1478,7 @@ mod tests {
                 "probe_failures": 25
             }
         });
-        let candidates =
-            candidates_from_history(&history, &[], cutoff).expect("candidates");
+        let candidates = candidates_from_history(&history, &[], cutoff).expect("candidates");
         let tested: Vec<&str> = candidates
             .iter()
             .filter(|candidate| candidate.tested)
@@ -1501,8 +1500,7 @@ mod tests {
                 "test_pass": true
             }
         });
-        let legacy_candidates =
-            candidates_from_history(&legacy, &[], cutoff).expect("legacy");
+        let legacy_candidates = candidates_from_history(&legacy, &[], cutoff).expect("legacy");
         assert!(
             legacy_candidates
                 .iter()
