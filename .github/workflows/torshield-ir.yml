@@ -306,15 +306,7 @@ jobs:
         restore-keys: ${{ runner.os }}-cargo-
 
     - name: Format check
-      run: |
-        cargo fmt --all
-        if ! git diff --quiet; then
-          echo '::group::canonical rustfmt diff'
-          git diff --stat
-          git diff
-          echo '::endgroup::'
-          exit 1
-        fi
+      run: cargo fmt --all -- --check
 
     - name: Clippy (all features, deny warnings)
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
