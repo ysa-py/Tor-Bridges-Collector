@@ -153,6 +153,14 @@
       "transport": "obfs4"
     },
     {
+      "ip": "108.245.0.67",
+      "port": 41947,
+      "raw": "obfs4 108.245.0.67:41947 D73D4F8644D9976EF431B6AF7275F5D1AFE0D87C cert=uSRfHQ9XcQsv2He8ysEP6z+Hkdh22Tm1oE6Oag1KA6DsgSU/ARjwtoux35i6JpCf8MbGDg iat-mode=0",
+      "sni": "",
+      "tier": "RED",
+      "transport": "obfs4"
+    },
+    {
       "ip": "109.104.14.213",
       "port": 8443,
       "raw": "obfs4 109.104.14.213:8443 3F94891578E8ED8E693F5C2B0442846C617D1B91 cert=tM0Wo0WX1f3xRgvaf72lZV9lZw/3/jo0dQeRH0q/7PaCEVao4Mi9aW633csFjxnX2N/MVA iat-mode=0",
@@ -2353,14 +2361,6 @@
       "transport": "obfs4"
     },
     {
-      "ip": "75.182.211.20",
-      "port": 9444,
-      "raw": "obfs4 75.182.211.20:9444 B8D14171E82FFC3FB37BEEF3FCDBE3C17626472A cert=MBSyeuyLxP5ylwPlWnnK5eUxeEy25aOHbrtyL8Ahg4HCk+Kws+IfCK5W3SBkd2WW8reVCQ iat-mode=0",
-      "sni": "",
-      "tier": "RED",
-      "transport": "obfs4"
-    },
-    {
       "ip": "75.56.12.77",
       "port": 34900,
       "raw": "obfs4 75.56.12.77:34900 636E13048BC4849DA2071F50018F6F6BDCAC7729 cert=47M1jyZIYrCZbol/SEQMubJXrso/BAgiIzcMpKXiQzWUnYxflkdawC4vixH+PcYsXQbvew iat-mode=0",
@@ -2937,14 +2937,6 @@
       "transport": "obfs4"
     },
     {
-      "ip": "91.116.161.79",
-      "port": 8080,
-      "raw": "obfs4 91.116.161.79:8080 273CF59DF788E98F21D4A2449AFFC9A8A65327F9 cert=JIq3mrt5UR2N/5B2hLslJpcujxa3ThmdOUHVDjBSFbaW31hWRv5fn/gXBAKS81gqJT0iOg iat-mode=0",
-      "sni": "",
-      "tier": "YELLOW",
-      "transport": "obfs4"
-    },
-    {
       "ip": "91.118.31.104",
       "port": 1194,
       "raw": "obfs4 91.118.31.104:1194 6705A703015B05CAD535D7CEE4D82581B7BDBA0A cert=D2L0LtHOwrhgVjk0/hlG7p1ydTm3aAMSGg6y+JkKCvqiHbGsY/3ULK0t2tgsYGDCZeTVdA iat-mode=0",
@@ -3265,9 +3257,9 @@
       "transport": "snowflake"
     },
     {
-      "ip": "",
-      "port": 0,
-      "raw": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+      "ip": "104.21.60.225",
+      "port": 443,
+      "raw": "webtunnel 104.21.60.225:443 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
       "sni": "vika7.space",
       "tier": "YELLOW",
       "transport": "webtunnel"
@@ -3281,9 +3273,9 @@
       "transport": "webtunnel"
     },
     {
-      "ip": "",
-      "port": 0,
-      "raw": "webtunnel 96E16DE2F8DA38060D93A554DC56C90A681F6FE4 url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3",
+      "ip": "95.216.166.73",
+      "port": 443,
+      "raw": "webtunnel 95.216.166.73:443 96E16DE2F8DA38060D93A554DC56C90A681F6FE4 url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3",
       "sni": "jochenkessler.de",
       "tier": "YELLOW",
       "transport": "webtunnel"
@@ -3293,6 +3285,22 @@
       "port": 0,
       "raw": "webtunnel DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
       "sni": "coellen.xyz",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "",
+      "port": 0,
+      "raw": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+      "sni": "vika7.space",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "",
+      "port": 0,
+      "raw": "webtunnel 96E16DE2F8DA38060D93A554DC56C90A681F6FE4 url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3",
+      "sni": "jochenkessler.de",
       "tier": "YELLOW",
       "transport": "webtunnel"
     },
@@ -3326,10 +3334,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-09-06T12:52:04.969414+00:00",
+  "generated_at": "2026-09-06T18:05:22.266871+00:00",
   "green_count": 5,
   "red_count": 291,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 415,
-  "yellow_count": 119
+  "total_bridges": 416,
+  "yellow_count": 120
 }
