@@ -1,7 +1,134 @@
 # Changelog
 
+## [Session 27] — 2026-09-06 — Stop Stage 0b silent truncation + raise probe concurrency
+
+- Live run `34010772126` showed Stage 0b stops at exactly 11:00 because the
+  collector's `STAGE_DEADLINE_SECS` default (660s) fires and publishes a
+  **partial** result set. This was the same silent-truncation class as the old
+  Stage 4 budget warning, and it meant some collection work was lost every run.
+- Stage 0b now sets `MAX_WORKERS=96` (higher probe concurrency; the existing
+  adaptive per-transport backoff still limits it, so classification is
+  unchanged) and `STAGE_DEADLINE_SECS=820`, with the step timeout raised
+  12→14 min so the collector can finish rather than be cut at 11:00.
+- Verified `verify_repo_invariants.sh` still 13/13 and all 43 Stage steps remain.
+- Stage 2 (5m17s) is OONI rate-limit bound (5 req/s, 2 calls per IP); it is
+  deliberately not changed because raising the limiter risks 429/accuracy.
+
+## [Session 26] — 2026-09-06 — Overlap long pipeline with rust-parity gate
+
+- `scrape-and-test (core)` now depends only on `quality-gate` + `build-rust`.
+  `rust-parity-tests` still runs and still fails the workflow on any fmt/
+  clippy/test regression, but no longer serializes before the ~1h collection
+  pipeline. This shortens wall-clock without reducing any stage or gate.
+- Combined with the concurrent probe-relay (Stage 4), the critical path is
+  quality-gate/build-rust -> core -> analytics -> finalize, with parity tests
+  overlapping.
+
+## [Session 25] — 2026-09-06 — Removed CI warnings + made probe relay concurrent
+
+### Fixed
+- `actions/setup-go@v5` (Node 20 end-of-life warning) upgraded to
+  `actions/setup-go@v6`. Same `go-version: 1.24`, same cache config.
+- `scripts/probe_relay.sh` Stage 4 now submits relay chunks concurrently
+  (`PROBE_RELAY_PARALLELISM=8`). Workers write per-chunk result/stats/log files;
+  the parent merges them in chunk order so `data/pt_results.json` and the
+  per-transport summary are byte-identical to the serial version. This removes
+  the recurring "Probe relay reached its 20-minute budget" warning by letting
+  the relay finish within budget on the normal path, without changing the
+  partial-result safety guard.
+
+### Verified
+- Old vs. new probe_relay output is byte-identical on both success and
+  unreachable-relay fallback paths (mock relay).
+- `verify_repo_invariants.sh` 13/13 green; workflow YAML valid.
+- 43/43 unique Stage steps still present; no feature/artifact/contract changed.
+
+## [Session 24] — 2026-09-06 — Parallelized scrape-and-test pipeline (no stage removed/merged)
+
+### What changed
+The single long `scrape-and-test` job in `.github/workflows/torshield-ir.yml`
+was split into a core collector job, parallel analytics jobs, and a finalize
+job, using deterministic artifact hand-off and a defined merge precedence.
+
+- `scrape-and-test` (core): Stages 0s–6b + snapshot upload.
+- `analytics-ml-zig`, `analytics-scoring`, `analytics-nin`,
+  `analytics-nin-advanced`, `analytics-ech`, `analytics-static`: the
+  data-independent / non-conflicting downstream stages now run in parallel.
+- `scrape-and-test-finalize`: merges all outputs, then runs the unchanged
+  consumer/publication sequence 8s, 8t, 9, 9b, FAILSAFE, 10, 8p2, 11, and the
+  `bridge-intelligence-report` upload.
+- `ai-rerank` / `package-final-artifact` / `cleanup` now depend on the
+  finalize job.
+
+### Safety
+All 43 `Stage *` steps still exist exactly once with the same names, commands,
+env blocks, timeouts, and `continue-on-error` flags. No feature, FAILSAFE,
+verification stage, self-heal diagnostics, artifact name, ZIP structure,
+README/Telegram format, or `iran_cut_pack.txt` contract was changed.
+
+### Why it is safe
+Verified from source which stages read/write which files; groups were chosen so
+every real dependency is preserved (8b->8j, 8n->8r, 7->8q, 8i/8i-smart/8r->8s,
+8e->8t, 8p/8k/8d/8d2->8p2/8t). Parallel jobs use isolated workspaces, so their
+file writes cannot collide; the finalize merge applies a defined precedence
+(8h's transient `nin_cut_bridges.txt` is superseded by 8p, and scoring's
+`ja3_rotation_plan.json`/anti-AI report is authoritative).
+
+### Verification
+- `verify_repo_invariants.sh` 13/13 green.
+- Workflow YAML parses; all 43 Stage identities preserved.
+- Validated by the `pull_request`/`push` runs opened from the fix branch.
+
+
 All notable changes to the TorShield-IR Rust migration are recorded here.
 Format loosely follows Keep-a-Changelog; entries are per migration session.
+
+## [Session 23] — 2026-09-05 — Fixed TorShield-IR Main CI invariant-audit failure (stale NIN cut-pack)
+
+### Root cause
+`TorShield-IR Main CI` was failing every scheduled run in the
+`invariant-audit` job, check **C11 cutpack-freshness**:
+`export/iran_cut_pack.txt` (committed) did not match a deterministic
+regeneration from the committed NIN-cut artifacts.
+
+The defect was a stage-ordering race in `.github/workflows/torshield-ir.yml`:
+
+1. **Stage 8p2 — NIN cut-pack finalizer** (`scripts/build_iran_cut_pack.sh`)
+   ran immediately after Stage 8p, while `bridge/iran_likely_working_nin.txt`
+   still contained the intermediate Stage 8p classifier output (122 lines).
+2. **Stage 9 — dual-persist bridge/ files** (`pipeline --stage results` →
+   `sync_bridge_outputs`), **Stage 9b** and the **FAILSAFE** step then rewrote
+   the 55 committed bridge/ projection files from the final verified snapshot,
+   reducing `bridge/iran_likely_working_nin.txt` to its committed 4 lines.
+3. Stage 11 committed the whole tree, so the published `export/iran_cut_pack.txt`
+   was built from a bridge set that no longer matched the committed `bridge/`
+   files. `verify_repo_invariants.sh` correctly flagged this as stale.
+
+### Fix (minimal, behavior-preserving)
+- Moved the **Stage 8p2** finalizer step in `torshield-ir.yml` to run **after
+  Stage 10** (the full bridge/ inventory) and immediately **before Stage 11**,
+  so the user-facing cut-pack is always built from the exact bridge/ sources
+  that get committed. The step name, command, `continue-on-error`, timeout and
+  deterministic output format are unchanged.
+- Regenerated `export/iran_cut_pack.txt` from the currently committed source
+  artifacts so the repository at HEAD is internally consistent again.
+
+### Verified
+- `bash scripts/verify_repo_invariants.sh` now reports **13/13 checks passed**
+  (previously C11 failed with `committed file is stale vs regeneration`).
+- The edited `torshield-ir.yml` parses cleanly with a real YAML parser.
+- Subsequent runs are validated by the `pull_request` trigger of
+  `TorShield-IR Main CI` on the fix branch.
+
+### Follow-up (2026-09-05, Cache/build-reuse optimization)
+- Added Cargo/Go/Zig cache/build reuse in `scrape-and-test` (Option A).
+- **Fixed the regression that cache change introduced**: the Zig install step
+  ran `zig version` in the same step after appending the toolchain directory to
+  `GITHUB_PATH`. GitHub Actions applies `GITHUB_PATH` only to the *next* step,
+  so `zig` was not on PATH and the step failed (which skipped Stages 8q–11).
+  The step now verifies the toolchain with its absolute path
+  (`"${ZIG_CACHE}/zig" version`), so it works in the current step and Stage 8q
+  still receives it via `GITHUB_PATH`. No stage/feature was removed or merged.
 
 ## [Session 22] — 2026-09-03 — Phantom-artifact elimination: PQ bridge scores + NIN recommended-transport manifests
 
