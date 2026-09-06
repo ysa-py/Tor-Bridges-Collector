@@ -653,10 +653,8 @@ mod tests {
         // A webtunnel bridge with a literal IP endpoint (no url= front) is
         // covered by the ordinary TCP tester and is skipped by the
         // domain-front probe.
-        let decision = front_probe_decision(
-            "1.2.3.4",
-            "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4",
-        );
+        let decision =
+            front_probe_decision("1.2.3.4", "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4");
         assert_eq!(decision, ProbeDecision::SkipIpHost);
         // url= pointing at an IP rather than a front domain is also not
         // domain-fronting.
@@ -713,10 +711,7 @@ mod tests {
     #[test]
     fn edge_case_decision_skips_when_no_front_and_no_host() {
         // No url= front domain and empty host: nothing to probe.
-        let decision = front_probe_decision(
-            "",
-            "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4",
-        );
+        let decision = front_probe_decision("", "webtunnel 1.2.3.4:443 FINGERPRINT ver=0.0.4");
         assert_eq!(decision, ProbeDecision::SkipIpHost);
 
         // A bare fingerprint-only line without url= and no host is skipped.
