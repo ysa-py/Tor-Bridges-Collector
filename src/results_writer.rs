@@ -186,7 +186,10 @@ fn is_domain_fronted_webtunnel(bridge: &Value) -> bool {
                 .strip_prefix("https://")
                 .or_else(|| rest.strip_prefix("http://"))
                 .unwrap_or(rest);
-            let authority = after_scheme.split(['/', '?', '#']).next().unwrap_or(after_scheme);
+            let authority = after_scheme
+                .split(['/', '?', '#'])
+                .next()
+                .unwrap_or(after_scheme);
             let front_host = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
             let front_host = front_host.rsplit_once(':').map_or(front_host, |(h, _p)| h);
             let front_host = front_host.trim_start_matches('[').trim_end_matches(']');
