@@ -403,10 +403,29 @@ fn candidates_from_history(
             continue;
         }
         let probe = probe_by_line.get(&bridge_key(&raw)).copied();
-        let history_test = record
+        // Probe evidence recorded in history may use either the legacy
+        // single-record `test_pass` field (history.rs schema) or the live
+        // collector's per-record observation fields written by
+        // tor_collector/storage.rs: `tcp_reachable` (the latest protocol
+        // probe result, including front-domain TLS/WebSocket checks) and the
+        // additive `probe_successes` counter. URL-only WebTunnel lines have
+        // no raw TCP endpoint and are never probed by the Go iran_tester, so
+        // without honouring these history fields their `*_tested.txt`
+        // projections would stay empty even though the collector recorded
+        // successful front-domain probes.
+        let legacy_test_pass = record
             .get("test_pass")
             .and_then(Value::as_bool)
             .unwrap_or(false);
+        let history_tcp_ok = record
+            .get("tcp_reachable")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        let history_probe_successes = record
+            .get("probe_successes")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        let history_test = legacy_test_pass || history_tcp_ok || history_probe_successes > 0;
         let tested = probe
             .map(|entry| entry.tcp_reachable || entry.transport_capable)
             .unwrap_or(history_test);
@@ -1425,6 +1444,64 @@ mod tests {
             assert!(body.lines().count() > 0, "{name} must not be empty");
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn history_tcp_evidence_marks_url_only_webtunnel_tested() {
+        // Regression: the live collector (tor_collector/storage.rs) records
+        // protocol-probe outcomes as `tcp_reachable` + `probe_successes` on
+        // history records. Domain-fronted URL-only WebTunnel bridges have no
+        // literal endpoint for the Go tester, so publication must honour
+        // these fields (not only the legacy `test_pass`) when deciding the
+        // `*_tested.txt` projections — otherwise
+        // webtunnel_tested.txt stayed empty even though the collector
+        // recorded successful front-domain probes.
+        let cutoff = chrono::Utc::now() - chrono::Duration::hours(72);
+        let raw = "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/x ver=0.0.4";
+        let history = serde_json::json!({
+            "key1": {
+                "raw": raw,
+                "transport": "webtunnel",
+                "ip_version": "ipv4",
+                "last_seen": chrono::Utc::now().to_rfc3339(),
+                "tcp_reachable": true,
+                "probe_successes": 25,
+                "probe_failures": 0
+            },
+            "key2": {
+                "raw": "webtunnel FFFFFFFFFFFFFFFFFFFFFFFFFFFF url=https://offline.example ver=0.0.3",
+                "transport": "webtunnel",
+                "ip_version": "ipv4",
+                "last_seen": chrono::Utc::now().to_rfc3339(),
+                "tcp_reachable": false,
+                "probe_successes": 0,
+                "probe_failures": 25
+            }
+        });
+        let candidates =
+            candidates_from_history(history.as_object().unwrap(), &[], cutoff).expect("candidates");
+        let tested: Vec<&str> = candidates
+            .iter()
+            .filter(|candidate| candidate.tested)
+            .map(|candidate| candidate.raw.as_str())
+            .collect();
+        assert_eq!(tested, vec![raw], "only the reachable front-domain webtunnel is tested");
+
+        // Legacy `test_pass` schema still works unchanged.
+        let legacy = serde_json::json!({
+            "k": {
+                "raw": "obfs4 192.0.2.1:443 cert=x iat-mode=2",
+                "transport": "obfs4",
+                "ip_version": "ipv4",
+                "last_seen": chrono::Utc::now().to_rfc3339(),
+                "test_pass": true
+            }
+        });
+        let legacy_candidates =
+            candidates_from_history(legacy.as_object().unwrap(), &[], cutoff).expect("legacy");
+        assert!(legacy_candidates
+            .iter()
+            .any(|candidate| candidate.tested && candidate.transport == "obfs4"));
     }
 
     #[test]

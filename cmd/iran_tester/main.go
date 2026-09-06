@@ -190,7 +190,18 @@ func classifyBridge(
 	tcpOK := tcpProbeWithContext(bridgeCtx, b, timeout)
 	result.TCPReachable = tcpOK
 
-	if !tcpOK && b.Type != "snowflake" {
+	// Domain-fronted transports (webtunnel, meek_lite) whose line carries
+	// only a `url=`/`front=` endpoint and no literal IP:PORT (Host == "")
+	// cannot be reached by raw TCP — the Go bridge parser leaves Host empty
+	// for URL-only lines. A failed/missing TCP dial means nothing for them;
+	// they are TLS/HTTP-front protocols whose real reachability is decided
+	// by the front-domain probe downstream (webtunnel_probe.rs TLS+WebSocket
+	// Upgrade) and by the classification switch below. Exempt them from the
+	// unreachable early-return, exactly as snowflake already is; bridges
+	// that DO have a literal endpoint still hard-return unreachable here.
+	frontedEndpointless := b.Host == "" && b.Port == 0 &&
+		(b.Type == "webtunnel" || b.Type == "meek_lite")
+	if !tcpOK && b.Type != "snowflake" && !frontedEndpointless {
 		result.IranStatus = StatusTCPUnreachable
 		result.CompositeScore = compositeScore(false, StatusTCPUnreachable, nil, false)
 		return result
