@@ -323,15 +323,33 @@ Validated on the first parallelized run (34004576340): the pipeline **succeeded*
 
 ## 8. Live verification (post-fix runs)
 
-`gh` authentication was re-established; new runs were triggered on
-`60850b7`: `pull_request` 34008686329 and `push` 34008684346. The parallel
-job graph started cleanly (`build-rust`, `rust-parity-tests`, `Quality Gate`,
-then `scrape-and-test (core)` -> parallel analytics -> finalize). The run is
-still executing on GitHub and is expected to complete without the setup-go
-deprecation and probe-relay-budget warnings; this section will be updated when
-the run concludes.
+`gh` authentication was re-established. Runs on the corrected workflow were
+started for the branch, but every intermediate run was cancelled by GitHub
+because of the workflow's own `concurrency.cancel-in-progress: true` whenever a
+follow-up push to the same branch superseded it. This is **not a workflow
+failure** — it is the intended "a newer run on this ref supersedes the old one"
+behaviour, and it is why earlier verification attempts did not reach the finish
+line.
+
+The verified facts that do not depend on a green wall-clock run:
+
+- `setup-go@v6` is in the workflow (Node-20 deprecation removed; `v6` is the
+  Node-24-era release).
+- `scripts/probe_relay.sh` sends relay chunks concurrently
+  (`PROBE_RELAY_PARALLELISM=8`, env set by Stage 4). Its result array,
+  per-transport counters and summary were verified byte-identical to the old
+  serial script against a mock relay on both success and unreachable-relay
+  paths; it also finished measurably faster once the relay accepts concurrent
+  requests.
+- `scrape-and-test (core)` now starts as soon as `quality-gate` + `build-rust`
+  finish (it consumes `bridge-probe-bin` and the validated workflow), while
+  `rust-parity-tests` still runs in parallel as an independent gate.
+
+The next run is the definitive check for wall-clock and "0 warnings". Do not
+push to this branch while it is in flight; a new push would cancel it.
 
 ---
+
 
 ## 9. Applied — overlap long pipeline with rust-parity-tests gate
 
