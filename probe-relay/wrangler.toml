@@ -7,9 +7,19 @@ compatibility_date = "2025-08-09"
 # Outbound TCP sockets count toward the 50-subrequest limit per invocation.
 
 # v2 (2026-08-10): concurrency-limited probe queue replaces flat
-# Promise.all. MAX_CONCURRENT_PROBES caps in-flight connect() calls;
-# this prevents Cloudflare's "stalled HTTP response was canceled"
-# warning caused by unreleased reader locks stacking up.
+# Promise.all. MAX_CONCURRENT_PROBES caps in-flight connect() calls.
+#
+# v2.1 (2026-09-06): raised MAX_CONCURRENT_PROBES 5 -> 25. The original
+# limit of 5 was a conservative response to Cloudflare's "stalled HTTP
+# response was canceled" warning, but that was ROOT-CAUSED to unreleased
+# reader locks stacking up on slow probes — and it is fully fixed in
+# safeConnect()/drainAndClose() (every probe now consumes and releases its
+# reader before returning). The CI client sends 30-bridge chunks (see
+# scripts/probe_relay.sh CHUNK_SIZE), so with 25 concurrent probes each chunk
+# completes in ~1-2 waves (~5-10s) instead of ~6 serial waves (~30s). This is
+# what lets Stage 4 finish its full 1500+ bridge set inside the CI budget
+# instead of truncating at the 20-minute mark. 25 concurrent connect() calls
+# stay well under the free-tier 50-subrequest-per-invocation ceiling.
 
 [vars]
 # Maximum bridges per single POST /probe request. The CI client
@@ -17,9 +27,13 @@ compatibility_date = "2025-08-09"
 MAX_BRIDGES_PER_REQUEST = "50"
 
 # Maximum concurrent in-flight probes. Each probe opens a TCP/TLS socket
-# via cloudflare:sockets connect(). Keeping this at 5 prevents subrequest
-# exhaustion and the "stalled response canceled" runtime warning.
-MAX_CONCURRENT_PROBES = "5"
+# via cloudflare:sockets connect(). 25 matches the CI 30-bridge chunk so a
+# whole chunk probes in ~one or two waves, while remaining far below the
+# 50-subrequest per-invocation limit (a 30-bridge chunk = at most 30
+# concurrent connect() calls). Reader locks are guaranteed released in every
+# path, so this no longer risks the "stalled response canceled" runtime
+# warning that forced the old conservative value of 5.
+MAX_CONCURRENT_PROBES = "25"
 
 # Per-probe TCP connect timeout in seconds. A hung probe is force-killed
 # after this interval so it can't hold a concurrency slot indefinitely.

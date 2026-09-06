@@ -27,6 +27,16 @@ interface WorkersSocket {
  *   - Every connect() response body is always consumed or explicitly
  *     released via the safeConnect() wrapper — the reader lock bug that
  *     caused silent probe cancellations is eliminated.
+ *
+ * v2.1 CHANGES (2026-09-06):
+ *   - DEFAULT_MAX_CONCURRENT_PROBES raised 5 -> 25. The reader-lock bug that
+ *     motivated the conservative limit of 5 is fixed (safeConnect +
+ *     drainAndClose always release every reader), so a 30-bridge chunk from
+ *     the CI client now probes in ~1-2 waves (~5-10s) instead of ~6 serial
+ *     waves (~30s). 25 concurrent connect() calls stay under the free-tier
+ *     50-subrequest-per-invocation ceiling, which is how Stage 4 now finishes
+ *     its full bridge set inside the CI budget instead of truncating at the
+ *     20-minute mark.
  *   - Per-probe AbortController timeout so a hung probe can never hold a
  *     concurrency slot indefinitely.
  *   - Structured per-chunk summary log: probes attempted, completed,
@@ -86,7 +96,11 @@ interface Env {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const DEFAULT_PROBE_TIMEOUT_MS = 5000;
-const DEFAULT_MAX_CONCURRENT_PROBES = 5;
+// v2.1: raised 5 -> 25. See the module header for the full rationale — the
+// original low value guarded against a reader-lock leak that is now fixed, so
+// the CI client's 30-bridge chunks probe in ~1-2 waves instead of ~6.
+// Override at deploy time via wrangler.toml [vars] MAX_CONCURRENT_PROBES.
+const DEFAULT_MAX_CONCURRENT_PROBES = 25;
 const USER_AGENT = "TorShield-IR-ProbeRelay/2.0";
 
 // ─── Entry Point ────────────────────────────────────────────────────
