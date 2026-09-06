@@ -481,13 +481,13 @@ jobs:
         set -euo pipefail
         cargo run --quiet --bin failsafe_bridges
 
-    - uses: actions/setup-go@v5
+    - uses: actions/setup-go@v6
       with:
         go-version: '1.24'
-          # Enable Go module + build-cache reuse across runs. go.sum is
-          # intentionally empty (the Go tools use only stdlib), so a
-          # go.sum-derived cache key would be a constant; key off the actual
-          # dependency manifest instead.
+        # Enable Go module + build-cache reuse across runs. go.sum is
+        # intentionally empty (the Go tools use only stdlib), so a
+        # go.sum-derived cache key would be a constant; key off the actual
+        # dependency manifest instead.
         cache: true
         cache-dependency-path: go.mod
 
@@ -727,6 +727,11 @@ jobs:
       env:
         PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
         PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
+        # Chunks are submitted concurrently (deterministic merge preserves the
+        # exact same result array/order as the old serial loop). 8 concurrent
+        # requests keeps the free-tier Cloudflare Worker busy without bursting
+        # it; the parent merges per-chunk results in chunk order afterwards.
+        PROBE_RELAY_PARALLELISM: '8'
       run: |
         set -euo pipefail
 

@@ -203,92 +203,61 @@ fi
 ALL_RESULTS="$TMP_DIR/all_results.json"
 echo '[]' > "$ALL_RESULTS"
 
-# Aggregate stats across all chunks
-TOTAL_PARSED=0
-TOTAL_SENT=0
-TOTAL_ATTEMPTED=0
-TOTAL_COMPLETED=0
-TOTAL_SUCCESS=0
-TOTAL_TIMEDOUT=0
-TOTAL_ERRORED=0
-TOTAL_MERGE_FAILURES=0
-TOTAL_CHUNK_FAILURES=0
+# ── Parallel, deterministic chunk submission ───────────────────────────────
+# Each chunk is processed by its own worker. Every worker writes a per-chunk
+# result array, a numeric per-chunk stats object, and a per-chunk log file.
+# After all workers finish, the parent merges the per-chunk results IN CHUNK
+# ORDER and recomputes the per-transport counters from the on-disk chunk/result
+# files, so the final result array and summary are byte-identical to a
+# sequential run (only wall-clock changes: chunks run concurrently).
+PROBE_RELAY_PARALLELISM="${PROBE_RELAY_PARALLELISM:-8}"
 
-# Per-transport aggregate counters
-declare -A PT_EXTRACTED
-declare -A PT_PARSED
-declare -A PT_SENT
-declare -A PT_SUCCESS
-declare -A PT_DROPPED
+process_chunk() {
+  local chunk_file="$1"
+  local idx="$2"
+  local log="$TMP_DIR/log_${idx}.txt"
+  local res="$TMP_DIR/res_${idx}.json"
+  local stat="$TMP_DIR/stat_${idx}.json"
 
-for chunk_file in "$TMP_DIR"/chunk_*; do
-  CHUNK_IDX=$((CHUNK_IDX + 1))
+  exec >"$log" 2>&1
+
+  local BRIDGES_IN_FILE BRIDGES_PARSED
   BRIDGES_IN_FILE=$(grep -c . "$chunk_file" 2>/dev/null || echo 0)
   BRIDGES_IN_FILE=${BRIDGES_IN_FILE//[$'\t\r\n ']/}
   BRIDGES_IN_FILE=${BRIDGES_IN_FILE:-0}
 
-  # Count per-transport in this chunk's raw input
-  while IFS= read -r raw_line; do
-    [ -z "$raw_line" ] && continue
-    t=$(echo "$raw_line" | awk '{print $1}')
-    case "$t" in
-      obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
-      *) t="other" ;;
-    esac
-    PT_EXTRACTED[$t]=$((${PT_EXTRACTED[$t]:-0} + 1))
-  done < "$chunk_file"
-
-  # Build JSON. Capture stderr for diagnostics.
   PARSE_ERR=$(mktemp)
+  local CHUNK_JSON
   CHUNK_JSON=$(jq -R -s "$PARSE_BRIDGE_JQ" "$chunk_file" 2>"$PARSE_ERR") || true
   if [ -s "$PARSE_ERR" ]; then
-    echo "[stage=parse] Chunk $CHUNK_IDX jq stderr: $(tr '\n' ' ' < "$PARSE_ERR")"
+    echo "[stage=parse] Chunk $idx jq stderr: $(tr '\n' ' ' < "$PARSE_ERR")"
   fi
   rm -f "$PARSE_ERR"
 
   BRIDGES_PARSED=$(echo "$CHUNK_JSON" | jq 'length' 2>/dev/null || echo 0)
   BRIDGES_PARSED=${BRIDGES_PARSED//[$'\t\r\n ']/}
   BRIDGES_PARSED=${BRIDGES_PARSED:-0}
-  TOTAL_PARSED=$((TOTAL_PARSED + BRIDGES_PARSED))
 
-  # Count per-transport in parsed JSON for this chunk
-  if [ "$BRIDGES_PARSED" -gt 0 ]; then
-    while IFS= read -r pt; do
-      [ -z "$pt" ] && continue
-      PT_PARSED[$pt]=$((${PT_PARSED[$pt]:-0} + 1))
-    done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
-  fi
-
-  # Diagnose parse gaps: if fewer bridges parsed than in file, log the delta
   if [ "$BRIDGES_PARSED" -lt "$BRIDGES_IN_FILE" ]; then
     DROPPED=$((BRIDGES_IN_FILE - BRIDGES_PARSED))
-    # Count per-transport in the raw lines that were dropped
-    # (approximation: count ALL raw transports, then subtract parsed)
-    while IFS= read -r raw_line; do
-      [ -z "$raw_line" ] && continue
-      t=$(echo "$raw_line" | awk '{print $1}')
-      case "$t" in
-        obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
-        *) t="other" ;;
-      esac
-      PT_DROPPED[$t]=$((${PT_DROPPED[$t]:-0} + 1))
-    done < "$chunk_file"
-    # Subtract parsed from dropped (rough — intra-chunk per-transport drop)
-    echo "[stage=parse] Chunk $CHUNK_IDX: ${BRIDGES_PARSED}/${BRIDGES_IN_FILE} bridges parsed (${DROPPED} dropped — likely URL-only or malformed lines)"
+    echo "[stage=parse] Chunk $idx: ${BRIDGES_PARSED}/${BRIDGES_IN_FILE} bridges parsed (${DROPPED} dropped — likely URL-only or malformed lines)"
   fi
+
+  local CHUNK_FAILURES=0 MERGE_FAILURES=0 SENT=0 ATTEMPTED=0 COMPLETED=0 SUCC=0 TIMEDOUT=0 ERRORED=0 CURL_SUCCESS=0
+  local SUCCESS=false RETRY=0 HTTP_CODE
 
   if [ "$BRIDGES_PARSED" -eq 0 ]; then
-    echo "[stage=parse] Chunk $CHUNK_IDX: 0 bridges parsed from ${BRIDGES_IN_FILE} lines — skipping (all lines in non-parseable format)"
-    continue
+    echo "[stage=parse] Chunk $idx: 0 bridges parsed from ${BRIDGES_IN_FILE} lines — skipping (all lines in non-parseable format)"
+    echo '[]' > "$res"
+    printf '{"parsed":0,"sent":0,"attempted":0,"completed":0,"success":0,"timedout":0,"errored":0,"chunk_failures":0,"merge_failures":0,"curl_success":0}\n' > "$stat"
+    return
   fi
 
-  RETRY=0
-  SUCCESS=false
   while [ "$RETRY" -le "$MAX_RETRIES" ]; do
-    echo "[stage=probe] Chunk $CHUNK_IDX — sending ${BRIDGES_PARSED} bridges (attempt $((RETRY + 1))/$((MAX_RETRIES + 1)))..."
+    echo "[stage=probe] Chunk $idx — sending ${BRIDGES_PARSED} bridges (attempt $((RETRY + 1))/$((MAX_RETRIES + 1)))..."
 
     CURL_ERR=$(mktemp)
-    HTTP_CODE=$(curl -s -o "$TMP_DIR/resp_${CHUNK_IDX}.json" \
+    HTTP_CODE=$(curl -s -o "$TMP_DIR/resp_${idx}.json" \
       -w "%{http_code}" \
       -X POST "$RELAY_URL" \
       -H "Content-Type: application/json" \
@@ -297,81 +266,56 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
       --connect-timeout 15 --max-time 120 2>"$CURL_ERR" || echo "000")
 
     if [ "$HTTP_CODE" = "000" ] && [ -s "$CURL_ERR" ]; then
-      echo "[stage=probe] Chunk $CHUNK_IDX curl error: $(tr '\n' ' ' < "$CURL_ERR")"
+      echo "[stage=probe] Chunk $idx curl error: $(tr '\n' ' ' < "$CURL_ERR")"
     fi
     rm -f "$CURL_ERR"
 
     if [ "$HTTP_CODE" = "200" ]; then
-      echo "[stage=probe] Chunk $CHUNK_IDX: HTTP 200 OK"
+      echo "[stage=probe] Chunk $idx: HTTP 200 OK"
       SUCCESS=true
+      CURL_SUCCESS=1
       break
     else
-      echo "[stage=probe] Chunk $CHUNK_IDX: HTTP ${HTTP_CODE} (retry $RETRY/$MAX_RETRIES)"
+      echo "[stage=probe] Chunk $idx: HTTP ${HTTP_CODE} (retry $RETRY/$MAX_RETRIES)"
       RETRY=$((RETRY + 1))
       sleep $((RETRY * 2))
     fi
   done
 
-  if [ "$SUCCESS" = true ] && [ -s "$TMP_DIR/resp_${CHUNK_IDX}.json" ]; then
-    TOTAL_SENT=$((TOTAL_SENT + BRIDGES_PARSED))
-
-    # Count per-transport in what was sent
-    if [ "$BRIDGES_PARSED" -gt 0 ]; then
-      while IFS= read -r pt; do
-        [ -z "$pt" ] && continue
-        PT_SENT[$pt]=$((${PT_SENT[$pt]:-0} + 1))
-      done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
-    fi
-
-    # Extract per-chunk stats from Worker response
-    CHUNK_STATS=$(jq '{attempted: .stats.attempted, completed: .stats.completed, success: .stats.success, timedOut: .stats.timedOut, errored: .stats.errored}' "$TMP_DIR/resp_${CHUNK_IDX}.json" 2>/dev/null || echo '{}')
+  local CHUNK_STATS='{}'
+  if [ "$SUCCESS" = true ] && [ -s "$TMP_DIR/resp_${idx}.json" ]; then
+    SENT=$BRIDGES_PARSED
+    CHUNK_STATS=$(jq '{attempted: .stats.attempted, completed: .stats.completed, success: .stats.success, timedOut: .stats.timedOut, errored: .stats.errored}' "$TMP_DIR/resp_${idx}.json" 2>/dev/null || echo '{}')
     if [ "$CHUNK_STATS" != "{}" ]; then
-      echo "[stage=stats] Chunk $CHUNK_IDX Worker stats: $CHUNK_STATS"
-      c_attempted=$(echo "$CHUNK_STATS" | jq -r '.attempted // 0' 2>/dev/null || echo 0)
-      c_completed=$(echo "$CHUNK_STATS" | jq -r '.completed // 0' 2>/dev/null || echo 0)
-      c_success=$(echo "$CHUNK_STATS" | jq -r '.success // 0' 2>/dev/null || echo 0)
-      c_timedout=$(echo "$CHUNK_STATS" | jq -r '.timedOut // 0' 2>/dev/null || echo 0)
-      c_errored=$(echo "$CHUNK_STATS" | jq -r '.errored // 0' 2>/dev/null || echo 0)
-      TOTAL_ATTEMPTED=$((TOTAL_ATTEMPTED + ${c_attempted//[$'\t\r\n ']/}))
-      TOTAL_COMPLETED=$((TOTAL_COMPLETED + ${c_completed//[$'\t\r\n ']/}))
-      TOTAL_SUCCESS=$((TOTAL_SUCCESS + ${c_success//[$'\t\r\n ']/}))
-      TOTAL_TIMEDOUT=$((TOTAL_TIMEDOUT + ${c_timedout//[$'\t\r\n ']/}))
-      TOTAL_ERRORED=$((TOTAL_ERRORED + ${c_errored//[$'\t\r\n ']/}))
-
-      # Per-transport success counts from Worker response
-      if [ "${c_success//[$'\t\r\n ']/}" != "0" ] && [ "${c_success//[$'\t\r\n ']/}" != "" ]; then
-        while IFS= read -r pt; do
-          [ -z "$pt" ] && continue
-          PT_SUCCESS[$pt]=$((${PT_SUCCESS[$pt]:-0} + 1))
-        done < <(echo "$TMP_DIR/resp_${CHUNK_IDX}.json" | jq -r '.results[] | select(.success == true) | .transport // "unknown"' 2>/dev/null || true)
-      fi
+      echo "[stage=stats] Chunk $idx Worker stats: $CHUNK_STATS"
+      ATTEMPTED=$(echo "$CHUNK_STATS" | jq -r '.attempted // 0' 2>/dev/null || echo 0)
+      COMPLETED=$(echo "$CHUNK_STATS" | jq -r '.completed // 0' 2>/dev/null || echo 0)
+      SUCC=$(echo "$CHUNK_STATS" | jq -r '.success // 0' 2>/dev/null || echo 0)
+      TIMEDOUT=$(echo "$CHUNK_STATS" | jq -r '.timedOut // 0' 2>/dev/null || echo 0)
+      ERRORED=$(echo "$CHUNK_STATS" | jq -r '.errored // 0' 2>/dev/null || echo 0)
     fi
 
-    # Merge: extract .results from Worker response {results:[],stats:{}}
     MERGE_ERR=$(mktemp)
-    if jq -s '.[0] + (.[1].results // .[1])' "$ALL_RESULTS" "$TMP_DIR/resp_${CHUNK_IDX}.json" > "$TMP_DIR/merged.json" 2>"$MERGE_ERR"; then
-      if [ -s "$TMP_DIR/merged.json" ]; then
-        mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
-        cp "$ALL_RESULTS" "$OUTPUT"
-      else
-        echo "[stage=merge] WARNING: Chunk $CHUNK_IDX merge produced empty file — check Worker response format"
-      fi
+    if jq -r 'if type == "object" and has("results") then (.results // []) elif type == "array" then . else [] end' "$TMP_DIR/resp_${idx}.json" > "$res" 2>"$MERGE_ERR"; then
+      :
     else
-      TOTAL_MERGE_FAILURES=$((TOTAL_MERGE_FAILURES + 1))
-      echo "[stage=merge] ERROR: Chunk $CHUNK_IDX merge FAILED — jq: $(tr '\n' ' ' < "$MERGE_ERR")"
-      echo "[stage=merge] Response body (first 300 chars): $(head -c 300 "$TMP_DIR/resp_${CHUNK_IDX}.json")"
+      MERGE_FAILURES=1
+      echo "[stage=merge] ERROR: Chunk $idx merge FAILED — jq: $(tr '\n' ' ' < "$MERGE_ERR")"
+      echo "[stage=merge] Response body (first 300 chars): $(head -c 300 "$TMP_DIR/resp_${idx}.json")"
+      echo '[]' > "$res"
     fi
     rm -f "$MERGE_ERR"
   else
-    TOTAL_CHUNK_FAILURES=$((TOTAL_CHUNK_FAILURES + 1))
-    echo "[stage=probe] WARNING: Chunk $CHUNK_IDX failed after $((MAX_RETRIES + 1)) attempts"
+    CHUNK_FAILURES=1
+    echo "[stage=probe] WARNING: Chunk $idx failed after $((MAX_RETRIES + 1)) attempts"
 
+    local ALL_RES=()
     while IFS= read -r bridge_line; do
       [ -z "$bridge_line" ] && continue
       FALLBACK_ERR=$(mktemp)
       PARSED=$(echo "$bridge_line" | jq -R "$PARSE_BRIDGE_JQ" 2>"$FALLBACK_ERR" || echo '[]')
       if [ -s "$FALLBACK_ERR" ]; then
-        echo "[stage=fallback] Chunk $CHUNK_IDX parse stderr: $(tr '\n' ' ' < "$FALLBACK_ERR")"
+        echo "[stage=fallback] Chunk $idx parse stderr: $(tr '\n' ' ' < "$FALLBACK_ERR")"
       fi
       rm -f "$FALLBACK_ERR"
 
@@ -381,21 +325,132 @@ for chunk_file in "$TMP_DIR"/chunk_*; do
       else
         WITH_ERR='{"success":false,"error":"relay_unreachable:unparseable","host":"unknown","port":0,"transport":"unknown"}'
       fi
-
-      APPEND_ERR=$(mktemp)
-      jq --argjson parsed "$WITH_ERR" '. + [$parsed]' "$ALL_RESULTS" > "$TMP_DIR/merged.json" 2>"$APPEND_ERR" || true
-      if [ -s "$APPEND_ERR" ]; then
-        echo "[stage=fallback] Chunk $CHUNK_IDX append stderr: $(tr '\n' ' ' < "$APPEND_ERR")"
-      fi
-      rm -f "$APPEND_ERR"
-
-      if [ -s "$TMP_DIR/merged.json" ]; then
-        mv "$TMP_DIR/merged.json" "$ALL_RESULTS"
-      fi
+      ALL_RES+=("$WITH_ERR")
     done < "$chunk_file"
-    cp "$ALL_RESULTS" "$OUTPUT"
+    if [ "${#ALL_RES[@]}" -gt 0 ]; then
+      printf '[%s]\n' "$(IFS=,; echo "${ALL_RES[*]}")" > "$res"
+    else
+      printf '[]\n' > "$res"
+    fi
+  fi
+
+  printf '{"parsed":%s,"sent":%s,"attempted":%s,"completed":%s,"success":%s,"timedout":%s,"errored":%s,"chunk_failures":%s,"merge_failures":%s,"curl_success":%s}\n' \
+    "$BRIDGES_PARSED" "$SENT" "$ATTEMPTED" "$COMPLETED" "$SUCC" "$TIMEDOUT" "$ERRORED" "$CHUNK_FAILURES" "$MERGE_FAILURES" "$CURL_SUCCESS" > "$stat"
+}
+
+# Gather chunk files (sorted for deterministic order).
+mapfile -t CHUNK_FILES < <(printf '%s\n' "$TMP_DIR"/chunk_* | sort)
+for chunk_file in "${CHUNK_FILES[@]}"; do
+  CHUNK_IDX=$((CHUNK_IDX + 1))
+  process_chunk "$chunk_file" "$CHUNK_IDX" &
+  if (( CHUNK_IDX % PROBE_RELAY_PARALLELISM == 0 )); then
+    wait
   fi
 done
+wait
+
+# Replay per-chunk logs in order so the step log stays deterministic.
+for idx in $(seq 1 "$CHUNK_IDX"); do
+  [ -f "$TMP_DIR/log_${idx}.txt" ] && cat "$TMP_DIR/log_${idx}.txt"
+done
+
+# Aggregate numeric stats across chunks.
+TOTAL_PARSED=0
+TOTAL_SENT=0
+TOTAL_ATTEMPTED=0
+TOTAL_COMPLETED=0
+TOTAL_SUCCESS=0
+TOTAL_TIMEDOUT=0
+TOTAL_ERRORED=0
+TOTAL_MERGE_FAILURES=0
+TOTAL_CHUNK_FAILURES=0
+for stat_file in "$TMP_DIR"/stat_*.json; do
+  [ -f "$stat_file" ] || continue
+  TOTAL_PARSED=$((TOTAL_PARSED + $(jq -r '.parsed // 0' "$stat_file")))
+  TOTAL_SENT=$((TOTAL_SENT + $(jq -r '.sent // 0' "$stat_file")))
+  TOTAL_ATTEMPTED=$((TOTAL_ATTEMPTED + $(jq -r '.attempted // 0' "$stat_file")))
+  TOTAL_COMPLETED=$((TOTAL_COMPLETED + $(jq -r '.completed // 0' "$stat_file")))
+  TOTAL_SUCCESS=$((TOTAL_SUCCESS + $(jq -r '.success // 0' "$stat_file")))
+  TOTAL_TIMEDOUT=$((TOTAL_TIMEDOUT + $(jq -r '.timedout // 0' "$stat_file")))
+  TOTAL_ERRORED=$((TOTAL_ERRORED + $(jq -r '.errored // 0' "$stat_file")))
+  TOTAL_MERGE_FAILURES=$((TOTAL_MERGE_FAILURES + $(jq -r '.merge_failures // 0' "$stat_file")))
+  TOTAL_CHUNK_FAILURES=$((TOTAL_CHUNK_FAILURES + $(jq -r '.chunk_failures // 0' "$stat_file")))
+done
+
+# Recompute per-transport counters deterministically from disk (chunk files +
+# result files) — identical to the sequential per-chunk accounting.
+declare -A PT_EXTRACTED
+declare -A PT_PARSED
+declare -A PT_SENT
+declare -A PT_SUCCESS
+declare -A PT_DROPPED
+for idx in $(seq 1 "$CHUNK_IDX"); do
+  chunk_file="${CHUNK_FILES[$((idx-1))]}"
+  BRIDGES_IN_FILE=$(grep -c . "$chunk_file" 2>/dev/null || echo 0)
+  BRIDGES_IN_FILE=${BRIDGES_IN_FILE//[$'\t\r\n ']/}
+  BRIDGES_IN_FILE=${BRIDGES_IN_FILE:-0}
+  while IFS= read -r raw_line; do
+    [ -z "$raw_line" ] && continue
+    t=$(echo "$raw_line" | awk '{print $1}')
+    case "$t" in
+      obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
+      *) t="other" ;;
+    esac
+    PT_EXTRACTED[$t]=$((${PT_EXTRACTED[$t]:-0} + 1))
+  done < "$chunk_file"
+  chunk_file="${CHUNK_FILES[$((idx-1))]}"
+  CHUNK_JSON=$(jq -R -s "$PARSE_BRIDGE_JQ" "$chunk_file" 2>/dev/null || echo '[]')
+  BRIDGES_PARSED=$(echo "$CHUNK_JSON" | jq 'length' 2>/dev/null || echo 0)
+  BRIDGES_PARSED=${BRIDGES_PARSED//[$'\t\r\n ']/}
+  BRIDGES_PARSED=${BRIDGES_PARSED:-0}
+  if [ "$BRIDGES_PARSED" -gt 0 ]; then
+    while IFS= read -r pt; do
+      [ -z "$pt" ] && continue
+      PT_PARSED[$pt]=$((${PT_PARSED[$pt]:-0} + 1))
+    done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
+  fi
+  CURL_SUCCESS=$(jq -r '.curl_success // 0' "$TMP_DIR/stat_${idx}.json" 2>/dev/null || echo 0)
+  if [ "${CURL_SUCCESS//[$'\t\r\n ']/}" = "1" ] && [ "$BRIDGES_PARSED" -gt 0 ]; then
+    while IFS= read -r pt; do
+      [ -z "$pt" ] && continue
+      PT_SENT[$pt]=$((${PT_SENT[$pt]:-0} + 1))
+    done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
+  fi
+  # Dropped approximation (raw per-transport minus parsed) -- same as original.
+  if [ "$BRIDGES_PARSED" -lt "$BRIDGES_IN_FILE" ]; then
+    while IFS= read -r raw_line; do
+      [ -z "$raw_line" ] && continue
+      t=$(echo "$raw_line" | awk '{print $1}')
+      case "$t" in
+        obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
+        *) t="other" ;;
+      esac
+      PT_DROPPED[$t]=$((${PT_DROPPED[$t]:-0} + 1))
+    done < "$chunk_file"
+  fi
+done
+
+# Per-transport successes from final merged results.
+declare -A PT_RESULT_SUCCESS
+if [ -s "$ALL_RESULTS" ]; then
+  while IFS= read -r pt; do
+    [ -z "$pt" ] && continue
+    PT_SUCCESS[$pt]=$((${PT_SUCCESS[$pt]:-0} + 1))
+  done < <(jq -r '.[] | select(.success == true) | .transport // "unknown"' "$ALL_RESULTS" 2>/dev/null || true)
+fi
+
+# Merge per-chunk results IN CHUNK ORDER (deterministic).
+: > "$TMP_DIR/merge_input.jsonl"
+for idx in $(seq 1 "$CHUNK_IDX"); do
+  if [ -f "$TMP_DIR/res_${idx}.json" ]; then
+    cat "$TMP_DIR/res_${idx}.json" >> "$TMP_DIR/merge_input.jsonl"
+    printf '\n' >> "$TMP_DIR/merge_input.jsonl"
+  fi
+done
+jq -s 'add // []' "$TMP_DIR/merge_input.jsonl" > "$TMP_DIR/all_results_tmp.json"
+mv "$TMP_DIR/all_results_tmp.json" "$ALL_RESULTS"
+cp "$ALL_RESULTS" "$OUTPUT"
+
 
 # ── Per-transport summary ────────────────────────────────────────────────────
 # Count per-transport successes from final results

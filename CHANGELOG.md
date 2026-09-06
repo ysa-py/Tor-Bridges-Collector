@@ -1,5 +1,24 @@
 # Changelog
 
+## [Session 25] — 2026-09-06 — Removed CI warnings + made probe relay concurrent
+
+### Fixed
+- `actions/setup-go@v5` (Node 20 end-of-life warning) upgraded to
+  `actions/setup-go@v6`. Same `go-version: 1.24`, same cache config.
+- `scripts/probe_relay.sh` Stage 4 now submits relay chunks concurrently
+  (`PROBE_RELAY_PARALLELISM=8`). Workers write per-chunk result/stats/log files;
+  the parent merges them in chunk order so `data/pt_results.json` and the
+  per-transport summary are byte-identical to the serial version. This removes
+  the recurring "Probe relay reached its 20-minute budget" warning by letting
+  the relay finish within budget on the normal path, without changing the
+  partial-result safety guard.
+
+### Verified
+- Old vs. new probe_relay output is byte-identical on both success and
+  unreachable-relay fallback paths (mock relay).
+- `verify_repo_invariants.sh` 13/13 green; workflow YAML valid.
+- 43/43 unique Stage steps still present; no feature/artifact/contract changed.
+
 ## [Session 24] — 2026-09-06 — Parallelized scrape-and-test pipeline (no stage removed/merged)
 
 ### What changed

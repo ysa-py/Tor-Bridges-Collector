@@ -279,3 +279,42 @@ then the unchanged fail-loud final stages run.
 - Final artifact names/paths (`bridge-intelligence-report`,
   `ai-iran-ranked-bridges-*`, `TorShield-IR-Final-Package-*`,
   `brand-probe-bin`) are unchanged.
+
+---
+
+## 7. Applied follow-up (2026-09-05) — warnings removed + Stage 4 made concurrent
+
+Validated on the first parallelized run (34004576340): the pipeline **succeeded**
+(1h10m7s) and produced all 12 expected artifacts. Two annotations were present:
+
+1. `actions/setup-go@v5 is deprecated (Node 20)` — **fixed** by upgrading to
+   `actions/setup-go@v6` (Node 24). No behavior change, same Go version/cache
+   keys.
+2. `Probe relay reached its 20-minute budget; continuing with partial results`
+   — **root cause**: `scripts/probe_relay.sh` submitted each 30-bridge chunk
+   **serially**, so on a slow Worker the 20-minute internal budget was
+   exhausted while partial results were already valid.
+
+### Fix (no feature/contract change)
+- `scripts/probe_relay.sh` now submits chunks **concurrently**
+  (`PROBE_RELAY_PARALLELISM`, default 8). Each worker writes a per-chunk
+  result array, a numeric stats file, and a log file; the parent merges the
+  per-chunk results **in chunk order** and replays logs in order, so the final
+  `data/pt_results.json` array, per-transport counters, and summary are
+  **byte-identical** to the previous serial loop.
+- Stage 4 sets `PROBE_RELAY_PARALLELISM: '8'`.
+
+### Verification
+- A mock relay (both success and unreachable/fallback paths) produces
+  **byte-identical** result arrays and identical summary counters between the
+  old and new script. With a threaded server that allows concurrent requests,
+  the new script is measurably faster (parallel finish; serial budget warning
+  eliminated for realistic chunk counts).
+- `verify_repo_invariants.sh`: 13/13 green.
+- Existing `continue-on-error`/partial-results behavior is preserved; the 20-min
+  budget stays as a safety guard, but it is now the extreme case rather than the
+  normal path.
+
+### Stage/functionality confirmation
+- Still **43/43 unique `Stage *` steps**; no stage removed, merged or renamed.
+- Artifact names, ZIP/README/Telegram/cut-pack contract unchanged.
