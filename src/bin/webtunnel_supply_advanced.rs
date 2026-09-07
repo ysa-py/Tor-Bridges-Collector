@@ -15,9 +15,8 @@ use torshield_ir_ultra::webtunnel_supply_advanced::run_advanced_supply;
 /// Network-backed path: performs the extra draws and the docs audit.
 #[cfg(feature = "network")]
 fn dispatch() -> Result<(), Box<dyn std::error::Error>> {
-    let client = torshield_ir_ultra::scraper::ReqwestHttpFetch::new(
-        std::time::Duration::from_secs(30),
-    );
+    let client =
+        torshield_ir_ultra::scraper::ReqwestHttpFetch::new(std::time::Duration::from_secs(30));
     run_advanced_supply(true, Some(&client), chrono::Utc::now().to_rfc3339())
 }
 
