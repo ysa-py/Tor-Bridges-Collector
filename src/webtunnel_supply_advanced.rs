@@ -239,11 +239,10 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
             Ok(resp) if (200..300).contains(&resp.status) => {
                 group.responses_ok += 1;
                 let parsed = parse_bridgelines_html(&resp.text);
-                tracing::info!(
-                    source = group.source,
-                    url,
-                    parsed_lines = parsed.len(),
-                    "advanced WebTunnel HTML draw"
+                println!(
+                    "webtunnel_supply_advanced draw: url={url} parsed_lines={} source={}",
+                    parsed.len(),
+                    group.source,
                 );
                 for line in parsed {
                     group
@@ -252,19 +251,15 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
                 }
             }
             Ok(resp) => {
-                tracing::warn!(
-                    source = group.source,
-                    url,
-                    status = resp.status,
-                    "advanced WebTunnel HTML draw returned non-2xx"
+                eprintln!(
+                    "webtunnel_supply_advanced draw: url={url} status={} source={}",
+                    resp.status, group.source
                 );
             }
             Err(err) => {
-                tracing::warn!(
-                    source = group.source,
-                    url,
-                    error = %err,
-                    "advanced WebTunnel HTML draw failed"
+                eprintln!(
+                    "webtunnel_supply_advanced draw: url={url} error={err} source={}",
+                    group.source
                 );
             }
         }
@@ -307,11 +302,10 @@ pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
                     "bytes": resp.text.len(),
                     "mechanism_tokens": tokens,
                 }));
-                tracing::info!(
-                    doc = label,
-                    bytes = resp.text.len(),
-                    tokens = ?tokens,
-                    "canonical docs audit OK"
+                println!(
+                    "webtunnel_supply_advanced docs audit: doc={label} url={url} status={} bytes={} tokens={tokens:?}",
+                    resp.status,
+                    resp.text.len(),
                 );
             }
             Ok(resp) => {
@@ -321,7 +315,10 @@ pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
                     "status": resp.status,
                     "error": "non-2xx",
                 }));
-                tracing::warn!(doc = label, status = resp.status, "docs audit non-2xx");
+                eprintln!(
+                    "webtunnel_supply_advanced docs audit: doc={label} url={url} status={} error=non-2xx",
+                    resp.status
+                );
             }
             Err(err) => {
                 entries.push(json!({
@@ -329,7 +326,9 @@ pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
                     "url": url,
                     "error": err.to_string(),
                 }));
-                tracing::warn!(doc = label, error = %err, "docs audit fetch failed");
+                eprintln!(
+                    "webtunnel_supply_advanced docs audit: doc={label} url={url} error={err}"
+                );
             }
         }
     }
@@ -413,26 +412,26 @@ pub fn push_probe_history_record(record: Value) {
     match serde_json::to_vec_pretty(&json!({ "runs": runs })) {
         Ok(buf) => {
             if let Err(err) = fs::write(PROBE_HISTORY_FILE, buf) {
-                tracing::warn!("webtunnel probe history: could not write: {err}");
+                eprintln!("webtunnel probe history: could not write: {err}");
             }
         }
-        Err(err) => tracing::warn!("webtunnel probe history: could not serialize: {err}"),
+        Err(err) => eprintln!("webtunnel probe history: could not serialize: {err}"),
     }
 }
 
 /// Write the per-run diagnostics report (new file, best-effort).
 pub fn write_report(payload: &Value) {
     if let Err(err) = fs::create_dir_all("data") {
-        tracing::warn!("webtunnel supply: could not create data directory: {err}");
+        eprintln!("webtunnel supply: could not create data directory: {err}");
         return;
     }
     match serde_json::to_vec_pretty(payload) {
         Ok(buf) => {
             if let Err(err) = fs::write(REPORT_FILE, buf) {
-                tracing::warn!("webtunnel supply: could not write {REPORT_FILE}: {err}");
+                eprintln!("webtunnel supply: could not write {REPORT_FILE}: {err}");
             }
         }
-        Err(err) => tracing::warn!("webtunnel supply: could not serialize report: {err}"),
+        Err(err) => eprintln!("webtunnel supply: could not serialize report: {err}"),
     }
 }
 
