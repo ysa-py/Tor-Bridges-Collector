@@ -7,6 +7,14 @@
 # via the cloudflare:sockets connect() API (TCP class) and fetch()-based
 # HTTPS/WebSocket probes (fronted-transport classes).
 #
+# v5.5 CHANGES (2026-09-07) — strictly additive:
+#   - Format-4 descriptors now carry the url= path (e.g. a webtunnel line's
+#     per-bridge token path /83c1327e…, or conjure's /api) in a new optional
+#     `path` field (defaults to "/"). The Worker's fetch probes use it, so
+#     the WebSocket-Upgrade request targets the actual per-bridge endpoint
+#     real clients connect to instead of always the site root — without
+#     changing any descriptor id/host/port/transport or counter.
+#
 # v5.4 CHANGES (2026-09-07) — strictly additive:
 #   - Chunk stats now echo the Worker's https_controls array (when present):
 #     known-good HTTPS endpoints (example.com, 1.1.1.1) probed through the
@@ -207,13 +215,19 @@ def parse_bridge:
   # into their own buckets and are relay-probed per their class (TLS for
   # snowflake/meek/conjure — see probe-relay/src/index.ts classifyProbe).
   elif $transport != "unknown" and test("url=";"i") then
-    (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?") //
+    # v5.5 (ADDITIVE): the url= capture also extracts the request path
+    # (webtunnel per-bridge token paths, conjure's /api, …); descriptors
+    # carry it in an optional `path` field so the relay's fetch probes hit
+    # the real endpoint instead of always the site root. Defaults to "/".
+    (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?(?<path>/[^\\s]*)?") //
      {host: "webtunnel-cdn", port: "443"}) as $raw
+    | ((($raw.path // "/") | if . == "" then "/" else . end) // "/") as $path
     | (capture("(?i)fronts?=(?<frontlist>[^ ]+)")? // {frontlist: ""}) as $fr
     | (($fr.frontlist | split(",")) | map(select(length > 0 and . != $raw.host)) | unique) as $fronts
     | ( { host: $raw.host,
           port: (($raw.port // "443") | tonumber),
           transport: $transport,
+          path: $path,
           id: ($transport + "-url-" + $raw.host + "-" + ($raw.port // "443")) },
         # v5.2 (ADDITIVE): when a non-webtunnel line advertises front=
         # / fronts= hosts, emit one extra descriptor per front (host stays
@@ -224,6 +238,7 @@ def parse_bridge:
            $fronts[] | { host: $raw.host,
                          port: (($raw.port // "443") | tonumber),
                          transport: $transport,
+                         path: $path,
                          sni: .,
                          id: ($transport + "-url-" + $raw.host + "-front-" + .) }
          else empty end) )

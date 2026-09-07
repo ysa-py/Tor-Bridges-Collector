@@ -137,6 +137,21 @@ describe("httpsFrontProbe (tls class, fetch-based)", () => {
     expect(called.startsWith("https://www.cdn77.com:443/")).toBe(true);
   });
 
+  it("uses the url= path (e.g. conjure's /api) when the descriptor carries one", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    const bridge = {
+      id: "c1",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      path: "/api",
+    };
+    const status = await httpsFrontProbe(bridge, 5000);
+    expect(status).toBe(200);
+    const called = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(called.startsWith("https://registration.refraction.network:443/api")).toBe(true);
+  });
+
   it("returns the status even for 4xx/5xx fronts (layer reachable)", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 403 })));
     const bridge = {
@@ -185,6 +200,23 @@ describe("wsUpgradeFrontProbe (websocket-101 class, fetch-based)", () => {
       port: 443,
     };
     await expect(wsUpgradeFrontProbe(bridge, 5000)).resolves.toBe(101);
+  });
+
+  it("upgrades against the url= token path when the descriptor carries one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ status: 101, statusText: "Switching Protocols" }) as unknown as Response),
+    );
+    const bridge = {
+      id: "w1p",
+      transport: "webtunnel",
+      host: "jochenkessler.de",
+      port: 443,
+      path: "/D82XI88Vz3nttmFEc9OBXGRD",
+    };
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).resolves.toBe(101);
+    const called = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(called.startsWith("https://jochenkessler.de:443/D82XI88Vz3nttmFEc9OBXGRD")).toBe(true);
   });
 
   it("rejects a non-101 HTTP response with the status in the error", async () => {

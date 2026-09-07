@@ -43,6 +43,23 @@ interface WorkersSocket {
  *     timed-out/canceled, errored — visible in Cloudflare Observability
  *     and CI wrangler tail.
  *
+ * v2.4 CHANGES (2026-09-07):
+ *   - Fetch probes use the descriptor's optional `path` (from the bridge
+ *     line's url=) instead of always "/" — webtunnel lines carry a
+ *     per-bridge token path that real clients upgrade against, and conjure
+ *     lines carry /api. Purely additive (descriptor field + request URL).
+ *
+ * v2.3 CHANGES (2026-09-07):
+ *   - Fetch()-based probes moved from the 5s TCP budget to a 15s internal
+ *     deadline (outer race is per-class), after the first-fix CI run showed
+ *     every fetch probe hitting the 5s cap from the Cloudflare edge while
+ *     runner-side probes reached the same fronts seconds later.
+ *   - stats.https_controls: known-good HTTPS endpoints (example.com,
+ *     1.1.1.1) probed through the same fetch path whenever a batch contains
+ *     non-tcp descriptors, so all-timeout runs can distinguish worker fetch
+ *     egress failure (controls fail) from front-specific unreachability
+ *     (controls pass).
+ *
  * v2.2 CHANGES (2026-09-07) — probe-method fix for fronted/rendezvous
  * transports (diagnosed from real CI per-descriptor evidence):
  *   - The tls and websocket-101 probe classes previously called
@@ -96,6 +113,8 @@ interface BridgeDescriptor {
   port: number;
   sni?: string;
   url?: string;
+  /** v2.4: request path carried over from the bridge line's url= (e.g. a
+   *  webtunnel per-bridge token path). Defaults to "/" when absent. */
   path?: string;
   cert?: string;
   iat_mode?: string;
@@ -693,6 +712,13 @@ async function safeWebsocketProbe(bridge: BridgeDescriptor): Promise<void> {
 //     uses. A non-101 response is a reachable front without a live
 //     WebTunnel endpoint and is reported as a failure with its status.
 
+/** Request path for a fetch probe: the bridge line's url= path when it
+ *  carries one (webtunnel token paths, conjure's /api), else "/". */
+function frontProbePath(bridge: BridgeDescriptor): string {
+  const p = (bridge.path || "").trim();
+  return p.startsWith("/") && p.length > 1 ? p : "/";
+}
+
 /** HTTPS GET probe (tls class). Resolves to the HTTP status of any
  *  response; throws on DNS/TLS/connection errors or timeout. */
 export async function httpsFrontProbe(
@@ -700,7 +726,7 @@ export async function httpsFrontProbe(
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
 ): Promise<number> {
   const target = bridge.sni || bridge.host;
-  const url = `https://${target}:${bridge.port}/`;
+  const url = `https://${target}:${bridge.port}${frontProbePath(bridge)}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -731,7 +757,9 @@ export async function wsUpgradeFrontProbe(
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
 ): Promise<number> {
   const target = bridge.sni || bridge.host;
-  const url = `https://${target}:${bridge.port}/`;
+  // v2.4: probe the url= path (the per-bridge webtunnel endpoint real
+  // clients upgrade against), not always the site root.
+  const url = `https://${target}:${bridge.port}${frontProbePath(bridge)}`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
