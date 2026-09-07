@@ -946,14 +946,20 @@ mod tests {
             // … and the additive attempts array documents the experiment.
             let attempts = entry.get("attempts").and_then(Value::as_array).unwrap();
             assert_eq!(attempts.len(), 3);
-            assert_eq!(attempts[0].get("method").and_then(Value::as_str), Some("GET"));
+            assert_eq!(
+                attempts[0].get("method").and_then(Value::as_str),
+                Some("GET")
+            );
             assert_eq!(attempts[0].get("status").and_then(Value::as_u64), Some(403));
             assert_eq!(
                 attempts[1].get("method").and_then(Value::as_str),
                 Some("GET+browser-headers")
             );
             assert_eq!(attempts[1].get("status").and_then(Value::as_u64), Some(403));
-            assert_eq!(attempts[2].get("method").and_then(Value::as_str), Some("HEAD"));
+            assert_eq!(
+                attempts[2].get("method").and_then(Value::as_str),
+                Some("HEAD")
+            );
             assert_eq!(attempts[2].get("status").and_then(Value::as_u64), Some(403));
         }
     }
@@ -973,7 +979,10 @@ mod tests {
                 Some("browser-headers-retry")
             );
             assert!(entry.get("error").is_none());
-            let tokens = entry.get("mechanism_tokens").and_then(Value::as_array).unwrap();
+            let tokens = entry
+                .get("mechanism_tokens")
+                .and_then(Value::as_array)
+                .unwrap();
             assert!(tokens.iter().any(|t| t.as_str() == Some("moat")));
         }
     }
@@ -989,7 +998,10 @@ mod tests {
         for entry in &entries {
             assert_eq!(entry.get("status").and_then(Value::as_u64), Some(200));
             assert!(entry.get("bytes").and_then(Value::as_u64).unwrap_or(0) > 0);
-            assert!(entry.get("mechanism_tokens").and_then(Value::as_array).is_some());
+            assert!(entry
+                .get("mechanism_tokens")
+                .and_then(Value::as_array)
+                .is_some());
             // No retry was needed: exactly one attempt, no resolved_by.
             assert!(entry.get("resolved_by").is_none());
             let attempts = entry.get("attempts").and_then(Value::as_array).unwrap();
