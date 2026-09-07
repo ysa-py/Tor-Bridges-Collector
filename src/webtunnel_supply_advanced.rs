@@ -367,9 +367,7 @@ pub fn summarize_pt_results(results: &[Value]) -> Value {
             .and_then(Value::as_bool)
             .unwrap_or(false);
         let transport_key = transport.to_string();
-        let counter = by_transport
-            .entry(transport_key.clone())
-            .or_default();
+        let counter = by_transport.entry(transport_key.clone()).or_default();
         *counter.entry("attempted").or_insert(0) += 1;
         if success {
             *counter.entry("success").or_insert(0) += 1;
