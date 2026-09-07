@@ -852,6 +852,28 @@ jobs:
 
         echo "Stage 4 completed with ${RESULT_COUNT} relay observations (of ${INPUT_COUNT} input candidates)"
 
+      # WebTunnel-focused automation (strictly additive). Consumes
+      # data/pt_results.json written by Stage 4 above and the bridge/
+      # history files. Bounded extra draws of the canonical webtunnel pages
+      # (WEBTUNNEL_EXTRA_DRAWS=1 round = 2 requests, paced; merged through
+      # the exact existing validation/dedup pipeline), an automatic audit of
+      # the official rdsys/webtunnel documentation for any NEW canonical
+      # distribution mechanism (rdsys distributors today: moat/https/email),
+      # and the probe-history sidecar (data/webtunnel_probe_history.json)
+      # recording per-transport/per-host relay observations so temporary-down
+      # webtunnel fronts are provably re-probed on every run's schedule.
+      # Extends the job's supply-diagnostics step summary with a per-channel
+      # table; never modifies Stage 1x's data/supply_diagnostics.json.
+    - name: Stage 4b — Advanced WebTunnel supply automation (additive)
+      continue-on-error: true
+      timeout-minutes: 8
+      env:
+        WEBTUNNEL_EXTRA_DRAWS: '1'
+        WEBTUNNEL_DOCS_AUDIT: 'true'
+      run: |
+        set -euo pipefail
+        cargo run --quiet --features network --bin webtunnel_supply_advanced
+
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
     - name: Stage 4 cleanup — kill probe_scheduler

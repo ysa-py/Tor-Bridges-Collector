@@ -1,10 +1,17 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.1
+# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.2
 #
 # Delegates TCP/TLS/WebSocket handshake verification to an external
 # always-on Cloudflare Worker relay that has real outbound network access
 # via the cloudflare:sockets connect() API.
+#
+# v5.2 CHANGES (2026-09-07) — strictly additive:
+#   - URL-only lines that advertise front=/fronts= hosts (snowflake /
+#     meek_lite / conjure / meek) now also emit one extra descriptor per
+#     advertised front (host = url= CDN host, SNI = the front) so every
+#     advertised front is relay-probed before a bridge is concluded
+#     unreachable. Webtunnel output remains byte-identical to v5/v5.1.
 #
 # v5.1 CHANGES (2026-09-07) — strictly additive:
 #   - URL-only parsing (Format 4) generalised from webtunnel-only to every
@@ -183,10 +190,24 @@ def parse_bridge:
   elif $transport != "unknown" and test("url=";"i") then
     (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?") //
      {host: "webtunnel-cdn", port: "443"}) as $raw
-    | { host: $raw.host,
-        port: (($raw.port // "443") | tonumber),
-        transport: $transport,
-        id: ($transport + "-url-" + $raw.host + "-" + ($raw.port // "443")) }
+    | (capture("(?i)fronts?=(?<frontlist>[^ ]+)")? // {frontlist: ""}) as $fr
+    | (($fr.frontlist | split(",")) | map(select(length > 0 and . != $raw.host)) | unique) as $fronts
+    | ( { host: $raw.host,
+          port: (($raw.port // "443") | tonumber),
+          transport: $transport,
+          id: ($transport + "-url-" + $raw.host + "-" + ($raw.port // "443")) },
+        # v5.2 (ADDITIVE): when a non-webtunnel line advertises front=
+        # / fronts= hosts, emit one extra descriptor per front (host stays
+        # the url= CDN host, SNI is the advertised front) so every
+        # advertised front is relay-probed before a bridge is concluded
+        # unreachable. Webtunnel output stays byte-identical to v5/v5.1.
+        (if $transport != "webtunnel" then
+           $fronts[] | { host: $raw.host,
+                         port: (($raw.port // "443") | tonumber),
+                         transport: $transport,
+                         sni: .,
+                         id: ($transport + "-url-" + $raw.host + "-front-" + .) }
+         else empty end) )
   # Format 2: "IPv4:PORT ..." (no transport prefix)
   # (Note: an obfs4/vanilla line never carries url=, so Format 4 cannot
   # misfire on IP:port forms — Format 1 already matched those above.)
