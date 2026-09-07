@@ -87,11 +87,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             let known = object.is_some_and(|object| object.contains_key(&key));
             println!(
                 "supply_extender trace: source={} transport={} ip_version={} known={} line={}",
-                group.source,
-                transport,
-                ip_version,
-                known,
-                line,
+                group.source, transport, ip_version, known, line,
             );
         }
     }
