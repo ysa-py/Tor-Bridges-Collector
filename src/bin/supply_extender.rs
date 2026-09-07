@@ -27,7 +27,8 @@ use chrono::Utc;
 use serde_json::{json, Value};
 
 use torshield_ir_ultra::scraper::{
-    load_history, merge_raw_into_history, prune_history, save_history, DEFAULT_BRIDGE_DIR,
+    load_history, merge_raw_into_history, normalize_for_history, prune_history, save_history,
+    DEFAULT_BRIDGE_DIR,
 };
 use torshield_ir_ultra::supply_extension::{
     count_added_lines, diagnostics_payload, fetch_html_supply, fetch_moat_supply,
@@ -73,6 +74,27 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let added = count_added_lines(&history, &lines);
     let total_added: usize = added.values().sum();
+
+    // Per-line audit trace (additive diagnostics): print every validated line
+    // the extended sources contributed this run, together with whether its
+    // canonical history key already existed in `bridge_history.json` before
+    // the merge below.  This makes the fetched/added relationship auditable
+    // line-by-line in the job log instead of only as aggregate counts.
+    for group in &fetched {
+        for (line, transport, ip_version) in &group.lines {
+            let key = normalize_for_history(line, transport);
+            let object = history.as_object();
+            let known = object.is_some_and(|object| object.contains_key(&key));
+            println!(
+                "supply_extender trace: source={} transport={} ip_version={} known={} line={}",
+                group.source,
+                transport,
+                ip_version,
+                known,
+                line,
+            );
+        }
+    }
 
     // Merge through the canonical history writer: same key normalisation and
     // deduplication as every other source; `last_seen` refreshes keep known
