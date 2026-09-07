@@ -369,13 +369,13 @@ pub fn summarize_pt_results(results: &[Value]) -> Value {
         let transport_key = transport.to_string();
         let counter = by_transport
             .entry(transport_key.clone())
-            .or_insert_with(BTreeMap::new);
+            .or_default();
         *counter.entry("attempted").or_insert(0) += 1;
         if success {
             *counter.entry("success").or_insert(0) += 1;
         }
         let host_key = format!("{transport_key}|{host}");
-        let host_counter = by_host.entry(host_key).or_insert_with(BTreeMap::new);
+        let host_counter = by_host.entry(host_key).or_default();
         *host_counter.entry("attempted").or_insert(0) += 1;
         if success {
             *host_counter.entry("success").or_insert(0) += 1;
