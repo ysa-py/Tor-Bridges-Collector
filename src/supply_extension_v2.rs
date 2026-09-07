@@ -227,7 +227,10 @@ mod tests {
             assert!(payload.get("unblocked").is_none());
             let transports = payload.get("transports").and_then(Value::as_array);
             assert_eq!(transports.map(Vec::len), Some(1));
-            assert_eq!(payload.get("version").and_then(Value::as_str), Some("0.1.0"));
+            assert_eq!(
+                payload.get("version").and_then(Value::as_str),
+                Some("0.1.0")
+            );
         }
     }
 

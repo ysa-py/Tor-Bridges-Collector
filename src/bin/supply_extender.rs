@@ -63,7 +63,10 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         let mut fetched = Vec::new();
         fetched.extend(fetch_html_supply(&client, config.html_draws));
         fetched.extend(fetch_moat_supply(&client, config.moat_rounds));
-        fetched.extend(fetch_moat_variant_supply(&client, config.moat_variant_rounds));
+        fetched.extend(fetch_moat_variant_supply(
+            &client,
+            config.moat_variant_rounds,
+        ));
         fetched
     };
 
