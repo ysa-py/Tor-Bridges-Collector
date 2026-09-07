@@ -43,6 +43,50 @@ interface WorkersSocket {
  *     timed-out/canceled, errored — visible in Cloudflare Observability
  *     and CI wrangler tail.
  *
+ * v2.4 CHANGES (2026-09-07):
+ *   - Fetch probes use the descriptor's optional `path` (from the bridge
+ *     line's url=) instead of always "/" — webtunnel lines carry a
+ *     per-bridge token path that real clients upgrade against, and conjure
+ *     lines carry /api. Purely additive (descriptor field + request URL).
+ *
+ * v2.3 CHANGES (2026-09-07):
+ *   - Fetch()-based probes moved from the 5s TCP budget to a 15s internal
+ *     deadline (outer race is per-class), after the first-fix CI run showed
+ *     every fetch probe hitting the 5s cap from the Cloudflare edge while
+ *     runner-side probes reached the same fronts seconds later.
+ *   - stats.https_controls: known-good HTTPS endpoints (example.com,
+ *     1.1.1.1) probed through the same fetch path whenever a batch contains
+ *     non-tcp descriptors, so all-timeout runs can distinguish worker fetch
+ *     egress failure (controls fail) from front-specific unreachability
+ *     (controls pass).
+ *
+ * v2.2 CHANGES (2026-09-07) — probe-method fix for fronted/rendezvous
+ * transports (diagnosed from real CI per-descriptor evidence):
+ *   - The tls and websocket-101 probe classes previously called
+ *     connect({ secureTransport: "start" }). The deployed Workers runtime
+ *     rejects that option ("Unsupported value in secureTransport socket
+ *     option: start"), so every descriptor routed to those classes failed
+ *     BEFORE any network I/O and reported exactly 0 success — snowflake,
+ *     meek_lite, meek-azure, conjure and webtunnel all showed 0/… while the
+ *     tcp-class transports (obfs4, Bridge/vanilla) showed real successes in
+ *     the same batches. Both classes now run over fetch() from the runtime's
+ *     real TLS stack instead of raw sockets:
+ *       - tls class        -> HTTPS GET to the descriptor dial target
+ *                             (front when sni is present, else host); ANY
+ *                             HTTP response is evidence the fronted CDN
+ *                             layer is reachable; the status is recorded
+ *                             (http_status) for downstream interpretation.
+ *       - websocket-101    -> HTTPS WebSocket-Upgrade request to the same
+ *                             dial target; HTTP 101 Switching Protocols is
+ *                             required for success (mirrors the proven
+ *                             upgrade probe in src/webtunnel_probe.rs).
+ *       - tcp class        -> UNCHANGED raw connect() (secureTransport:
+ *                             "off") — the method that correctly probes
+ *                             obfs4 and Bridge/vanilla endpoints.
+ *   - ProbeResult gains two additive fields: `sni` (dial-target SNI used,
+ *     when different from the descriptor host) and `http_status` (HTTP
+ *     status received from a fetch-based probe, when one was received).
+ *
  * Endpoint: POST /probe
  *   Auth:    X-Probe-Token header (shared secret)
  *   Body:    JSON array of bridge descriptors
@@ -55,9 +99,9 @@ interface WorkersSocket {
  *   - 30s wall-clock timeout
  *
  * Probe capabilities (per transport):
- *   - vanilla, obfs4 (prefilter): raw TCP connect
- *   - snowflake, meek, conjure, fronted: TLS handshake (offloaded)
- *   - webtunnel: TLS + HTTP WebSocket Upgrade (checks for 101)
+ *   - vanilla, obfs4, Bridge/vanilla bucket: raw TCP connect (unchanged)
+ *   - snowflake, meek, meek_lite, conjure, fronted: HTTPS GET via fetch
+ *   - webtunnel: HTTPS WebSocket Upgrade via fetch (checks for 101)
  */
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -69,6 +113,8 @@ interface BridgeDescriptor {
   port: number;
   sni?: string;
   url?: string;
+  /** v2.4: request path carried over from the bridge line's url= (e.g. a
+   *  webtunnel per-bridge token path). Defaults to "/" when absent. */
   path?: string;
   cert?: string;
   iat_mode?: string;
@@ -83,6 +129,11 @@ interface ProbeResult {
   success: boolean;
   latency_ms: number | null;
   probe_type: string;
+  /** SNI / dial-target host actually used by fetch-based probes, when the
+   *  descriptor carried a front distinct from its host field. */
+  sni?: string | null;
+  /** HTTP status received from a fetch-based (tls/websocket-101) probe. */
+  http_status?: number | null;
   error: string | null;
 }
 
@@ -96,6 +147,11 @@ interface Env {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const DEFAULT_PROBE_TIMEOUT_MS = 5000;
+// v2.3: fetch()-based TLS/WebSocket probes get a longer budget than raw TCP
+// connects: real-CI evidence (run 34148197499) showed every fetch probe to
+// the fronted transports timing out at exactly the 5s TCP cap while the same
+// fronts answered the runner-side probe seconds later in the same run.
+const FETCH_PROBE_TIMEOUT_MS = 15000;
 // v2.1: raised 5 -> 25. See the module header for the full rationale — the
 // original low value guarded against a reader-lock leak that is now fixed, so
 // the CI client's 30-bridge chunks probe in ~1-2 waves instead of ~6.
@@ -191,9 +247,24 @@ export default {
       probeTimeoutMs,
     );
 
+    // v2.3: when a batch contains any fetch()-probed (non-tcp) descriptor,
+    // probe two known-good public HTTPS endpoints through the same runtime
+    // TLS path and attach the outcomes to stats. CI prints the chunk stats
+    // verbatim, so a run where every fronted-transport probe times out can
+    // be distinguished as "Worker fetch egress down/slow" (controls also
+    // fail) versus "these particular fronts unreachable from Cloudflare"
+    // (controls succeed). Diagnostics only — never counted as successes.
+    const hasNonTcp = bridges.some((b) => classifyProbe(b) !== "tcp");
+    if (hasNonTcp) {
+      stats.https_controls = await runHttpsEgressControls();
+    }
+
     console.log(
       `[probe-relay] batch_done attempted=${stats.attempted} completed=${stats.completed} ` +
-        `timed_out=${stats.timedOut} errored=${stats.errored} success=${stats.success}`,
+        `timed_out=${stats.timedOut} errored=${stats.errored} success=${stats.success}` +
+        (stats.https_controls
+          ? ` controls=${JSON.stringify(stats.https_controls)}`
+          : ""),
     );
 
     return corsResponse(jsonResponse(200, { results, stats }));
@@ -208,6 +279,51 @@ interface ProbeStats {
   timedOut: number;
   errored: number;
   success: number;
+  /** v2.3: outcomes of known-good HTTPS egress controls, populated only
+   *  when the batch contained fetch()-probed (non-tcp) descriptors. */
+  https_controls?: HttpsControl[];
+}
+
+interface HttpsControl {
+  target: string;
+  ok: boolean;
+  http_status: number | null;
+  error: string | null;
+}
+
+/** v2.3: fetch()-based egress controls against known-good public HTTPS
+ *  endpoints. Returns one outcome per target; never throws. */
+export async function runHttpsEgressControls(
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+): Promise<HttpsControl[]> {
+  const targets = ["https://example.com/", "https://1.1.1.1/"];
+  const controls: HttpsControl[] = [];
+  for (const target of targets) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(target, {
+        method: "GET",
+        redirect: "manual",
+        signal: controller.signal,
+        headers: { "User-Agent": USER_AGENT, Accept: "*/*" },
+      });
+      controls.push({ target, ok: true, http_status: res.status, error: null });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      controls.push({
+        target,
+        ok: false,
+        http_status: null,
+        error: controller.signal.aborted
+          ? `timed out after ${timeoutMs}ms`
+          : reason,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return controls;
 }
 
 // Exported for unit testing — not part of the Worker's public API.
@@ -287,6 +403,14 @@ export async function probeOneWithTimeout(
   // can produce unhandled rejections in test environments.
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+  // v2.3: fetch()-based classes carry their own longer internal deadline
+  // (FETCH_PROBE_TIMEOUT_MS) and produce results with full diagnostics
+  // (sni / http_status / error). The outer race must outlast the inner
+  // deadline so the inner result — not this generic fallback — wins.
+  const probeType = classifyProbe(bridge);
+  const raceMs =
+    probeType === "tcp" ? timeoutMs : FETCH_PROBE_TIMEOUT_MS + 1000;
+
   const timeoutPromise = new Promise<ProbeResult>((resolve) => {
     timeoutId = setTimeout(() => {
       resolve({
@@ -297,9 +421,9 @@ export async function probeOneWithTimeout(
         success: false,
         latency_ms: null,
         probe_type: classifyProbe(bridge),
-        error: `probe timed out after ${timeoutMs}ms`,
+        error: `probe timed out after ${raceMs}ms`,
       });
-    }, timeoutMs);
+    }, raceMs);
   });
 
   try {
@@ -320,8 +444,8 @@ export async function probeOneWithTimeout(
 async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
   const start = Date.now();
   const probeType = classifyProbe(bridge);
-  const sni = bridge.sni || bridge.host;
   const port = bridge.port;
+  let httpStatus: number | null = null;
 
   try {
     switch (probeType) {
@@ -330,11 +454,16 @@ async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
         break;
 
       case "tls":
-        await safeTlsProbe(bridge.host, port, sni);
+        // v2.2/v2.3: fetch()-based HTTPS probe (runtime TLS stack). The
+        // previous connect({secureTransport:"start"}) socket path is rejected
+        // by the deployed Workers runtime before any network I/O.
+        httpStatus = await httpsFrontProbe(bridge);
         break;
 
       case "websocket-101":
-        await safeWebsocketProbe(bridge);
+        // v2.2/v2.3: fetch()-based WebSocket Upgrade probe (runtime TLS
+        // stack), long deadline.
+        httpStatus = await wsUpgradeFrontProbe(bridge);
         break;
 
       default:
@@ -347,9 +476,11 @@ async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
       transport: bridge.transport,
       host: bridge.host,
       port: bridge.port,
+      sni: bridge.sni ?? null,
       success: true,
       latency_ms: latencyMs,
       probe_type: probeType,
+      http_status: httpStatus,
       error: null,
     };
   } catch (err) {
@@ -360,9 +491,11 @@ async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
       transport: bridge.transport,
       host: bridge.host,
       port: bridge.port,
+      sni: bridge.sni ?? null,
       success: false,
       latency_ms: latencyMs,
       probe_type: probeType,
+      http_status: httpStatus,
       error: errorMsg,
     };
   }
@@ -552,6 +685,122 @@ async function safeWebsocketProbe(bridge: BridgeDescriptor): Promise<void> {
       try { r.releaseLock(); } catch { /* best-effort */ }
     }
     closeSocket(socket);
+  }
+}
+
+// ─── Fetch-based TLS / WebSocket probes (v2.2) ───────────────────────
+//
+// The cloudflare:sockets connect() API used above cannot open TLS
+// connections in the deployed runtime: secureTransport: "start" is
+// rejected with "Unsupported value in secureTransport socket option:
+// start" (observed verbatim in real CI probe results), so every probe
+// routed to a TLS class failed before any network I/O. The runtime's
+// fetch() performs real, CA-verified TLS from Cloudflare's network, so the
+// fronted-transport probe classes (snowflake/meek*/conjure -> tls,
+// webtunnel -> websocket-101) run over fetch() here. The dial target is
+// the advertised front (descriptor.sni) when present, otherwise the
+// descriptor host — matching how the parse layer emits one descriptor per
+// advertised front (sni = front, host = the line's url= CDN host).
+//
+// Semantics (evidence-tiered, mirrors src/webtunnel_probe.rs):
+//   - tls class: any HTTP response status proves the fronted CDN layer is
+//     reachable through TLS; the status itself is returned so callers can
+//     distinguish a live transport endpoint (2xx/3xx) from a reachable but
+//     refusing front (4xx/5xx).
+//   - websocket-101 class: only HTTP 101 Switching Protocols counts as
+//     success — the same bar the codebase's proven webtunnel upgrade probe
+//     uses. A non-101 response is a reachable front without a live
+//     WebTunnel endpoint and is reported as a failure with its status.
+
+/** Request path for a fetch probe: the bridge line's url= path when it
+ *  carries one (webtunnel token paths, conjure's /api), else "/". */
+function frontProbePath(bridge: BridgeDescriptor): string {
+  const p = (bridge.path || "").trim();
+  return p.startsWith("/") && p.length > 1 ? p : "/";
+}
+
+/** HTTPS GET probe (tls class). Resolves to the HTTP status of any
+ *  response; throws on DNS/TLS/connection errors or timeout. */
+export async function httpsFrontProbe(
+  bridge: BridgeDescriptor,
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+): Promise<number> {
+  const target = bridge.sni || bridge.host;
+  const url = `https://${target}:${bridge.port}${frontProbePath(bridge)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: { "User-Agent": USER_AGENT, Accept: "*/*" },
+    });
+    return res.status;
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      controller.signal.aborted
+        ? `HTTPS front probe ${url} timed out after ${timeoutMs}ms`
+        : `HTTPS front probe ${url} failed: ${reason}`,
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** WebSocket-Upgrade probe (websocket-101 class). Resolves to 101 when
+ *  the front completes the upgrade; throws otherwise (including for
+ *  non-101 HTTP responses, mirroring the webtunnel_probe.rs bar). */
+export async function wsUpgradeFrontProbe(
+  bridge: BridgeDescriptor,
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+): Promise<number> {
+  const target = bridge.sni || bridge.host;
+  // v2.4: probe the url= path (the per-bridge webtunnel endpoint real
+  // clients upgrade against), not always the site root.
+  const url = `https://${target}:${bridge.port}${frontProbePath(bridge)}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        Connection: "Upgrade",
+        Upgrade: "websocket",
+        "Sec-WebSocket-Key": generateWebSocketKey(),
+        "Sec-WebSocket-Version": "13",
+        "User-Agent": USER_AGENT,
+      },
+    });
+    // On an accepted upgrade the runtime attaches the WebSocket to the
+    // response — close it immediately; the 101 itself is the evidence.
+    const accepted = (res as unknown as { webSocket?: { close(): void } }).webSocket;
+    if (accepted) {
+      try {
+        accepted.close();
+      } catch {
+        // Best-effort close.
+      }
+    }
+    if (res.status !== 101) {
+      const text = res.statusText ? ` ${res.statusText}` : "";
+      throw new Error(
+        `WebSocket upgrade rejected: HTTP ${res.status}${text}`,
+      );
+    }
+    return res.status;
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(
+      controller.signal.aborted
+        ? `WebSocket upgrade probe ${url} timed out after ${timeoutMs}ms`
+        : `WebSocket upgrade probe ${url} failed: ${reason}`,
+    );
+  } finally {
+    clearTimeout(timer);
   }
 }
 

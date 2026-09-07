@@ -87,6 +87,8 @@ pub mod source_health;
 pub mod sources_extra;
 pub mod sources_torproject;
 pub mod static_bridges;
+pub mod supply_extension;
+pub mod supply_extension_v2;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
@@ -101,6 +103,7 @@ pub mod transport_plugin;
 pub mod validate_workflows;
 pub mod vercel_cleanup;
 pub mod webtunnel_probe;
+pub mod webtunnel_supply_advanced;
 pub mod webtunnel_v2;
 pub mod yield_telemetry;
 

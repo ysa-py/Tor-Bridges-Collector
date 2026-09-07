@@ -497,6 +497,21 @@ jobs:
         set -euo pipefail
         cargo run --quiet --features network --bin scraper
 
+    - name: Stage 1x — Extended low-supply source draws + supply diagnostics (additive)
+      continue-on-error: true
+      timeout-minutes: 8
+      env:
+        # Bounded, rate-limit-aware extra draws (self-limited; see
+        # docs/SUPPLY_EXPANSION.md). 0 disables a family entirely.
+        SUPPLY_EXTRA_DRAWS: '1'
+        MOAT_EXTRA_ROUNDS: '1'
+        # Channel-variant MOAT draws (geolocated + `unblocked: ["ir"]`
+        # single-transport payloads; docs/SUPPLY_EXPANSION.md section 7).
+        MOAT_VARIANT_ROUNDS: '1'
+      run: |
+        set -euo pipefail
+        cargo run --quiet --features network --bin supply_extender
+
     - name: FAILSAFE — ensure bridge files always have content (Rust port)
       timeout-minutes: 3
       run: |
@@ -725,6 +740,41 @@ jobs:
         echo "✅ Probe relay smoke test passed (HTTP 200) — Stage 4 will proceed"
         echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
 
+        # ── Dual-stack smoke probe (ADDITIVE, informational only) ──────────
+        # The IPv4 loopback canary above remains the SOLE proceed/fail gate.
+        # This second canary probes the IPv6 loopback equivalent (::1:9999)
+        # and only logs its own pass/fail/skip — it can never block the
+        # pipeline. If the runner reports no IPv6 loopback support the probe
+        # logs a clear skip notice instead of an error. 0.0.0.0 is NOT used:
+        # it is a wildcard bind address, not a connectable target.
+        echo ""
+        echo "═══ IPv6-loopback smoke probe (informational, additive) ═══"
+        IPV6_CAPABLE=true
+        if command -v ip >/dev/null 2>&1 && ! ip -6 addr show lo >/dev/null 2>&1; then
+          IPV6_CAPABLE=false
+        fi
+        if [ "$IPV6_CAPABLE" != "true" ]; then
+          echo "::notice::Runner lacks IPv6 loopback (::1) support — IPv6-loopback smoke probe skipped (informational only; the IPv4 gate above is unchanged)"
+        else
+          SMOKE6_BODY='[{"host":"::1","port":9999,"transport":"obfs4"}]'
+          SMOKE6_CODE=$(curl -s -o /tmp/smoke6_resp.json -w "%{http_code}" \
+            -X POST "$SMOKE_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
+            -d "$SMOKE6_BODY" \
+            --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
+          echo "IPv6-loopback smoke test HTTP status: ${SMOKE6_CODE}"
+          if [ -s /tmp/smoke6_resp.json ]; then
+            echo "IPv6-loopback smoke response body (first 5 lines):"
+            head -5 /tmp/smoke6_resp.json
+          fi
+          if [ "$SMOKE6_CODE" = "200" ]; then
+            echo "✅ IPv6-loopback smoke probe delivered (HTTP 200) — informational only; the IPv4 gate above is unchanged"
+          else
+            echo "::warning::IPv6-loopback smoke probe returned HTTP ${SMOKE6_CODE} — informational only; the IPv4 gate above is unchanged and Stage 4 proceeds exactly as before"
+          fi
+        fi
+
       # Stage 4 — External Probe Relay (CI Egress Fix)
       #
       # GitHub Actions runners have restricted outbound egress and cannot
@@ -801,6 +851,28 @@ jobs:
         fi
 
         echo "Stage 4 completed with ${RESULT_COUNT} relay observations (of ${INPUT_COUNT} input candidates)"
+
+      # WebTunnel-focused automation (strictly additive). Consumes
+      # data/pt_results.json written by Stage 4 above and the bridge/
+      # history files. Bounded extra draws of the canonical webtunnel pages
+      # (WEBTUNNEL_EXTRA_DRAWS=1 round = 2 requests, paced; merged through
+      # the exact existing validation/dedup pipeline), an automatic audit of
+      # the official rdsys/webtunnel documentation for any NEW canonical
+      # distribution mechanism (rdsys distributors today: moat/https/email),
+      # and the probe-history sidecar (data/webtunnel_probe_history.json)
+      # recording per-transport/per-host relay observations so temporary-down
+      # webtunnel fronts are provably re-probed on every run's schedule.
+      # Extends the job's supply-diagnostics step summary with a per-channel
+      # table; never modifies Stage 1x's data/supply_diagnostics.json.
+    - name: Stage 4b — Advanced WebTunnel supply automation (additive)
+      continue-on-error: true
+      timeout-minutes: 8
+      env:
+        WEBTUNNEL_EXTRA_DRAWS: '1'
+        WEBTUNNEL_DOCS_AUDIT: 'true'
+      run: |
+        set -euo pipefail
+        cargo run --quiet --features network --bin webtunnel_supply_advanced
 
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
@@ -1817,6 +1889,37 @@ jobs:
         else
           echo "⚠️  Some advisory sets empty — check scraper/tester logs above."
         fi
+
+    # Informational, additive: BEFORE/AFTER line counts for the low-supply
+    # files, comparing this run's output (after Stage 9/9b/FAILSAFE/Stage 10)
+    # against the committed tree the job started from (git HEAD). Emitted as
+    # workflow notices so the numbers are visible on the run page. Purely
+    # report-only: never alters files and never fails the job on a delta.
+    - name: Stage 10y — Low-supply count deltas vs HEAD (informational, additive)
+      timeout-minutes: 2
+      run: |
+        set -euo pipefail
+        FILES="webtunnel_tested.txt webtunnel.txt webtunnel_ipv6_tested.txt \
+          snowflake_tested.txt snowflake.txt snowflake_ipv6_tested.txt \
+          conjure_tested.txt conjure.txt \
+          meek-azure_tested.txt meek-azure.txt \
+          meek_lite_tested.txt meek_lite.txt meek_lite_ipv6_tested.txt \
+          vanilla_ipv6_tested.txt vanilla_ipv6.txt \
+          iran_likely_working_webtunnel.txt iran_likely_working_snowflake.txt"
+        for name in $FILES; do
+          file="bridge/$name"
+          if [ ! -f "$file" ]; then
+            echo "::notice::COUNT_DELTA $name before=0 after=0 file_missing"
+            continue
+          fi
+          before=$(git show "HEAD:$file" 2>/dev/null | grep -c . || true)
+          before=${before//[$'\t\r\n ']/}
+          before=${before:-0}
+          after=$(grep -c . "$file" 2>/dev/null) || after=0
+          after=${after//[$'\t\r\n ']/}
+          after=${after:-0}
+          echo "::notice::COUNT_DELTA $name before=$before after=$after"
+        done
 
       # Stage 8p2 rebuilds the USER-FACING export/iran_cut_pack.txt (the file
       # README points Iranian users to during a شبکه ملی / national internet

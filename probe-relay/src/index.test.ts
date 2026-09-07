@@ -24,6 +24,9 @@ import {
   probeBridgesWithConcurrency,
   probeOneWithTimeout,
   classifyProbe,
+  httpsFrontProbe,
+  wsUpgradeFrontProbe,
+  runHttpsEgressControls,
 } from "./index";
 
 import {
@@ -103,6 +106,178 @@ describe("probeOneWithTimeout", () => {
     expect(result.error).toContain("timed out");
 
     vi.useFakeTimers();
+  });
+});
+
+// ─── fetch-based front probes (v2.2 regression tests) ───────────────
+//
+// These cover the replacement for the connect({secureTransport:"start"})
+// path that the deployed Workers runtime rejects. The probes must run
+// over fetch() (real TLS) and treat an HTTP response as the reachability
+// signal, with 101 required for the webtunnel class.
+
+describe("httpsFrontProbe (tls class, fetch-based)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns the HTTP status when the front responds", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    const bridge = {
+      id: "s1",
+      transport: "snowflake",
+      host: "1098762253.rsc.cdn77.org",
+      port: 443,
+      sni: "www.cdn77.com",
+    };
+    const status = await httpsFrontProbe(bridge, 5000);
+    expect(status).toBe(200);
+    // The dial target must be the advertised front (SNI), not the raw host.
+    const called = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(called.startsWith("https://www.cdn77.com:443/")).toBe(true);
+  });
+
+  it("uses the url= path (e.g. conjure's /api) when the descriptor carries one", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    const bridge = {
+      id: "c1",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      path: "/api",
+    };
+    const status = await httpsFrontProbe(bridge, 5000);
+    expect(status).toBe(200);
+    const called = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(called.startsWith("https://registration.refraction.network:443/api")).toBe(true);
+  });
+
+  it("returns the status even for 4xx/5xx fronts (layer reachable)", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 403 })));
+    const bridge = {
+      id: "m1",
+      transport: "meek_lite",
+      host: "meek.azureedge.net",
+      port: 443,
+    };
+    await expect(httpsFrontProbe(bridge, 5000)).resolves.toBe(403);
+  });
+
+  it("throws a descriptive error when fetch fails at the network layer", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("socket: dial tcp: connection refused");
+      }),
+    );
+    const bridge = {
+      id: "c1",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+    };
+    await expect(httpsFrontProbe(bridge, 5000)).rejects.toThrow(/failed: socket: dial tcp/);
+  });
+});
+
+describe("wsUpgradeFrontProbe (websocket-101 class, fetch-based)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("succeeds only on HTTP 101 Switching Protocols", async () => {
+    // Node's Response constructor forbids status 101 (200-599 only), but
+    // the Workers runtime returns 101 responses for accepted upgrades —
+    // stub the response object directly.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ status: 101, statusText: "Switching Protocols" }) as unknown as Response),
+    );
+    const bridge = {
+      id: "w1",
+      transport: "webtunnel",
+      host: "vika7.space",
+      port: 443,
+    };
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).resolves.toBe(101);
+  });
+
+  it("upgrades against the url= token path when the descriptor carries one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({ status: 101, statusText: "Switching Protocols" }) as unknown as Response),
+    );
+    const bridge = {
+      id: "w1p",
+      transport: "webtunnel",
+      host: "jochenkessler.de",
+      port: 443,
+      path: "/D82XI88Vz3nttmFEc9OBXGRD",
+    };
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).resolves.toBe(101);
+    const called = (fetch as unknown as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(called.startsWith("https://jochenkessler.de:443/D82XI88Vz3nttmFEc9OBXGRD")).toBe(true);
+  });
+
+  it("rejects a non-101 HTTP response with the status in the error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 200 })));
+    const bridge = {
+      id: "w2",
+      transport: "webtunnel",
+      host: "coellen.xyz",
+      port: 443,
+    };
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
+      /WebSocket upgrade rejected: HTTP 200/,
+    );
+  });
+
+  it("throws a descriptive error on network-layer failure", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("TLS handshake failed");
+      }),
+    );
+    const bridge = {
+      id: "w3",
+      transport: "webtunnel",
+      host: "vault.005184.xyz",
+      port: 443,
+    };
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
+      /WebSocket upgrade probe https:\/\/vault\.005184\.xyz:443\/ failed: TLS handshake failed/,
+    );
+  });
+});
+
+describe("runHttpsEgressControls (v2.3 diagnostics)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("records ok=true with the HTTP status for responding controls", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    const controls = await runHttpsEgressControls(5000);
+    expect(controls).toHaveLength(2);
+    expect(controls.every((c) => c.ok && c.http_status === 204 && c.error === null)).toBe(true);
+    expect(controls.map((c) => c.target)).toEqual([
+      "https://example.com/",
+      "https://1.1.1.1/",
+    ]);
+  });
+
+  it("records ok=false with the error for failing controls (never throws)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("socket hang up");
+      }),
+    );
+    const controls = await runHttpsEgressControls(5000);
+    expect(controls).toHaveLength(2);
+    expect(controls.every((c) => !c.ok && c.http_status === null)).toBe(true);
+    expect(controls[0].error).toContain("socket hang up");
   });
 });
 
