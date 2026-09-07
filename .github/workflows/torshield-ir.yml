@@ -505,6 +505,9 @@ jobs:
         # docs/SUPPLY_EXPANSION.md). 0 disables a family entirely.
         SUPPLY_EXTRA_DRAWS: '1'
         MOAT_EXTRA_ROUNDS: '1'
+        # Channel-variant MOAT draws (geolocated + `unblocked: ["ir"]`
+        # single-transport payloads; docs/SUPPLY_EXPANSION.md section 7).
+        MOAT_VARIANT_ROUNDS: '1'
       run: |
         set -euo pipefail
         cargo run --quiet --features network --bin supply_extender

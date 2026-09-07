@@ -88,6 +88,7 @@ pub mod sources_extra;
 pub mod sources_torproject;
 pub mod static_bridges;
 pub mod supply_extension;
+pub mod supply_extension_v2;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;

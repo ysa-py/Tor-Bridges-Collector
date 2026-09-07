@@ -96,10 +96,14 @@ pub struct SourceLines {
 ///   (default `1`, clamped to `0..=MAX_HTML_DRAWS`).
 /// * `moat_rounds` — extra MOAT rounds of single-transport settings/builtin
 ///   requests (default `1`, clamped to `0..=MAX_MOAT_ROUNDS`).
+/// * `moat_variant_rounds` — extra MOAT rounds of the channel-variant
+///   single-transport requests from [`crate::supply_extension_v2`]
+///   (default `1`, clamped to `0..=MAX_MOAT_VARIANT_ROUNDS`).
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub struct SupplyConfig {
     pub html_draws: usize,
     pub moat_rounds: usize,
+    pub moat_variant_rounds: usize,
 }
 
 impl SupplyConfig {
@@ -107,11 +111,15 @@ impl SupplyConfig {
     pub const MAX_HTML_DRAWS: usize = 6;
     pub const DEFAULT_MOAT_ROUNDS: usize = 1;
     pub const MAX_MOAT_ROUNDS: usize = 3;
+    pub const DEFAULT_MOAT_VARIANT_ROUNDS: usize = 1;
+    pub const MAX_MOAT_VARIANT_ROUNDS: usize = 2;
 
     /// Read the per-run configuration from the environment.
     ///
     /// * `SUPPLY_EXTRA_DRAWS` — extra BridgeDB HTML rotation draws.
     /// * `MOAT_EXTRA_ROUNDS` — extra MOAT single-transport rounds.
+    /// * `MOAT_VARIANT_ROUNDS` — extra MOAT channel-variant single-transport
+    ///   rounds (see [`crate::supply_extension_v2`]).
     ///
     /// Unset, non-numeric, or out-of-range values fall back to the default
     /// (never below `0`, never above the per-run ceiling).
@@ -127,6 +135,11 @@ impl SupplyConfig {
                 std::env::var("MOAT_EXTRA_ROUNDS").ok().as_deref(),
                 Self::DEFAULT_MOAT_ROUNDS,
                 Self::MAX_MOAT_ROUNDS,
+            ),
+            moat_variant_rounds: parse_bounded(
+                std::env::var("MOAT_VARIANT_ROUNDS").ok().as_deref(),
+                Self::DEFAULT_MOAT_VARIANT_ROUNDS,
+                Self::MAX_MOAT_VARIANT_ROUNDS,
             ),
         }
     }
@@ -215,7 +228,11 @@ pub fn moat_supply_payloads() -> Vec<Value> {
 }
 
 /// Sleep briefly between requests (jittered pacing for rate-limit awareness).
-fn pace_request() {
+///
+/// Shared by every extended-supply fetch family — including the
+/// channel-variant draws in [`crate::supply_extension_v2`] — so the whole
+/// stage paces identically.
+pub(crate) fn pace_request() {
     use rand::Rng;
     let jitter = rand::thread_rng().gen_range(0..=PACE_JITTER_MS);
     thread::sleep(Duration::from_millis(PACE_MIN_MS + jitter));
@@ -442,6 +459,12 @@ pub fn family_counts_to_json(counts: &BTreeMap<String, usize>) -> Value {
 
 /// Build the per-run diagnostics document written to
 /// `data/supply_diagnostics.json`.
+///
+/// `per_source_added` maps each source label to the number of history records
+/// its fetched lines added this run (computed with the same canonical-key
+/// logic as `added`; entries may overlap across sources because a bridge
+/// could be fetched by two sources — the family-level `added` map is the
+/// deduplicated global count).
 #[must_use]
 pub fn diagnostics_payload(
     config: &SupplyConfig,
@@ -449,6 +472,7 @@ pub fn diagnostics_payload(
     before: &BTreeMap<String, usize>,
     after: &BTreeMap<String, usize>,
     added: &BTreeMap<String, usize>,
+    per_source_added: &BTreeMap<&'static str, usize>,
     generated_at: String,
 ) -> Value {
     let source_entries: Vec<Value> = sources
@@ -459,6 +483,7 @@ pub fn diagnostics_payload(
                 "requests": group.requests,
                 "responses_ok": group.responses_ok,
                 "fetched_lines": group.lines.len(),
+                "added_records": per_source_added.get(group.source).copied().unwrap_or(0),
             })
         })
         .collect();
@@ -467,6 +492,7 @@ pub fn diagnostics_payload(
         "config": {
             "html_extra_draws": config.html_draws,
             "moat_single_transport_rounds": config.moat_rounds,
+            "moat_variant_rounds": config.moat_variant_rounds,
         },
         "sources": source_entries,
         "history_family_counts": {
@@ -581,6 +607,7 @@ mod tests {
         let config = SupplyConfig {
             html_draws: 1,
             moat_rounds: 1,
+            moat_variant_rounds: 1,
         };
         let before: BTreeMap<String, usize> = [("webtunnel".to_string(), 4)].into_iter().collect();
         let after: BTreeMap<String, usize> =
@@ -601,17 +628,26 @@ mod tests {
                 "ipv4".to_string(),
             )],
         }];
+        let per_source_added: BTreeMap<&'static str, usize> =
+            [("bridgedb_html_snowflake", 1)].into_iter().collect();
         let payload = diagnostics_payload(
             &config,
             &groups,
             &before,
             &after,
             &added,
+            &per_source_added,
             "2026-09-06T00:00:00+00:00".to_string(),
         );
         assert_eq!(
             payload
                 .pointer("/config/html_extra_draws")
+                .and_then(Value::as_u64),
+            Some(1)
+        );
+        assert_eq!(
+            payload
+                .pointer("/config/moat_variant_rounds")
                 .and_then(Value::as_u64),
             Some(1)
         );
@@ -630,6 +666,12 @@ mod tests {
         assert_eq!(
             payload.pointer("/sources/0/source").and_then(Value::as_str),
             Some("bridgedb_html_snowflake")
+        );
+        assert_eq!(
+            payload
+                .pointer("/sources/0/added_records")
+                .and_then(Value::as_u64),
+            Some(1)
         );
     }
 }

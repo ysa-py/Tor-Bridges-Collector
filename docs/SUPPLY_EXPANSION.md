@@ -187,3 +187,88 @@ legitimately raise counts, and they are implemented as described.
 | vanilla_ipv6 | raw: +0..few over time | small BridgeDB IPv6 pool |
 | conjure | none | single public line; no other source exists |
 | meek-azure / meek_lite | none | legacy fleet; service sunset upstream |
+
+---
+
+## 7. Channel-variant MOAT draws (v2, additive)
+
+### 7.1 Why another source family
+
+The v1 sources are healthy but structurally saturated: live runs (including
+the audit run in PR #226) repeatedly returned the same Iran-allocated MOAT
+subset — every fetched line already existed in `bridge_history.json`, so
+`new_history_records=0` even though the stage works.  The Iran bucket is
+small and the pipeline has captured all of it.  Growth can therefore only
+come from (a) upstream rotating in genuinely new bridges over time, or
+(b) sampling *other parts* of BridgeDB's ring than the fixed `country: "ir"`
+request context.  This section adds (b), and (a) benefits automatically
+because the new draws run every pipeline run.
+
+### 7.2 The two new request contexts
+
+Both are grounded in BridgeDB's own moat request parser
+(`bridgedb/distributors/moat/request.py`, Tor Project GitLab — the
+`withoutBlockInCountry()` and client-geolocation paths) and are ordinary,
+bounded, unauthenticated client behaviour — no captcha solving, no session
+forging, no credentials:
+
+1. **Geolocated draws** (`moat_builtin_geolocated_single_transport`,
+   `moat_settings_geolocated_single_transport`): the same v1 single-transport
+   payloads minus the explicit `country` field.  BridgeDB then serves from
+   the bucket of the requester's geoIP.  CI runners are US/Azure, so this
+   samples the (much larger) US bucket — exactly what a US Tor Browser user
+   receives.
+2. **`unblocked: ["ir"]` draws** (`moat_builtin_unblocked_ir_single_transport`,
+   `moat_settings_unblocked_ir_single_transport`): the documented
+   country-list field meaning "bridges that are not blocked in Iran",
+   independent of which bucket they were allocated to.  This is the
+   semantically precise request for an Iran-focused pipeline and widens the
+   eligible set beyond the Iran bucket.
+
+Requested transports are the same three MOAT-distributed transports as v1
+(`obfs4`, `webTunnel`, `snowflake`).  Transports BridgeDB does not distribute
+via MOAT (conjure, meek-azure) are not requested — see section 2.
+
+### 7.3 What was added (all additive)
+
+- `src/supply_extension_v2.rs` — new module: two payload builders, the
+  bounded `fetch_moat_variant_supply` fetcher (same endpoints, headers,
+  `parse_moat_response` validation chain, jittered pacing, single attempt
+  per request), and unit tests.  Registered in `src/lib.rs`.
+- `SupplyConfig` gains `moat_variant_rounds` (`MOAT_VARIANT_ROUNDS`,
+  default 1, clamp 0–2; 0 disables the family).  v1 fields and env vars are
+  unchanged.
+- `src/bin/supply_extender.rs` — the v2 fetcher runs after the v1 fetchers;
+  the per-run summary line and JSON config gain `moat_variant_rounds`.
+- Diagnostics: each per-source entry in `data/supply_diagnostics.json` gains
+  `added_records` (how many of that source's fetched lines were new history
+  records), and the GitHub step-summary gains a **second, additive** table
+  breaking down `source | requests | responses_ok | fetched_lines |
+  added_records`.  The original per-family `before/after/added` table is
+  unchanged.  Source-level added counts may overlap across sources (two
+  sources can fetch the same new bridge); the family table remains the
+  deduplicated global count.
+- `.github/workflows/torshield-ir.yml` — Stage 1x environment gains
+  `MOAT_VARIANT_ROUNDS: '1'` (new variable only; existing variables and
+  steps untouched).
+
+### 7.4 Honest expectations and exclusions
+
+- Expectation: same as v1 — most runs may add zero (BridgeDB's distributable
+  universe is finite and largely captured); the new request contexts raise
+  the sampling rate across a wider part of the ring and catch upstream
+  rotation sooner.  Any real growth shows up in the per-source table before
+  the family table.
+- Excluded channels, with reasons:
+  - **Email (`bridges@torproject.org`)**: requires a Gmail/Riseup mailbox
+    round-trip per request; not safely automatable in CI (no inbox), and it
+    serves the same BridgeDB database.
+  - **Telegram `@GetBridgesBot`**: official channel, but Telegram forbids
+    bot-to-bot conversations and CI has no user account; the pipeline's own
+    Telegram distribution is unrelated (it *sends*, via operator credentials).
+  - **MOAT captcha flow**: the settings→captcha→bridges flow requires solving
+    image captchas; the project's posture is no captcha solving (section 4).
+  - **Non-official bridge lists**: excluded by policy (section 2).
+- The per-source diagnostics will plainly show if a context returns zero
+  lines, HTTP challenges (e.g. 4xx/429), or only duplicates — no count is
+  ever synthesized.

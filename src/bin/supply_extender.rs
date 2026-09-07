@@ -34,6 +34,7 @@ use torshield_ir_ultra::supply_extension::{
     count_added_lines, diagnostics_payload, fetch_html_supply, fetch_moat_supply,
     history_family_counts, SourceLines, SupplyConfig, NOTICE_FOCUS_FAMILIES,
 };
+use torshield_ir_ultra::supply_extension_v2::fetch_moat_variant_supply;
 
 /// New diagnostics snapshot written by every run (never overwrites an
 /// existing pipeline output — this filename is new).
@@ -62,6 +63,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         let mut fetched = Vec::new();
         fetched.extend(fetch_html_supply(&client, config.html_draws));
         fetched.extend(fetch_moat_supply(&client, config.moat_rounds));
+        fetched.extend(fetch_moat_variant_supply(&client, config.moat_variant_rounds));
         fetched
     };
 
@@ -74,6 +76,20 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     }
     let added = count_added_lines(&history, &lines);
     let total_added: usize = added.values().sum();
+
+    // Per-source NEW-record counts for the diagnostics table.  A source's
+    // lines are counted against the same pre-merge history with the same
+    // canonical-key logic as the family-level `added` map above.  The
+    // per-source counts may overlap (two sources can fetch the same new
+    // bridge); the family-level `added` map is the deduplicated global view.
+    let mut per_source_added: BTreeMap<&'static str, usize> = BTreeMap::new();
+    for group in &fetched {
+        let by_family = count_added_lines(&history, &group.lines);
+        let source_added: usize = by_family.values().sum();
+        if source_added > 0 {
+            per_source_added.insert(group.source, source_added);
+        }
+    }
 
     // Per-line audit trace (additive diagnostics): print every validated line
     // the extended sources contributed this run, together with whether its
@@ -108,15 +124,17 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         &before,
         &after,
         &added,
+        &per_source_added,
         Utc::now().to_rfc3339(),
     );
     write_outputs(&payload, &config, &after, total_added);
 
     println!(
-        "supply_extender: config html_draws={} moat_rounds={} sources={} fetched_lines={} \
-         new_history_records={} pruned={}",
+        "supply_extender: config html_draws={} moat_rounds={} moat_variant_rounds={} sources={} \
+         fetched_lines={} new_history_records={} pruned={}",
         config.html_draws,
         config.moat_rounds,
+        config.moat_variant_rounds,
         fetched.len(),
         lines.len(),
         total_added,
@@ -233,12 +251,37 @@ fn emit_step_summary(payload: &Value, config: &SupplyConfig, total_added: usize)
             get(added),
         ));
     }
+    // Per-source breakdown (additive second table): every source label with
+    // its request/OK/fetched counters and how many of its fetched lines were
+    // NEW history records this run.  Source-level "added" counts may overlap
+    // across sources; the family table above is the deduplicated global view.
+    if let Some(sources) = payload.get("sources").and_then(Value::as_array) {
+        if !sources.is_empty() {
+            rows.push_str(
+                "\n| source | requests | responses_ok | fetched_lines | added_records |\n\
+                 |---|---|---|---|---|\n",
+            );
+            for entry in sources {
+                let as_u64 = |key: &str| entry.get(key).and_then(Value::as_u64).unwrap_or(0);
+                let source = entry.get("source").and_then(Value::as_str).unwrap_or("?");
+                rows.push_str(&format!(
+                    "| {source} | {} | {} | {} | {} |\n",
+                    as_u64("requests"),
+                    as_u64("responses_ok"),
+                    as_u64("fetched_lines"),
+                    as_u64("added_records"),
+                ));
+            }
+        }
+    }
     let summary = format!(
         "### Supply diagnostics (extended low-supply sources)\n\n\
-         config: html extra draws = {draws}, moat single-transport rounds = {rounds}; \
-         new history records added this run = {added}\n\n{rows}",
+         config: html extra draws = {draws}, moat single-transport rounds = {rounds}, \
+         moat channel-variant rounds = {variants}; new history records added this run = \
+         {added}\n\n{rows}",
         draws = config.html_draws,
         rounds = config.moat_rounds,
+        variants = config.moat_variant_rounds,
         added = total_added,
     );
     if let Ok(mut file) = fs::OpenOptions::new()
