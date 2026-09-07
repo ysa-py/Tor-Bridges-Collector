@@ -1,10 +1,25 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-# probe_relay.sh — External Probe Relay client (CI egress fix) — v5
+# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.1
 #
 # Delegates TCP/TLS/WebSocket handshake verification to an external
 # always-on Cloudflare Worker relay that has real outbound network access
 # via the cloudflare:sockets connect() API.
+#
+# v5.1 CHANGES (2026-09-07) — strictly additive:
+#   - URL-only parsing (Format 4) generalised from webtunnel-only to every
+#     recognised transport that BridgeDB can distribute without a literal
+#     endpoint (snowflake / meek_lite / meek-azure / conjure / meek): those
+#     candidates previously fell through every arm (0% parsed). The branch
+#     body is parameterised on $transport, so existing webtunnel output is
+#     byte-identical to v5.
+#   - Per-candidate parse audit trace ([stage=audit]): prints the raw line
+#     and parse outcome for every snowflake/meek_lite/meek-azure/conjure/meek
+#     candidate plus a bounded sample of 'other'-bucket lines.
+#   - Bucket reconciliation rows after the fixed per-transport table:
+#     counters whose bucket name is outside the fixed display list (e.g.
+#     "unknown", where IP:PORT-only lines parsed by Formats 2/3 are counted)
+#     are printed explicitly so parsed/sent totals reconcile with the table.
 #
 # v5 CHANGES (2026-08-11):
 #   - Per-transport breakdown in the final summary
@@ -150,18 +165,31 @@ def parse_bridge:
         port: ($addr[-1] | tonumber),
         transport: $parts[0],
         id: ("line-" + $parts[0] + "-" + (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) + "-" + ($addr[-1])) }
-  # Format 4: "webtunnel FINGERPRINT url=https://cdn.example.com/path ..."
-  # Extract the real CDN domain from the url= parameter for TCP reachability
-  # probing. The downstream webtunnel_probe.rs module does the deeper
-  # TLS+WebSocket Upgrade check on any that the Worker reports.
-  elif $transport == "webtunnel" and test("url=";"i") then
+  # Format 4: "transport FINGERPRINT url=https://cdn.example.com/path ..."
+  # URL-only bridge lines (no literal IP:port) for every transport BridgeDB
+  # can distribute without a literal endpoint — webtunnel, snowflake,
+  # meek_lite, meek-azure, conjure, meek. The real CDN/front domain is
+  # extracted from the `url=` parameter for relay probing.
+  #
+  # v5.1 (ADDITIVE): v5 recognised ONLY webtunnel URL-only lines; snowflake /
+  # meek_lite / meek-azure / conjure / meek candidates of the same shape were
+  # dropped by every arm (structural gap, 0/5 parsed in live runs). The gate
+  # is now any recognised transport carrying url=, and the branch body is
+  # parameterised on $transport — so the existing webtunnel output stays
+  # byte-identical (transport == $transport == "webtunnel" and the id prefix
+  # "$transport-url-" == "webtunnel-url-"), while the other transports parse
+  # into their own buckets and are relay-probed per their class (TLS for
+  # snowflake/meek/conjure — see probe-relay/src/index.ts classifyProbe).
+  elif $transport != "unknown" and test("url=";"i") then
     (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?") //
      {host: "webtunnel-cdn", port: "443"}) as $raw
     | { host: $raw.host,
         port: (($raw.port // "443") | tonumber),
-        transport: "webtunnel",
-        id: ("webtunnel-url-" + $raw.host + "-" + ($raw.port // "443")) }
+        transport: $transport,
+        id: ($transport + "-url-" + $raw.host + "-" + ($raw.port // "443")) }
   # Format 2: "IPv4:PORT ..." (no transport prefix)
+  # (Note: an obfs4/vanilla line never carries url=, so Format 4 cannot
+  # misfire on IP:port forms — Format 1 already matched those above.)
   elif test("^[0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+:[0-9]+ ") then
     split(" ") as $parts
     | ($parts[0] | split(":")) as $addr
@@ -182,6 +210,52 @@ def parse_bridge:
   end;
 split("\n") | map(select(length > 0) | parse_bridge)
 JQEOF
+
+# ── Per-candidate parse audit (ADDITIVE v5.1) ─────────────────────────────────
+# Pure diagnostics. Prints the raw line and the exact parse outcome for every
+# snowflake / meek_lite / meek-azure / conjure / meek candidate plus a bounded
+# sample of 'other'-bucket (unrecognised first-token) lines, so a transport-
+# wide 0-parsed result is auditable line-by-line in the job log. Adds no
+# counters, changes no existing log line, sends no request.
+echo ""
+echo "[stage=audit] Per-candidate parse audit (additive diagnostics):"
+AUDIT_TRACED=0
+AUDIT_OTHER_SHOWN=0
+AUDIT_OTHER_CAP=10
+while IFS= read -r audit_raw; do
+  [ -z "$audit_raw" ] && continue
+  audit_first=$(printf '%s\n' "$audit_raw" | awk '{print $1}')
+  audit_trace=0
+  case "$audit_first" in
+    snowflake|meek_lite|meek-azure|conjure|meek) audit_trace=1 ;;
+    obfs4|webtunnel|vanilla) audit_trace=0 ;;
+    *)
+      # 'other'-bucket line: trace only a bounded sample.
+      if [ "$AUDIT_OTHER_SHOWN" -lt "$AUDIT_OTHER_CAP" ]; then
+        audit_trace=1
+        AUDIT_OTHER_SHOWN=$((AUDIT_OTHER_SHOWN + 1))
+      fi
+      ;;
+  esac
+  [ "$audit_trace" -ne 1 ] && continue
+  AUDIT_ERR=$(mktemp)
+  audit_json=$(printf '%s\n' "$audit_raw" | jq -R -s "$PARSE_BRIDGE_JQ" 2>"$AUDIT_ERR" || echo '[]')
+  if [ -s "$AUDIT_ERR" ]; then
+    echo "[stage=audit] jq stderr: $(tr '\n' ' ' < "$AUDIT_ERR")"
+  fi
+  rm -f "$AUDIT_ERR"
+  audit_count=$(printf '%s\n' "$audit_json" | jq 'length' 2>/dev/null || echo 0)
+  audit_count=${audit_count//[$'\t\r\n ']/}
+  audit_outcome="unparsed"
+  audit_detail="-"
+  if [ "${audit_count:-0}" != "0" ]; then
+    audit_outcome="parsed"
+    audit_detail=$(printf '%s\n' "$audit_json" | jq -r '.[0] | .transport + " host=" + .host + " port=" + (.port|tostring)' 2>/dev/null || echo "-")
+  fi
+  echo "[stage=audit] token=${audit_first} outcome=${audit_outcome} ${audit_detail} raw=${audit_raw}"
+  AUDIT_TRACED=$((AUDIT_TRACED + 1))
+done <<< "$BRIDGE_LINES"
+echo "[stage=audit] traced=${AUDIT_TRACED} (every snowflake/meek_lite/meek-azure/conjure/meek candidate; first ${AUDIT_OTHER_SHOWN} 'other'-bucket lines sampled)"
 
 # ── Chunked relay submission ─────────────────────────────────────────────────
 TMP_DIR=$(mktemp -d)
@@ -493,7 +567,30 @@ for pt in obfs4 webtunnel vanilla snowflake meek_lite meek-azure conjure meek ot
       "$pt" "$extracted" "$parsed" "$sent" "$success"
   fi
 done
+# ── Bucket reconciliation (ADDITIVE v5.1) ─────────────────────────────────────
+# The fixed display list above covers only the named transport buckets.
+# Parsed lines whose first token is NOT a known transport (IP:PORT-only
+# lines, Formats 2/3) are counted under their parsed `.transport` value
+# ("unknown"), so the fixed "other" row can read parsed=0 even though those
+# lines WERE parsed and sent — which makes the summary's two consecutive
+# sections appear inconsistent. This additive block prints every counter
+# bucket outside the fixed list, making the parsed/sent accounting complete
+# and auditable.
+for pt in $(printf '%s\n' "${!PT_EXTRACTED[@]}" "${!PT_PARSED[@]}" "${!PT_SENT[@]}" "${!PT_RESULT_SUCCESS[@]}" | sort -u); do
+  case "$pt" in
+    obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek|other) continue ;;
+  esac
+  extracted=${PT_EXTRACTED[$pt]:-0}
+  parsed=${PT_PARSED[$pt]:-0}
+  sent=${PT_SENT[$pt]:-0}
+  success=${PT_RESULT_SUCCESS[$pt]:-0}
+  if [ "$extracted" -gt 0 ] || [ "$parsed" -gt 0 ] || [ "$sent" -gt 0 ]; then
+    printf '  %-12s  extracted=%-5s  parsed=%-5s  sent=%-5s  success=%-5s  [bucket "%s" is outside the fixed display list]\n' \
+      "$pt" "$extracted" "$parsed" "$sent" "$success" "$pt"
+  fi
+done
 echo "═══════════════════════════════"
+echo "[stage=summary] reconciliation: named buckets + \"unknown\" above sum to parsed_total=${TOTAL_PARSED}; relay observations written=${RESULT_COUNT}"
 
 # ── Structured diagnostics for zero results ──────────────────────────────────
 if [ "$RESULT_COUNT" -eq 0 ]; then

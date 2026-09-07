@@ -740,6 +740,41 @@ jobs:
         echo "✅ Probe relay smoke test passed (HTTP 200) — Stage 4 will proceed"
         echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
 
+        # ── Dual-stack smoke probe (ADDITIVE, informational only) ──────────
+        # The IPv4 loopback canary above remains the SOLE proceed/fail gate.
+        # This second canary probes the IPv6 loopback equivalent (::1:9999)
+        # and only logs its own pass/fail/skip — it can never block the
+        # pipeline. If the runner reports no IPv6 loopback support the probe
+        # logs a clear skip notice instead of an error. 0.0.0.0 is NOT used:
+        # it is a wildcard bind address, not a connectable target.
+        echo ""
+        echo "═══ IPv6-loopback smoke probe (informational, additive) ═══"
+        IPV6_CAPABLE=true
+        if command -v ip >/dev/null 2>&1 && ! ip -6 addr show lo >/dev/null 2>&1; then
+          IPV6_CAPABLE=false
+        fi
+        if [ "$IPV6_CAPABLE" != "true" ]; then
+          echo "::notice::Runner lacks IPv6 loopback (::1) support — IPv6-loopback smoke probe skipped (informational only; the IPv4 gate above is unchanged)"
+        else
+          SMOKE6_BODY='[{"host":"::1","port":9999,"transport":"obfs4"}]'
+          SMOKE6_CODE=$(curl -s -o /tmp/smoke6_resp.json -w "%{http_code}" \
+            -X POST "$SMOKE_URL" \
+            -H "Content-Type: application/json" \
+            -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
+            -d "$SMOKE6_BODY" \
+            --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
+          echo "IPv6-loopback smoke test HTTP status: ${SMOKE6_CODE}"
+          if [ -s /tmp/smoke6_resp.json ]; then
+            echo "IPv6-loopback smoke response body (first 5 lines):"
+            head -5 /tmp/smoke6_resp.json
+          fi
+          if [ "$SMOKE6_CODE" = "200" ]; then
+            echo "✅ IPv6-loopback smoke probe delivered (HTTP 200) — informational only; the IPv4 gate above is unchanged"
+          else
+            echo "::warning::IPv6-loopback smoke probe returned HTTP ${SMOKE6_CODE} — informational only; the IPv4 gate above is unchanged and Stage 4 proceeds exactly as before"
+          fi
+        fi
+
       # Stage 4 — External Probe Relay (CI Egress Fix)
       #
       # GitHub Actions runners have restricted outbound egress and cannot
