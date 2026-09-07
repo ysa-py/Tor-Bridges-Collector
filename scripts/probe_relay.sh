@@ -1,10 +1,20 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.2
+# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.3
 #
 # Delegates TCP/TLS/WebSocket handshake verification to an external
 # always-on Cloudflare Worker relay that has real outbound network access
-# via the cloudflare:sockets connect() API.
+# via the cloudflare:sockets connect() API (TCP class) and fetch()-based
+# HTTPS/WebSocket probes (fronted-transport classes).
+#
+# v5.3 CHANGES (2026-09-07) — strictly additive:
+#   - New per-descriptor "[stage=results]" block prints every relay result
+#     whose probe class is NOT tcp (snowflake/meek_lite/meek-azure/conjure/
+#     webtunnel descriptors) with its dial target (sni when a front was
+#     advertised), probe class, success flag, http_status when the front
+#     answered, and the exact error otherwise — so a transport-wide 0-success
+#     row is auditable per descriptor in the job log. Diagnostics only: adds
+#     no counters and changes no existing log line.
 #
 # v5.2 CHANGES (2026-09-07) — strictly additive:
 #   - URL-only lines that advertise front=/fronts= hosts (snowflake /
@@ -546,6 +556,28 @@ jq -s 'add // []' "$TMP_DIR/merge_input.jsonl" > "$TMP_DIR/all_results_tmp.json"
 mv "$TMP_DIR/all_results_tmp.json" "$ALL_RESULTS"
 cp "$ALL_RESULTS" "$OUTPUT"
 
+
+# ── Per-descriptor outcomes for fronted/rendezvous probe classes ─────────────
+# (ADDITIVE v5.3, diagnostics only) Relay probes in the tls / websocket-101
+# classes (snowflake / meek_lite / meek-azure / conjure / webtunnel) run the
+# Worker's fetch()-based HTTPS / WebSocket probes. Print every such result
+# verbatim — dial target, probe class, success flag, http_status when the
+# front answered, and the exact error otherwise — so a 0-success transport
+# row is auditable per descriptor in the job log.
+echo ""
+echo "[stage=results] Fronted/rendezvous probe outcomes (probe classes other than tcp), per descriptor:"
+NON_TCP_ROWS=$(jq -r '[.[] | select((.probe_type // "tcp") != "tcp")] | length' "$ALL_RESULTS" 2>/dev/null || echo 0)
+NON_TCP_ROWS=${NON_TCP_ROWS//[$'\t\r\n ']/}
+if [ "${NON_TCP_ROWS:-0}" != "0" ]; then
+  jq -r '.[] | select((.probe_type // "tcp") != "tcp") |
+    "\(.transport) host=\(.host) port=\(.port)"
+    + (if .sni and (.sni != .host) then " dial_target=\(.sni)" else "" end)
+    + " probe=\(.probe_type // "?") success=\(.success)"
+    + (if .http_status then " http_status=\(.http_status|tostring)" else "" end)
+    + " error=" + (.error // "none")' "$ALL_RESULTS" 2>/dev/null | sed 's/^/[stage=results] /' || true
+else
+  echo "[stage=results] none (every relay probe used the tcp class)"
+fi
 
 # ── Per-transport summary ────────────────────────────────────────────────────
 # Count per-transport successes from final results
