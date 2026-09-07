@@ -497,6 +497,18 @@ jobs:
         set -euo pipefail
         cargo run --quiet --features network --bin scraper
 
+    - name: Stage 1x — Extended low-supply source draws + supply diagnostics (additive)
+      continue-on-error: true
+      timeout-minutes: 8
+      env:
+        # Bounded, rate-limit-aware extra draws (self-limited; see
+        # docs/SUPPLY_EXPANSION.md). 0 disables a family entirely.
+        SUPPLY_EXTRA_DRAWS: '1'
+        MOAT_EXTRA_ROUNDS: '1'
+      run: |
+        set -euo pipefail
+        cargo run --quiet --features network --bin supply_extender
+
     - name: FAILSAFE — ensure bridge files always have content (Rust port)
       timeout-minutes: 3
       run: |
@@ -1817,6 +1829,37 @@ jobs:
         else
           echo "⚠️  Some advisory sets empty — check scraper/tester logs above."
         fi
+
+    # Informational, additive: BEFORE/AFTER line counts for the low-supply
+    # files, comparing this run's output (after Stage 9/9b/FAILSAFE/Stage 10)
+    # against the committed tree the job started from (git HEAD). Emitted as
+    # workflow notices so the numbers are visible on the run page. Purely
+    # report-only: never alters files and never fails the job on a delta.
+    - name: Stage 10y — Low-supply count deltas vs HEAD (informational, additive)
+      timeout-minutes: 2
+      run: |
+        set -euo pipefail
+        FILES="webtunnel_tested.txt webtunnel.txt webtunnel_ipv6_tested.txt \
+          snowflake_tested.txt snowflake.txt snowflake_ipv6_tested.txt \
+          conjure_tested.txt conjure.txt \
+          meek-azure_tested.txt meek-azure.txt \
+          meek_lite_tested.txt meek_lite.txt meek_lite_ipv6_tested.txt \
+          vanilla_ipv6_tested.txt vanilla_ipv6.txt \
+          iran_likely_working_webtunnel.txt iran_likely_working_snowflake.txt"
+        for name in $FILES; do
+          file="bridge/$name"
+          if [ ! -f "$file" ]; then
+            echo "::notice::COUNT_DELTA $name before=0 after=0 file_missing"
+            continue
+          fi
+          before=$(git show "HEAD:$file" 2>/dev/null | grep -c . || true)
+          before=${before//[$'\t\r\n ']/}
+          before=${before:-0}
+          after=$(grep -c . "$file" 2>/dev/null) || after=0
+          after=${after//[$'\t\r\n ']/}
+          after=${after:-0}
+          echo "::notice::COUNT_DELTA $name before=$before after=$after"
+        done
 
       # Stage 8p2 rebuilds the USER-FACING export/iran_cut_pack.txt (the file
       # README points Iranian users to during a شبکه ملی / national internet
