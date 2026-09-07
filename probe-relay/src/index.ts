@@ -128,6 +128,11 @@ interface Env {
 // ─── Constants ──────────────────────────────────────────────────────
 
 const DEFAULT_PROBE_TIMEOUT_MS = 5000;
+// v2.3: fetch()-based TLS/WebSocket probes get a longer budget than raw TCP
+// connects: real-CI evidence (run 34148197499) showed every fetch probe to
+// the fronted transports timing out at exactly the 5s TCP cap while the same
+// fronts answered the runner-side probe seconds later in the same run.
+const FETCH_PROBE_TIMEOUT_MS = 15000;
 // v2.1: raised 5 -> 25. See the module header for the full rationale — the
 // original low value guarded against a reader-lock leak that is now fixed, so
 // the CI client's 30-bridge chunks probe in ~1-2 waves instead of ~6.
@@ -223,9 +228,24 @@ export default {
       probeTimeoutMs,
     );
 
+    // v2.3: when a batch contains any fetch()-probed (non-tcp) descriptor,
+    // probe two known-good public HTTPS endpoints through the same runtime
+    // TLS path and attach the outcomes to stats. CI prints the chunk stats
+    // verbatim, so a run where every fronted-transport probe times out can
+    // be distinguished as "Worker fetch egress down/slow" (controls also
+    // fail) versus "these particular fronts unreachable from Cloudflare"
+    // (controls succeed). Diagnostics only — never counted as successes.
+    const hasNonTcp = bridges.some((b) => classifyProbe(b) !== "tcp");
+    if (hasNonTcp) {
+      stats.https_controls = await runHttpsEgressControls();
+    }
+
     console.log(
       `[probe-relay] batch_done attempted=${stats.attempted} completed=${stats.completed} ` +
-        `timed_out=${stats.timedOut} errored=${stats.errored} success=${stats.success}`,
+        `timed_out=${stats.timedOut} errored=${stats.errored} success=${stats.success}` +
+        (stats.https_controls
+          ? ` controls=${JSON.stringify(stats.https_controls)}`
+          : ""),
     );
 
     return corsResponse(jsonResponse(200, { results, stats }));
@@ -240,6 +260,51 @@ interface ProbeStats {
   timedOut: number;
   errored: number;
   success: number;
+  /** v2.3: outcomes of known-good HTTPS egress controls, populated only
+   *  when the batch contained fetch()-probed (non-tcp) descriptors. */
+  https_controls?: HttpsControl[];
+}
+
+interface HttpsControl {
+  target: string;
+  ok: boolean;
+  http_status: number | null;
+  error: string | null;
+}
+
+/** v2.3: fetch()-based egress controls against known-good public HTTPS
+ *  endpoints. Returns one outcome per target; never throws. */
+export async function runHttpsEgressControls(
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+): Promise<HttpsControl[]> {
+  const targets = ["https://example.com/", "https://1.1.1.1/"];
+  const controls: HttpsControl[] = [];
+  for (const target of targets) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(target, {
+        method: "GET",
+        redirect: "manual",
+        signal: controller.signal,
+        headers: { "User-Agent": USER_AGENT, Accept: "*/*" },
+      });
+      controls.push({ target, ok: true, http_status: res.status, error: null });
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      controls.push({
+        target,
+        ok: false,
+        http_status: null,
+        error: controller.signal.aborted
+          ? `timed out after ${timeoutMs}ms`
+          : reason,
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  return controls;
 }
 
 // Exported for unit testing — not part of the Worker's public API.
@@ -319,6 +384,14 @@ export async function probeOneWithTimeout(
   // can produce unhandled rejections in test environments.
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
 
+  // v2.3: fetch()-based classes carry their own longer internal deadline
+  // (FETCH_PROBE_TIMEOUT_MS) and produce results with full diagnostics
+  // (sni / http_status / error). The outer race must outlast the inner
+  // deadline so the inner result — not this generic fallback — wins.
+  const probeType = classifyProbe(bridge);
+  const raceMs =
+    probeType === "tcp" ? timeoutMs : FETCH_PROBE_TIMEOUT_MS + 1000;
+
   const timeoutPromise = new Promise<ProbeResult>((resolve) => {
     timeoutId = setTimeout(() => {
       resolve({
@@ -329,9 +402,9 @@ export async function probeOneWithTimeout(
         success: false,
         latency_ms: null,
         probe_type: classifyProbe(bridge),
-        error: `probe timed out after ${timeoutMs}ms`,
+        error: `probe timed out after ${raceMs}ms`,
       });
-    }, timeoutMs);
+    }, raceMs);
   });
 
   try {
@@ -362,15 +435,16 @@ async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
         break;
 
       case "tls":
-        // v2.2: fetch()-based HTTPS probe (runtime TLS stack). The previous
-        // connect({secureTransport:"start"}) socket path is rejected by the
-        // deployed Workers runtime before any network I/O.
-        httpStatus = await httpsFrontProbe(bridge, DEFAULT_PROBE_TIMEOUT_MS);
+        // v2.2/v2.3: fetch()-based HTTPS probe (runtime TLS stack). The
+        // previous connect({secureTransport:"start"}) socket path is rejected
+        // by the deployed Workers runtime before any network I/O.
+        httpStatus = await httpsFrontProbe(bridge);
         break;
 
       case "websocket-101":
-        // v2.2: fetch()-based WebSocket Upgrade probe (runtime TLS stack).
-        httpStatus = await wsUpgradeFrontProbe(bridge, DEFAULT_PROBE_TIMEOUT_MS);
+        // v2.2/v2.3: fetch()-based WebSocket Upgrade probe (runtime TLS
+        // stack), long deadline.
+        httpStatus = await wsUpgradeFrontProbe(bridge);
         break;
 
       default:
@@ -623,7 +697,7 @@ async function safeWebsocketProbe(bridge: BridgeDescriptor): Promise<void> {
  *  response; throws on DNS/TLS/connection errors or timeout. */
 export async function httpsFrontProbe(
   bridge: BridgeDescriptor,
-  timeoutMs: number,
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
 ): Promise<number> {
   const target = bridge.sni || bridge.host;
   const url = `https://${target}:${bridge.port}/`;
@@ -654,7 +728,7 @@ export async function httpsFrontProbe(
  *  non-101 HTTP responses, mirroring the webtunnel_probe.rs bar). */
 export async function wsUpgradeFrontProbe(
   bridge: BridgeDescriptor,
-  timeoutMs: number,
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
 ): Promise<number> {
   const target = bridge.sni || bridge.host;
   const url = `https://${target}:${bridge.port}/`;

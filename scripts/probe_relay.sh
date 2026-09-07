@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # ══════════════════════════════════════════════════════════════════════════════
-# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.3
+# probe_relay.sh — External Probe Relay client (CI egress fix) — v5.4
 #
 # Delegates TCP/TLS/WebSocket handshake verification to an external
 # always-on Cloudflare Worker relay that has real outbound network access
 # via the cloudflare:sockets connect() API (TCP class) and fetch()-based
 # HTTPS/WebSocket probes (fronted-transport classes).
+#
+# v5.4 CHANGES (2026-09-07) — strictly additive:
+#   - Chunk stats now echo the Worker's https_controls array (when present):
+#     known-good HTTPS endpoints (example.com, 1.1.1.1) probed through the
+#     same Worker fetch path on every chunk that contains a non-tcp probe.
+#     If all fronted-transport probes time out while the controls succeed,
+#     the fronts themselves are unreachable from Cloudflare's network; if
+#     the controls fail too, the Worker's fetch egress is the problem.
+#     Diagnostics only.
 #
 # v5.3 CHANGES (2026-09-07) — strictly additive:
 #   - New per-descriptor "[stage=results]" block prints every relay result
@@ -390,7 +399,8 @@ process_chunk() {
   local CHUNK_STATS='{}'
   if [ "$SUCCESS" = true ] && [ -s "$TMP_DIR/resp_${idx}.json" ]; then
     SENT=$BRIDGES_PARSED
-    CHUNK_STATS=$(jq '{attempted: .stats.attempted, completed: .stats.completed, success: .stats.success, timedOut: .stats.timedOut, errored: .stats.errored}' "$TMP_DIR/resp_${idx}.json" 2>/dev/null || echo '{}')
+    CHUNK_STATS=$(jq '{attempted: .stats.attempted, completed: .stats.completed, success: .stats.success, timedOut: .stats.timedOut, errored: .stats.errored}
+      + (if ((.stats.https_controls // []) | length) > 0 then {https_controls: .stats.https_controls} else {} end)' "$TMP_DIR/resp_${idx}.json" 2>/dev/null || echo '{}')
     if [ "$CHUNK_STATS" != "{}" ]; then
       echo "[stage=stats] Chunk $idx Worker stats: $CHUNK_STATS"
       ATTEMPTED=$(echo "$CHUNK_STATS" | jq -r '.attempted // 0' 2>/dev/null || echo 0)

@@ -26,6 +26,7 @@ import {
   classifyProbe,
   httpsFrontProbe,
   wsUpgradeFrontProbe,
+  runHttpsEgressControls,
 } from "./index";
 
 import {
@@ -215,6 +216,36 @@ describe("wsUpgradeFrontProbe (websocket-101 class, fetch-based)", () => {
     await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
       /WebSocket upgrade probe https:\/\/vault\.005184\.xyz:443\/ failed: TLS handshake failed/,
     );
+  });
+});
+
+describe("runHttpsEgressControls (v2.3 diagnostics)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("records ok=true with the HTTP status for responding controls", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(null, { status: 204 })));
+    const controls = await runHttpsEgressControls(5000);
+    expect(controls).toHaveLength(2);
+    expect(controls.every((c) => c.ok && c.http_status === 204 && c.error === null)).toBe(true);
+    expect(controls.map((c) => c.target)).toEqual([
+      "https://example.com/",
+      "https://1.1.1.1/",
+    ]);
+  });
+
+  it("records ok=false with the error for failing controls (never throws)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("socket hang up");
+      }),
+    );
+    const controls = await runHttpsEgressControls(5000);
+    expect(controls).toHaveLength(2);
+    expect(controls.every((c) => !c.ok && c.http_status === null)).toBe(true);
+    expect(controls[0].error).toContain("socket hang up");
   });
 });
 
