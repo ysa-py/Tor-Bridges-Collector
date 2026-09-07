@@ -457,9 +457,7 @@ pub fn emit_step_summary(
     let get = |map: &BTreeMap<String, usize>, family: &str| -> u64 {
         u64::try_from(map.get(family).copied().unwrap_or(0)).unwrap_or(u64::MAX)
     };
-    let mut rows = String::from(
-        "### WebTunnel supply automation (advanced module, additive)\n\n",
-    );
+    let mut rows = String::from("### WebTunnel supply automation (advanced module, additive)\n\n");
     rows.push_str(&format!(
         "config: webtunnel html extra draws = {}, docs audit = {};\n",
         config.webtunnel_draws, config.docs_audit
@@ -479,9 +477,7 @@ pub fn emit_step_summary(
         fetched = html.lines.len(),
         added_records = added.values().sum::<usize>(),
     ));
-    rows.push_str(
-        "\n| webtunnel family | before | after | added |\n|---|---|---|---|\n",
-    );
+    rows.push_str("\n| webtunnel family | before | after | added |\n|---|---|---|---|\n");
     for family in ["webtunnel", "webtunnel_ipv6"] {
         rows.push_str(&format!(
             "| {family} | {b} | {a} | {d} |\n",
@@ -494,7 +490,10 @@ pub fn emit_step_summary(
         if !by_transport.is_empty() {
             rows.push_str("\n| relay transport | attempted | success |\n|---|---|---|\n");
             for (transport, counters) in by_transport {
-                let attempted = counters.get("attempted").and_then(Value::as_u64).unwrap_or(0);
+                let attempted = counters
+                    .get("attempted")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0);
                 let success = counters.get("success").and_then(Value::as_u64).unwrap_or(0);
                 rows.push_str(&format!("| {transport} | {attempted} | {success} |\n"));
             }
@@ -520,7 +519,11 @@ pub fn emit_step_summary(
             rows.push_str(&format!("| {doc} | {status} | {tokens} |\n"));
         }
     }
-    if let Ok(mut file) = fs::OpenOptions::new().create(true).append(true).open(summary_path) {
+    if let Ok(mut file) = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(summary_path)
+    {
         use std::io::Write;
         let _ = file.write_all(rows.as_bytes());
     }
@@ -737,10 +740,7 @@ mod tests {
         counts.insert("webtunnel".to_string(), 4usize);
         counts.insert("obfs4".to_string(), 10usize);
         let value = family_counts_to_json(&counts, &["webtunnel"]);
-        assert_eq!(
-            value.pointer("/webtunnel").and_then(Value::as_u64),
-            Some(4)
-        );
+        assert_eq!(value.pointer("/webtunnel").and_then(Value::as_u64), Some(4));
         assert!(value.get("obfs4").is_none());
     }
 }
