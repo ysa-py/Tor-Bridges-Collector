@@ -24,15 +24,15 @@
 //!
 //! 2. Transport success-rate history (`data/transport_success_history.json`)
 //!    + run-over-run anomaly flags (advisory only).
-//!    Nothing in this repo accumulates a per-transport success-rate time
-//!    series (verified 2026-09-08: `bridge_history.json` has zero populated
-//!    `probes` logs; `transport_weight_history.json` scores are integer-flat;
-//!    `collector_yield_history.json` tracks supply, not success). This binary
-//!    APPENDS this run's per-transport working/total snapshot so the series
-//!    starts accumulating now, and compares the current rates against the
-//!    trailing baseline once enough entries exist. An "anomaly" is an
-//!    externally-observable reachability-rate drop — it is NOT a claim about
-//!    Iran's DPI mechanism (this repo has no visibility into filtering rules).
+//!      Nothing in this repo accumulates a per-transport success-rate time
+//!      series (verified 2026-09-08: `bridge_history.json` has zero populated
+//!      `probes` logs; `transport_weight_history.json` scores are integer-flat;
+//!      `collector_yield_history.json` tracks supply, not success). This binary
+//!      APPENDS this run's per-transport working/total snapshot so the series
+//!      starts accumulating now, and compares the current rates against the
+//!      trailing baseline once enough entries exist. An "anomaly" is an
+//!      externally-observable reachability-rate drop — it is NOT a claim about
+//!      Iran's DPI mechanism (this repo has no visibility into filtering rules).
 //!
 //! 3. Per-transport step-change scan over the accumulated series.
 //!    Same file, `step_changes` section: the largest mean-shift per transport
