@@ -479,6 +479,104 @@ jobs:
 
           echo "════════ END PRODUCTION-RELAY BATCH EXPERIMENT ════════"
 
+      # ── Slot-limit sweep: WHY does congestion produce a TIMEOUT? ──────
+      # Discriminates the three candidate mechanisms for the batch-B
+      # result (all seven fronted probes failing at exactly 15000ms when
+      # queued behind 23 hanging tcp connects):
+      #   (a) the runtime's per-invocation simultaneous-connection limit
+      #       queues late connect() calls, and each probe's own deadline
+      #       clock starts at ADMISSION (when the Worker code calls
+      #       connect()), not when the connect actually begins;
+      #   (b) the runtime's I/O event loop is starved by many pending
+      #       failed-connect states (would slow/degrade everything,
+      #       including already-admitted probes, smoothly);
+      #   (c) a shared per-invocation timeout budget measured from batch
+      #       start rather than per-descriptor start (a late-admitted
+      #       probe would fail with its budget REMAINDER, e.g. 10000ms,
+      #       never exactly 15000ms).
+      # Method: for each N, ONE batch of [N verified-hanging fillers
+      # FIRST, then exactly one conjure c1 descriptor LAST], through the
+      # production relay. c1 is the descriptor proven to answer in
+      # 354-485ms whenever it gets a connection slot (batches A/C/D).
+      # Readings:
+      #   - c1 fast (~0.4s) for small N, then latency stepping up in ~5s
+      #     waves (each wave = one round of hangers releasing the slots
+      #     their own 5s tcp timeout frees), crossing to a 15000ms
+      #     timeout once the queue wait reaches 15s  ⇒ mechanism (a),
+      #     with the FIRST step's N revealing the real simultaneous-
+      #     connection limit L (first delay at N = L, i.e. the (L+1)th
+      #     connect of the batch queues);
+      #   - smooth degradation that also appears at small N ⇒ (b);
+      #   - any c1 failure with latency ≠ 15000ms ⇒ (c).
+      # N=25 is the entry-time discriminator: the batch has 26 descriptors
+      # (over the relay's 25-probe admission pool), so c1 is admitted only
+      # after the first hangers complete (~5s in). (a) ⇒ c1 latency counts
+      # from its OWN late admission (15000ms timeout or a late success);
+      # (c) ⇒ c1 fails with the batch-start budget remainder (~10000ms).
+      - name: Slot-limit sweep (congestion mechanism discrimination)
+        env:
+          PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+          PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PROBE_RELAY_URL:-}" ] || [ -z "${PROBE_RELAY_TOKEN:-}" ]; then
+            echo "::error::PROBE_RELAY_URL/PROBE_RELAY_TOKEN not configured — cannot run the sweep"
+            exit 1
+          fi
+          BASE="${PROBE_RELAY_URL%/}"; BASE="${BASE%/probe}"
+          if [ ! -s /tmp/hangers.txt ]; then
+            echo "No /tmp/hangers.txt from the previous step — skipping sweep"
+            exit 0
+          fi
+          AVAIL="$(wc -l < /tmp/hangers.txt | tr -d ' ')"
+          echo "hangers available: ${AVAIL}"
+          C1='{"id":"c1","transport":"conjure","host":"registration.refraction.network","port":443,"path":"/api"}'
+          for N in 3 5 6 11 12 17 18 23 25; do
+            if [ "$N" -gt "$AVAIL" ]; then
+              echo "── N=${N}: skipped (only ${AVAIL} hangers verified)"
+              continue
+            fi
+            DESC="$(python3 -c '
+          import json, sys
+          n = int(sys.argv[1])
+          hosts = [l.strip() for l in open("/tmp/hangers.txt") if l.strip()][:n]
+          d = [{"id":"hanger-%d"%i,"transport":"obfs4","host":h.split(":")[0],"port":int(h.split(":")[1])} for i,h in enumerate(hosts)]
+          d.append(json.loads(sys.argv[2]))
+          print(json.dumps(d))' "$N" "$C1")"
+            T0="$(date +%s)"
+            curl -s -m 180 -X POST "${BASE}/probe" \
+              -H "X-Probe-Token: ${PROBE_RELAY_TOKEN}" -H 'Content-Type: application/json' \
+              -d "$DESC" > "/tmp/sweep_${N}.json" || echo "(curl exit $?)"
+            T1="$(date +%s)"
+            python3 - "$N" "$((T1 - T0))" <<'PYEOF'
+          import json, sys
+          n, wall = sys.argv[1], sys.argv[2]
+          try:
+              d = json.load(open("/tmp/sweep_%s.json" % n))
+          except Exception as e:
+              print("── N=%s: parse-error %s" % (n, e)); raise SystemExit
+          rows = d.get("results", [])
+          c1 = next((r for r in rows if r.get("id") == "c1"), None)
+          hang = [r for r in rows if str(r.get("id","")).startswith("hanger")]
+          if c1 is None:
+              print("── N=%s: NO c1 row in response (rows=%d)" % (n, len(rows))); raise SystemExit
+          err = (c1.get("error") or "none")
+          if len(err) > 90:
+              err = err[:90] + "…"
+          print("── N=%-2s wall=%-3ss  c1 ok=%-5s http=%-5s %5sms  %s" % (
+              n, wall, c1.get("success"), c1.get("http_status"),
+              c1.get("latency_ms") or 0, err))
+          if hang:
+              lat = [r.get("latency_ms") or 0 for r in hang]
+              ok = sum(1 for r in hang if r.get("success"))
+              print("          hangers: %d/%d tcp-ok, latency min=%dms max=%dms null=%d" % (
+                  ok, len(hang), min(lat), max(lat),
+                  sum(1 for r in hang if r.get("latency_ms") is None)))
+          PYEOF
+            sleep 5
+          done
+          echo "════════ END SLOT-LIMIT SWEEP ════════"
+
       # ── Always delete the throwaway worker ─────────────────────────────
       - name: Delete temporary diagnostic Worker
         if: always()
