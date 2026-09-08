@@ -418,7 +418,7 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
         .and_then(Value::as_u64)
         .unwrap_or(0) as usize;
 
-    let stages = vec![
+    let stages = [
         FunnelStage {
             name: "sources_fetched_lines",
             count: supply
