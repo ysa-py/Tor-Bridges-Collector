@@ -1,0 +1,230 @@
+name: Egress Diagnostic (meek/conjure TLS timeout isolation)
+
+# TEMPORARY, manually-triggered diagnostic — NOT part of the CI pipeline
+# (workflow_dispatch only; the main torshield-ir.yml workflow is untouched).
+#
+# Purpose (PR #227 follow-up): CI run 34172542990 showed every meek_lite /
+# conjure probe failing with "TLS connect ... timed out after 15000ms" from
+# the deployed probe-relay Worker, while unrelated TLS targets (www.cdn77.com,
+# www.phpmyadmin.net, jochenkessler.de) succeeded in the same invocation.
+# This workflow isolates the exact mechanism by:
+#
+#   1. Deploying a THROWAWAY diagnostic Worker (probe-relay/src/diag.ts,
+#      name "tor-bridge-probe-relay-diag" — a different name from the
+#      production relay, which is never touched) that runs ONE primitive
+#      network operation per request from the real Cloudflare edge:
+#      DoH lookup / bare TCP connect / immediate-TLS connect (the exact
+#      safeTlsConnect call) / TCP-then-startTls split / plaintext-HTTP-over-
+#      443 / Workers fetch(). Per-test timeouts are caller-supplied, so the
+#      15s-vs-45s patience hypothesis is testable directly.
+#   2. Running the identical connection tests from the GitHub runner
+#      (a normal, non-Cloudflare vantage) for direct comparison.
+#   3. Deleting the throwaway Worker at the end of the run (always).
+#
+# Targets are the exact hosts from the CI evidence: meek.azureedge.net
+# (meek_lite backend), registration.refraction.network (conjure registrar),
+# ajax.aspnetcdn.com / cdn.sstatic.net (advertised fronts), plus
+# www.cdn77.com and jochenkessler.de as known-good controls and a
+# guaranteed-NXDOMAIN control (.invalid per RFC 2606) to calibrate how the
+# Workers runtime manifests an unresolvable name.
+
+on:
+  workflow_dispatch:
+  push:
+    # Session branch only — guarantees the diagnostic runs on push (a
+    # workflow_dispatch for a file that exists only on a non-default
+    # branch is not reliably accepted by the GitHub API). Once this
+    # branch merges, the filter stops matching and the file remains a
+    # manual, on-demand tool.
+    branches:
+      - arena/01a07de2-tor-bridges-collector
+
+permissions:
+  contents: read
+
+concurrency:
+  group: egress-diagnostic
+  cancel-in-progress: true
+
+jobs:
+  diagnose:
+    name: Isolate meek/conjure TLS timeout mechanism
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v5
+
+      # ── Deploy the throwaway diagnostic Worker ─────────────────────────
+      - name: Deploy temporary diagnostic Worker
+        env:
+          CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID }}
+          CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CF_WORKER_ACCOUNT_ID:-}" ] || [ -z "${CF_WORKER_API_TOKEN:-}" ]; then
+            echo "::error::CF_WORKER_ACCOUNT_ID/CF_WORKER_API_TOKEN not configured — cannot deploy the diagnostic worker"
+            exit 1
+          fi
+          export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
+          export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+
+          # Fresh ephemeral token for this run only; the worker is deleted
+          # at the end of the run (final step, if: always()).
+          DIAG_TOKEN="$(openssl rand -hex 16)"
+
+          echo "Deploying tor-bridge-probe-relay-diag..."
+          DEPLOY_LOG="$(npx wrangler@latest deploy --config probe-relay/wrangler-diag.toml --var "DIAG_TOKEN:${DIAG_TOKEN}" 2>&1)"
+          echo "${DEPLOY_LOG}"
+
+          DIAG_URL="$(echo "${DEPLOY_LOG}" | grep -oE 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -1 || true)"
+          if [ -z "${DIAG_URL}" ]; then
+            echo "::error::could not find the deployed workers.dev URL in wrangler output"
+            exit 1
+          fi
+          echo "Deployed: ${DIAG_URL}"
+
+          # Wait until the worker answers (cold start / DNS propagation).
+          LIVE=0
+          for i in $(seq 1 30); do
+            CODE="$(curl -s -o /dev/null -w '%{http_code}' -m 10 -X POST "${DIAG_URL}/diag" \
+              -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
+              -d '{"host":"www.cdn77.com","port":443,"mode":"dns"}' || echo "000")"
+            if [ "${CODE}" = "200" ]; then
+              echo "Diagnostic worker is live (attempt ${i})."
+              LIVE=1
+              break
+            fi
+            echo "  attempt ${i}: HTTP ${CODE}, waiting..."
+            sleep 5
+          done
+          if [ "${LIVE}" != "1" ]; then
+            echo "::error::diagnostic worker did not become live within 150s"
+            exit 1
+          fi
+
+          echo "DIAG_URL=${DIAG_URL}" >> "${GITHUB_ENV}"
+          echo "DIAG_TOKEN=${DIAG_TOKEN}" >> "${GITHUB_ENV}"
+
+      # ── Worker-vantage matrix: one primitive per request from the CF edge ──
+      - name: Worker-side matrix (real Cloudflare edge)
+        env:
+          DIAG_URL: ${{ env.DIAG_URL }}
+          DIAG_TOKEN: ${{ env.DIAG_TOKEN }}
+        run: |
+          set -euo pipefail
+          diag() {
+            # $1=host $2=port $3=mode $4=timeout_ms — one primitive, one line
+            curl -s -m "$(( $4 / 1000 + 20 ))" -X POST "${DIAG_URL}/diag" \
+              -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
+              -d "{\"host\":\"$1\",\"port\":$2,\"mode\":\"$3\",\"timeout_ms\":$4}" \
+              || echo '{"ok":false,"detail":"curl transport failed"}'
+            echo
+          }
+
+          echo "════════ WORKER-VANTAGE MATRIX (each line = one primitive from the real Cloudflare edge) ════════"
+
+          echo "── CI-evidence hosts + controls: DNS / bare TCP / TLS-15s / startTls split / fetch"
+          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net www.cdn77.com jochenkessler.de definitely-not-real.invalid; do
+            echo "── ${H}"
+            printf '  dns     : '; diag "${H}" 443 dns 10000
+            printf '  tcp10   : '; diag "${H}" 443 tcp 10000
+            printf '  tls15   : '; diag "${H}" 443 tls 15000
+            printf '  starttls: '; diag "${H}" 443 starttls 15000
+            printf '  fetch   : '; diag "${H}" 443 fetch 20000
+          done
+
+          echo "── IP literals (bypass the runtime resolver; IPs resolved by Google DoH 2026-09-08)"
+          for IP in 3.86.82.153 198.252.206.17 23.217.9.140 212.102.46.11; do
+            echo "── ${IP}"
+            printf '  tcp10   : '; diag "${IP}" 443 tcp 10000
+            printf '  tls15   : '; diag "${IP}" 443 tls 15000
+          done
+
+          echo "── Patience hypothesis (iii): extended 45s TLS timeout on the failing hosts"
+          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net definitely-not-real.invalid; do
+            printf '  tls45 %s: ' "${H}"; diag "${H}" 443 tls 45000
+          done
+
+          echo "── Plaintext HTTP over :443 (does anything answer without TLS?)"
+          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net; do
+            printf '  http %s: ' "${H}"; diag "${H}" 443 http 8000
+          done
+
+          echo "════════ END WORKER-VANTAGE MATRIX ════════"
+
+      # ── Runner-vantage matrix: the same hosts from a normal network ────
+      - name: Runner-side matrix (normal vantage comparison)
+        run: |
+          set -euo pipefail
+          HOSTS="meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net www.cdn77.com jochenkessler.de definitely-not-real.invalid"
+
+          echo "════════ RUNNER-VANTAGE MATRIX (GitHub-hosted runner — normal, non-Cloudflare network) ════════"
+
+          echo "── DNS: system resolver + Google Public DNS (DoH)"
+          for H in ${HOSTS}; do
+            SYS="$(getent ahostsv4 "${H}" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || true)"
+            DOH="$(curl -s -m 10 "https://dns.google/resolve?name=${H}&type=A" \
+              | python3 -c 'import json,sys; d=json.load(sys.stdin); print("status=%s answers=%s" % (d.get("Status"), [a.get("data") for a in d.get("Answer", [])]))' \
+              2>/dev/null || echo 'doh-query-failed')"
+            echo "  ${H}"
+            echo "    system: ${SYS:-<no answer>}"
+            echo "    dns.google: ${DOH}"
+          done
+
+          echo "── TLS handshake timing (curl: time_connect = TCP, time_appconnect = TLS done)"
+          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net www.cdn77.com jochenkessler.de; do
+            printf '  %-34s ' "${H}:"
+            curl -s -o /dev/null -m 20 \
+              -w 'tcp=%{time_connect}s tls=%{time_appconnect}s http=%{http_code} exit=%{exitcode}' \
+              "https://${H}/" || printf 'curl_exit=%s' "$?"
+            echo
+          done
+
+          echo "── Conjure registrar endpoints (GET; anything non-timeout = registrar alive)"
+          curl -s -o /dev/null -m 15 -w '  GET /api/register-bidirectional     -> HTTP %{http_code} (tls=%{time_appconnect}s)\n' \
+            "https://registration.refraction.network/api/register-bidirectional" \
+            || echo "  GET /api/register-bidirectional     -> FAILED (exit $?)"
+          curl -s -o /dev/null -m 15 -w '  GET /api/api/register-bidirectional -> HTTP %{http_code} (tls=%{time_appconnect}s)\n' \
+            "https://registration.refraction.network/api/api/register-bidirectional" \
+            || echo "  GET /api/api/register-bidirectional -> FAILED (exit $?)"
+
+          echo "── Bare TCP connect timing (/dev/tcp, no TLS)"
+          for H in registration.refraction.network cdn.sstatic.net ajax.aspnetcdn.com www.cdn77.com; do
+            printf '  %-34s ' "${H}:"
+            S="$(date +%s%N)"
+            if timeout 10 bash -c "</dev/tcp/${H}/443" 2>/dev/null; then
+              E="$(date +%s%N)"
+              echo "TCP connected in $(( (E - S) / 1000000 ))ms"
+            else
+              echo "TCP FAILED (exit $?)"
+            fi
+          done
+
+          echo "── openssl handshake proof (brief)"
+          for H in registration.refraction.network cdn.sstatic.net; do
+            printf '  %-34s ' "${H}:"
+            timeout 15 openssl s_client -connect "${H}:443" -brief </dev/null 2>&1 | head -3 | tr '\n' ' '
+            echo
+          done
+
+          echo "════════ END RUNNER-VANTAGE MATRIX ════════"
+
+      # ── Always delete the throwaway worker ─────────────────────────────
+      - name: Delete temporary diagnostic Worker
+        if: always()
+        env:
+          CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID }}
+          CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CF_WORKER_ACCOUNT_ID:-}" ] || [ -z "${CF_WORKER_API_TOKEN:-}" ]; then
+            echo "No CF credentials available — nothing to delete here."
+            exit 0
+          fi
+          export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
+          export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+          if npx wrangler@latest delete --config probe-relay/wrangler-diag.toml --force 2>&1; then
+            echo "Throwaway diagnostic worker deleted."
+          else
+            echo "::warning::wrangler delete failed — please remove tor-bridge-probe-relay-diag manually"
+          fi
