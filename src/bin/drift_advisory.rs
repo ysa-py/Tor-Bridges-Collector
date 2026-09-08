@@ -72,7 +72,13 @@ fn path_or_env(default: &str, env_key: &str) -> PathBuf {
 
 /// Transports that dial a front domain instead of a raw TCP endpoint.
 /// `tcp_reachable == false` for these is not evidence of death.
-const FRONTED_TRANSPORTS: &[&str] = &["meek_lite", "meek-azure", "conjure", "webtunnel", "snowflake"];
+const FRONTED_TRANSPORTS: &[&str] = &[
+    "meek_lite",
+    "meek-azure",
+    "conjure",
+    "webtunnel",
+    "snowflake",
+];
 
 /// Minimum trailing history entries before run-over-run anomaly flags are
 /// emitted (below this the report states the series is too short).
@@ -512,7 +518,10 @@ pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
 pub fn front_domains(line: &str) -> Vec<String> {
     let mut domains = Vec::new();
     for token in line.split_whitespace() {
-        if let Some(value) = token.strip_prefix("fronts=").or_else(|| token.strip_prefix("front=")) {
+        if let Some(value) = token
+            .strip_prefix("fronts=")
+            .or_else(|| token.strip_prefix("front="))
+        {
             for domain in value.split(',') {
                 let domain = domain.trim();
                 if !domain.is_empty() {
@@ -572,7 +581,10 @@ pub fn front_survivability(history: &Value) -> Value {
         };
         let concentrated_failure = !records.is_empty() && reachable == 0;
         let advisory = if concentrated_failure {
-            format!("front domain unreachable for all {n} candidate(s) using it — treat as a front-level fault, not N independent bridge failures", n = records.len())
+            format!(
+                "front domain unreachable for all {n} candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
+                n = records.len()
+            )
         } else {
             String::new()
         };
@@ -609,8 +621,9 @@ fn main() {
             .and_then(|text| serde_json::from_str(&text).ok())
     };
 
-    println!("═══ Stage 8u — Drift & survivability advisories (additive, non-blocking) ═══");
-
+    println!(
+        "═══ Stage 8u — Drift & survivability advisories (additive, non-blocking) ═══"
+    );
     // Section 1: per-bridge drift.
     if let Some(history) = read_json(&history_path) {
         let (summary, stale) = bridge_drift_report(&history, &now);
@@ -621,7 +634,9 @@ fn main() {
             serde_json::to_string(&summary["counts"]).unwrap_or_default()
         );
         if stale_count > 0 {
-            println!("::notice::bridge drift: {stale_count} stale-positive bridge(s) — historical successes but currently unreachable (advisory; see data/bridge_drift_report.json)");
+            println!(
+                "::notice::bridge drift: {stale_count} stale-positive bridge(s) — historical successes but currently unreachable (advisory; see data/bridge_drift_report.json)"
+            );
         }
         let report = json!({
             "generated_at": now.to_rfc3339(),
@@ -653,7 +668,9 @@ fn main() {
             );
         }
         for domain in &concentrated {
-            println!("::notice::front domain {domain} is unreachable for every candidate using it (advisory; see data/front_domain_survivability.json)");
+            println!(
+                "::notice::front domain {domain} is unreachable for every candidate using it (advisory; see data/front_domain_survivability.json)"
+            );
         }
         let report = json!({
             "generated_at": now.to_rfc3339(),
@@ -806,7 +823,10 @@ mod tests {
     #[test]
     fn classify_drift_exempts_fronted_transports() {
         let rec = record(&[
-            ("raw", json!("conjure 2B28… url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io")),
+            (
+                "raw",
+                json!("conjure 2B28… url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io"),
+            ),
             ("transport", json!("conjure")),
             ("probe_successes", json!(3)),
             ("probe_failures", json!(0)),
@@ -913,13 +933,21 @@ mod tests {
             vec!["ajax.aspnetcdn.com"]
         );
         // Real conjure line (comma list):
+        let conjure_line = concat!(
+            "conjure fp url=https://registration.refraction.network/api ",
+            "fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min"
+        );
         assert_eq!(
-            front_domains("conjure fp url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min"),
+            front_domains(conjure_line),
             vec!["cdn.sstatic.net", "assets.cloud.censys.io"]
         );
         // Real snowflake lines carry two fronts each:
+        let snowflake_line = concat!(
+            "snowflake fp url=https://1098762253.rsc.cdn77.org/ ",
+            "fronts=www.cdn77.com,www.phpmyadmin.net ice=…"
+        );
         assert_eq!(
-            front_domains("snowflake fp url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=…"),
+            front_domains(snowflake_line),
             vec!["www.cdn77.com", "www.phpmyadmin.net"]
         );
         assert!(front_domains("obfs4 1.2.3.4:9001 fp").is_empty());
