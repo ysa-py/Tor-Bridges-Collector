@@ -235,15 +235,42 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          ART_URL="$(curl -s -H "Authorization: Bearer ${GH_TOKEN}" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=30" \
-            | python3 -c 'import json,sys
-          arts = [a for a in json.load(sys.stdin).get("artifacts", [])
-                  if a.get("name") == "bridge-snapshot" and not a.get("expired")]
-          if not arts:
-              print(""); raise SystemExit
-          arts.sort(key=lambda a: a.get("created_at", ""), reverse=True)
-          print(arts[0]["archive_download_url"])')"
+          # NOTE: the REST fallback curl below is deliberately ONE line —
+          # run 3 shipped a multi-line version whose YAML-literal `\\`
+          # continuations bash parsed as escaped backslashes (not line
+          # continuations), so the URL line executed as a standalone
+          # command and the delete silently failed.
+          python3 - <<'PYEOF' > /tmp/art_url.txt
+          import json, os, sys, urllib.request, urllib.error
+          token = os.environ["GH_TOKEN"]; repo = os.environ["GITHUB_REPOSITORY"]
+          # The repo-wide artifact list is sorted newest-first, but dozens of
+          # artifacts per CI run push bridge-snapshot past the first page
+          # (run 3 missed it with per_page=30) — scan up to 10 pages of 100.
+          best = None
+          for page in range(1, 11):
+              url = "https://api.github.com/repos/%s/actions/artifacts?per_page=100&page=%d" % (repo, page)
+              req = urllib.request.Request(url, headers={
+                  "Authorization": "Bearer %s" % token,
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "egress-diagnostic"})
+              try:
+                  with urllib.request.urlopen(req, timeout=30) as resp:
+                      arts = json.load(resp).get("artifacts", [])
+              except Exception as e:
+                  print("artifact-list page %d failed: %s" % (page, e), file=sys.stderr)
+                  break
+              if not arts:
+                  break
+              for a in arts:
+                  if a.get("name") == "bridge-snapshot" and not a.get("expired"):
+                      best = a
+                      break
+              if best or len(arts) < 100:
+                  break
+          print(best["archive_download_url"] if best else "")
+          PYEOF
+          ART_URL="$(cat /tmp/art_url.txt)"
+          echo "artifact URL: ${ART_URL:-<none>}"
           if [ -z "${ART_URL}" ]; then
             echo "::warning::no bridge-snapshot artifact found — skipping (CI latency ground truth unavailable)"
             exit 0
@@ -472,9 +499,9 @@ jobs:
             DELETED=1
           else
             echo "wrangler delete failed (run 2 hit auth error 10000 on /storage/kv/namespaces — the deploy-scoped token lacks KV read). Falling back to the direct REST API…"
-            HTTP_CODE="$(curl -s -o /tmp/cf_delete.json -w '%{http_code}' -X DELETE \\
-              "https://api.cloudflare.com/client/v4/accounts/${CF_WORKER_ACCOUNT_ID}/workers/scripts/tor-bridge-probe-relay-diag" \\
-              -H "Authorization: Bearer ${CF_WORKER_API_TOKEN}" || echo "000")"
+            # Single line on purpose — see the NOTE in the artifact step:
+            # multi-line curl continuations broke bash parsing in run 3.
+            HTTP_CODE="$(curl -s -o /tmp/cf_delete.json -w '%{http_code}' -X DELETE -H "Authorization: Bearer ${CF_WORKER_API_TOKEN}" "https://api.cloudflare.com/client/v4/accounts/${CF_WORKER_ACCOUNT_ID}/workers/scripts/tor-bridge-probe-relay-diag" || echo "000")"
             echo "REST DELETE status: ${HTTP_CODE}"
             cat /tmp/cf_delete.json 2>/dev/null || true
             echo
