@@ -113,12 +113,23 @@ jobs:
         run: |
           set -euo pipefail
           diag() {
-            # $1=host $2=port $3=mode $4=timeout_ms — one primitive, one line
-            curl -s -m "$(( $4 / 1000 + 20 ))" -X POST "${DIAG_URL}/diag" \
-              -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
-              -d "{\"host\":\"$1\",\"port\":$2,\"mode\":\"$3\",\"timeout_ms\":$4}" \
-              || echo '{"ok":false,"detail":"curl transport failed"}'
-            echo
+            # $1=host $2=port $3=mode $4=timeout_ms — one primitive, one line.
+            # A fresh workers.dev hostname occasionally answers "error code:
+            # 1042/1104" from the edge layer before the Worker is invoked
+            # (script-not-found / same-zone noise during route propagation);
+            # retry once after a pause when that happens so a real answer
+            # is captured.
+            local out=""
+            for attempt in 1 2; do
+              out="$(curl -s -m "$(( $4 / 1000 + 20 ))" -X POST "${DIAG_URL}/diag" \
+                -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
+                -d "{\"host\":\"$1\",\"port\":$2,\"mode\":\"$3\",\"timeout_ms\":$4}" \
+                || echo '{"ok":false,"detail":"curl transport failed"}')"
+              if ! echo "${out}" | grep -q '^error code:'; then break; fi
+              [ "${attempt}" = "1" ] && sleep 3
+            done
+            printf '%s\n' "${out}"
+            sleep 1
           }
 
           echo "════════ WORKER-VANTAGE MATRIX (each line = one primitive from the real Cloudflare edge) ════════"
@@ -208,6 +219,105 @@ jobs:
           done
 
           echo "════════ END RUNNER-VANTAGE MATRIX ════════"
+
+      # ── Production-relay batch experiment: queue-congestion hypothesis ──
+      # The Workers runtime allows only 6 simultaneous outgoing connections
+      # per invocation (connect() counts; excess connections are QUEUED —
+      # developers.cloudflare.com/workers/platform/limits). The production
+      # relay probes 30-bridge chunks at MAX_CONCURRENT_PROBES=25, so slow
+      # 5s tcp-class timeouts (dead obfs4 bridges) can hold all 6 connection
+      # slots for multiple waves while the meek/conjure probes' own 15s
+      # deadline expires UNCONNECTED. This experiment runs the exact 7
+      # CI-evidence descriptors through the production relay:
+      #   A) alone (uncongested)            → they should complete fast
+      #   B) behind 23 unroutable fillers   → CI chunk replica (expect the
+      #      15s "TLS connect timed out" signature if queueing is the cause)
+      #   C) ahead of the same 23 fillers   → ordering control
+      #   D) A repeated (consistency)
+      - name: Production-relay batch experiment (queue-congestion hypothesis)
+        env:
+          PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+          PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PROBE_RELAY_URL:-}" ] || [ -z "${PROBE_RELAY_TOKEN:-}" ]; then
+            echo "::error::PROBE_RELAY_URL/PROBE_RELAY_TOKEN not configured — cannot run the production-relay experiment"
+            exit 1
+          fi
+          BASE="${PROBE_RELAY_URL%/}"; BASE="${BASE%/probe}"
+
+          # The exact 7 descriptors from the CI evidence
+          # ([stage=results] rows of runs 34168134475 / 34172542990):
+          # meek_lite ×4 (2 direct, 2 fronted via ajax.aspnetcdn.com) and
+          # conjure ×3 (direct + censys front + sstatic front).
+          SEVEN='[
+            {"id":"m1","transport":"meek_lite","host":"meek.azureedge.net","port":443},
+            {"id":"m2","transport":"meek_lite","host":"meek.azureedge.net","port":443,"sni":"ajax.aspnetcdn.com"},
+            {"id":"m3","transport":"meek_lite","host":"meek.azureedge.net","port":443},
+            {"id":"m4","transport":"meek_lite","host":"meek.azureedge.net","port":443,"sni":"ajax.aspnetcdn.com"},
+            {"id":"c1","transport":"conjure","host":"registration.refraction.network","port":443,"path":"/api"},
+            {"id":"c2","transport":"conjure","host":"registration.refraction.network","port":443,"sni":"assets.cloud.censys.io","path":"/api"},
+            {"id":"c3","transport":"conjure","host":"registration.refraction.network","port":443,"sni":"cdn.sstatic.net","path":"/api"}
+          ]'
+
+          # 23 unroutable TEST-NET-1 (RFC 5737) obfs4 fillers — tcp class,
+          # 5s connect timeout each, exactly like dead obfs4 bridges in the
+          # real CI chunks.
+          FILLERS="$(python3 -c 'import json; print(json.dumps([
+            {"id":"filler-%d"%i,"transport":"obfs4","host":"192.0.2.%d"%(10+i),"port":443} for i in range(23)
+          ]))')"
+
+          run_batch() {
+            # $1=label $2=json-array
+            echo "── Batch $1 ($(echo "$2" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))') descriptors)"
+            T0="$(date +%s)"
+            curl -s -m 180 -X POST "${BASE}/probe" \
+              -H "X-Probe-Token: ${PROBE_RELAY_TOKEN}" -H 'Content-Type: application/json' \
+              -d "$2" > "/tmp/batch_$1.json" || echo "(curl exit $?)"
+            T1="$(date +%s)"
+            echo "   wall=$(( T1 - T0 ))s"
+            python3 - "$1" <<'PYEOF'
+          import json, sys
+          label = sys.argv[1]
+          try:
+              d = json.load(open("/tmp/batch_%s.json" % label))
+          except Exception as e:
+              print("   parse-error: %s" % e); raise SystemExit
+          for r in d.get("results", []):
+              err = (r.get("error") or "none")
+              if len(err) > 110:
+                  err = err[:110] + "…"
+              print("   %-8s %-9s ok=%-5s http=%-5s %dms  %s" % (
+                  r["id"], r.get("probe_type","?"), r.get("success"),
+                  r.get("http_status"), r.get("latency_ms") or 0, err))
+          s = d.get("stats", {})
+          print("   stats: attempted=%s completed=%s success=%s timedOut=%s errored=%s" % (
+              s.get("attempted"), s.get("completed"), s.get("success"), s.get("timedOut"), s.get("errored")))
+          PYEOF
+          }
+
+          echo "════════ PRODUCTION-RELAY BATCH EXPERIMENT (exact v2.6 code path) ════════"
+
+          run_batch A "${SEVEN}"
+
+          sleep 5
+          FILLERS_FIRST="$(python3 -c '
+          import json, sys
+          fillers = json.loads(sys.argv[1]); seven = json.loads(sys.argv[2])
+          print(json.dumps(fillers + seven))' "${FILLERS}" "${SEVEN}")"
+          run_batch B "${FILLERS_FIRST}"
+
+          sleep 5
+          SEVEN_FIRST="$(python3 -c '
+          import json, sys
+          fillers = json.loads(sys.argv[1]); seven = json.loads(sys.argv[2])
+          print(json.dumps(seven + fillers))' "${FILLERS}" "${SEVEN}")"
+          run_batch C "${SEVEN_FIRST}"
+
+          sleep 5
+          run_batch D "${SEVEN}"
+
+          echo "════════ END PRODUCTION-RELAY BATCH EXPERIMENT ════════"
 
       # ── Always delete the throwaway worker ─────────────────────────────
       - name: Delete temporary diagnostic Worker
