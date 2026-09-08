@@ -175,13 +175,50 @@ Per the directive's sequencing, additional/replacement sources are now proposabl
 - §3.1: 483-skip reproduction + independent ipaddress cross-check (none routable) + 0-legit-dropped at current mirror state.
 - §4.1: 129-record stale-field census (committed history + published file).
 - §5: all classification verdicts (call-site map + workflow bin map + committed artifacts); `ml_predictor` constant-0.5 measurement; `smart_iran_scorer` tier/precision@K table (faithful re-implementation validated against the live CI log's ranked count 1,626); the local pre-push verifications — guard-default-ON merge over the live mirror corpus (+0 added, 483 skipped, 1753 total, **0 of the 129 deleted records resurrected**) and guard-opt-out fallback (restores the unguarded merge: +129 re-added, 1882 total).
+- §7 (post-change): both runs green with real URLs; §0.1 flip confirmed verbatim (483 skipped / 0 legit dropped / 0 resurrections); §0.2 re-probe result confirmed (`webtunnel_ipv6_tested.txt` = 0 lines, before=0 after=0); legitimate-pool safety confirmed (testing list, relay, TCP, published counts all inside the pre-change variance band); §2.4 fix confirmed live (`new=75`).
 
-**Unverified until the post-change CI run (`[expectation]`):**
-- §3.2: post-flip CI confirmation (skip count, pool unchanged, published set not degraded).
-- §4.2: real post-deletion count + fresh re-probe results (the PR run's regenerated `webtunnel_ipv6_tested.txt` and Stage 10y `COUNT_DELTA` notices are the readout).
-- §2.4's 75-new-if-merged is a single-snapshot figure; the 5–7-run advisory series for decision 3 accumulates only over future scheduled runs (the additive report-only fix — `community_mirrors` now computes new-if-merged in advisory mode and reports `new=` in its `::notice` — makes those runs self-report it).
-- §5's `smart_iran_scorer` precision is [recomputed] (faithful re-implementation over the committed input, validated on the ranked count); the per-bridge ranked artifact itself (`ai-iran-ranked-bridges` zip from run 34278561590) is not downloadable in this environment (blob host TLS-blocked) — downloading it from the run page would upgrade the figure to [artifact].
+**Still unverified / open (`[expectation]` or by-construction pending):**
+- §2.4's 75-new-if-merged is a single-snapshot figure (now confirmed identical in the pipeline's own advisory report, but still one run); the 5–7-run advisory series for owner decision 3 accumulates only over future scheduled runs.
+- §5's `smart_iran_scorer` precision is [recomputed] (faithful re-implementation over the committed input, validated on the ranked count); the per-bridge ranked artifact itself (`ai-iran-ranked-bridges` zip) is not downloadable in this environment (blob host TLS-blocked) — downloading it from the run page would upgrade the figure to [artifact].
+- The fate of the remaining 123 never-tested db8 records (owner call, not ordered by v42).
 
 ---
 
-*No thresholds, gates, scores, or published files were changed to produce Sections 1–4. Sections 0.1/0.2 code/data changes follow in the same PR, after this report, per v42 §4.*
+## 7. Post-change confirmation (added after the changeset ran green)
+
+Runs on commit `da164e43`: main-ci [`34288669205`](https://github.com/ysa-py/Tor-Bridges-Collector/actions/runs/34288669205) — **success, 16/16 jobs, 0 failed**; TorShield-IR [`34288669641`](https://github.com/ysa-py/Tor-Bridges-Collector/actions/runs/34288669641) — **success, 14/14 jobs**. All evidence below `[ci-log]` (job-log/annotation reads from those runs).
+
+**§0.1 flip confirmed** (PR-run core job #102270270478, Stage 0s @23:03:59Z):
+
+```
+SEED_STRICT_IP_GUARD: true                                   (default applied — no repo var set)
+  history: +0 added, 1487 updated, 1753 total records
+  SEED_STRICT_IP_GUARD: skipped 483 documentation/reserved-endpoint line(s)
+  per-transport: conjure=1, meek-azure=2, obfs4=1148, snowflake=2, vanilla=473, webtunnel=127
+```
+
+Exactly the locally-verified numbers: 483 skipped (all reserved/doc-range per §3.1), **0 legitimate lines dropped** (all 1,487 valid mirror lines merged as updates), webtunnel family = 4 + 123 (the never-tested db8 records remain, per §0.2 scope). **Zero resurrections of the deleted 129**: `SUPPLY_DIAG webtunnel_ipv6::history_count_after=123` (core-job annotation) and finalize `non_routable_endpoints_in_pool=127` = 123 db8 + 4 private obfs4 — the exact arithmetic of 256 − 129.
+
+**§0.2 deletion + re-probe confirmed** (PR-run finalize job #102276935367 annotations):
+
+```
+COUNT_DELTA webtunnel_ipv6_tested.txt before=0 after=0
+FUNNEL sources_fetched_lines=23 candidates_in_history=1754 testing_candidates=1627 relay_attempted=1635
+       relay_success=239 tcp_tested=1627 tcp_reachable=567 published_advisory_working=409
+```
+
+- The deletion survived the full pipeline: the regenerated `webtunnel_ipv6_tested.txt` contains **0 lines** — the fresh re-probe produced no tested webtunnel_ipv6 bridges (no db8 endpoint can acquire live probe evidence, so the honest count is zero, with no annotation kept).
+- `candidates_in_history=1754` = 1,753 (post-deletion) + 1 new live record collected during this run (normal per-run drift; the earlier push-run on the same commit showed 1,753).
+- **Legitimate bridges not degraded:** testing list 1,626–1,627 (unchanged), relay success 233–239, TCP reachable 564–567, published advisory working 406–409 — all inside the observed run-to-run variance band of the pre-change runs on the identical legitimate pool (relay success has ranged 230–242 across consecutive runs; published 406–410).
+
+**§2.4 additive fix confirmed** (core-job annotation, first live run of the new code):
+
+```
+COMMUNITY_MIRRORS center2055/OnionHop-Bridges-Collector fetched=2064 valid=1566 new=75 (merge=false)
+```
+
+The pipeline's own new-if-merged computation reports **new=75** — matching the offline §2.4 analysis exactly. Advisory data point #2 of the owner-decision-3 series; `COMMUNITY_MIRRORS_MERGE` remains OFF.
+
+---
+
+*No thresholds, gates, scores, or published files were changed to produce Sections 1–4. Sections 0.1/0.2 code/data changes follow in the same PR, after this report, per v42 §4. Section 7 was appended only after both post-change runs completed green.*
