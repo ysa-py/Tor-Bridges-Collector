@@ -86,6 +86,46 @@ interface WorkersSocket {
  *     snowflake / vless / shadowtls / anytls / http-upgrade / grpc stay
  *     on "tls", webtunnel stays on "websocket-101".
  *
+ * v2.7 CHANGES (2026-09-08) — connection-queue starvation fix (fronted
+ * probes dying at exactly 15000ms in CI):
+ *   - ROOT CAUSE (proven twice on the real edge, egress-diagnostic runs
+ *     34177070080 + 34177799271): the Workers runtime allows only SIX
+ *     simultaneous outgoing connections per invocation and QUEUES excess
+ *     connect() calls (developers.cloudflare.com/workers/platform/
+ *     limits). A probe's own deadline (5s tcp / 15s TLS) starts when
+ *     THIS code calls connect(), not when the runtime actually begins
+ *     the connection — so a fronted probe admitted behind a wave of
+ *     5s-hanging dead-bridge tcp connects spends its whole 15s budget
+ *     waiting in the runtime's connection queue and reports "TLS connect
+ *     … timed out after 15000ms" for a target that answers in ~400ms
+ *     whenever it gets a slot. The decisive experiment: the 7 CI meek/
+ *     conjure descriptors behind 23 verified-hanging dead bridges ALL
+ *     fail at exactly 15000ms (batch B, wall 50s); the same 30
+ *     descriptors with the 7 admitted FIRST all settle in 8-485ms with
+ *     conjure c1 answering HTTP 400 (the regserver "Payload too small"
+ *     signature) — batches A/C/D. Order is the only variable.
+ *   - FIX 1: DEFAULT_MAX_CONCURRENT_PROBES 25 -> 6 (and
+ *     wrangler.toml [vars] MAX_CONCURRENT_PROBES "25" -> "6"), aligning
+ *     the admission pool with the runtime's real simultaneous-connection
+ *     limit so every admitted probe starts connecting immediately — its
+ *     deadline then measures probe time, never queue time. Total
+ *     throughput is unchanged: the runtime's 6-connection pool was
+ *     ALWAYS the real cap (25 admissions still executed 6-at-a-time),
+ *     so the 2026-09-06 truncation fix is preserved — only timer-start
+ *     semantics change. (The slot-limit sweep in the same diagnostic
+ *     runs measures the limit directly: first queue delay appears when
+ *     a batch's 7th connect() is in flight.)
+ *   - FIX 2: fronted (non-tcp) probe classes are now ADMITTED FIRST
+ *     within each batch — the exact batch-C configuration measured
+ *     green twice. A 30-descriptor chunk is built by input order
+ *     (scripts/probe_relay.sh split -l 30), so fronted descriptors can
+ *     sit behind ~19 hangers; admitting them first gives them the first
+ *     connection slots. tcp-class probes are outcome-invariant to
+ *     admission order (a dead bridge fails either way; its latency
+ *     merely becomes more honest). The results[] array stays indexed by
+ *     ORIGINAL input position, so the response is byte-identical to the
+ *     previous admission order for every caller.
+ *
  * v2.5 CHANGES (2026-09-07) — TRUE domain-fronted probing (the Host-header
  * fix), implemented on cloudflare:sockets:
  *   - ROOT CAUSE (confirmed against the real workerd runtime and CI probe
@@ -237,11 +277,19 @@ const DEFAULT_PROBE_TIMEOUT_MS = 5000;
 // the fronted transports timing out at exactly the 5s TCP cap while the same
 // fronts answered the runner-side probe seconds later in the same run.
 const FETCH_PROBE_TIMEOUT_MS = 15000;
-// v2.1: raised 5 -> 25. See the module header for the full rationale — the
-// original low value guarded against a reader-lock leak that is now fixed, so
-// the CI client's 30-bridge chunks probe in ~1-2 waves instead of ~6.
+// v2.7: 25 -> 6. The Workers runtime allows only 6 simultaneous outgoing
+// connections per invocation and QUEUES excess connect() calls — and a
+// probe's own deadline starts at admission (when this code calls
+// connect()), so with 25 admissions the 7th..25th probes' 5s/15s budgets
+// burn inside the runtime's connection queue (proven by egress-diagnostic
+// runs 34177070080 + 34177799271: all seven fronted descriptors admitted
+// behind 23 verified-hanging tcp connects fail at exactly 15000ms; the
+// same descriptors admitted first settle in 8-485ms). 6 aligns admission
+// with the runtime pool: every admitted probe starts connecting
+// immediately. Throughput is unchanged — the runtime pool was always the
+// real cap, so the 2026-09-06 truncation fix holds.
 // Override at deploy time via wrangler.toml [vars] MAX_CONCURRENT_PROBES.
-const DEFAULT_MAX_CONCURRENT_PROBES = 25;
+const DEFAULT_MAX_CONCURRENT_PROBES = 6;
 const USER_AGENT = "TorShield-IR-ProbeRelay/2.0";
 
 // ─── Entry Point ────────────────────────────────────────────────────
@@ -426,12 +474,36 @@ export async function probeBridgesWithConcurrency(
     success: 0,
   };
 
+  // v2.7: admission order — fronted (non-tcp) probe classes first, then
+  // tcp-class probes, each stable in input order. The Workers runtime
+  // queues connect() calls beyond 6 simultaneous connections per
+  // invocation, and a probe's deadline starts at admission, so a fronted
+  // probe admitted behind a wave of 5s-hanging dead-bridge tcp connects
+  // can spend its whole 15s budget in the runtime queue (the exact CI
+  // failure proven in egress-diagnostic runs 34177070080/34177799271:
+  // 7-first ⇒ 8-485ms incl. conjure HTTP 400; same 30 descriptors with
+  // 23 hangers first ⇒ all seven exactly 15000ms). Admitting fronted
+  // classes first is the measured-green configuration. tcp-class probes
+  // are outcome-invariant to admission order (a dead bridge fails either
+  // way). results[] stays indexed by ORIGINAL input position, so the
+  // response array is byte-identical to the previous admission order.
+  const frontedFirst: number[] = [];
+  const tcpLast: number[] = [];
+  for (let i = 0; i < bridges.length; i++) {
+    if (classifyProbe(bridges[i]) === "tcp") {
+      tcpLast.push(i);
+    } else {
+      frontedFirst.push(i);
+    }
+  }
+  const order = [...frontedFirst, ...tcpLast];
+
   let nextIndex = 0;
 
   // Worker function that pulls the next bridge from the queue
   async function worker(): Promise<void> {
-    while (nextIndex < bridges.length) {
-      const idx = nextIndex++;
+    while (nextIndex < order.length) {
+      const idx = order[nextIndex++];
       if (idx >= bridges.length) break;
 
       const bridge = bridges[idx];

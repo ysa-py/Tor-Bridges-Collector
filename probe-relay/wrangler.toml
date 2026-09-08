@@ -20,6 +20,25 @@ compatibility_date = "2025-08-09"
 # what lets Stage 4 finish its full 1500+ bridge set inside the CI budget
 # instead of truncating at the 20-minute mark. 25 concurrent connect() calls
 # stay well under the free-tier 50-subrequest-per-invocation ceiling.
+#
+# v2.7 (2026-09-08): 25 -> 6 — connection-queue starvation fix. The Workers
+# runtime allows only SIX simultaneous outgoing connections per invocation
+# and QUEUES excess connect() calls; a probe's own 5s/15s deadline starts
+# at admission (when the Worker calls connect()), not when the runtime
+# actually begins the connection. With 25 admissions, the 7th..25th probes'
+# deadlines burned inside the runtime queue: egress-diagnostic runs
+# 34177070080 + 34177799271 proved all seven meek/conjure descriptors
+# admitted behind 23 verified-hanging dead-bridge tcp connects fail at
+# EXACTLY 15000ms ("TLS connect ... timed out") while the same descriptors
+# admitted first settle in 8-485ms (conjure registrar: HTTP 400, the
+# regserver payload-validation signature). 6 aligns the admission pool with
+# the runtime's real connection pool so every admitted probe starts
+# connecting immediately. Chunk THROUGHPUT is unchanged — the runtime's
+# 6-connection pool was always the real cap (25 admissions still executed
+# 6-at-a-time), so the 2026-09-06 truncation fix holds; only timer-start
+# semantics change. The relay additionally admits fronted (non-tcp) probe
+# classes first within each batch (v2.7 src/index.ts), so hanging tcp
+# connects can never consume the first connection slots.
 
 [vars]
 # Maximum bridges per single POST /probe request. The CI client
@@ -27,13 +46,15 @@ compatibility_date = "2025-08-09"
 MAX_BRIDGES_PER_REQUEST = "50"
 
 # Maximum concurrent in-flight probes. Each probe opens a TCP/TLS socket
-# via cloudflare:sockets connect(). 25 matches the CI 30-bridge chunk so a
-# whole chunk probes in ~one or two waves, while remaining far below the
-# 50-subrequest per-invocation limit (a 30-bridge chunk = at most 30
-# concurrent connect() calls). Reader locks are guaranteed released in every
-# path, so this no longer risks the "stalled response canceled" runtime
-# warning that forced the old conservative value of 5.
-MAX_CONCURRENT_PROBES = "25"
+# via cloudflare:sockets connect(). v2.7: 6 = the Workers runtime's
+# simultaneous-connection limit per invocation (see the v2.7 note above) —
+# admission above this number queues connect() calls in the runtime while
+# each probe's own deadline keeps running, which is what produced CI's
+# uniform 15000ms fronted-probe timeouts. At 6, every admitted probe
+# starts connecting immediately; per-chunk wall-clock is bounded by the
+# same runtime pool as before, so Stage-4 coverage is unchanged. Reader
+# locks are guaranteed released in every path (safeConnect/drainAndClose).
+MAX_CONCURRENT_PROBES = "6"
 
 # Per-probe TCP connect timeout in seconds. A hung probe is force-killed
 # after this interval so it can't hold a concurrency slot indefinitely.

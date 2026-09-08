@@ -847,4 +847,49 @@ describe("probeBridgesWithConcurrency", () => {
 
     vi.useFakeTimers();
   });
+
+  it("admits fronted (non-tcp) probe classes before tcp probes (v2.7 connection-queue fix)", async () => {
+    // maxConcurrent=1 serializes admission, so the connect() call order IS
+    // the admission order. The conjure descriptor (fronted class) must be
+    // dialed FIRST even though it sits between two tcp-class descriptors:
+    // the Workers runtime queues connect() calls beyond its per-invocation
+    // simultaneous-connection limit while each probe's own deadline keeps
+    // running, so a fronted probe admitted behind hanging tcp connects
+    // reports a 15000ms timeout for a live target (proven in
+    // egress-diagnostic runs 34177070080 + 34177799271).
+    const bridges = [
+      makeBridge("tcp-a", "obfs4", "10.0.0.1", 9001),
+      makeBridge("cjc", "conjure", "reg.example.net", 443),
+      makeBridge("tcp-b", "vanilla", "10.0.0.2", 443),
+    ];
+    mockConnect.mockImplementation(() => makeFakeSocket(0));
+
+    const promise = probeBridgesWithConcurrency(bridges, 1, 5000);
+    await vi.runAllTimersAsync();
+    const { results } = await promise;
+
+    const dialOrder = mockConnect.mock.calls.map((c: any) => c[0]?.hostname);
+    expect(dialOrder).toEqual(["reg.example.net", "10.0.0.1", "10.0.0.2"]);
+    // The response array stays in ORIGINAL input order regardless of the
+    // admission order — byte-identical contract for the CI client.
+    expect(results.map((r) => r.id)).toEqual(["tcp-a", "cjc", "tcp-b"]);
+  });
+
+  it("keeps input order within each class and dials every bridge exactly once", async () => {
+    const bridges = Array.from({ length: 6 }, (_, i) =>
+      makeBridge(`t${i}`, "vanilla", `10.0.0.${i + 1}`, 443),
+    );
+    mockConnect.mockImplementation(() => makeFakeSocket(0));
+
+    const promise = probeBridgesWithConcurrency(bridges, 3, 5000);
+    await vi.runAllTimersAsync();
+    await promise;
+
+    // The first maxConcurrent admissions are the first maxConcurrent input
+    // positions (stability within the tcp class)…
+    const dialOrder = mockConnect.mock.calls.map((c: any) => c[0]?.hostname);
+    expect(dialOrder.slice(0, 3)).toEqual(["10.0.0.1", "10.0.0.2", "10.0.0.3"]);
+    // …and every bridge is dialed exactly once.
+    expect([...dialOrder].sort()).toEqual(bridges.map((b) => b.host).sort());
+  });
 });
