@@ -171,10 +171,7 @@ pub fn drift_evidence(record: &Map<String, Value>) -> Option<f64> {
 
 /// Build the per-bridge drift report section from a `bridge_history.json`
 /// document. Returns `(summary_json, stale_positive_entries_json)`.
-pub fn bridge_drift_report(
-    history: &Value,
-    now: &DateTime<Utc>,
-) -> (Value, Vec<Value>) {
+pub fn bridge_drift_report(history: &Value, now: &DateTime<Utc>) -> (Value, Vec<Value>) {
     let mut counts: BTreeMap<&str, usize> = BTreeMap::new();
     let mut health_by_class: BTreeMap<&str, Vec<f64>> = BTreeMap::new();
     let mut stale_entries: Vec<Value> = Vec::new();
@@ -292,7 +289,10 @@ pub fn current_transport_rates(iran_results: &Value) -> BTreeMap<String, (usize,
         }
         let transport = classify_line(line).to_string();
         *totals.entry(transport.clone()).or_default() += 1;
-        let status = bridge.get("iran_status").and_then(Value::as_str).unwrap_or("");
+        let status = bridge
+            .get("iran_status")
+            .and_then(Value::as_str)
+            .unwrap_or("");
         let not_blocked = !matches!(
             status,
             "iran_likely_blocked" | "iran_frequently_blocked" | "iran_asn_blocked"
@@ -322,9 +322,7 @@ pub fn current_transport_rates(iran_results: &Value) -> BTreeMap<String, (usize,
 pub fn history_entry(now: &DateTime<Utc>, rates: &BTreeMap<String, (usize, usize)>) -> Value {
     let rates_json: BTreeMap<String, Value> = rates
         .iter()
-        .map(|(transport, (working, total))| {
-            (transport.clone(), json!([working, total]))
-        })
+        .map(|(transport, (working, total))| (transport.clone(), json!([working, total])))
         .collect();
     json!({
         "ts": now.to_rfc3339(),
@@ -337,12 +335,7 @@ pub fn load_success_history(path: &Path) -> Vec<Value> {
     fs::read_to_string(path)
         .ok()
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .and_then(|value| {
-            value
-                .get("entries")
-                .and_then(Value::as_array)
-                .cloned()
-        })
+        .and_then(|value| value.get("entries").and_then(Value::as_array).cloned())
         .unwrap_or_default()
 }
 
@@ -405,7 +398,11 @@ pub fn anomaly_rows(
             0.0
         };
         let flagged = drop >= 0.10 && z <= -2.0;
-        let status = if flagged { "anomaly_drop" } else { "within_baseline" };
+        let status = if flagged {
+            "anomaly_drop"
+        } else {
+            "within_baseline"
+        };
         let z_json = if z.is_finite() {
             json!((z * 100.0).round() / 100.0)
         } else {
@@ -444,10 +441,7 @@ pub struct StepChange {
 /// [`MIN_STEP_SEGMENT`] observations on each side. Returns the best split
 /// per transport (the scan is exhaustive over valid split points, so it is
 /// deterministic; with fewer than [`MIN_STEP_SERIES`] points it returns None).
-pub fn detect_step_change(
-    transport: &str,
-    series: &[(String, f64)],
-) -> Option<StepChange> {
+pub fn detect_step_change(transport: &str, series: &[(String, f64)]) -> Option<StepChange> {
     if series.len() < MIN_STEP_SERIES {
         return None;
     }
@@ -485,7 +479,9 @@ pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
             continue;
         };
         for (transport, pair) in rates {
-            let Some(pair) = pair.as_array() else { continue };
+            let Some(pair) = pair.as_array() else {
+                continue;
+            };
             let (Some(w), Some(t)) = (
                 pair.first().and_then(Value::as_u64),
                 pair.get(1).and_then(Value::as_u64),
@@ -621,9 +617,7 @@ fn main() {
             .and_then(|text| serde_json::from_str(&text).ok())
     };
 
-    println!(
-        "═══ Stage 8u — Drift & survivability advisories (additive, non-blocking) ═══"
-    );
+    println!("═══ Stage 8u — Drift & survivability advisories (additive, non-blocking) ═══");
     // Section 1: per-bridge drift.
     if let Some(history) = read_json(&history_path) {
         let (summary, stale) = bridge_drift_report(&history, &now);
@@ -653,9 +647,7 @@ fn main() {
             .as_object()
             .map(|map| {
                 map.iter()
-                    .filter(|(_, value)| {
-                        value["concentrated_failure"].as_bool().unwrap_or(false)
-                    })
+                    .filter(|(_, value)| value["concentrated_failure"].as_bool().unwrap_or(false))
                     .map(|(domain, _)| domain.clone())
                     .collect()
             })
@@ -694,7 +686,10 @@ fn main() {
             .iter()
             .map(|(transport, (working, total))| format!("{transport}:{working}/{total}"))
             .collect();
-        println!("  this run per-transport working/total: {}", rates_display.join(" "));
+        println!(
+            "  this run per-transport working/total: {}",
+            rates_display.join(" ")
+        );
         let entry = history_entry(&now, &rates);
         prior.push(entry);
 
@@ -837,10 +832,7 @@ mod tests {
 
     #[test]
     fn drift_evidence_falls_back_to_lifetime_ratio_without_ewma() {
-        let rec = record(&[
-            ("probe_successes", json!(2)),
-            ("probe_failures", json!(2)),
-        ]);
+        let rec = record(&[("probe_successes", json!(2)), ("probe_failures", json!(2))]);
         assert_eq!(drift_evidence(&rec), Some(0.5));
     }
 
@@ -848,7 +840,10 @@ mod tests {
     fn classify_line_matches_the_nin_script_rule() {
         assert_eq!(classify_line("Bridge 1.2.3.4:443 fp"), "vanilla");
         assert_eq!(classify_line("obfs4 1.2.3.4:9001 fp"), "obfs4");
-        assert_eq!(classify_line("meek_lite fp url=… front=ajax.aspnetcdn.com"), "meek_lite");
+        assert_eq!(
+            classify_line("meek_lite fp url=… front=ajax.aspnetcdn.com"),
+            "meek_lite"
+        );
         assert_eq!(classify_line("conjure fp url=…"), "conjure");
         assert_eq!(classify_line("webtunnel fp url=…"), "webtunnel");
         assert_eq!(classify_line("snowflake fp url=…"), "snowflake");
@@ -878,9 +873,7 @@ mod tests {
         current.insert("obfs4".to_string(), (10usize, 100usize));
         // Trailing baseline: stable ~50% rate over 6 runs.
         let prior: Vec<Value> = (0..6)
-            .map(|_| {
-                json!({"ts": "2026-09-01T00:00:00Z", "rates": {"obfs4": [50, 100]}})
-            })
+            .map(|_| json!({"ts": "2026-09-01T00:00:00Z", "rates": {"obfs4": [50, 100]}}))
             .collect();
         let rows = anomaly_rows(&current, &prior);
         let row = rows.iter().find(|r| r["transport"] == "obfs4").unwrap();
