@@ -89,7 +89,7 @@ fn write_report(report: &Value) -> Result<(), Box<dyn std::error::Error>> {
     let mut body = serde_json::to_vec_pretty(report)?;
     body.push(b'\n');
     std::fs::write(output, body)?;
-    println!("community_mirrors: report written to {output}");
+    println!("community_mirrors: report written to {}", output.display());
     Ok(())
 }
 
