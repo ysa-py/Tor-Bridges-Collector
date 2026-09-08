@@ -176,7 +176,7 @@ pub fn bridge_drift_report(history: &Value, now: &DateTime<Utc>) -> (Value, Vec<
     let mut health_by_class: BTreeMap<&str, Vec<f64>> = BTreeMap::new();
     let mut stale_entries: Vec<Value> = Vec::new();
     let records = history_records(history);
-    for record in records {
+    for record in &records {
         let class = classify_drift(record);
         let label = class.label();
         *counts.entry(label).or_default() += 1;
@@ -426,7 +426,7 @@ pub fn anomaly_rows(
 }
 
 /// One detected step-change in a transport's rate series.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct StepChange {
     pub transport: String,
     pub split_ts: String,
