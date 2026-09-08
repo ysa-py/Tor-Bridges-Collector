@@ -5,32 +5,90 @@
   },
   "docs_audit": [
     {
+      "attempts": [
+        {
+          "attempt": 1,
+          "method": "GET",
+          "status": 403
+        },
+        {
+          "attempt": 2,
+          "method": "GET+browser-headers",
+          "status": 403
+        },
+        {
+          "attempt": 3,
+          "method": "HEAD",
+          "status": 403
+        }
+      ],
       "doc": "rdsys-readme",
       "error": "non-2xx",
       "status": 403,
       "url": "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/README.md"
     },
     {
+      "attempts": [
+        {
+          "attempt": 1,
+          "method": "GET",
+          "status": 403
+        },
+        {
+          "attempt": 2,
+          "method": "GET+browser-headers",
+          "status": 403
+        },
+        {
+          "attempt": 3,
+          "method": "HEAD",
+          "status": 403
+        }
+      ],
       "doc": "rdsys-distributor-config",
       "error": "non-2xx",
       "status": 403,
       "url": "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/config/rdsys.yaml"
     },
     {
+      "attempts": [
+        {
+          "attempt": 1,
+          "method": "GET",
+          "status": 403
+        },
+        {
+          "attempt": 2,
+          "method": "GET+browser-headers",
+          "status": 403
+        },
+        {
+          "attempt": 3,
+          "method": "HEAD",
+          "status": 403
+        }
+      ],
       "doc": "webtunnel-project-readme",
       "error": "non-2xx",
       "status": 403,
       "url": "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel/-/raw/main/README.md"
     },
     {
-      "bytes": 6522,
+      "attempts": [
+        {
+          "attempt": 1,
+          "method": "GET",
+          "status": 200
+        }
+      ],
+      "bytes": 6496,
       "doc": "bridges-torproject-home",
       "mechanism_tokens": [],
       "status": 200,
       "url": "https://bridges.torproject.org/"
     }
   ],
-  "generated_at": "2026-09-08T08:03:11.666869817+00:00",
+  "generated_at": "2026-09-08T18:38:13.959222972+00:00",
   "relay_observations": {
     "by_host": {
       "Bridge|102.212.98.168": {
@@ -187,7 +245,8 @@
         "attempted": 1
       },
       "Bridge|141.144.242.150": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|141.201.28.48": {
         "attempted": 1
@@ -202,7 +261,8 @@
         "attempted": 1
       },
       "Bridge|142.93.128.78": {
-        "attempted": 5
+        "attempted": 5,
+        "success": 4
       },
       "Bridge|144.31.122.145": {
         "attempted": 1,
@@ -644,7 +704,8 @@
         "attempted": 1
       },
       "Bridge|212.233.47.98": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|212.58.118.125": {
         "attempted": 1
@@ -795,13 +856,16 @@
         "attempted": 1
       },
       "Bridge|46.142.135.195": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|46.142.135.226": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|46.225.26.177": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|46.225.31.53": {
         "attempted": 1
@@ -849,10 +913,12 @@
         "success": 1
       },
       "Bridge|5.15.28.181": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|5.15.3.228": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|5.15.9.4": {
         "attempted": 1
@@ -1249,10 +1315,12 @@
         "attempted": 1
       },
       "Bridge|87.123.142.149": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|87.123.143.101": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|87.123.143.97": {
         "attempted": 1
@@ -1432,7 +1500,8 @@
         "attempted": 1
       },
       "conjure|registration.refraction.network": {
-        "attempted": 3
+        "attempted": 3,
+        "success": 1
       },
       "meek_lite|meek.azureedge.net": {
         "attempted": 4
@@ -1852,10 +1921,12 @@
         "attempted": 1
       },
       "obfs4|159.69.206.35": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|159.69.94.132": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|161.97.110.191": {
         "attempted": 1
@@ -1873,7 +1944,8 @@
         "attempted": 1
       },
       "obfs4|162.19.47.90": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|162.218.224.132": {
         "attempted": 1
@@ -2044,10 +2116,12 @@
         "attempted": 1
       },
       "obfs4|185.177.207.103": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|185.177.207.124": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|185.177.207.125": {
         "attempted": 1,
@@ -2517,8 +2591,7 @@
         "success": 1
       },
       "obfs4|31.104.35.172": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|31.171.241.238": {
         "attempted": 1
@@ -2657,11 +2730,11 @@
         "attempted": 1
       },
       "obfs4|46.114.137.183": {
-        "attempted": 1
-      },
-      "obfs4|46.114.61.221": {
         "attempted": 1,
         "success": 1
+      },
+      "obfs4|46.114.61.221": {
+        "attempted": 1
       },
       "obfs4|46.126.111.12": {
         "attempted": 1
@@ -2983,7 +3056,8 @@
         "attempted": 1
       },
       "obfs4|75.182.211.20": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|75.56.12.77": {
         "attempted": 1
@@ -3468,6 +3542,9 @@
       "obfs4|87.223.74.192": {
         "attempted": 1
       },
+      "obfs4|87.238.185.72": {
+        "attempted": 1
+      },
       "obfs4|87.239.203.12": {
         "attempted": 1
       },
@@ -3505,7 +3582,8 @@
         "attempted": 1
       },
       "obfs4|89.125.243.105": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|89.127.196.162": {
         "attempted": 1
@@ -3553,10 +3631,12 @@
         "attempted": 1
       },
       "obfs4|91.107.159.59": {
-        "attempted": 2
+        "attempted": 2,
+        "success": 2
       },
       "obfs4|91.107.244.46": {
-        "attempted": 5
+        "attempted": 5,
+        "success": 5
       },
       "obfs4|91.116.161.79": {
         "attempted": 1
@@ -4067,19 +4147,16 @@
         "attempted": 1
       },
       "obfs4|[2603:c020:8020:7200:0:892f:a194:1cbf]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2603:c027:b:d701:0:6712:1832:8c5d]": {
         "attempted": 1
       },
       "obfs4|[2604:3d08:6f80:e37:8825:2475:87bf:a9fd]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2604:3d08:6f80:e37:bba:279e:937a:70de]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2604:4300:a:fb:be24:11ff:feba:3c6a]": {
         "attempted": 1
@@ -4097,7 +4174,8 @@
         "attempted": 1
       },
       "obfs4|[2605:6400:10:ea:fe01:dc20:ba03:4ff]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2605:6400:30:f174:42::]": {
         "attempted": 1,
@@ -4321,12 +4399,10 @@
         "attempted": 1
       },
       "obfs4|[2a01:4f9:c013:d0e7::1]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2a01:4f9:c013:f001::1]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2a01:4f9:c013:f2df::1]": {
         "attempted": 1
@@ -4377,8 +4453,7 @@
         "success": 1
       },
       "obfs4|[2a01:e0a:8e5:650:dea6:32ff:feeb:aef8]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2a01:e0a:992:f8d0:daa:17d2:5c04:d763]": {
         "attempted": 1,
@@ -4448,7 +4523,8 @@
         "attempted": 1
       },
       "obfs4|[2a02:c207:2345:5502::1]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a02:c207:3018:9252::1]": {
         "attempted": 1
@@ -4472,13 +4548,15 @@
         "attempted": 1
       },
       "obfs4|[2a03:4000:53:105::1337]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a03:4000:55:15a:c89e:bcff:fe21:e5e2]": {
         "attempted": 1
       },
       "obfs4|[2a03:4000:7:61b:6424:d1ff:feda:25c6]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a03:8c00:1a:10:a46a:8ff:fe73:4227]": {
         "attempted": 2
@@ -4517,7 +4595,8 @@
         "attempted": 1
       },
       "obfs4|[2a0a:4587:2011::108]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a0a:4587:2011::10]": {
         "attempted": 1
@@ -4526,7 +4605,8 @@
         "attempted": 1
       },
       "obfs4|[2a0a:4587:2011::122]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a0a:4587:2011::124]": {
         "attempted": 1,
@@ -4618,7 +4698,8 @@
         "success": 1
       },
       "obfs4|[2a0a:4cc0:c1:e1f7::1]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a0a:8dc0:2060::a]": {
         "attempted": 1
@@ -4680,12 +4761,10 @@
         "attempted": 1
       },
       "obfs4|[2a12:bec4:1bb0:1ba1::2]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2a12:bec4:1de0:1f2::2]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2a12:bec4:1df0:81::a]": {
         "attempted": 1
@@ -4703,7 +4782,8 @@
         "attempted": 1
       },
       "obfs4|[2a14:1ec7:f710:eb6a::1]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a14:1ec7:f900:9::a]": {
         "attempted": 1
@@ -4722,13 +4802,14 @@
       },
       "snowflake|1098762253.rsc.cdn77.org": {
         "attempted": 6,
-        "success": 3
+        "success": 6
       },
       "webtunnel|coellen.xyz": {
         "attempted": 1
       },
       "webtunnel|jochenkessler.de": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "webtunnel|vault.005184.xyz": {
         "attempted": 1
@@ -4740,27 +4821,29 @@
     "by_transport": {
       "Bridge": {
         "attempted": 473,
-        "success": 71
+        "success": 84
       },
       "conjure": {
-        "attempted": 3
+        "attempted": 3,
+        "success": 1
       },
       "meek_lite": {
         "attempted": 4
       },
       "obfs4": {
-        "attempted": 1143,
-        "success": 137
+        "attempted": 1144,
+        "success": 150
       },
       "snowflake": {
         "attempted": 6,
-        "success": 3
+        "success": 6
       },
       "webtunnel": {
-        "attempted": 4
+        "attempted": 4,
+        "success": 1
       }
     },
-    "entries": 1633
+    "entries": 1634
   },
   "sources": [
     {
