@@ -312,9 +312,7 @@ mod tests {
         let lines = vec![
             "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://dead.example.com/x ver=0.0.4".to_string(),
         ];
-        let relay = vec![
-            serde_json::json!({"host": "dead.example.com", "success": false}),
-        ];
+        let relay = vec![serde_json::json!({"host": "dead.example.com", "success": false})];
         let advisory = front_health_advisory(&lines, &relay);
         assert_eq!(advisory["summary"]["unreachable_from_relay"], 1);
     }

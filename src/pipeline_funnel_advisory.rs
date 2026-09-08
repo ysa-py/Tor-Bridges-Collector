@@ -226,11 +226,13 @@ pub fn relay_coverage(testing_lines: &[String], relay_results: &[Value]) -> Valu
             .unwrap_or("unknown")
             .to_string();
         *unobserved_by_transport
-            .entry(if transport == "Bridge" || transport.parse::<std::net::Ipv4Addr>().is_ok() {
-                "vanilla".to_string()
-            } else {
-                transport
-            })
+            .entry(
+                if transport == "Bridge" || transport.parse::<std::net::Ipv4Addr>().is_ok() {
+                    "vanilla".to_string()
+                } else {
+                    transport
+                },
+            )
             .or_insert(0) += 1;
     }
     let success = relay_results
@@ -505,15 +507,15 @@ pub fn emit_notices(report: &Value) {
                 )
             })
             .collect();
-        println!(
-            "::notice title=FUNNEL::{}",
-            parts.join(" ")
-        );
+        println!("::notice title=FUNNEL::{}", parts.join(" "));
     }
     if let Some(census) = report.get("non_routable_census") {
         println!(
             "::notice title=FUNNEL::non_routable_endpoints_in_pool={}",
-            census.get("total_non_routable").and_then(Value::as_u64).unwrap_or(0)
+            census
+                .get("total_non_routable")
+                .and_then(Value::as_u64)
+                .unwrap_or(0)
         );
     }
     if let Some(coverage) = report.get("relay_coverage") {
@@ -553,7 +555,10 @@ mod tests {
             endpoint_key("webtunnel [2001:db8::1]:443 FINGER url=https://front.example.com/x"),
             Some("2001:db8::1:443".to_string())
         );
-        assert_eq!(endpoint_key("snowflake url=https://broker.example.com/x"), None);
+        assert_eq!(
+            endpoint_key("snowflake url=https://broker.example.com/x"),
+            None
+        );
     }
 
     #[test]

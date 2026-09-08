@@ -513,7 +513,7 @@ pub fn run_pipeline(
 /// Relay entries follow the probe-relay schema
 /// (`{host, port, success, latency_ms, probe_type, error}`).
 #[must_use]
-pub fn match_relay_observation(line: &str, relay_results: &[Value]) -> Option<&Value> {
+pub fn match_relay_observation<'a>(line: &str, relay_results: &'a [Value]) -> Option<&'a Value> {
     let (host, port) = extract_host_port(line)?;
     relay_results.iter().find(|observation| {
         let matches_host = observation
@@ -568,8 +568,7 @@ pub fn enrich_with_relay_evidence(report: &mut Value, relay_results: &[Value]) -
             }
             None => {
                 bridge["relay_probe"] = json!({"observed": false});
-                bridge["front_reachability"] =
-                    Value::String("no_relay_observation".to_string());
+                bridge["front_reachability"] = Value::String("no_relay_observation".to_string());
             }
         }
     }
@@ -933,7 +932,10 @@ mod tests {
             report["bridges"][0]["ech_verification"],
             "static_inference_no_live_handshake"
         );
-        assert_eq!(report["evidence"]["ech_status_is"], "static_inference_no_live_handshake");
+        assert_eq!(
+            report["evidence"]["ech_status_is"],
+            "static_inference_no_live_handshake"
+        );
     }
 
     #[test]

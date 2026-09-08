@@ -8,7 +8,9 @@
 
 use std::path::PathBuf;
 
-use torshield_ir_ultra::pipeline_funnel_advisory::{build_funnel_report, emit_notices, REPORT_FILE};
+use torshield_ir_ultra::pipeline_funnel_advisory::{
+    build_funnel_report, emit_notices, REPORT_FILE,
+};
 
 fn main() {
     let repo_root = std::env::var("REPO_ROOT")
@@ -22,7 +24,10 @@ fn main() {
     if let Some(parent) = output.parent() {
         if !parent.as_os_str().is_empty() {
             if let Err(error) = std::fs::create_dir_all(parent) {
-                eprintln!("funnel_advisory: cannot create {}: {error}", parent.display());
+                eprintln!(
+                    "funnel_advisory: cannot create {}: {error}",
+                    parent.display()
+                );
                 std::process::exit(1);
             }
         }
@@ -36,7 +41,10 @@ fn main() {
     };
     body.push(b'\n');
     if let Err(error) = std::fs::write(&output, body) {
-        eprintln!("funnel_advisory: cannot write {}: {error}", output.display());
+        eprintln!(
+            "funnel_advisory: cannot write {}: {error}",
+            output.display()
+        );
         std::process::exit(1);
     }
     println!("funnel_advisory: report written to {}", output.display());

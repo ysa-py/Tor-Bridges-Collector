@@ -53,9 +53,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-use crate::scraper::{
-    contains_documentation_or_reserved_endpoint, is_valid_line, HttpFetch, HttpResponse,
-};
+use crate::scraper::{contains_documentation_or_reserved_endpoint, is_valid_line, HttpFetch};
 
 /// Default mirror list: one additional, actively-maintained public mirror
 /// with the same `bridge/<file>.txt` layout this repository publishes
@@ -235,7 +233,10 @@ pub fn fetch_mirror_file(
     };
     let response = client.get_with_headers(
         &url,
-        &[("Accept".to_string(), "application/vnd.github.raw".to_string())],
+        &[(
+            "Accept".to_string(),
+            "application/vnd.github.raw".to_string(),
+        )],
         Duration::from_secs(30),
     );
     let response = match response {
@@ -357,6 +358,7 @@ pub fn build_report(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::scraper::HttpResponse;
 
     #[test]
     fn mirrors_from_value_defaults_and_disables() {
@@ -383,7 +385,10 @@ mod tests {
     #[test]
     fn transport_inference_covers_all_families() {
         assert_eq!(infer_transport_token("obfs4 1.2.3.4:443 x"), "obfs4");
-        assert_eq!(infer_transport_token("webtunnel 1.2.3.4:443 x"), "webtunnel");
+        assert_eq!(
+            infer_transport_token("webtunnel 1.2.3.4:443 x"),
+            "webtunnel"
+        );
         assert_eq!(infer_transport_token("snowflake x"), "snowflake");
         assert_eq!(infer_transport_token("conjure x"), "conjure");
         assert_eq!(infer_transport_token("meek_lite 1.2.3.4:80 x"), "meek_lite");
@@ -471,8 +476,9 @@ mod tests {
     fn fetch_mirror_file_marks_ipv6_from_line_or_filename() {
         let client = MockFetch {
             status: 200,
-            body: "obfs4 [2001:470:1234::1]:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc\n"
-                .to_string(),
+            body:
+                "obfs4 [2001:470:1234::1]:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc\n"
+                    .to_string(),
         };
         let outcome = fetch_mirror_file(&client, "a/b", "obfs4_ipv6.txt", "obfs4");
         assert_eq!(outcome.valid_lines, 1);
