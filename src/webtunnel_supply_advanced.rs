@@ -130,6 +130,31 @@ pub const DOC_AUDIT_TARGETS: &[(&str, &str)] = &[
     ),
 ];
 
+/// Real-browser header bundle for the additive docs-audit 403 experiment
+/// (2026-09-07). The default production client already sends a
+/// browser-like Firefox User-Agent (see `scraper::USER_AGENT`) with
+/// Accept/Accept-Language defaults, so a plain UA swap alone is not a
+/// meaningful variation: this bundle swaps in a current Chrome UA plus the
+/// full navigation header set a real browser sends (Sec-Fetch-*,
+/// Upgrade-Insecure-Requests), to test whether the gitlab.torproject.org
+/// 403s are fingerprint-related rather than IP/challenge-based.
+const DOCS_AUDIT_BROWSER_HEADERS: &[(&str, &str)] = &[
+    (
+        "User-Agent",
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    ),
+    (
+        "Accept",
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    ),
+    ("Accept-Language", "en-US,en;q=0.9"),
+    ("Sec-Fetch-Dest", "document"),
+    ("Sec-Fetch-Mode", "navigate"),
+    ("Sec-Fetch-Site", "none"),
+    ("Sec-Fetch-User", "?1"),
+    ("Upgrade-Insecure-Requests", "1"),
+];
+
 /// Mechanism tokens the docs audit scans for. The known canonical
 /// distribution mechanisms today are moat (builtin/settings endpoints) and
 /// the HTTPS web endpoint; email and telegram exist upstream but are
@@ -289,11 +314,34 @@ pub fn scan_mechanism_tokens(text: &str) -> Vec<String> {
 ///
 /// Best-effort: every entry records `status` and the tokens found (or the
 /// fetch error). A fetch failure is recorded, never fatal.
+///
+/// ADDITIVE 403 EXPERIMENT (2026-09-07): three of the four
+/// gitlab.torproject.org targets have returned HTTP 403 in every recorded
+/// run while bridges.torproject.org returns 200. On any non-2xx (or
+/// transport-error) first response the audit now — still best-effort and
+/// non-fatal exactly as before — retries with:
+///
+///   1. a full real-browser header bundle (Chrome UA + Sec-Fetch-* — see
+///      [`DOCS_AUDIT_BROWSER_HEADERS`]);
+///   2. a HEAD request, to distinguish a GET-specific block from a
+///      blanket method-independent (IP/challenge) block.
+///
+/// Every attempt is recorded in an additive `attempts` array, and a
+/// successful retry adds a `resolved_by` field. When the first attempt
+/// succeeds, the entry shape and the log line are byte-identical to the
+/// pre-experiment behaviour (plus the `attempts` array).
 pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
     let mut entries = Vec::new();
     for (label, url) in DOC_AUDIT_TARGETS {
-        match client.get(url, REQUEST_TIMEOUT) {
-            Ok(resp) if (200..300).contains(&resp.status) => {
+        // Attempt 1 — the pre-existing request, unchanged.
+        let first = client.get(url, REQUEST_TIMEOUT);
+        let mut attempts = vec![match &first {
+            Ok(resp) => json!({ "attempt": 1, "method": "GET", "status": resp.status }),
+            Err(err) => json!({ "attempt": 1, "method": "GET", "error": err.to_string() }),
+        }];
+
+        if let Ok(resp) = &first {
+            if (200..300).contains(&resp.status) {
                 let tokens = scan_mechanism_tokens(&resp.text);
                 entries.push(json!({
                     "doc": label,
@@ -301,19 +349,74 @@ pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
                     "status": resp.status,
                     "bytes": resp.text.len(),
                     "mechanism_tokens": tokens,
+                    "attempts": attempts,
                 }));
                 println!(
                     "webtunnel_supply_advanced docs audit: doc={label} url={url} status={} bytes={} tokens={tokens:?}",
                     resp.status,
                     resp.text.len(),
                 );
+                continue;
             }
+        }
+
+        // Non-2xx (or transport error) — run the additive experiment.
+        let browser_headers: Vec<(String, String)> = DOCS_AUDIT_BROWSER_HEADERS
+            .iter()
+            .map(|(name, value)| (name.to_string(), value.to_string()))
+            .collect();
+        let retry = client.get_with_headers(url, &browser_headers, REQUEST_TIMEOUT);
+        attempts.push(match &retry {
+            Ok(resp) => json!({
+                "attempt": 2,
+                "method": "GET+browser-headers",
+                "status": resp.status
+            }),
+            Err(err) => json!({
+                "attempt": 2,
+                "method": "GET+browser-headers",
+                "error": err.to_string()
+            }),
+        });
+        let head = client.head(url, REQUEST_TIMEOUT);
+        attempts.push(match &head {
+            Ok(resp) => json!({ "attempt": 3, "method": "HEAD", "status": resp.status }),
+            Err(err) => json!({ "attempt": 3, "method": "HEAD", "error": err.to_string() }),
+        });
+
+        // If the browser-header retry succeeded, scan it exactly like the
+        // base case would have (success-shaped entry + experiment fields).
+        if let Ok(resp) = &retry {
+            if (200..300).contains(&resp.status) {
+                let tokens = scan_mechanism_tokens(&resp.text);
+                entries.push(json!({
+                    "doc": label,
+                    "url": url,
+                    "status": resp.status,
+                    "bytes": resp.text.len(),
+                    "mechanism_tokens": tokens,
+                    "resolved_by": "browser-headers-retry",
+                    "attempts": attempts,
+                }));
+                println!(
+                    "webtunnel_supply_advanced docs audit: doc={label} url={url} status={} bytes={} tokens={tokens:?} resolved_by=browser-headers-retry",
+                    resp.status,
+                    resp.text.len(),
+                );
+                continue;
+            }
+        }
+
+        // Still failing — record exactly the pre-existing failure shape,
+        // plus the additive attempts array documenting the experiment.
+        match first {
             Ok(resp) => {
                 entries.push(json!({
                     "doc": label,
                     "url": url,
                     "status": resp.status,
                     "error": "non-2xx",
+                    "attempts": attempts,
                 }));
                 eprintln!(
                     "webtunnel_supply_advanced docs audit: doc={label} url={url} status={} error=non-2xx",
@@ -325,6 +428,7 @@ pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
                     "doc": label,
                     "url": url,
                     "error": err.to_string(),
+                    "attempts": attempts,
                 }));
                 eprintln!(
                     "webtunnel_supply_advanced docs audit: doc={label} url={url} error={err}"
@@ -544,6 +648,49 @@ pub fn emit_workflow_notices(
     );
 }
 
+/// Additive (2026-09-07): surface the probe-relay per-transport outcome
+/// summary and the docs-audit experiment results as GitHub Actions notice
+/// annotations, so the fronted-transport success rates (webtunnel / meek /
+/// conjure / snowflake - previously a permanent 0-success signature) and
+/// the docs-audit 403 experiment results are visible on the run page and
+/// through the Checks API without log or artifact access. Purely
+/// diagnostic - never fatal, never counted anywhere.
+pub fn emit_relay_and_docs_notices(relay: &Value, docs_audit: &[Value]) {
+    if let Some(by_transport) = relay.get("by_transport").and_then(Value::as_object) {
+        if !by_transport.is_empty() {
+            let mut parts: Vec<String> = Vec::new();
+            for (transport, counters) in by_transport {
+                let attempted = counters
+                    .get("attempted")
+                    .and_then(Value::as_u64)
+                    .unwrap_or(0);
+                let success = counters.get("success").and_then(Value::as_u64).unwrap_or(0);
+                parts.push(format!("{transport}={success}/{attempted}"));
+            }
+            println!(
+                "::notice title=PROBE_RELAY::per-transport success/attempted: {}",
+                parts.join(" ")
+            );
+        }
+    }
+    if !docs_audit.is_empty() {
+        let mut parts: Vec<String> = Vec::new();
+        for entry in docs_audit {
+            let doc = entry.get("doc").and_then(Value::as_str).unwrap_or("?");
+            let status = entry
+                .get("status")
+                .and_then(Value::as_u64)
+                .map(|s| s.to_string())
+                .unwrap_or_else(|| "err".to_string());
+            parts.push(format!("{doc}={status}"));
+        }
+        println!(
+            "::notice title=DOC_AUDIT::statuses (first-attempt): {}",
+            parts.join(" ")
+        );
+    }
+}
+
 /// Core driver shared by the binary: load history, optionally fetch the
 /// extra WebTunnel draws and the docs audit, merge through the canonical
 /// pipeline, and emit all diagnostics.
@@ -644,6 +791,7 @@ pub fn run_advanced_supply(
     }));
     emit_step_summary(&config, &html, &before, &after, &added, &relay, &docs_audit);
     emit_workflow_notices(&after, &html, added_total);
+    emit_relay_and_docs_notices(&relay, &docs_audit);
 
     println!(
         "webtunnel_supply_advanced: config draws={} docs_audit={} fetched_lines={} new_history_records={} pruned={}",
@@ -712,6 +860,194 @@ mod tests {
         assert!(!found.contains(&"gettor".to_string()));
         let none = scan_mechanism_tokens("no tokens here");
         assert!(none.is_empty());
+    }
+
+    use crate::scraper::{HttpFetch, HttpResponse, ScraperError};
+
+    /// Mock client for the additive docs-audit 403 experiment: configurable
+    /// outcomes for the base GET, the browser-header retry, and the HEAD.
+    struct DocsAuditMock {
+        get: Option<u16>,
+        retry: Option<u16>,
+        head: Option<u16>,
+    }
+
+    fn mock_response(status: u16, body: &str) -> HttpResponse {
+        HttpResponse {
+            status,
+            headers: Vec::new(),
+            text: body.to_string(),
+        }
+    }
+
+    impl HttpFetch for DocsAuditMock {
+        fn get(&self, url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
+            match self.get {
+                Some(status) => Ok(mock_response(status, "unused first-attempt body")),
+                None => Err(ScraperError::Http {
+                    url: url.to_string(),
+                    message: "mock transport failure".to_string(),
+                }),
+            }
+        }
+        fn post_json(
+            &self,
+            _url: &str,
+            _body: &Value,
+            _headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            Err(ScraperError::Http {
+                url: String::new(),
+                message: "POST not supported".to_string(),
+            })
+        }
+        fn get_with_headers(
+            &self,
+            url: &str,
+            _headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            match self.retry {
+                Some(status) => Ok(mock_response(
+                    status,
+                    "# rdsys readme\n\ndistributors: moat, https\n",
+                )),
+                None => Err(ScraperError::Http {
+                    url: url.to_string(),
+                    message: "mock retry transport failure".to_string(),
+                }),
+            }
+        }
+        fn head(&self, url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
+            match self.head {
+                Some(status) => Ok(mock_response(status, "")),
+                None => Err(ScraperError::Http {
+                    url: url.to_string(),
+                    message: "mock HEAD transport failure".to_string(),
+                }),
+            }
+        }
+    }
+
+    #[test]
+    fn docs_audit_experiment_records_all_attempts_on_persistent_403() {
+        let mock = DocsAuditMock {
+            get: Some(403),
+            retry: Some(403),
+            head: Some(403),
+        };
+        let entries = audit_canonical_docs(&mock);
+        assert_eq!(entries.len(), DOC_AUDIT_TARGETS.len());
+        for entry in &entries {
+            // Pre-existing failure shape is preserved …
+            assert_eq!(entry.get("status").and_then(Value::as_u64), Some(403));
+            assert_eq!(entry.get("error").and_then(Value::as_str), Some("non-2xx"));
+            // … and the additive attempts array documents the experiment.
+            let attempts = entry.get("attempts").and_then(Value::as_array).unwrap();
+            assert_eq!(attempts.len(), 3);
+            assert_eq!(
+                attempts[0].get("method").and_then(Value::as_str),
+                Some("GET")
+            );
+            assert_eq!(attempts[0].get("status").and_then(Value::as_u64), Some(403));
+            assert_eq!(
+                attempts[1].get("method").and_then(Value::as_str),
+                Some("GET+browser-headers")
+            );
+            assert_eq!(attempts[1].get("status").and_then(Value::as_u64), Some(403));
+            assert_eq!(
+                attempts[2].get("method").and_then(Value::as_str),
+                Some("HEAD")
+            );
+            assert_eq!(attempts[2].get("status").and_then(Value::as_u64), Some(403));
+        }
+    }
+
+    #[test]
+    fn docs_audit_resolves_via_browser_headers_retry() {
+        let mock = DocsAuditMock {
+            get: Some(403),
+            retry: Some(200),
+            head: Some(403),
+        };
+        let entries = audit_canonical_docs(&mock);
+        for entry in &entries {
+            assert_eq!(entry.get("status").and_then(Value::as_u64), Some(200));
+            assert_eq!(
+                entry.get("resolved_by").and_then(Value::as_str),
+                Some("browser-headers-retry")
+            );
+            assert!(entry.get("error").is_none());
+            let tokens = entry
+                .get("mechanism_tokens")
+                .and_then(Value::as_array)
+                .unwrap();
+            assert!(tokens.iter().any(|t| t.as_str() == Some("moat")));
+        }
+    }
+
+    #[test]
+    fn docs_audit_first_attempt_success_keeps_entry_shape() {
+        let mock = DocsAuditMock {
+            get: Some(200),
+            retry: Some(403),
+            head: Some(403),
+        };
+        let entries = audit_canonical_docs(&mock);
+        for entry in &entries {
+            assert_eq!(entry.get("status").and_then(Value::as_u64), Some(200));
+            assert!(entry.get("bytes").and_then(Value::as_u64).unwrap_or(0) > 0);
+            assert!(entry
+                .get("mechanism_tokens")
+                .and_then(Value::as_array)
+                .is_some());
+            // No retry was needed: exactly one attempt, no resolved_by.
+            assert!(entry.get("resolved_by").is_none());
+            let attempts = entry.get("attempts").and_then(Value::as_array).unwrap();
+            assert_eq!(attempts.len(), 1);
+        }
+    }
+
+    /// Minimal client that only implements the two original trait methods,
+    /// locking in the additive defaults: get_with_headers delegates to get
+    /// (ignoring the extra headers) and head reports itself unsupported.
+    struct DefaultsOnlyMock;
+
+    impl HttpFetch for DefaultsOnlyMock {
+        fn get(&self, _url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
+            Ok(mock_response(200, "ok"))
+        }
+        fn post_json(
+            &self,
+            _url: &str,
+            _body: &Value,
+            _headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            Err(ScraperError::Http {
+                url: String::new(),
+                message: "POST not supported".to_string(),
+            })
+        }
+    }
+
+    #[test]
+    fn http_fetch_additive_defaults_delegate_and_report_head_unsupported() {
+        let client = DefaultsOnlyMock;
+        let resp = client
+            .get_with_headers(
+                "https://example.com/",
+                &[("User-Agent".to_string(), "probe-test".to_string())],
+                Duration::from_secs(1),
+            )
+            .expect("default get_with_headers delegates to get");
+        assert_eq!(resp.status, 200);
+        assert_eq!(resp.text, "ok");
+        let err = client
+            .head("https://example.com/", Duration::from_secs(1))
+            .expect_err("default head reports unsupported");
+        assert!(err.to_string().contains("HEAD requests are not supported"));
     }
 
     #[test]

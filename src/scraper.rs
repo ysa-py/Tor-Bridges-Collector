@@ -171,6 +171,35 @@ pub trait HttpFetch: Send + Sync {
         headers: &[(String, String)],
         timeout: Duration,
     ) -> Result<HttpResponse, ScraperError>;
+
+    /// Issue a GET request with per-request header overrides (additive;
+    /// used by the webtunnel docs-audit 403 experiment in
+    /// `webtunnel_supply_advanced`). The default implementation ignores
+    /// the extra headers and delegates to [`HttpFetch::get`], so every
+    /// existing implementation (including test mocks) keeps compiling and
+    /// behaving exactly as before; the production reqwest client
+    /// overrides it to send the headers for real.
+    fn get_with_headers(
+        &self,
+        url: &str,
+        _headers: &[(String, String)],
+        timeout: Duration,
+    ) -> Result<HttpResponse, ScraperError> {
+        self.get(url, timeout)
+    }
+
+    /// Issue a HEAD request (additive; used by the webtunnel docs-audit
+    /// 403 experiment to distinguish a GET-specific block from a blanket
+    /// method-independent block). The default implementation reports the
+    /// operation as unsupported — it never changes any existing
+    /// behaviour — and the production reqwest client overrides it with a
+    /// real HEAD.
+    fn head(&self, url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
+        Err(ScraperError::Http {
+            url: url.to_string(),
+            message: "HEAD requests are not supported by this HttpFetch implementation".to_string(),
+        })
+    }
 }
 
 /// Injectable TCP reachability probe used by [`tcp_reachable_with_probe`].
@@ -1773,6 +1802,67 @@ impl HttpFetch for ReqwestHttpFetch {
             status,
             headers,
             text,
+        })
+    }
+
+    /// Additive: GET with per-request header overrides (docs-audit 403
+    /// experiment). Same response handling as [`HttpFetch::get`].
+    fn get_with_headers(
+        &self,
+        url: &str,
+        headers: &[(String, String)],
+        timeout: Duration,
+    ) -> Result<HttpResponse, ScraperError> {
+        let mut req = self.client.get(url).timeout(timeout);
+        for (name, value) in headers {
+            let name_parsed =
+                name.parse::<reqwest::header::HeaderName>()
+                    .map_err(|err| ScraperError::Http {
+                        url: url.to_string(),
+                        message: format!("invalid header name {name:?}: {err}"),
+                    })?;
+            let value_parsed = value
+                .parse::<reqwest::header::HeaderValue>()
+                .map_err(|err| ScraperError::Http {
+                    url: url.to_string(),
+                    message: format!("invalid header value {value:?}: {err}"),
+                })?;
+            req = req.header(name_parsed, value_parsed);
+        }
+        let resp = req.send().map_err(|err| ScraperError::Http {
+            url: url.to_string(),
+            message: err.to_string(),
+        })?;
+        let status = resp.status().as_u16();
+        let headers = response_headers(resp.headers());
+        let text = resp.text().map_err(|_| ScraperError::HttpNotUtf8 {
+            url: url.to_string(),
+        })?;
+        Ok(HttpResponse {
+            status,
+            headers,
+            text,
+        })
+    }
+
+    /// Additive: real HEAD request (docs-audit 403 experiment). The body
+    /// is empty by definition; status and headers carry the signal.
+    fn head(&self, url: &str, timeout: Duration) -> Result<HttpResponse, ScraperError> {
+        let resp = self
+            .client
+            .head(url)
+            .timeout(timeout)
+            .send()
+            .map_err(|err| ScraperError::Http {
+                url: url.to_string(),
+                message: err.to_string(),
+            })?;
+        let status = resp.status().as_u16();
+        let headers = response_headers(resp.headers());
+        Ok(HttpResponse {
+            status,
+            headers,
+            text: String::new(),
         })
     }
 

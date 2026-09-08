@@ -124,6 +124,47 @@ def main():
     primary = transports[0] if transports else None
     top_primary = [l for l in survivable if classify(l) == primary][:10]
 
+    # ── D3 (2026-09-08, additive): evidence confidence bands ──────────────
+    # The manifest previously exposed a bare ranked order with no uncertainty
+    # signal: a primary transport backed by 299 pool lines implied the same
+    # confidence as one backed by 2. These additive fields derive a Wilson
+    # score 95% interval for the primary transport's share of this run's
+    # observed pool, plus the sample size, so consumers can see the evidence
+    # strength behind each recommendation. NO existing field is changed.
+    def wilson_95(k, n):
+        """Wilson score interval (lower, upper) for k successes of n trials."""
+        import math
+        if n == 0:
+            return (0.0, 0.0)
+        z = 1.959963984540054  # two-sided 95%
+        p = k / n
+        denom = 1.0 + (z * z) / n
+        centre = (p + (z * z) / (2 * n)) / denom
+        half = (z * math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / denom
+        return (round(max(0.0, centre - half), 4), round(min(1.0, centre + half), 4))
+
+    def confidence_for(primary_transport, static_order):
+        """Evidence-confidence block for one scenario."""
+        pool_total = sum(surv_transports.values()) + sum(elig_transports.values())
+        primary_lines = surv_transports.get(primary_transport, 0) + \
+            elig_transports.get(primary_transport, 0)
+        share_lo, share_hi = wilson_95(primary_lines, pool_total)
+        return {
+            "primary_pool_lines": primary_lines,
+            "pool_lines_total": pool_total,
+            "primary_share": round(primary_lines / pool_total, 4) if pool_total else 0.0,
+            "primary_share_wilson_95": [share_lo, share_hi],
+            "order_basis": ("static heuristic order (see rationale); confidence "
+                            "reflects this run's pool evidence for the primary "
+                            "transport only" if static_order else
+                            "evidence order derived from this run's "
+                            "probe-survivable + strict-NIN-eligible counts"),
+            "recency_caveat": ("counts reflect a single pipeline run; a bridge "
+                               "tested successfully once here should not be "
+                               "read as long-term stable — no multi-run history "
+                               "is included in this manifest"),
+        }
+
     doc = {
         "engine": "torshield-rust-nin-recommended-transport-v1",
         "generated_at": "",  # audit compares after popping
@@ -135,12 +176,14 @@ def main():
                 "rationale": "obfs4 dominates the reachable pool; snowflake/"
                              "webtunnel add CDN/DTLS diversity.",
                 "primary": "obfs4",
+                "evidence_confidence": confidence_for("obfs4", True),
             },
             "degraded_internet": {
                 "recommended_order": ["snowflake", "webtunnel", "meek_lite", "obfs4"],
                 "rationale": "CDN-fronted transports first when international "
                              "routes are partially filtered.",
                 "primary": "snowflake",
+                "evidence_confidence": confidence_for("snowflake", True),
             },
             "full_internet_cut": {
                 "recommended_order": transports or ["snowflake", "webtunnel", "obfs4"],
@@ -148,6 +191,7 @@ def main():
                              "probe-survivable counts.",
                 "primary": primary or "snowflake",
                 "top_candidates": top_primary,
+                "evidence_confidence": confidence_for(primary or "snowflake", False),
             },
         },
         "pool_stats": {

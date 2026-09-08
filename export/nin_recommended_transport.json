@@ -1,6 +1,6 @@
 {
  "engine": "torshield-rust-nin-recommended-transport-v1",
- "generated_at": "2026-09-08T08:15:29.631640+00:00",
+ "generated_at": "2026-09-08T16:23:03.329022+00:00",
  "input_files": [
   "export/nin_cut_survivable.txt",
   "data/nin_eligible.json"
@@ -14,7 +14,18 @@
     "vanilla"
    ],
    "rationale": "obfs4 dominates the reachable pool; snowflake/webtunnel add CDN/DTLS diversity.",
-   "primary": "obfs4"
+   "primary": "obfs4",
+   "evidence_confidence": {
+    "primary_pool_lines": 298,
+    "pool_lines_total": 299,
+    "primary_share": 0.9967,
+    "primary_share_wilson_95": [
+     0.9813,
+     0.9994
+    ],
+    "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
+    "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
+   }
   },
   "degraded_internet": {
    "recommended_order": [
@@ -24,7 +35,18 @@
     "obfs4"
    ],
    "rationale": "CDN-fronted transports first when international routes are partially filtered.",
-   "primary": "snowflake"
+   "primary": "snowflake",
+   "evidence_confidence": {
+    "primary_pool_lines": 0,
+    "pool_lines_total": 299,
+    "primary_share": 0.0,
+    "primary_share_wilson_95": [
+     0.0,
+     0.0127
+    ],
+    "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
+    "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
+   }
   },
   "full_internet_cut": {
    "recommended_order": [
@@ -44,7 +66,18 @@
     "obfs4 103.17.154.137:443 7CA829973901F71B93BBF2014C0EBEA366C21A2B cert=xcxDL1FZTXJHhFdDIHZWf1yqheNdB52l1ztDMliS3myvoeS6aNV0bg8/K8pkrWh7LM9dWg iat-mode=0",
     "obfs4 103.17.154.28:443 14276AC7EC2F61D60CCA88FCD6F9200FB38E5F9F cert=ousRdmpynYWH4cfCbV302M+ElH1jEA+cB5WWIKa4yFUu4pqeFDqKlwTK1d41Nd1j6mU5Kw iat-mode=0",
     "obfs4 103.214.6.208:443 CDC14F4A2E982E1EDFE5DEB21060E34DCB1F2476 cert=zcSRFKjDB/1KmfzRohf3Nq2BCm/HST89YVl4wA7ryibIk4d6XkqOFZ/z2aJX5w6oe0q/fQ iat-mode=0"
-   ]
+   ],
+   "evidence_confidence": {
+    "primary_pool_lines": 298,
+    "pool_lines_total": 299,
+    "primary_share": 0.9967,
+    "primary_share_wilson_95": [
+     0.9813,
+     0.9994
+    ],
+    "order_basis": "evidence order derived from this run's probe-survivable + strict-NIN-eligible counts",
+    "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
+   }
   }
  },
  "pool_stats": {
