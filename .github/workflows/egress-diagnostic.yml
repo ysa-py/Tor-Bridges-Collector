@@ -41,6 +41,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: egress-diagnostic
@@ -220,24 +221,112 @@ jobs:
 
           echo "════════ END RUNNER-VANTAGE MATRIX ════════"
 
+      # ── CI per-probe latency ground truth from the bridge-snapshot artifact ──
+      # The Stage-4 results file (data/pt_results.json) inside the
+      # bridge-snapshot artifact carries per-probe latency_ms for every one
+      # of the 1633 relay observations — including the seven meek/conjure
+      # descriptors and every obfs4/tcp probe. This step downloads the
+      # freshest artifact and prints (a) the exact meek/conjure rows and
+      # (b) the tcp-class latency distribution, so the queue-congestion
+      # question ("did the CI chunks actually contain 5s-hanging connects?")
+      # is answered from real CI data rather than inference.
+      - name: Fetch CI bridge-snapshot artifact (per-probe latency ground truth)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          ART_URL="$(curl -s -H "Authorization: Bearer ${GH_TOKEN}" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/artifacts?per_page=30" \
+            | python3 -c 'import json,sys
+          arts = [a for a in json.load(sys.stdin).get("artifacts", [])
+                  if a.get("name") == "bridge-snapshot" and not a.get("expired")]
+          if not arts:
+              print(""); raise SystemExit
+          arts.sort(key=lambda a: a.get("created_at", ""), reverse=True)
+          print(arts[0]["archive_download_url"])')"
+          if [ -z "${ART_URL}" ]; then
+            echo "::warning::no bridge-snapshot artifact found — skipping (CI latency ground truth unavailable)"
+            exit 0
+          fi
+          echo "Downloading latest bridge-snapshot artifact…"
+          curl -sL -H "Authorization: Bearer ${GH_TOKEN}" -o /tmp/snapshot.zip "${ART_URL}"
+          ls -la /tmp/snapshot.zip
+          if ! unzip -l /tmp/snapshot.zip | grep -q 'data/pt_results.json'; then
+            echo "::warning::data/pt_results.json not in the artifact — contents:"
+            unzip -l /tmp/snapshot.zip | head -30
+            exit 0
+          fi
+          unzip -o -j /tmp/snapshot.zip 'data/pt_results.json' -d /tmp/snap >/dev/null
+          python3 - <<'PYEOF'
+          import json
+          rows = json.load(open("/tmp/snap/pt_results.json"))
+          print("total relay observations: %d" % len(rows))
+          print("\n── meek/conjure rows (the seven CI descriptors + any meek-azure):")
+          for r in rows:
+              if r.get("transport") in ("meek_lite", "meek-azure", "conjure"):
+                  err = (r.get("error") or "none")
+                  if len(err) > 100:
+                      err = err[:100] + "…"
+                  print("  %-10s %-22s ok=%-5s http=%-5s %6sms  %s" % (
+                      r.get("transport"), r.get("host"), r.get("success"),
+                      r.get("http_status"), r.get("latency_ms"), err))
+          print("\n── probe_type distribution:")
+          from collections import Counter
+          for pt, n in Counter(r.get("probe_type") for r in rows).most_common():
+              print("  %-22s %d" % (pt, n))
+          print("\n── tcp-class latency distribution (how many CI connects hung ~5s?):")
+          tcp = [r.get("latency_ms") or 0 for r in rows if (r.get("probe_type") or "tcp") == "tcp"]
+          buckets = {"<1s": 0, "1-4.5s": 0, "4.5-5.5s (5s-timeout hangers)": 0, ">5.5s": 0, "null/missing": 0}
+          for lat in tcp:
+              if lat == 0: buckets["null/missing"] += 1
+              elif lat < 1000: buckets["<1s"] += 1
+              elif lat < 4500: buckets["1-4.5s"] += 1
+              elif lat <= 5500: buckets["4.5-5.5s (5s-timeout hangers)"] += 1
+              else: buckets[">5.5s"] += 1
+          for k, v in buckets.items():
+              print("  %-32s %d" % (k, v))
+          print("\n── fronted-class (tls/websocket-101/meek-post/conjure-registration) latency distribution:")
+          fronted = [r.get("latency_ms") or 0 for r in rows
+                     if (r.get("probe_type") or "tcp") != "tcp"]
+          if fronted:
+              print("  count=%d  min=%dms  max=%dms  >=14.5s(deadline-expired): %d" % (
+                  len(fronted), min(fronted), max(fronted),
+                  sum(1 for x in fronted if x >= 14500)))
+          PYEOF
+
       # ── Production-relay batch experiment: queue-congestion hypothesis ──
       # The Workers runtime allows only 6 simultaneous outgoing connections
       # per invocation (connect() counts; excess connections are QUEUED —
       # developers.cloudflare.com/workers/platform/limits). The production
       # relay probes 30-bridge chunks at MAX_CONCURRENT_PROBES=25, so slow
-      # 5s tcp-class timeouts (dead obfs4 bridges) can hold all 6 connection
-      # slots for multiple waves while the meek/conjure probes' own 15s
-      # deadline expires UNCONNECTED. This experiment runs the exact 7
-      # CI-evidence descriptors through the production relay:
-      #   A) alone (uncongested)            → they should complete fast
-      #   B) behind 23 unroutable fillers   → CI chunk replica (expect the
-      #      15s "TLS connect timed out" signature if queueing is the cause)
-      #   C) ahead of the same 23 fillers   → ordering control
+      # 5s tcp-class timeouts (dead bridges) can hold all 6 connection slots
+      # for multiple waves while the meek/conjure probes' own 15s deadline
+      # expires before their connect() is ever initiated.
+      #
+      # Run 2 (run 34176479344) proved the 7 CI-evidence descriptors
+      # COMPLETE through the production relay when uncongested (conjure
+      # registrar: ok=true http=400 in 48-65ms, 4/4 batches — the regserver
+      # "Payload too small" signature; meek fronted POST: TLS+HTTP to Akamai
+      # 403 in 15-25ms; NXDOMAIN hosts fail instantly). The first congestion
+      # replication (batch B) failed because TEST-NET-1 fillers do NOT hang
+      # from the CF edge (they connected in 2-7ms). This run replicates the
+      # CI chunk with REAL dead bridges (0 successes in 78 probes,
+      # bridge/bridge_history.json) that are first verified to hang from
+      # the edge via the diag worker:
+      #   0) select fillers: dead-bridge candidates that time out on TCP
+      #      connect from the edge (empirically hanging, like CI's obfs4)
+      #   A) the 7 alone (control — expected: same successes as run 2)
+      #   B) 23 hanging fillers FIRST + the 7 (exact CI chunk replica —
+      #      expected if the hypothesis holds: the 7 time out at 15s)
+      #   C) the 7 FIRST + the same fillers (ordering control — expected:
+      #      the 7 succeed, proving queue order is what matters)
       #   D) A repeated (consistency)
       - name: Production-relay batch experiment (queue-congestion hypothesis)
         env:
           PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
           PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
+          DIAG_URL: ${{ env.DIAG_URL }}
+          DIAG_TOKEN: ${{ env.DIAG_TOKEN }}
         run: |
           set -euo pipefail
           if [ -z "${PROBE_RELAY_URL:-}" ] || [ -z "${PROBE_RELAY_TOKEN:-}" ]; then
@@ -245,6 +334,38 @@ jobs:
             exit 1
           fi
           BASE="${PROBE_RELAY_URL%/}"; BASE="${BASE%/probe}"
+
+          # Dead bridges from bridge/bridge_history.json (0 successes in 78
+          # probes each) — the same class of targets the CI chunks contain.
+          CANDIDATES="102.212.98.168:9393 103.17.153.46:36287 103.17.153.50:37635 103.17.153.52:45757 103.17.153.56:33407 103.29.64.172:44247 104.195.206.76:8081 107.174.241.145:1338 107.4.186.44:8213 109.129.106.222:4761 109.180.116.142:6112 109.227.136.195:46795 109.248.32.156:2033 115.38.18.64:9001 125.25.105.34:9051 129.152.27.111:443 130.12.181.120:443 136.56.6.135:50284 139.162.116.72:55538 142.198.253.163:80 142.93.128.78:34689 142.93.128.78:39063 142.93.128.78:44541 144.31.122.145:9001 144.91.101.216:9001 145.40.131.171:4545 151.115.78.42:7002 151.242.69.163:4455 152.53.155.216:9002 153.179.249.222:49328 153.224.92.194:49328 155.248.232.81:37761 157.180.42.193:13452 158.179.180.37:49001 158.69.55.8:41033 159.196.153.178:10000 159.223.197.20:9001 159.65.125.21:9002 45.61.128.28:9001 45.76.61.118:443"
+
+          echo "── Step 0: select fillers that actually HANG on TCP connect from the edge"
+          HANGERS_FILE="/tmp/hangers.txt"
+          : > "${HANGERS_FILE}"
+          for CAND in ${CANDIDATES}; do
+            HOST="${CAND%%:*}"; PORT="${CAND##*:}"
+            OUT="$(curl -s -m 12 -X POST "${DIAG_URL}/diag" \
+              -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
+              -d "{\"host\":\"${HOST}\",\"port\":${PORT},\"mode\":\"tcp\",\"timeout_ms\":6000}" || true)"
+            if echo "${OUT}" | grep -q '"ok":false' && echo "${OUT}" | grep -q 'timed out'; then
+              echo "${CAND}" >> "${HANGERS_FILE}"
+              echo "  ${CAND}: HANGS (tcp timeout) — selected"
+            else
+              echo "  ${CAND}: does not hang ($(
+                echo "${OUT}" | python3 -c 'import json,sys
+          try:
+              d = json.load(sys.stdin)
+              print("ok=%s" % d.get("ok"))
+          except Exception:
+              print("non-json")' 2>/dev/null || echo 'edge-error'))"
+            fi
+            sleep 0.5
+          done
+          HANGER_COUNT="$(wc -l < "${HANGERS_FILE}" | tr -d ' ')"
+          echo "Selected ${HANGER_COUNT} hanging fillers."
+          if [ "${HANGER_COUNT}" -lt 12 ]; then
+            echo "::warning::only ${HANGER_COUNT} hangers found — congestion replication will be weak (need ~23 for a full CI chunk replica)"
+          fi
 
           # The exact 7 descriptors from the CI evidence
           # ([stage=results] rows of runs 34168134475 / 34172542990):
@@ -260,11 +381,11 @@ jobs:
             {"id":"c3","transport":"conjure","host":"registration.refraction.network","port":443,"sni":"cdn.sstatic.net","path":"/api"}
           ]'
 
-          # 23 unroutable TEST-NET-1 (RFC 5737) obfs4 fillers — tcp class,
-          # 5s connect timeout each, exactly like dead obfs4 bridges in the
-          # real CI chunks.
-          FILLERS="$(python3 -c 'import json; print(json.dumps([
-            {"id":"filler-%d"%i,"transport":"obfs4","host":"192.0.2.%d"%(10+i),"port":443} for i in range(23)
+          FILLERS="$(python3 -c '
+          import json
+          hosts = [l.strip() for l in open("/tmp/hangers.txt") if l.strip()][:23]
+          print(json.dumps([
+            {"id":"hanger-%d"%i,"transport":"obfs4","host":h.split(":")[0],"port":int(h.split(":")[1])} for i,h in enumerate(hosts)
           ]))')"
 
           run_batch() {
@@ -284,35 +405,47 @@ jobs:
           except Exception as e:
               print("   parse-error: %s" % e); raise SystemExit
           for r in d.get("results", []):
+              if str(r.get("id", "")).startswith("hanger"):
+                  continue  # filler rows summarized below
               err = (r.get("error") or "none")
               if len(err) > 110:
                   err = err[:110] + "…"
               print("   %-8s %-9s ok=%-5s http=%-5s %dms  %s" % (
                   r["id"], r.get("probe_type","?"), r.get("success"),
                   r.get("http_status"), r.get("latency_ms") or 0, err))
+          slow = [r for r in d.get("results", []) if str(r.get("id","")).startswith("hanger")]
+          if slow:
+              ok_n = sum(1 for r in slow if r.get("success"))
+              lat = [r.get("latency_ms") or 0 for r in slow]
+              print("   fillers: %d/%d tcp-ok, latency min=%dms max=%dms" % (
+                  ok_n, len(slow), min(lat), max(lat)))
           s = d.get("stats", {})
           print("   stats: attempted=%s completed=%s success=%s timedOut=%s errored=%s" % (
               s.get("attempted"), s.get("completed"), s.get("success"), s.get("timedOut"), s.get("errored")))
           PYEOF
           }
 
-          echo "════════ PRODUCTION-RELAY BATCH EXPERIMENT (exact v2.6 code path) ════════"
+          echo "════════ PRODUCTION-RELAY BATCH EXPERIMENT v2 (real hanging fillers) ════════"
 
           run_batch A "${SEVEN}"
 
-          sleep 5
-          FILLERS_FIRST="$(python3 -c '
+          if [ -n "${FILLERS//\[\]/}" ]; then
+            sleep 5
+            FILLERS_FIRST="$(python3 -c '
           import json, sys
           fillers = json.loads(sys.argv[1]); seven = json.loads(sys.argv[2])
           print(json.dumps(fillers + seven))' "${FILLERS}" "${SEVEN}")"
-          run_batch B "${FILLERS_FIRST}"
+            run_batch B "${FILLERS_FIRST}"
 
-          sleep 5
-          SEVEN_FIRST="$(python3 -c '
+            sleep 5
+            SEVEN_FIRST="$(python3 -c '
           import json, sys
           fillers = json.loads(sys.argv[1]); seven = json.loads(sys.argv[2])
           print(json.dumps(seven + fillers))' "${FILLERS}" "${SEVEN}")"
-          run_batch C "${SEVEN_FIRST}"
+            run_batch C "${SEVEN_FIRST}"
+          else
+            echo "── No hanging fillers available; skipping congested batches B/C"
+          fi
 
           sleep 5
           run_batch D "${SEVEN}"
@@ -333,8 +466,22 @@ jobs:
           fi
           export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
           export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
+          DELETED=0
           if npx wrangler@latest delete --config probe-relay/wrangler-diag.toml --force 2>&1; then
-            echo "Throwaway diagnostic worker deleted."
+            echo "Throwaway diagnostic worker deleted (wrangler)."
+            DELETED=1
           else
-            echo "::warning::wrangler delete failed — please remove tor-bridge-probe-relay-diag manually"
+            echo "wrangler delete failed (run 2 hit auth error 10000 on /storage/kv/namespaces — the deploy-scoped token lacks KV read). Falling back to the direct REST API…"
+            HTTP_CODE="$(curl -s -o /tmp/cf_delete.json -w '%{http_code}' -X DELETE \\
+              "https://api.cloudflare.com/client/v4/accounts/${CF_WORKER_ACCOUNT_ID}/workers/scripts/tor-bridge-probe-relay-diag" \\
+              -H "Authorization: Bearer ${CF_WORKER_API_TOKEN}" || echo "000")"
+            echo "REST DELETE status: ${HTTP_CODE}"
+            cat /tmp/cf_delete.json 2>/dev/null || true
+            echo
+            case "${HTTP_CODE}" in
+              200|204) echo "Throwaway diagnostic worker deleted (REST API)."; DELETED=1 ;;
+            esac
+          fi
+          if [ "${DELETED}" != "1" ]; then
+            echo "::warning::could not delete tor-bridge-probe-relay-diag — please remove it manually in the Cloudflare dashboard"
           fi
