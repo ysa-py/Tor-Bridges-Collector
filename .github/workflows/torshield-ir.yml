@@ -437,12 +437,16 @@ jobs:
       timeout-minutes: 10
       env:
         BRIDGE_MIRRORS_REPO: ${{ vars.BRIDGE_MIRRORS_REPO }}
-        # OPTIONAL (default off): apply the ip_guard-equivalent
+        # Default ON since 2026-09-09 (v42 §0.1): apply the ip_guard-equivalent
         # documentation/reserved-endpoint filter to mirror lines before the
         # merge. The 2026-09-08 funnel audit found the unguarded merge
         # re-seeds 2001:db8::/32 webtunnel placeholders into the pool every
-        # run. Left OFF until the owner approves the behaviour change.
-        SEED_STRICT_IP_GUARD: ${{ vars.SEED_STRICT_IP_GUARD || 'false' }}
+        # run; the 2026-09-09 verification (all 483 skipped lines genuinely
+        # reserved, none routable, 0 legitimate lines dropped — see
+        # docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) cleared the flip. Set
+        # the SEED_STRICT_IP_GUARD repo variable to false to restore the
+        # pre-2026-09-09 unguarded merge (fallback path preserved).
+        SEED_STRICT_IP_GUARD: ${{ vars.SEED_STRICT_IP_GUARD || 'true' }}
       run: |
         set -euo pipefail
         bash scripts/refresh_bridge_seed.sh

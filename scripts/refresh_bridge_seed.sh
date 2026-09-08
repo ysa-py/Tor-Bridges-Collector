@@ -29,20 +29,19 @@
 #                           (verified to serve bridge/<transport>.txt via the
 #                           GitHub contents API). Any listed repo that does not
 #                           serve the expected files is skipped non-fatally.
-#   SEED_STRICT_IP_GUARD    OPTIONAL (default: false). When set to a truthy
-#                           value (1/true/yes/on), mirror lines whose endpoint
-#                           falls in a documentation/reserved range (RFC 3849
-#                           2001:db8::/32, RFC 5737 TEST-NETs, loopback,
-#                           RFC 1918, link-local, ... — the same table
-#                           src/ip_guard.rs enforces for every scraper source)
-#                           are SKIPPED instead of merged, and the skip counts
-#                           are printed. This closes the gap found in the
-#                           2026-09-08 funnel audit, where 252 non-routable
-#                           2001:db8 webtunnel lines were re-seeded into the
-#                           history every run through this script (which
-#                           historically only checked length >= 12). OFF by
-#                           default so merge behaviour is unchanged until the
-#                           owner opts in.
+#   SEED_STRICT_IP_GUARD    Default ON since 2026-09-09 (v42 §0.1, after the
+#                           483-skip line-class verification in
+#                           docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3: all
+#                           483 skipped endpoints verified reserved/doc-range,
+#                           none routable, 0 legitimate lines dropped). Mirror
+#                           lines whose endpoint falls in a documentation/
+#                           reserved range (RFC 3849 2001:db8::/32, RFC 5737
+#                           TEST-NETs, loopback, RFC 1918, link-local, ... —
+#                           the same table src/ip_guard.rs enforces for every
+#                           scraper source) are SKIPPED instead of merged, and
+#                           the skip counts are printed. Set to 0/false/no/off
+#                           to restore the pre-2026-09-09 unguarded merge
+#                           behaviour (fallback path preserved).
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -107,12 +106,16 @@ import json, os, sys, datetime
 seed_root, bridge_dir = sys.argv[1], sys.argv[2]
 now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-# SEED_STRICT_IP_GUARD (default off): when enabled, mirror lines whose
-# endpoint sits in a documentation/reserved range are skipped before the
-# merge, mirroring the table src/ip_guard.rs applies to every scraper
-# source. OFF by default so the historical merge behaviour is unchanged.
-seed_strict_ip_guard = os.environ.get("SEED_STRICT_IP_GUARD", "").strip().lower() in (
-    "1", "true", "yes", "on",
+# SEED_STRICT_IP_GUARD (default ON since 2026-09-09, v42 §0.1): mirror lines
+# whose endpoint sits in a documentation/reserved range are skipped before the
+# merge, mirroring the table src/ip_guard.rs applies to every scraper source.
+# The 2026-09-08 funnel audit found the unguarded merge re-seeds 2001:db8::/32
+# webtunnel placeholders into the pool every run; the 2026-09-09 verification
+# (docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) confirmed every skipped line
+# is genuinely reserved and no legitimate bridge is dropped. Set the repo
+# variable to false/0/no/off to restore the previous unguarded merge.
+seed_strict_ip_guard = os.environ.get("SEED_STRICT_IP_GUARD", "true").strip().lower() not in (
+    "0", "false", "no", "off",
 )
 
 # Reserved ranges mirrored from src/ip_guard.rs (RESERVED_CIDR_V4/_V6).
@@ -252,7 +255,7 @@ print(f"  history: +{added} added, {updated} updated, {len(history)} total recor
 if seed_strict_ip_guard:
     print(f"  SEED_STRICT_IP_GUARD: skipped {skipped_reserved} documentation/reserved-endpoint line(s)")
 else:
-    print("  SEED_STRICT_IP_GUARD: off (set SEED_STRICT_IP_GUARD=true to enable the ip_guard-equivalent filter)")
+    print("  SEED_STRICT_IP_GUARD: off (explicitly disabled via 0/false/no/off; unset or true restores the default guard)")
 print("  per-transport:", ", ".join(f"{k}={v}" for k, v in sorted(by_transport.items())))
 print(f"  merged projection files: {total_files}")
 PY

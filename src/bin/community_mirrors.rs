@@ -51,30 +51,49 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let outcomes: Vec<MirrorOutcome> = Vec::new();
 
     let mut added: BTreeMap<String, usize> = BTreeMap::new();
-    if merge_enabled && !outcomes.is_empty() {
+    if !outcomes.is_empty() {
         let bridge_dir = Path::new("bridge");
         let history_path = bridge_dir.join("bridge_history.json");
-        let mut history = load_history(&history_path)?;
         let mut lines: Vec<(String, String, String)> = Vec::new();
         for outcome in &outcomes {
             lines.extend(outcome.lines.iter().cloned());
         }
-        added = count_new_lines(&history, &lines);
-        merge_raw_into_history(&mut history, &lines)?;
-        let pruned = prune_history(&mut history)?;
-        save_history(&history, &history_path)?;
-        println!(
-            "community_mirrors: merged validated lines into history (pruned {pruned} stale records)"
-        );
+        if merge_enabled {
+            let mut history = load_history(&history_path)?;
+            added = count_new_lines(&history, &lines);
+            merge_raw_into_history(&mut history, &lines)?;
+            let pruned = prune_history(&mut history)?;
+            save_history(&history, &history_path)?;
+            println!(
+                "community_mirrors: merged validated lines into history (pruned {pruned} stale records)"
+            );
+        } else {
+            // Advisory mode (v42 §2.4 gap fix, 2026-09-09): compute the
+            // would-be-added counts READ-ONLY so every advisory run
+            // self-reports mirror yield (new-if-merged) in
+            // `added_by_family_when_merged` without touching
+            // bridge_history.json. Previously the field was only populated
+            // when merging was enabled, so advisory runs did not record
+            // their yield (the 2026-09-09 offline analysis in
+            // docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §2.4 had to
+            // recompute it). Merge behaviour is unchanged.
+            let history = load_history(&history_path)?;
+            added = count_new_lines(&history, &lines);
+        }
     }
 
     let report = build_report(&outcomes, merge_enabled, &added);
     for outcome in &outcomes {
         let valid: usize = outcome.files.iter().map(|file| file.valid_lines).sum();
         let fetched: usize = outcome.files.iter().map(|file| file.fetched_lines).sum();
+        // `new` = validated lines absent from the current history
+        // (new-if-merged). Reported in BOTH modes so the advisory-yield
+        // series for the COMMUNITY_MIRRORS_MERGE decision is readable
+        // directly from run annotations (v42 §2.4 / owner decision 3).
+        let new_total: usize = added.values().sum();
         println!(
-            "::notice title=COMMUNITY_MIRRORS::{} fetched={} valid={} (merge={})",
-            outcome.repo, fetched, valid, merge_enabled
+            "::notice title=COMMUNITY_MIRRORS::{} fetched={} valid={} new={} (merge={})",
+            outcome.repo, fetched, valid, new_total, merge_enabled
         );
     }
     write_report(&report)?;
