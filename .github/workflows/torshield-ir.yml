@@ -662,6 +662,83 @@ jobs:
 
         echo "Relay URL: ${PROBE_RELAY_URL}"
 
+        # ── Version-safe deploy guard (additive, 2026-09-08) ──────────
+        # MEASURED PROBLEM: the relay's deployed version is not branch-pinned.
+        # Every run of this workflow deploys probe-relay from its own checkout,
+        # so a scheduled run on `main` silently overwrites whatever a PR branch
+        # had deployed — confirmed twice on 2026-09-08 with verbatim
+        # `wrangler deployments list` output (03:06:41Z run 34181559117 and
+        # 08:01:16Z run 34201083666, both redeployed main's pre-v2.6 relay over
+        # the branch's v2.6). An older commit must never clobber a newer deploy.
+        #
+        # GUARD: the Worker (v2.8+) exposes its deploy identity additively on
+        # the unauthenticated non-POST 405 path as
+        #   {"version": {"service", "git_sha", "git_ts"}}
+        # where git_sha/git_ts identify the last commit that touched
+        # probe-relay/ (injected at deploy time via `wrangler deploy --var`).
+        # Before deploying, compare the live version with the version THIS
+        # checkout would deploy:
+        #   * live reports no version (pre-v2.8 Worker or query failure)
+        #       → deploy (fail-open to the previous always-deploy behavior;
+        #         this is also the self-heal path after an external overwrite)
+        #   * live sha == incoming sha → skip (identical code; smoke test
+        #       still runs below)
+        #   * live is strictly newer (incoming is an ancestor of live, or —
+        #       for divergent histories — live's commit timestamp is newer)
+        #       → SKIP with a warning: the older checkout must not overwrite
+        #       the newer deployment
+        #   * otherwise → deploy (incoming is newer or equal-lineage)
+        # Only this deploy decision is guarded; every other stage of this
+        # workflow (scrape, test, publish, commit) runs exactly as before.
+        RELAY_BASE_URL="${PROBE_RELAY_URL%/}"
+        RELAY_BASE_URL="${RELAY_BASE_URL%/probe}"
+        INCOMING_SHA="$(git log -1 --format=%H -- probe-relay/ 2>/dev/null || true)"
+        INCOMING_TS="$(git log -1 --format=%ct -- probe-relay/ 2>/dev/null || echo 0)"
+        if [ -z "${INCOMING_SHA}" ]; then
+          # No probe-relay/ history reachable (should not happen: fetch-depth 0)
+          # — fall back to the checkout commit so the version is still honest.
+          INCOMING_SHA="${GITHUB_SHA}"
+          INCOMING_TS="$(git log -1 --format=%ct 2>/dev/null || echo 0)"
+        fi
+        echo "Incoming relay version: sha=${INCOMING_SHA} ts=${INCOMING_TS} (last commit touching probe-relay/)"
+
+        LIVE_BODY="$(curl -s -m 15 -o /tmp/relay_live_version.json -w '%{http_code}' "${RELAY_BASE_URL}/" 2>/dev/null || echo "000")"
+        LIVE_SHA="$(jq -r '.version.git_sha // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
+        LIVE_TS="$(jq -r '.version.git_ts // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
+        echo "Live relay version query: HTTP ${LIVE_BODY} sha=${LIVE_SHA:-<none>} ts=${LIVE_TS:-<none>}"
+
+        DEPLOY_RELAY=true
+        SKIP_REASON=""
+        if [ -z "${LIVE_SHA}" ]; then
+          echo "Live relay did not report a version (pre-v2.8 Worker or query failed) — will deploy (fail-open; also self-heals an external overwrite)"
+        elif [ "${LIVE_SHA}" = "${INCOMING_SHA}" ]; then
+          DEPLOY_RELAY=false
+          SKIP_REASON="live relay is already at the incoming version ${INCOMING_SHA}"
+        else
+          LIVE_NEWER=false
+          LIVE_NEWER_BECAUSE=""
+          if git cat-file -e "${LIVE_SHA}^{commit}" 2>/dev/null; then
+            if git merge-base --is-ancestor "${INCOMING_SHA}" "${LIVE_SHA}" 2>/dev/null \
+               && ! git merge-base --is-ancestor "${LIVE_SHA}" "${INCOMING_SHA}" 2>/dev/null; then
+              LIVE_NEWER=true
+              LIVE_NEWER_BECAUSE="live ${LIVE_SHA:0:10} is a descendant of incoming ${INCOMING_SHA:0:10} (same history line, strictly newer relay code)"
+            fi
+          fi
+          if [ "${LIVE_NEWER}" != "true" ] && [ -n "${LIVE_TS}" ] && [ -n "${INCOMING_TS}" ] \
+             && printf '%s' "${LIVE_TS}${INCOMING_TS}" | grep -qE '^[0-9]+$' \
+             && [ "${LIVE_TS}" -gt "${INCOMING_TS}" ]; then
+            LIVE_NEWER=true
+            LIVE_NEWER_BECAUSE="live commit timestamp ${LIVE_TS} > incoming ${INCOMING_TS} (divergent histories: newer relay code stays)"
+          fi
+          if [ "${LIVE_NEWER}" = "true" ]; then
+            DEPLOY_RELAY=false
+            SKIP_REASON="${LIVE_NEWER_BECAUSE}"
+          fi
+        fi
+        if [ "${DEPLOY_RELAY}" != "true" ]; then
+          echo "::notice::relay deploy SKIPPED: ${SKIP_REASON}. The smoke test below still runs against the live (newer) deployment."
+        fi
+
         # ── Deploy / re-deploy the Worker via wrangler ──────────────
         # Uses ONLY the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
         # secrets. The CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11 slots are
@@ -672,6 +749,8 @@ jobs:
           echo "::warning::The probe relay Worker may be stale if redeployed outside CI"
         elif ! command -v npx >/dev/null 2>&1; then
           echo "::warning::npx not available — skipping wrangler deploy; using existing Worker deployment"
+        elif [ "${DEPLOY_RELAY}" != "true" ]; then
+          echo "probe-relay deploy skipped by the version-safe guard: ${SKIP_REASON}"
         else
           echo "Deploying probe-relay Worker via wrangler…"
           export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
@@ -681,7 +760,10 @@ jobs:
           # X-Probe-Token authentication matches between CI (sender)
           # and Worker (validator). This keeps the two in sync
           # automatically every deploy cycle — the owner never needs
-          # to run `wrangler secret put` by hand.
+          # to run `wrangler secret put` by hand. Skipped together with
+          # the deploy when the version guard decides the live Worker is
+          # already at this or a newer version (the live Worker's token
+          # already matches this repo secret — verified by the smoke test).
           if [ -n "${PROBE_RELAY_TOKEN:-}" ]; then
             echo "Syncing PROBE_RELAY_TOKEN to Worker secret…"
             echo "${PROBE_RELAY_TOKEN}" | npx wrangler@latest secret put PROBE_RELAY_TOKEN --config probe-relay/wrangler.toml 2>&1 || \
@@ -690,8 +772,13 @@ jobs:
             echo "::notice::PROBE_RELAY_TOKEN not set — Worker will run in auth-less mode if its secret is also unset"
           fi
 
-          if npx wrangler@latest deploy --config probe-relay/wrangler.toml 2>&1; then
-            echo "✅ wrangler deploy succeeded"
+          # v2.8: the deploy stamps the Worker with the relay-code version
+          # (last commit touching probe-relay/) so future runs — including
+          # scheduled runs on other branches — can compare before deploying.
+          if npx wrangler@latest deploy --config probe-relay/wrangler.toml \
+               --var "RELAY_GIT_SHA:${INCOMING_SHA}" \
+               --var "RELAY_GIT_TS:${INCOMING_TS}" 2>&1; then
+            echo "✅ wrangler deploy succeeded (version ${INCOMING_SHA:0:10})"
           else
             echo "::warning::wrangler deploy FAILED — proceeding with existing Worker deployment"
           fi

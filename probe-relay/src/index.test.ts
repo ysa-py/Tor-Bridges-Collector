@@ -30,6 +30,7 @@ import {
   conjureRegistrationProbe,
   runHttpsEgressControls,
 } from "./index";
+import worker from "./index";
 
 import {
   connect as mockConnect,
@@ -891,5 +892,54 @@ describe("probeBridgesWithConcurrency", () => {
     expect(dialOrder.slice(0, 3)).toEqual(["10.0.0.1", "10.0.0.2", "10.0.0.3"]);
     // …and every bridge is dialed exactly once.
     expect([...dialOrder].sort()).toEqual(bridges.map((b) => b.host).sort());
+  });
+});
+
+// ─── v2.8: deploy-version identity on the unauthenticated 405 path ──────────
+// The version-safe deploy guard in torshield-ir.yml Stage 4-prep reads
+// GET / → 405 → {version: {git_sha, git_ts}} to decide whether this run's
+// relay code is older than the live deployment. POST /probe responses stay
+// byte-identical to v2.7 — the field exists only on the non-POST path.
+
+describe("deploy-version identity (v2.8, non-POST 405 path)", () => {
+  it("exposes version.git_sha/git_ts from the deploy-time env vars", async () => {
+    const res = await worker.fetch(
+      new Request("https://relay.example/", { method: "GET" }),
+      { RELAY_GIT_SHA: "4e7aa1d64fb858d2f3478373e3b613a50b247af5", RELAY_GIT_TS: "1773266400" },
+    );
+    expect(res.status).toBe(405);
+    const body: any = await res.json();
+    expect(body.error).toBe("method_not_allowed");
+    expect(body.version).toEqual({
+      service: "tor-bridge-probe-relay",
+      git_sha: "4e7aa1d64fb858d2f3478373e3b613a50b247af5",
+      git_ts: "1773266400",
+    });
+  });
+
+  it("reports null version fields when the deploy vars are absent (pre-v2.8 parity)", async () => {
+    const res = await worker.fetch(new Request("https://relay.example/"), {});
+    expect(res.status).toBe(405);
+    const body: any = await res.json();
+    expect(body.version).toEqual({
+      service: "tor-bridge-probe-relay",
+      git_sha: null,
+      git_ts: null,
+    });
+  });
+
+  it("does not leak the version object into POST /probe responses (byte-identical contract)", async () => {
+    // A POST to a wrong path (404) and a POST without auth both exercise the
+    // POST code path; neither response may carry a `version` field.
+    const res = await worker.fetch(
+      new Request("https://relay.example/not-probe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "[]",
+      }),
+      {},
+    );
+    const body: any = await res.json();
+    expect(body.version).toBeUndefined();
   });
 });

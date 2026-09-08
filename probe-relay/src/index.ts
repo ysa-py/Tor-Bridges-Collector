@@ -267,6 +267,14 @@ interface Env {
   MAX_BRIDGES_PER_REQUEST?: string;
   MAX_CONCURRENT_PROBES?: string;
   PROBE_TIMEOUT_SECS?: string;
+  /** v2.8 (additive): deploy-version identity, injected by CI at deploy time
+   *  via `wrangler deploy --var RELAY_GIT_SHA:<sha>` from the last commit that
+   *  touched probe-relay/. Consumed by the version-safe deploy guard in
+   *  torshield-ir.yml Stage 4-prep so an older checkout can never silently
+   *  overwrite a newer deployment. Absent on pre-v2.8 deployments (null). */
+  RELAY_GIT_SHA?: string;
+  /** v2.8 (additive): committer timestamp (unix seconds) of the same commit. */
+  RELAY_GIT_TS?: string;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -304,6 +312,18 @@ export default {
       return jsonResponse(405, {
         error: "method_not_allowed",
         detail: "Only POST /probe is supported",
+        // v2.8 (additive): deploy-version identity on the unauthenticated
+        // 405 path so any CI run (or human) can query which relay version is
+        // live BEFORE deploying. The version-safe deploy guard in
+        // torshield-ir.yml Stage 4-prep reads exactly this field; pre-v2.8
+        // deployments simply omit it (null) and the guard fails open to the
+        // previous always-deploy behavior. POST /probe responses are
+        // byte-identical to v2.7 — this field exists only here.
+        version: {
+          service: "tor-bridge-probe-relay",
+          git_sha: env.RELAY_GIT_SHA ?? null,
+          git_ts: env.RELAY_GIT_TS ?? null,
+        },
       });
     }
 
