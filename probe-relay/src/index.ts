@@ -48,6 +48,44 @@ interface WorkersSocket {
  *     timed-out/canceled, errored — visible in Cloudflare Observability
  *     and CI wrangler tail.
  *
+ * v2.6 CHANGES (2026-09-08) — protocol-correct meek + conjure probes:
+ *   - The v2.5 domain-fronting fix gave every fronted transport the same
+ *     generic TLS GET. That is correct for webtunnel (101 upgrade) but
+ *     protocol-blind for meek and conjure, whose wire protocols are HTTP
+ *     POST round-trips with specific semantics — a GET of the bridge URL
+ *     cannot distinguish "front reachable" from "bridge functional".
+ *   - meek-post class (meek / meek_lite / meek-azure): POST to the url=
+ *     path with X-Session-Id: base64(32 random bytes) and Host = the
+ *     url= host, SNI = front — exactly the reference client's
+ *     roundTripWithHTTP (git.torproject.org/pluggable-transports/meek,
+ *     meek-client.go:118-142, genSessionId :252-258). Success bar: the
+ *     reference server's transact() signature — HTTP 200 with
+ *     Content-Type application/octet-stream (meek-server.go:150-176);
+ *     other statuses fail but are surfaced verbatim (400 = session-id
+ *     validation, 500 = ORPort dial failure) so CI evidence can classify
+ *     the failure layer.
+ *   - conjure-registration class (conjure): POST to the registrar's
+ *     /api/register-bidirectional endpoint with Host = registrar host
+ *     and SNI = front (the PT client's domain-fronting split,
+ *     gitlab.tpo.org/anti-censorship/pluggable-transports/conjure
+ *     registration.go). A full registration needs station-pubkey crypto
+ *     a liveness probe cannot construct; the honest minimal signature —
+ *     defined by the regserver's own validation ladder
+ *     (refraction-networking/conjure apiregserver.go:105-135) — is
+ *     400 "Payload too small" on an empty POST, proving the registrar
+ *     (not the front's default page) is reachable and processing.
+ *     Path derivation verified live 2026-09-08 against
+ *     registration.refraction.network: /api/register-bidirectional
+ *     exists (non-404, GET-rejected); /api/api/register-bidirectional
+ *     is "404 page not found" — descriptor url= values already carry
+ *     the /api prefix the Caddy layer strips, so the probe appends only
+ *     /register-bidirectional when the url path ends in /api.
+ *   - The tls GET path (httpsFrontProbe) and the websocket-101 path are
+ *     byte-identical to v2.5 (now built by the shared rawTlsExchange
+ *     core; the request construction and read loop are unchanged) —
+ *     snowflake / vless / shadowtls / anytls / http-upgrade / grpc stay
+ *     on "tls", webtunnel stays on "websocket-101".
+ *
  * v2.5 CHANGES (2026-09-07) — TRUE domain-fronted probing (the Host-header
  * fix), implemented on cloudflare:sockets:
  *   - ROOT CAUSE (confirmed against the real workerd runtime and CI probe
@@ -517,6 +555,22 @@ async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
         httpStatus = await wsUpgradeFrontProbe(bridge);
         break;
 
+      case "meek-post":
+        // v2.6: protocol-correct meek round-trip — POST with
+        // X-Session-Id over fronted TLS (SNI = front, Host = the
+        // descriptor's url= host); success requires the meek-server
+        // transact signature (200 + application/octet-stream).
+        httpStatus = await meekPostProbe(bridge);
+        break;
+
+      case "conjure-registration":
+        // v2.6: conjure registrar reachability — POST to the
+        // register-bidirectional endpoint over fronted TLS (SNI = front,
+        // Host = the registrar); success = the regserver's 400
+        // payload-validation signature (or a 2xx).
+        httpStatus = await conjureRegistrationProbe(bridge);
+        break;
+
       default:
         await safeTcpProbe(bridge.host, port);
     }
@@ -560,12 +614,23 @@ export function classifyProbe(bridge: BridgeDescriptor): string {
     return "websocket-101";
   }
 
+  // v2.6: meek-family transports ride an HTTP POST round-trip over a
+  // fronted TLS connection (meek-client.go roundTripWithHTTP), so a
+  // protocol-correct probe is a POST with the X-Session-Id header — not
+  // the generic TLS GET used since v2.5.
+  if (t === "meek" || t === "meek_lite" || t === "meek-azure") {
+    return "meek-post";
+  }
+
+  // v2.6: conjure bridges register via the bidirectional API rendezvous
+  // (POST to the registrar's /api/register-bidirectional endpoint behind
+  // an optional front), not a plain TLS GET of the bridge URL.
+  if (t === "conjure") {
+    return "conjure-registration";
+  }
+
   if (
     t === "snowflake" ||
-    t === "meek" ||
-    t === "meek_lite" ||
-    t === "meek-azure" ||
-    t === "conjure" ||
     t === "vless" ||
     t === "vless+reality" ||
     t === "shadowtls" ||
@@ -837,15 +902,22 @@ async function safeTlsConnect(
   }
 }
 
-/** Core v2.5 probe: TLS (ServerName = dial host) + raw HTTP/1.1 request
- *  (Host = the descriptor's true host) + status-line parse. Shared by
- *  the tls and websocket-101 classes; `websocketUpgrade` selects between
- *  a plain GET and a WebSocket-Upgrade request. Throws on any failure. */
-async function rawTlsHttpProbe(
+/** Shared raw-socket exchange used by every fronted probe class (v2.5
+ *  core, v2.6 generalized): real TLS with ServerName = the dial host
+ *  (the advertised front), a raw HTTP/1.1 request whose Host header is
+ *  the descriptor's true host, then a response-head read and status-line
+ *  parse. `method`/`path`/`extraHeaders` control the request; the Host /
+ *  User-Agent / Accept lines are common to all probe classes. Throws on
+ *  any failure. Returns the parsed status, the verbatim status line, and
+ *  the full response head text (headers included) so callers can apply
+ *  protocol-specific response signatures. */
+async function rawTlsExchange(
   bridge: BridgeDescriptor,
-  websocketUpgrade: boolean,
+  method: string,
+  path: string,
+  extraHeaders: string[],
   timeoutMs: number,
-): Promise<{ status: number; statusLine: string }> {
+): Promise<{ status: number; statusLine: string; headText: string }> {
   // Fast-path skip: BridgeDB documentation-prefix IPv6 placeholders are
   // unroutable by design; probing them only burns the chunk's wall-clock
   // budget (251 of the 255 webtunnel lines in a typical CI input are
@@ -860,7 +932,6 @@ async function rawTlsHttpProbe(
 
   const { dialHost, hostHeader } = frontDialTarget(bridge);
   const port = bridge.port || 443;
-  const path = frontProbePath(bridge);
   const label =
     `TLS front probe ${dialHost}:${port}${path} ` +
     `(SNI=${dialHost}, Host=${hostHeaderValue(hostHeader, port)})`;
@@ -875,19 +946,12 @@ async function rawTlsHttpProbe(
     reader = socket.readable.getReader();
 
     const requestLines = [
-      `GET ${path} HTTP/1.1`,
+      `${method} ${path} HTTP/1.1`,
       `Host: ${hostHeaderValue(hostHeader, port)}`,
       `User-Agent: ${USER_AGENT}`,
       `Accept: */*`,
     ];
-    if (websocketUpgrade) {
-      requestLines.push(
-        `Connection: Upgrade`,
-        `Upgrade: websocket`,
-        `Sec-WebSocket-Key: ${generateWebSocketKey()}`,
-        `Sec-WebSocket-Version: 13`,
-      );
-    }
+    requestLines.push(...extraHeaders);
     const request = `${requestLines.join("\r\n")}\r\n\r\n`;
     await writer.write(new TextEncoder().encode(request));
 
@@ -922,7 +986,7 @@ async function rawTlsHttpProbe(
           : `no response (connection closed before a status line was received)`,
       );
     }
-    return { status: parseInt(match[1], 10), statusLine };
+    return { status: parseInt(match[1], 10), statusLine, headText: response };
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err);
     throw new Error(`${label} failed: ${reason}`);
@@ -943,6 +1007,28 @@ async function rawTlsHttpProbe(
       closeSocket(socket);
     }
   }
+}
+
+/** Core v2.5 probe: plain GET or WebSocket-Upgrade GET over the shared
+ *  raw TLS exchange. Used by the tls and websocket-101 classes; the wire
+ *  format is exactly the v2.5 construction (request line, Host, UA,
+ *  Accept, then the upgrade headers when `websocketUpgrade`). Throws on
+ *  any failure. */
+async function rawTlsHttpProbe(
+  bridge: BridgeDescriptor,
+  websocketUpgrade: boolean,
+  timeoutMs: number,
+): Promise<{ status: number; statusLine: string; headText: string }> {
+  const extraHeaders: string[] = [];
+  if (websocketUpgrade) {
+    extraHeaders.push(
+      `Connection: Upgrade`,
+      `Upgrade: websocket`,
+      `Sec-WebSocket-Key: ${generateWebSocketKey()}`,
+      `Sec-WebSocket-Version: 13`,
+    );
+  }
+  return rawTlsExchange(bridge, "GET", frontProbePath(bridge), extraHeaders, timeoutMs);
 }
 
 /** HTTPS GET probe (tls class). Resolves to the HTTP status of any
@@ -971,6 +1057,159 @@ export async function wsUpgradeFrontProbe(
     throw new Error(`WebSocket upgrade rejected: ${statusLine || `HTTP ${status}`}`);
   }
   return status;
+}
+
+// ─── meek-post Probe (v2.6) ─────────────────────────────────────────
+//
+// Protocol-correct meek reachability check modeled on the reference
+// implementation (git.torproject.org/pluggable-transports/meek, mirrored
+// at github.com/arlolra/meek — meek-client.go roundTripWithHTTP +
+// genSessionId; meek-server.go POST handler + transact + minSessionIdLength).
+
+/** Generate a meek session id exactly like the reference client's
+ *  genSessionId (meek-client.go:252-258): standard-base64 of 32 random
+ *  bytes, i.e. 44 characters including the single pad '='. The server
+ *  enforces minSessionIdLength = 32 (meek-server.go:38) with a 400
+ *  otherwise, so a probe that wants to reach the session/transact layer
+ *  must send a plausible id. */
+function generateMeekSessionId(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let binary = "";
+  for (const b of bytes) binary += String.fromCharCode(b);
+  return btoa(binary);
+}
+
+/** Response-head signature check: does the head contain the given header
+ *  (field name case-insensitive per RFC 7230) whose value starts with
+ *  `valuePrefix` (case-insensitive)? Used for the meek success bar
+ *  (Content-Type: application/octet-stream). Only accepts the header at
+ *  the start of a line so text inside other header values cannot match. */
+function headHasHeaderValue(headText: string, name: string, valuePrefix: string): boolean {
+  const lower = headText.toLowerCase();
+  const needle = `${name.toLowerCase()}:`;
+  const prefix = valuePrefix.toLowerCase();
+  let idx = 0;
+  while ((idx = lower.indexOf(needle, idx)) !== -1) {
+    const atLineStart = idx === 0 || lower[idx - 1] === "\n";
+    if (atLineStart) {
+      const valueStart = idx + needle.length;
+      const lineEnd = lower.indexOf("\n", valueStart);
+      const line = lower.slice(valueStart, lineEnd === -1 ? undefined : lineEnd).trim();
+      if (line.startsWith(prefix)) return true;
+    }
+    idx += needle.length;
+  }
+  return false;
+}
+
+/** meek-post class probe (v2.6): POST the meek round-trip over the
+ *  shared raw TLS exchange, exactly like the reference client's
+ *  roundTripWithHTTP (meek-client.go:118-142):
+ *    - POST to the bridge url= path (the meek transport payload rides as
+ *      the HTTP body; an empty body is protocol-shaped for a liveness
+ *      probe: the server wraps it in a MaxBytesReader, forwards it to
+ *      the ORPort, and the ORPort reply becomes the response body).
+ *    - X-Session-Id: base64(32 random bytes) per genSessionId.
+ *    - Host: the descriptor's true (backend) host; SNI/dial: the front —
+ *      the client's fronting split (req.Host = backend, URL.Host = front).
+ *  Success bar: HTTP 200 with Content-Type application/octet-stream —
+ *  the server's transact() signature (meek-server.go:150-176), proving
+ *  the front is reachable, the meek app routed the session, and the
+ *  ORPort behind it answered within turnaroundTimeout (10ms). Any other
+ *  status fails the probe but is surfaced verbatim in the error so CI
+ *  evidence can classify the layer: 400 = session-id validation, 500 =
+ *  ORPort dial failure (meek-server.go:179-189), 404/403 = the front's
+ *  edge answered without reaching the meek app. Throws on failure;
+ *  resolves with the HTTP status on success. */
+export async function meekPostProbe(
+  bridge: BridgeDescriptor,
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+): Promise<number> {
+  const path = frontProbePath(bridge);
+  const { status, statusLine, headText } = await rawTlsExchange(
+    bridge,
+    "POST",
+    path,
+    [`X-Session-Id: ${generateMeekSessionId()}`, `Content-Length: 0`],
+    timeoutMs,
+  );
+  if (status === 200 && headHasHeaderValue(headText, "Content-Type", "application/octet-stream")) {
+    return status;
+  }
+  const hasOctetStream = headHasHeaderValue(headText, "Content-Type", "application/octet-stream");
+  throw new Error(
+    `meek POST ${path} got ${statusLine}` +
+      (status === 200 && !hasOctetStream
+        ? ` (200 without meek's application/octet-stream transact signature — likely the front's default vhost, not the meek backend)`
+        : ` (see meek-server.go status semantics: 400 = session-id validation, 500 = ORPort dial failure, 4xx = front edge)`),
+  );
+}
+
+// ─── conjure-registration Probe (v2.6) ──────────────────────────────
+//
+// Registrar reachability check modeled on the conjure PT client's
+// bidirectional API rendezvous (gitlab.tpo.org/anti-censorship/pluggable-
+// transports/conjure registration.go Rendezvous.RoundTrip, default
+// registrar "bdapi" → RegisterURL + /api/register-bidirectional) and the
+// reference API regserver (refraction-networking/conjure
+// pkg/regserver/apiregserver/apiregserver.go).
+
+/** Derive the bidirectional-registration path from the descriptor's url=
+ *  value. The PT client appends the literal "/api/register-bidirectional"
+ *  to RegisterURL (registration.go, regConfig.Target); the production
+ *  deployment (registration.refraction.network) serves a single /api
+ *  prefix that Caddy strips before reverse-proxying to the regserver
+ *  (cmd/registration-server/README.md). Descriptor url= values already
+ *  carry the /api prefix, so appending the full literal would double it —
+ *  verified live 2026-09-08: /api/register-bidirectional exists (non-404,
+ *  rejects GET) while /api/api/register-bidirectional is "404 page not
+ *  found". */
+function conjureRegistrationPath(bridge: BridgeDescriptor): string {
+  const base = (bridge.path || "").replace(/\/+$/, "");
+  if (base.toLowerCase().endsWith("/api")) {
+    return `${base}/register-bidirectional`;
+  }
+  return `${base}/api/register-bidirectional`;
+}
+
+/** conjure-registration class probe (v2.6): POST to the
+ *  register-bidirectional endpoint with Host = the registrar host and
+ *  SNI/dial = the advertised front — the client's domain-fronting split
+ *  (registration.go: req.Host = registrar, req.URL.Host = front). A full
+ *  registration requires the station public key and shared-secret crypto
+ *  wrapping a ClientToStation protobuf, which a liveness probe cannot
+ *  construct; the regserver's own validation ladder
+ *  (apiregserver.go:105-135) defines the honest minimal signature: a
+ *  POST that reaches the registrar with an empty body is answered
+ *  400 "Payload too small" — proving the registrar (not the front's
+ *  default page) is reachable and processing requests. Success bar: the
+ *  400 payload-validation signature, or any 2xx (registration accepted —
+ *  not expected from this probe). 404 (front default vhost / wrong
+ *  path), 405, 5xx, and any TLS/transport error throw with the verbatim
+ *  reason so CI evidence can classify dead front vs dead registrar vs
+ *  Cloudflare-egress failure. Throws on failure; resolves with the
+ *  HTTP status on success. */
+export async function conjureRegistrationProbe(
+  bridge: BridgeDescriptor,
+  timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+): Promise<number> {
+  const path = conjureRegistrationPath(bridge);
+  const { status, statusLine } = await rawTlsExchange(
+    bridge,
+    "POST",
+    path,
+    [`Content-Length: 0`],
+    timeoutMs,
+  );
+  if ((status >= 200 && status < 300) || status === 400) {
+    return status;
+  }
+  throw new Error(
+    `conjure registration POST ${path} got ${statusLine}` +
+      ` (expected the 400 payload-validation signature or 2xx; 404 = front default vhost or wrong path)` +
+      (status === 405 ? `; 405 is still method validation by the regserver itself` : ``),
+  );
 }
 
 // ─── Drain-and-Close Helper ─────────────────────────────────────────

@@ -26,6 +26,8 @@ import {
   classifyProbe,
   httpsFrontProbe,
   wsUpgradeFrontProbe,
+  meekPostProbe,
+  conjureRegistrationProbe,
   runHttpsEgressControls,
 } from "./index";
 
@@ -64,12 +66,27 @@ describe("classifyProbe", () => {
     ).toBe("tls");
   });
 
-  it("returns tls for meek", () => {
-    expect(classifyProbe(makeBridge("a", "meek", "cdn.azure.com", 443))).toBe("tls");
+  // v2.6: the meek family and conjure moved off the generic "tls" GET to
+  // their protocol-correct POST classes (see meekPostProbe /
+  // conjureRegistrationProbe). snowflake and the other TLS transports
+  // stay on "tls" — asserted unchanged above.
+  it("returns meek-post for meek", () => {
+    expect(classifyProbe(makeBridge("a", "meek", "cdn.azure.com", 443))).toBe("meek-post");
   });
 
-  it("returns tls for conjure", () => {
-    expect(classifyProbe(makeBridge("a", "conjure", "1.2.3.4", 443))).toBe("tls");
+  it("returns meek-post for meek_lite and meek-azure", () => {
+    expect(classifyProbe(makeBridge("a", "meek_lite", "meek.azureedge.net", 443))).toBe("meek-post");
+    expect(classifyProbe(makeBridge("a", "meek-azure", "meek.azureedge.net", 443))).toBe("meek-post");
+  });
+
+  it("returns conjure-registration for conjure", () => {
+    expect(classifyProbe(makeBridge("a", "conjure", "1.2.3.4", 443))).toBe("conjure-registration");
+  });
+
+  it("still returns tls for the remaining TLS transports (snowflake/vless/shadowtls/anytls/http-upgrade/grpc)", () => {
+    for (const t of ["snowflake", "vless", "vless+reality", "shadowtls", "anytls", "http-upgrade", "grpc"]) {
+      expect(classifyProbe(makeBridge("a", t, "cdn.example.com", 443))).toBe("tls");
+    }
   });
 
   it("is case-insensitive", () => {
@@ -373,6 +390,329 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
       port: 443,
     };
     await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
+      /skipped: documentation-prefix IPv6 endpoint/,
+    );
+    expect(mockConnect).not.toHaveBeenCalled();
+  });
+});
+
+describe("meekPostProbe (meek-post class, v2.6)", () => {
+  beforeEach(() => {
+    mockConnect.mockReset();
+    resetReaderTracking();
+  });
+
+  it("sends the meek round-trip: POST the url= path with a 44-char base64 X-Session-Id, Host = backend, SNI = front", async () => {
+    let writtenRequest = "";
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, (req) => {
+        writtenRequest = req;
+        // meek-server.go transact() signature: 200 + octet-stream.
+        return "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: 0\r\n\r\n";
+      }),
+    );
+    const bridge = {
+      id: "m1",
+      transport: "meek_lite",
+      host: "meek.azureedge.net",
+      port: 443,
+      sni: "ajax.aspnetcdn.com",
+      path: "/",
+    };
+    const status = await meekPostProbe(bridge, 5000);
+    expect(status).toBe(200);
+    // Dial/SNI = the advertised front…
+    const { address, options } = lastConnectArgs();
+    expect(address.hostname).toBe("ajax.aspnetcdn.com");
+    expect(address.port).toBe(443);
+    expect(options.secureTransport).toBe("on");
+    // …Host header = the true backend host (meek-client.go fronting split).
+    expect(writtenRequest).toContain("POST / HTTP/1.1\r\n");
+    expect(writtenRequest).toContain("Host: meek.azureedge.net\r\n");
+    expect(writtenRequest).not.toContain("Host: ajax.aspnetcdn.com");
+    // X-Session-Id: genSessionId shape = standard base64 of 32 bytes
+    // (43 body chars + one pad '=' = 44 chars, meek-client.go:252-258).
+    expect(writtenRequest).toMatch(/X-Session-Id: [A-Za-z0-9+/]{43}=\r\n/);
+    // Empty transport payload → explicit Content-Length: 0.
+    expect(writtenRequest).toContain("Content-Length: 0\r\n");
+    expect(writtenRequest).not.toMatch(/^GET/m);
+  });
+
+  it("dials the url= host directly (SNI = Host) when no front is advertised", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 200 OK\r\nContent-Type: application/octet-stream\r\nContent-Length: 0\r\n\r\n",
+      ),
+    );
+    const bridge = {
+      id: "m2",
+      transport: "meek-azure",
+      host: "meek.azureedge.net",
+      port: 443,
+    };
+    await expect(meekPostProbe(bridge, 5000)).resolves.toBe(200);
+    const { address } = lastConnectArgs();
+    expect(address.hostname).toBe("meek.azureedge.net");
+  });
+
+  it("rejects a 200 that lacks the octet-stream transact signature (front default vhost)", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 200 OK\r\nContent-Type: text/html\r\nContent-Length: 5\r\n\r\nhello",
+      ),
+    );
+    const bridge = {
+      id: "m3",
+      transport: "meek_lite",
+      host: "meek.azureedge.net",
+      port: 443,
+      sni: "ajax.aspnetcdn.com",
+    };
+    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
+      /meek POST \/ got HTTP\/1\.1 200 OK \(200 without meek's application\/octet-stream transact signature/,
+    );
+  });
+
+  it("surfaces non-200 statuses verbatim (meek-server 400 session-id layer, 500 ORPort layer)", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\n\r\n",
+      ),
+    );
+    const bridge = {
+      id: "m4",
+      transport: "meek_lite",
+      host: "meek.azureedge.net",
+      port: 443,
+    };
+    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
+      /meek POST \/ got HTTP\/1\.1 400 Bad Request/,
+    );
+
+    mockConnect.mockReset();
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n",
+      ),
+    );
+    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
+      /meek POST \/ got HTTP\/1\.1 500 Internal Server Error/,
+    );
+  });
+
+  it("accepts the octet-stream signature case-insensitively (RFC 7230 field/value casing)", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 200 OK\r\ncontent-type: APPLICATION/OCTET-STREAM\r\nContent-Length: 0\r\n\r\n",
+      ),
+    );
+    const bridge = {
+      id: "m5",
+      transport: "meek_lite",
+      host: "meek.azureedge.net",
+      port: 443,
+    };
+    await expect(meekPostProbe(bridge, 5000)).resolves.toBe(200);
+  });
+
+  it("throws the labeled error when the TLS connect fails", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, undefined, "TLS connect timed out after 15000ms"),
+    );
+    const bridge = {
+      id: "m6",
+      transport: "meek_lite",
+      host: "meek.azureedge.net",
+      port: 443,
+      sni: "ajax.aspnetcdn.com",
+    };
+    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
+      /TLS front probe ajax\.aspnetcdn\.com:443\/ \(SNI=ajax\.aspnetcdn\.com, Host=meek\.azureedge\.net\) failed: TLS connect to ajax\.aspnetcdn\.com:443 failed: TLS connect timed out after 15000ms/,
+    );
+  });
+
+  it("skips documentation-prefix IPv6 placeholders without any network I/O", async () => {
+    mockConnect.mockImplementation(() => {
+      throw new Error("connect() must not be called for doc-prefix IPv6");
+    });
+    const bridge = {
+      id: "m-doc",
+      transport: "meek_lite",
+      host: "[2001:db8:1169:5d59:447d:1feb:3595:b174]",
+      port: 443,
+    };
+    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
+      /skipped: documentation-prefix IPv6 endpoint/,
+    );
+    expect(mockConnect).not.toHaveBeenCalled();
+  });
+});
+
+describe("conjureRegistrationProbe (conjure-registration class, v2.6)", () => {
+  beforeEach(() => {
+    mockConnect.mockReset();
+    resetReaderTracking();
+  });
+
+  it("POSTs /api/register-bidirectional when the descriptor url path is /api, and resolves on the 400 payload-validation signature", async () => {
+    let writtenRequest = "";
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, (req) => {
+        writtenRequest = req;
+        // apiregserver.go:105-135: empty body → 400 "Payload too small".
+        return "HTTP/1.1 400 Bad Request\r\nContent-Type: text/plain\r\nContent-Length: 18\r\n\r\nPayload too small";
+      }),
+    );
+    const bridge = {
+      id: "c1",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      path: "/api",
+    };
+    const status = await conjureRegistrationProbe(bridge, 5000);
+    expect(status).toBe(400);
+    // Registrar dialed directly (no front): SNI = Host = registrar host.
+    const { address, options } = lastConnectArgs();
+    expect(address.hostname).toBe("registration.refraction.network");
+    expect(address.port).toBe(443);
+    expect(options.secureTransport).toBe("on");
+    // The PT client's literal endpoint is RegisterURL +
+    // "/api/register-bidirectional"; the production url= already carries
+    // /api (Caddy strips exactly one — verified live), so no doubling.
+    expect(writtenRequest).toContain("POST /api/register-bidirectional HTTP/1.1\r\n");
+    expect(writtenRequest).not.toContain("/api/api/");
+    expect(writtenRequest).toContain("Host: registration.refraction.network\r\n");
+    expect(writtenRequest).toContain("Content-Length: 0\r\n");
+  });
+
+  it("dials the advertised front with Host = the registrar (domain-fronting split)", async () => {
+    let writtenRequest = "";
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, (req) => {
+        writtenRequest = req;
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 18\r\n\r\nPayload too small";
+      }),
+    );
+    const bridge = {
+      id: "c2",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      sni: "assets.cloud.censys.io",
+      path: "/api",
+    };
+    await expect(conjureRegistrationProbe(bridge, 5000)).resolves.toBe(400);
+    const { address } = lastConnectArgs();
+    expect(address.hostname).toBe("assets.cloud.censys.io");
+    expect(writtenRequest).toContain("Host: registration.refraction.network\r\n");
+    expect(writtenRequest).not.toContain("Host: assets.cloud.censys.io");
+  });
+
+  it("appends the full /api/register-bidirectional when the url path lacks /api", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 400 Bad Request\r\nContent-Length: 18\r\n\r\nPayload too small",
+      ),
+    );
+    const noPath = {
+      id: "c3",
+      transport: "conjure",
+      host: "reg.example.org",
+      port: 443,
+    };
+    await expect(conjureRegistrationProbe(noPath, 5000)).resolves.toBe(400);
+
+    mockConnect.mockReset();
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 400 Bad Request\r\nContent-Length: 18\r\n\r\nPayload too small",
+      ),
+    );
+    const rootPath = { ...noPath, id: "c4", path: "/" };
+    await expect(conjureRegistrationProbe(rootPath, 5000)).resolves.toBe(400);
+  });
+
+  it("strips trailing slashes from the url path before appending (…/api/ → …/api/register-bidirectional)", async () => {
+    let writtenRequest = "";
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, (req) => {
+        writtenRequest = req;
+        return "HTTP/1.1 400 Bad Request\r\nContent-Length: 18\r\n\r\nPayload too small";
+      }),
+    );
+    const bridge = {
+      id: "c5",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      path: "/api/",
+    };
+    await expect(conjureRegistrationProbe(bridge, 5000)).resolves.toBe(400);
+    expect(writtenRequest).toContain("POST /api/register-bidirectional HTTP/1.1\r\n");
+  });
+
+  it("resolves on any 2xx (registration accepted — not expected from an empty probe)", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 200 OK\r\nContent-Type: application/x-protobuf\r\nContent-Length: 2\r\n\r\nx",
+      ),
+    );
+    const bridge = {
+      id: "c6",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      path: "/api",
+    };
+    await expect(conjureRegistrationProbe(bridge, 5000)).resolves.toBe(200);
+  });
+
+  it("rejects 404 (front default vhost or wrong path) with the status line verbatim", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nContent-Length: 19\r\n\r\n404 page not found",
+      ),
+    );
+    const bridge = {
+      id: "c7",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+      sni: "cdn.sstatic.net",
+      path: "/api",
+    };
+    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toThrow(
+      /conjure registration POST \/api\/register-bidirectional got HTTP\/1\.1 404 Not Found/,
+    );
+  });
+
+  it("throws the labeled error when the TLS connect times out (CI 34168134475 signature)", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, undefined, "TLS connect timed out after 15000ms"),
+    );
+    const bridge = {
+      id: "c8",
+      transport: "conjure",
+      host: "registration.refraction.network",
+      port: 443,
+    };
+    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toThrow(
+      /TLS front probe registration\.refraction\.network:443\/api\/register-bidirectional \(SNI=registration\.refraction\.network, Host=registration\.refraction\.network\) failed: TLS connect to registration\.refraction\.network:443 failed: TLS connect timed out after 15000ms/,
+    );
+  });
+
+  it("skips documentation-prefix IPv6 placeholders without any network I/O", async () => {
+    mockConnect.mockImplementation(() => {
+      throw new Error("connect() must not be called for doc-prefix IPv6");
+    });
+    const bridge = {
+      id: "c-doc",
+      transport: "conjure",
+      host: "[2001:db8:1169:5d59:447d:1feb:3595:b174]",
+      port: 443,
+    };
+    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toThrow(
       /skipped: documentation-prefix IPv6 endpoint/,
     );
     expect(mockConnect).not.toHaveBeenCalled();
