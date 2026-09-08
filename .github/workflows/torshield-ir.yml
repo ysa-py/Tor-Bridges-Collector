@@ -1787,6 +1787,27 @@ jobs:
         bash scripts/build_nin_recommended_transport.sh
         test -s export/nin_recommended_transport.json || { echo "::error::Stage 8t produced no nin_recommended_transport.json"; exit 1; }
 
+      # Stage 8u (additive, 2026-09-08): drift & survivability advisories.
+      # PURELY ADVISORY — writes only NEW files under data/ plus ::notice
+      # annotations; it can never gate CI, edit any of the 55 contracted
+      # bridge/ files, or change a score/membership/ranking. Produces:
+      #   data/bridge_drift_report.json        — per-bridge stale-positive
+      #     cohort from the collector's existing EWMA health score (which
+      #     nothing in the publication path consumed before)
+      #   data/transport_success_history.json  — per-transport working/total
+      #     per run (the series nothing in this repo accumulated before) +
+      #     run-over-run anomaly flags + step-change scan, both explicitly
+      #     framed as externally-observable reachability proxies, NOT claims
+      #     about Iran's DPI mechanism
+      #   data/front_domain_survivability.json — per-front-domain aggregate
+      #     for domain-fronted transports (shared-front failure visibility)
+    - name: Stage 8u — Drift & survivability advisories (additive, non-blocking)
+      continue-on-error: true
+      timeout-minutes: 5
+      run: |
+        set -euo pipefail
+        cargo run --quiet --bin drift_advisory
+
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites ALL 55 public bridge/ files, re-renders README.md from the
       # verified snapshot, byte-verifies tor_bridges.zip, and then delivers
