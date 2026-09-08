@@ -124,6 +124,38 @@ jobs:
         run: cargo test --test webtunnel_v2_tests
 
   # ──────────────────────────────────────────────────────────────────────
+  # Gate 3b: probe-relay-vitest (ADDITIVE 2026-09-08)
+  #
+  # probe-relay/src/index.test.ts is a real vitest suite (49 tests over the
+  # Cloudflare Worker probe relay: concurrency queue, fronted-probe class
+  # ordering, safeConnect reader-lock release, MAX_CONCURRENT_PROBES
+  # semantics) that NO workflow ever executed before — the relay deployed
+  # to Cloudflare was only ever covered by the deploy smoke test. This gate
+  # runs the suite on every push/PR so a Worker regression fails CI before
+  # it can silently regress the live probe stage (the exact cron-redeploy
+  # failure mode the project already hit once).
+  # ──────────────────────────────────────────────────────────────────────
+  probe-relay-vitest:
+    name: probe-relay-vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: probe-relay/package-lock.json
+      - name: Install dependencies
+        working-directory: probe-relay
+        run: npm ci
+      - name: Run vitest suite
+        working-directory: probe-relay
+        run: npm test
+
+  # ──────────────────────────────────────────────────────────────────────
   # Gate 4: scrape-and-test
   # ──────────────────────────────────────────────────────────────────────
   scrape-and-test:
