@@ -133,18 +133,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 121.110.203.115:443 ADE62CA3591E32A3CE8329F6E8EE31A441308CED",
-      "host": "121.110.203.115",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 443,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 121.127.33.34:443 19BFCD8AD90626A7B5293B9914ACC203C48A111A",
       "host": "121.127.33.34",
       "nin_flags": [
@@ -2929,6 +2917,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "Bridge 121.110.203.115:443 ADE62CA3591E32A3CE8329F6E8EE31A441308CED",
+      "host": "121.110.203.115",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 129.152.27.111:443 D7D36B82E37D7B6D87C0F1B41CB87378D405BA88",
       "host": "129.152.27.111",
       "nin_flags": [
@@ -4722,6 +4721,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 107.189.28.2:12656 EE2F32DBDBC3501C12942086A2A0992BCC70D59A cert=QeeAPnX2SBFiaJZWseoFOQq5wJJby9/69meKTCx0YdPiCGutlPvn57BQk1AP7nME11KefA iat-mode=0",
+      "host": "107.189.28.2",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 12656,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 107.4.186.44:8214 1B6CB332A1954FDF740DE75E8AFAEB41469D5821 cert=voxt3pqV5YWgLcqoHt+HDBieiUVzgxx3MOVHHa3RUPqlmsMGzSMu0Mv3AcY3XkQK9UirFw iat-mode=0",
       "host": "107.4.186.44",
       "nin_flags": [
@@ -5455,6 +5465,17 @@
       ],
       "nin_score": 0.1,
       "port": 51804,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 152.53.224.27:9002 A710F288704C53C4B8FCC94E89C20756BC73A570 cert=HmKAAuqvm2E8nILFPrSBTc92SWzaHZLoUkHKquf7xFpCmzsbAukC2iQ8yaFJP1PlHlTPZA iat-mode=0",
+      "host": "152.53.224.27",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9002,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -17594,11 +17615,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1632,
+    "candidates_input": 1634,
     "candidates_probed": 403,
-    "candidates_scored": 1632,
+    "candidates_scored": 1634,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 612.365
+    "probe_elapsed_secs": 612.316
   }
 }
