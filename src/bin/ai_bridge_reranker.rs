@@ -320,7 +320,9 @@ mod tests {
         assert!(tcp_tier_measurable_line("Bridge 5.6.7.8:9001 fp"));
         // Bracketed IPv6 endpoints cannot be dialed from the IPv4-only CI
         // runner — unmeasurable by the TCP tier by environment.
-        assert!(!tcp_tier_measurable_line("obfs4 [2001:db8::1]:443 fp cert=xx"));
+        assert!(!tcp_tier_measurable_line(
+            "obfs4 [2001:db8::1]:443 fp cert=xx"
+        ));
         // Broker-only / url-only lines have no endpoint to dial at all.
         assert!(!tcp_tier_measurable_line(
             "snowflake 2B280B23E1107BB6 fingerprint=2B280B23E1107BB6"
