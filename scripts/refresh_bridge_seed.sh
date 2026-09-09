@@ -29,6 +29,19 @@
 #                           (verified to serve bridge/<transport>.txt via the
 #                           GitHub contents API). Any listed repo that does not
 #                           serve the expected files is skipped non-fatally.
+#   SEED_STRICT_IP_GUARD    Default ON since 2026-09-09 (v42 §0.1, after the
+#                           483-skip line-class verification in
+#                           docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3: all
+#                           483 skipped endpoints verified reserved/doc-range,
+#                           none routable, 0 legitimate lines dropped). Mirror
+#                           lines whose endpoint falls in a documentation/
+#                           reserved range (RFC 3849 2001:db8::/32, RFC 5737
+#                           TEST-NETs, loopback, RFC 1918, link-local, ... —
+#                           the same table src/ip_guard.rs enforces for every
+#                           scraper source) are SKIPPED instead of merged, and
+#                           the skip counts are printed. Set to 0/false/no/off
+#                           to restore the pre-2026-09-09 unguarded merge
+#                           behaviour (fallback path preserved).
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -87,10 +100,73 @@ echo "═══ merge: fetched ${FETCHED} projection file(s) ═══"
 # 2) Merge everything into canonical history (pure stdlib python3; no .py file
 #    is written, so the repo-wide python-free gate still passes).
 python3 - "$TMPDIR" "$BRIDGE_DIR" <<'PY'
+import ipaddress
 import json, os, sys, datetime
 
 seed_root, bridge_dir = sys.argv[1], sys.argv[2]
 now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+# SEED_STRICT_IP_GUARD (default ON since 2026-09-09, v42 §0.1): mirror lines
+# whose endpoint sits in a documentation/reserved range are skipped before the
+# merge, mirroring the table src/ip_guard.rs applies to every scraper source.
+# The 2026-09-08 funnel audit found the unguarded merge re-seeds 2001:db8::/32
+# webtunnel placeholders into the pool every run; the 2026-09-09 verification
+# (docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) confirmed every skipped line
+# is genuinely reserved and no legitimate bridge is dropped. Set the repo
+# variable to false/0/no/off to restore the previous unguarded merge.
+seed_strict_ip_guard = os.environ.get("SEED_STRICT_IP_GUARD", "true").strip().lower() not in (
+    "0", "false", "no", "off",
+)
+
+# Reserved ranges mirrored from src/ip_guard.rs (RESERVED_CIDR_V4/_V6).
+RESERVED_V4 = [
+    ipaddress.ip_network(n)
+    for n in (
+        "0.0.0.0/8", "10.0.0.0/8", "100.64.0.0/10", "127.0.0.0/8",
+        "169.254.0.0/16", "172.16.0.0/12", "192.0.0.0/24", "192.0.2.0/24",
+        "192.88.99.0/24", "192.168.0.0/16", "198.18.0.0/15",
+        "198.51.100.0/24", "203.0.113.0/24", "224.0.0.0/4", "240.0.0.0/4",
+        "255.255.255.255/32",
+    )
+]
+RESERVED_V6 = [
+    ipaddress.ip_network(n)
+    for n in (
+        "::/128", "::1/128", "::ffff:0:0/96", "64:ff9b::/96", "100::/64",
+        "2001::/32", "2001:2::/48", "2001:db8::/32", "2001:10::/28",
+        "2002::/16", "fc00::/7", "fe80::/10", "ff00::/8",
+    )
+]
+
+
+def endpoint_is_reserved(line):
+    """Best-effort endpoint extraction + reserved-range check (std lib only)."""
+    for token in line.split():
+        # Bracketed IPv6 endpoint form: [2001:db8::1]:443
+        if token.startswith("[") and "]" in token:
+            host = token[1 : token.index("]")]
+            try:
+                addr = ipaddress.ip_address(host)
+            except ValueError:
+                continue
+            table = RESERVED_V4 if addr.version == 4 else RESERVED_V6
+            if any(addr in net for net in table):
+                return True
+            continue
+        candidate = token.strip("[]\"',;")
+        if "=" in candidate:
+            continue
+        host = candidate.rsplit(":", 1)[0] if candidate.count(":") == 1 else candidate
+        host = host.strip("[]")
+        try:
+            addr = ipaddress.ip_address(host)
+        except ValueError:
+            continue
+        table = RESERVED_V4 if addr.version == 4 else RESERVED_V6
+        if any(addr in net for net in table):
+            return True
+    return False
+
 
 # filename -> (transport, force_ipv6)
 TRANSPORT_FILES = {
@@ -130,6 +206,7 @@ except (OSError, ValueError):
     history = {}
 
 added = updated = 0
+skipped_reserved = 0
 total_files = 0
 # Walk every per-mirror directory in seed_root.
 for dirpath, _dirs, filenames in os.walk(seed_root):
@@ -143,6 +220,9 @@ for dirpath, _dirs, filenames in os.walk(seed_root):
             for raw in fh:
                 line = raw.strip()
                 if not valid(line):
+                    continue
+                if seed_strict_ip_guard and endpoint_is_reserved(line):
+                    skipped_reserved += 1
                     continue
                 ip_ver = "ipv6" if (force_ipv6 or "[" in line) else "ipv4"
                 key = normalize_key(line, transport)
@@ -172,6 +252,10 @@ for entry in history.values():
         by_transport[entry.get("transport", "?")] = by_transport.get(entry.get("transport", "?"), 0) + 1
 
 print(f"  history: +{added} added, {updated} updated, {len(history)} total records")
+if seed_strict_ip_guard:
+    print(f"  SEED_STRICT_IP_GUARD: skipped {skipped_reserved} documentation/reserved-endpoint line(s)")
+else:
+    print("  SEED_STRICT_IP_GUARD: off (explicitly disabled via 0/false/no/off; unset or true restores the default guard)")
 print("  per-transport:", ", ".join(f"{k}={v}" for k, v in sorted(by_transport.items())))
 print(f"  merged projection files: {total_files}")
 PY

@@ -487,6 +487,101 @@ pub fn run_pipeline(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ADDITIVE (2026-09-08): relay-evidence enrichment + ECH honesty labels.
+//
+// The CI analytics stage runs this scorer with [`NoProbe`] (no live TLS
+// handshake is performed), so the `ech_support`/`tls_version` fields in the
+// report are STATIC INFERENCE from the bridge line, not measurements. The
+// enrichment below joins each scored bridge with the live probe-relay
+// observations (`data/pt_results.json`, real TCP/TLS/WebSocket probes from
+// Cloudflare) and stamps every entry with:
+//   * `relay_probe`        — the actual relay observation for the bridge's
+//                            host:port (success, latency, probe class), or
+//                            `observed: false` when no observation exists;
+//   * `ech_verification`   — always "static_inference_no_live_handshake"
+//                            until a live ECH handshake probe is wired in,
+//                            so no report consumer can mistake the inferred
+//                            ECH status for a measurement;
+//   * `front_reachability` — "relay_verified_reachable" / "relay_verified_
+//                            unreachable" / "no_relay_observation".
+// This adds fields to the advisory report only; no score, ordering, or
+// published file changes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Join one relay observation with a bridge line by host and port.
+///
+/// Relay entries follow the probe-relay schema
+/// (`{host, port, success, latency_ms, probe_type, error}`).
+#[must_use]
+pub fn match_relay_observation<'a>(line: &str, relay_results: &'a [Value]) -> Option<&'a Value> {
+    let (host, port) = extract_host_port(line)?;
+    relay_results.iter().find(|observation| {
+        let matches_host = observation
+            .get("host")
+            .and_then(Value::as_str)
+            .is_some_and(|observed| observed == host);
+        let matches_port = observation
+            .get("port")
+            .and_then(Value::as_u64)
+            .is_some_and(|observed| observed == u64::from(port));
+        matches_host && matches_port
+    })
+}
+
+/// Enrich an ECH report (the `{ "bridges": [...] }` document written by
+/// [`run_pipeline`]) with live relay evidence and honesty labels. Returns
+/// the number of bridges that had at least one matching relay observation.
+pub fn enrich_with_relay_evidence(report: &mut Value, relay_results: &[Value]) -> usize {
+    let mut enriched = 0_usize;
+    let Some(bridges) = report.get_mut("bridges").and_then(Value::as_array_mut) else {
+        return 0;
+    };
+    for bridge in bridges.iter_mut() {
+        let Some(line) = bridge
+            .get("bridge_line")
+            .and_then(Value::as_str)
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        bridge["ech_verification"] =
+            Value::String("static_inference_no_live_handshake".to_string());
+        match match_relay_observation(&line, relay_results) {
+            Some(observation) => {
+                enriched += 1;
+                let success = observation
+                    .get("success")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                bridge["relay_probe"] = json!({
+                    "observed": true,
+                    "success": success,
+                    "latency_ms": observation.get("latency_ms").cloned().unwrap_or(Value::Null),
+                    "probe_type": observation.get("probe_type").cloned().unwrap_or(Value::Null),
+                    "error": observation.get("error").cloned().unwrap_or(Value::Null),
+                });
+                bridge["front_reachability"] = Value::String(if success {
+                    "relay_verified_reachable".to_string()
+                } else {
+                    "relay_verified_unreachable".to_string()
+                });
+            }
+            None => {
+                bridge["relay_probe"] = json!({"observed": false});
+                bridge["front_reachability"] = Value::String("no_relay_observation".to_string());
+            }
+        }
+    }
+    report["evidence"] = json!({
+        "relay_observations_available": relay_results.len(),
+        "bridges_with_relay_observation": enriched,
+        "ech_status_is": "static_inference_no_live_handshake",
+        "source": "data/pt_results.json (live probe-relay observations)",
+    });
+    enriched
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Tests
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -792,5 +887,72 @@ mod tests {
         ));
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn enrichment_joins_relay_observations_by_host_and_port() {
+        let mut report = json!({
+            "bridges": [
+                {"bridge_line": "obfs4 198.51.100.10:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc"},
+                {"bridge_line": "obfs4 198.51.100.99:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc"},
+            ]
+        });
+        let relay = vec![json!({
+            "host": "198.51.100.10",
+            "port": 443,
+            "success": true,
+            "latency_ms": 128,
+            "probe_type": "tcp",
+            "error": null,
+        })];
+        let enriched = enrich_with_relay_evidence(&mut report, &relay);
+        assert_eq!(enriched, 1);
+        assert_eq!(report["bridges"][0]["relay_probe"]["observed"], true);
+        assert_eq!(report["bridges"][0]["relay_probe"]["success"], true);
+        assert_eq!(
+            report["bridges"][0]["front_reachability"],
+            "relay_verified_reachable"
+        );
+        assert_eq!(report["bridges"][1]["relay_probe"]["observed"], false);
+        assert_eq!(
+            report["bridges"][1]["front_reachability"],
+            "no_relay_observation"
+        );
+    }
+
+    #[test]
+    fn enrichment_labels_ech_as_static_inference() {
+        let mut report = json!({
+            "bridges": [
+                {"bridge_line": "obfs4 198.51.100.10:443 0123456789ABCDEF0123456789ABCDEF01234567 cert=abc"},
+            ]
+        });
+        enrich_with_relay_evidence(&mut report, &[]);
+        assert_eq!(
+            report["bridges"][0]["ech_verification"],
+            "static_inference_no_live_handshake"
+        );
+        assert_eq!(
+            report["evidence"]["ech_status_is"],
+            "static_inference_no_live_handshake"
+        );
+    }
+
+    #[test]
+    fn enrichment_returns_zero_for_missing_bridges_array() {
+        let mut report = json!({"other": true});
+        assert_eq!(enrich_with_relay_evidence(&mut report, &[]), 0);
+    }
+
+    #[test]
+    fn match_relay_observation_requires_host_and_port_match() {
+        let relay = vec![
+            json!({"host": "198.51.100.10", "port": 443, "success": true}),
+            json!({"host": "198.51.100.10", "port": 9001, "success": false}),
+        ];
+        let matched = match_relay_observation("obfs4 198.51.100.10:9001 x", &relay)
+            .expect("port 9001 entry must match");
+        assert_eq!(matched["port"], 9001);
+        assert!(match_relay_observation("obfs4 203.0.113.1:443 x", &relay).is_none());
     }
 }

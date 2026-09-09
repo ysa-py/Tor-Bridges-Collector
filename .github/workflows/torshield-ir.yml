@@ -437,10 +437,39 @@ jobs:
       timeout-minutes: 10
       env:
         BRIDGE_MIRRORS_REPO: ${{ vars.BRIDGE_MIRRORS_REPO }}
+        # Default ON since 2026-09-09 (v42 §0.1): apply the ip_guard-equivalent
+        # documentation/reserved-endpoint filter to mirror lines before the
+        # merge. The 2026-09-08 funnel audit found the unguarded merge
+        # re-seeds 2001:db8::/32 webtunnel placeholders into the pool every
+        # run; the 2026-09-09 verification (all 483 skipped lines genuinely
+        # reserved, none routable, 0 legitimate lines dropped — see
+        # docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) cleared the flip. Set
+        # the SEED_STRICT_IP_GUARD repo variable to false to restore the
+        # pre-2026-09-09 unguarded merge (fallback path preserved).
+        SEED_STRICT_IP_GUARD: ${{ vars.SEED_STRICT_IP_GUARD || 'true' }}
       run: |
         set -euo pipefail
         bash scripts/refresh_bridge_seed.sh
         echo "✅ Seeded the high-volume real-bridge pool into bridge_history.json"
+
+      # Stage 0t (ADDITIVE 2026-09-08): community mirror expansion source.
+      # Fetches curated bridge/<transport>.txt projections from additional
+      # public community mirrors via the GitHub contents API and validates
+      # every line through the SAME format + ip_guard gates as the core
+      # sources. ADVISORY BY DEFAULT: per-mirror yield is reported to
+      # data/community_mirrors_report.json + ::notice annotations, and
+      # bridge_history.json is only touched when the repository variable
+      # COMMUNITY_MIRRORS_MERGE=true. Disable entirely with
+      # COMMUNITY_MIRRORS=none. No existing source path is modified.
+    - name: Stage 0t — Community mirror expansion (additive, advisory default)
+      continue-on-error: true
+      timeout-minutes: 10
+      env:
+        COMMUNITY_MIRRORS: ${{ vars.COMMUNITY_MIRRORS || 'center2055/OnionHop-Bridges-Collector' }}
+        COMMUNITY_MIRRORS_MERGE: ${{ vars.COMMUNITY_MIRRORS_MERGE || 'false' }}
+      run: |
+        set -euo pipefail
+        cargo run --quiet --features network --bin community_mirrors
 
     - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
       continue-on-error: true
@@ -1807,6 +1836,27 @@ jobs:
       run: |
         set -euo pipefail
         cargo run --quiet --bin drift_advisory
+
+      # Stage 8v (ADDITIVE 2026-09-08): pipeline funnel advisory — turns the
+      # Section-1 diagnostic funnel into a repeatable per-run artifact:
+      #   data/funnel_advisory.json + ::notice annotations with
+      #   * the full funnel table (sources → candidates → relay → TCP →
+      #     published) computed from this run's real artifacts;
+      #   * a non-routable endpoint census of the candidate pool (shared
+      #     ip_guard policy table + reason labels);
+      #   * the relay-coverage gap (candidates with no relay observation,
+      #     split non-routable vs other) + an advisory retry plan derived
+      #     from retry_engine's backoff curve;
+      #   * the evidence-driven webtunnel front-domain health advisory
+      #     (built ONLY from live probe-relay observations).
+      # Advisory only: never gates CI, never edits the 55 contracted
+      # bridge/ files, never changes a score or membership decision.
+    - name: Stage 8v — Pipeline funnel advisory (additive, non-blocking)
+      continue-on-error: true
+      timeout-minutes: 10
+      run: |
+        set -euo pipefail
+        cargo run --quiet --bin funnel_advisory
 
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites ALL 55 public bridge/ files, re-renders README.md from the
