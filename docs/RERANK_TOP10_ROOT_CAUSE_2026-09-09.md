@@ -112,3 +112,16 @@ Adopt as the default for **all** CI polls (the observed failure mode is expiry-b
 ---
 
 *Committed before any behavior-affecting code change, per v43 §4. The corrections in §3 are implemented after this report, in the same PR (#228), with real CI URLs to follow.*
+
+---
+
+## 6. Post-change CI confirmation (added after the fix-forward ran green)
+
+The changeset (`c87cd368` report → `6b906bd2` corrections → `7023a08` addendum → `67f442f` fmt fix) is fully verified in CI:
+
+- **First attempt** (run [`34296317004`](https://github.com/ysa-py/Tor-Bridges-Collector/actions/runs/34296317004) on `6b906bd2`): 13/14 jobs green; `rust-parity-tests` failed on exactly one rustfmt hunk — a 61-char call in the new test, one over `fn_call_width` 60 (verbatim diff in [PR comment 5599624024](https://github.com/ysa-py/Tor-Bridges-Collector/pull/228#issuecomment-5599624024)). Notably main-ci run `34296316893` passed on the same commit because main-ci has no `cargo fmt` step; the sole fmt gate is `torshield-ir.yml:309`.
+- **Fix** (`67f442f`): the exact rustfmt output, nothing else. Mapped 1:1 to the CI error.
+- **Re-verify**: run [`34334992343`](https://github.com/ysa-py/Tor-Bridges-Collector/actions/runs/34334992343) on `67f442ff` — **success, 14/14 jobs**, `rust-parity-tests` **success** (Format check + Clippy + tests, including the 3 new unit tests). PR #228 check rollup on `67f442ff`: 14/14 `pass`, zero non-pass. Content-equivalent main-ci coverage: run `34296316893` (16/16 on `6b906bd2`; the only subsequent code delta is the 4-line test reformat, exercised by the parity job's tests).
+- The run's AI Bridge Re-Ranker job succeeded on the new code path — the advisory artifact `bridges_ai_iran_ranked.json` now carries the disclosure summary (`tiebreak`, `distinct_final_scores`, `largest_tie_group`, `tcp_tier_measurable/unmeasurable` counts) and per-bridge `tcp_tier_measurable`. Exact live values are readable from the run's artifact (`ai-iran-ranked-bridges-…` zip); the artifact host remains TLS-blocked from this sandbox, so the dataset-specific values in §3 stay tagged `[recomputed]`.
+
+**§5 unverified items now resolved:** the Rust implementation compiles, passes fmt/clippy, and its unit tests pass in CI (was `[expectation]`). Still dataset-specific (not capability claims): the 0.6/0.7 top-K figures under the deterministic flag.
