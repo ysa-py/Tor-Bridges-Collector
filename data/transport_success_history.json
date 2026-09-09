@@ -1,37 +1,37 @@
 {
   "anomalies": [
     {
-      "prior_observations": 1,
+      "prior_observations": 4,
       "required": 5,
       "status": "insufficient_history",
       "transport": "conjure"
     },
     {
-      "prior_observations": 1,
+      "prior_observations": 4,
       "required": 5,
       "status": "insufficient_history",
       "transport": "meek_lite"
     },
     {
-      "prior_observations": 1,
+      "prior_observations": 4,
       "required": 5,
       "status": "insufficient_history",
       "transport": "obfs4"
     },
     {
-      "prior_observations": 1,
+      "prior_observations": 4,
       "required": 5,
       "status": "insufficient_history",
       "transport": "snowflake"
     },
     {
-      "prior_observations": 1,
+      "prior_observations": 4,
       "required": 5,
       "status": "insufficient_history",
       "transport": "vanilla"
     },
     {
-      "prior_observations": 1,
+      "prior_observations": 4,
       "required": 5,
       "status": "insufficient_history",
       "transport": "webtunnel"
@@ -66,6 +66,93 @@
         ]
       },
       "ts": "2026-09-08T18:50:47.343736619+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          402,
+          1146
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          162,
+          473
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-08T23:39:47.369155950+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          402,
+          1147
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          163,
+          474
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-09T03:23:42.659499283+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          403,
+          1147
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          164,
+          474
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-09T08:19:34.520633573+00:00"
     }
   ],
   "note": "per-transport working/total per pipeline run, appended by drift_advisory (Stage 8u); working mirrors bridge_publication.rs::is_likely_working",
