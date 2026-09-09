@@ -78,6 +78,8 @@ All timestamps UTC, from real artifacts (git commit dates, PR comment `created_a
 
 Common shape: both expirations hit **while holding an open polling loop** (incident 1: polling run 34278561590's tail after full green; incident 2: polling the 33-minute TorShield-IR run 34288669641). For scale: TorShield-IR end-to-end ≈ 33–40 min (`34288669641`: 23:00:47→23:33:42Z; `34291534536`: 23:38:16→00:13:18Z `[GitHub artifact]`), main-ci ≈ 17 min (`34288669205`: 23:00:47→23:17:51Z). The token's TTL is consumed by **cumulative session time**, not by any single job — so any poll started late in a session can straddle the expiry even when the job itself is short. Observed working spans ≈ 50–70 min are consistent with a roughly ~1-hour fixed TTL.
 
+**Addendum (2026-09-09, added after the fact): a third expiry occurred 01:14:57–01:19:13Z, mid-v43** — again during a TorShield-IR poll (run 34296317004), ~55 minutes into the session, and again only an owner reconnect can restore access. This third data point was predicted by the pattern above and was handled per the §4.3 process (all writes already committed/pushed/posted before the poll; a checkpoint was persisted; polling stopped immediately on the 401).
+
 ### 4.2 TTL/refresh investigation (real probes, 2026-09-09 ~00:22–00:24Z)
 
 - `GET /rate_limit` with the token: **200**, `x-ratelimit-limit: 5000` — authenticated, not rate-limited. The response carries **no `github-authentication-token-expiration` header** — the API does not expose this credential's expiry, so the exact TTL cannot be read, only bounded by observation (above).
