@@ -1,0 +1,238 @@
+{
+  "advisory_only": true,
+  "funnel": [
+    {
+      "count": 23,
+      "note": "raw lines fetched by the extended-source draws this run (see sources table)",
+      "stage": "sources_fetched_lines"
+    },
+    {
+      "count": 1761,
+      "note": "deduplicated bridge_history.json records (the whole candidate pool)",
+      "stage": "candidates_in_history"
+    },
+    {
+      "count": 1632,
+      "note": "bridge_list_for_testing.json entries handed to the probe stages",
+      "stage": "testing_candidates"
+    },
+    {
+      "count": 1640,
+      "note": "probe-relay observations returned by the Cloudflare Worker",
+      "stage": "relay_attempted"
+    },
+    {
+      "count": 223,
+      "note": "relay observations with success=true",
+      "stage": "relay_success"
+    },
+    {
+      "count": 1632,
+      "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
+      "stage": "tcp_tested"
+    },
+    {
+      "count": 568,
+      "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
+      "stage": "tcp_reachable"
+    },
+    {
+      "count": 409,
+      "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
+      "stage": "published_advisory_working"
+    }
+  ],
+  "generated_at": "2026-09-09T11:53:27.089859182+00:00",
+  "module": "pipeline_funnel_advisory",
+  "non_routable_census": {
+    "by_reason": {
+      "DOCUMENTATION_RFC3849_2001_DB8": 125,
+      "LOOPBACK_RFC1122": 2,
+      "PRIVATE_RFC1918_172": 1,
+      "PRIVATE_RFC1918_192": 1
+    },
+    "by_transport": {
+      "obfs4": 4,
+      "webtunnel": 125
+    },
+    "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
+    "samples": [
+      "obfs4 127.0.0.1:10080 DD61D4BE89B4AEC7B9170DD5F70F62F4C359D304 cert=rmslqkg/O5qucY6DF5yi1svc+hcxccLPRUc0tcK301FiZqQ5V1wzd8OW7uxs7Lw8I7gUXA iat-mode=0",
+      "obfs4 127.0.0.1:6000 225D6946243C9C5775E284B5FCCDD7D871F7A091 cert=DpkKsu774w0R7g1DIumV/IJzfPKe8yN0910+S8NatOCQ0rYgWDAQTLZkGskSsP8DLm4fMQ iat-mode=0",
+      "obfs4 172.18.2.2:2660 0F3B1BCB42C0E688D4A45887EFDD762B8D2F08F9 cert=9ay3uSRSvmaFu1a3dr557BUyWuKrIwxPazezX7oTld9MoExTgWXkO2jOSmA2B7bQ6ygFeA iat-mode=0",
+      "obfs4 192.168.1.188:2660 0F3B1BCB42C0E688D4A45887EFDD762B8D2F08F9 cert=9ay3uSRSvmaFu1a3dr557BUyWuKrIwxPazezX7oTld9MoExTgWXkO2jOSmA2B7bQ6ygFeA iat-mode=0",
+      "webtunnel [2001:db8:1169:5d59:447d:1feb:3595:b174]:443 9E22636EA817AD4FE43F2EC14DEED5131FED1CB0 url=https://cdn-40.triplebit.dev/aif5ohWa4aWiephu ver=0.0.2",
+      "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
+      "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.4",
+      "webtunnel [2001:db8:15ff:dc41:12c5:ce54:2bfa:ab3e]:443 88C9B6F63D50B63FC5E1DE2F5423FCDA2C0AC5EB url=https://vault.005184.xyz/e3QD38jnqsG3jzcfa8NA6ar9 ver=0.0.3"
+    ],
+    "total_non_routable": 129
+  },
+  "publications_gate": {
+    "ewma_consumers": [
+      "tor_collector/service.rs candidate ordering (prioritisation only)",
+      "drift_advisory.rs advisory report (Stage 8u)"
+    ],
+    "ewma_health_score_used_by_publication": false,
+    "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
+  },
+  "published_counts": {
+    "iran_likely_working_all.txt": 409,
+    "iran_likely_working_obfs4.txt": 403,
+    "iran_likely_working_snowflake.txt": 2,
+    "iran_likely_working_vanilla.txt": 164,
+    "iran_likely_working_webtunnel.txt": 4,
+    "obfs4.txt": 820,
+    "obfs4_tested.txt": 5,
+    "tested_global_obfs4.txt": 403,
+    "tested_global_vanilla.txt": 0,
+    "tested_global_webtunnel.txt": 2,
+    "vanilla.txt": 472,
+    "vanilla_tested.txt": 164,
+    "webtunnel.txt": 4,
+    "webtunnel_ipv6.txt": 0
+  },
+  "relay_coverage": {
+    "candidates": 1632,
+    "relay_observations": 1640,
+    "relay_success": 223,
+    "unobserved_by_transport": {
+      "no_literal_endpoint": 9
+    },
+    "unobserved_candidates": 0,
+    "unobserved_non_routable": 0,
+    "unobserved_other": 0
+  },
+  "relay_retry_plan": {
+    "advisory_only": true,
+    "backoff_schedule": [
+      {
+        "attempt": 1,
+        "suggested_backoff_secs": 2.0
+      },
+      {
+        "attempt": 2,
+        "suggested_backoff_secs": 4.0
+      },
+      {
+        "attempt": 3,
+        "suggested_backoff_secs": 8.0
+      }
+    ],
+    "recommendation": "full coverage — no re-run needed",
+    "stage": "probe-relay",
+    "unobserved_candidates": 0
+  },
+  "sources": {
+    "sources": [
+      {
+        "added_records": 0,
+        "fetched_lines": 0,
+        "requests": 6,
+        "responses_ok": 6,
+        "source": "bridgedb_html_rotation"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 0,
+        "requests": 2,
+        "responses_ok": 2,
+        "source": "bridgedb_html_snowflake"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 7,
+        "requests": 3,
+        "responses_ok": 3,
+        "source": "moat_builtin_single_transport"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 2,
+        "requests": 3,
+        "responses_ok": 3,
+        "source": "moat_settings_single_transport"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 7,
+        "requests": 3,
+        "responses_ok": 3,
+        "source": "moat_builtin_geolocated_single_transport"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 7,
+        "requests": 3,
+        "responses_ok": 3,
+        "source": "moat_builtin_unblocked_ir_single_transport"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 0,
+        "requests": 3,
+        "responses_ok": 3,
+        "source": "moat_settings_geolocated_single_transport"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 0,
+        "requests": 3,
+        "responses_ok": 3,
+        "source": "moat_settings_unblocked_ir_single_transport"
+      },
+      {
+        "added_records": 0,
+        "fetched_lines": 2069,
+        "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
+        "requests": 11,
+        "responses_ok": 9,
+        "source": "community_mirror:center2055/OnionHop-Bridges-Collector"
+      }
+    ]
+  },
+  "webtunnel_front_health": {
+    "advisory_only": true,
+    "evidence_source": "data/pt_results.json (live probe-relay observations from Cloudflare)",
+    "fronts": [
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "coellen.xyz",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "healthy",
+        "endpoint_is_placeholder": false,
+        "front": "jochenkessler.de",
+        "observations": 1,
+        "successes": 1
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "vault.005184.xyz",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "vika7.space",
+        "observations": 1,
+        "successes": 0
+      }
+    ],
+    "fronts_with_placeholder_endpoints": 0,
+    "generated_by": "webtunnel_v2::front_health_advisory",
+    "lines_examined": 4,
+    "summary": {
+      "degraded": 0,
+      "healthy": 1,
+      "no_evidence": 0,
+      "unreachable_from_relay": 3
+    },
+    "unique_fronts": 4
+  }
+}
