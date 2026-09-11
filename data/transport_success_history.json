@@ -27,14 +27,14 @@
     {
       "advisory_only": true,
       "current_rate": 0.351,
-      "current_total": 1158,
+      "current_total": 1161,
       "current_working": 407,
-      "drop_pp": -0.0,
+      "drop_pp": 0.1,
       "status": "within_baseline",
       "trailing_mean": 0.351,
       "trailing_sd": 0.001,
       "transport": "obfs4",
-      "z": 0.18
+      "z": -0.57
     },
     {
       "advisory_only": true,
@@ -58,7 +58,7 @@
       "trailing_mean": 0.344,
       "trailing_sd": 0.002,
       "transport": "vanilla",
-      "z": -1.04
+      "z": -0.97
     },
     {
       "advisory_only": true,
@@ -479,6 +479,35 @@
         ]
       },
       "ts": "2026-09-11T03:18:26.923286094+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          407,
+          1161
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          162,
+          474
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-11T08:14:17.879933421+00:00"
     }
   ],
   "note": "per-transport working/total per pipeline run, appended by drift_advisory (Stage 8u); working mirrors bridge_publication.rs::is_likely_working",
