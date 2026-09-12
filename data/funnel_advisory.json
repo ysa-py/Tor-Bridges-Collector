@@ -22,7 +22,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 223,
+      "count": 224,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -32,17 +32,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 573,
+      "count": 567,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 415,
+      "count": 411,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-09-12T03:27:06.487714011+00:00",
+  "generated_at": "2026-09-12T08:12:02.061051532+00:00",
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
@@ -77,25 +77,25 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 415,
-    "iran_likely_working_obfs4.txt": 409,
+    "iran_likely_working_all.txt": 411,
+    "iran_likely_working_obfs4.txt": 405,
     "iran_likely_working_snowflake.txt": 2,
-    "iran_likely_working_vanilla.txt": 163,
+    "iran_likely_working_vanilla.txt": 162,
     "iran_likely_working_webtunnel.txt": 4,
     "obfs4.txt": 833,
     "obfs4_tested.txt": 5,
-    "tested_global_obfs4.txt": 409,
+    "tested_global_obfs4.txt": 405,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 2,
     "vanilla.txt": 472,
-    "vanilla_tested.txt": 161,
+    "vanilla_tested.txt": 159,
     "webtunnel.txt": 4,
     "webtunnel_ipv6.txt": 0
   },
   "relay_coverage": {
     "candidates": 1646,
     "relay_observations": 1654,
-    "relay_success": 223,
+    "relay_success": 224,
     "unobserved_by_transport": {
       "no_literal_endpoint": 9
     },
@@ -183,7 +183,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2076,
+        "fetched_lines": 2078,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
