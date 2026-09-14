@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-14T11:59:53.301853+00:00",
+  "generated_at": "2026-09-14T17:54:18.778183+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -27303,6 +27303,54 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 46.224.135.108:9051 B20AA0A149A73FBC87D404A383D0C780FD51BFBF cert=jLmV7sEsdwo+O5xjkiFcRaJgn/Byo2i22gDpqam1PW2awsPmlr7LSqamHzpnNax+4ZF2Mg iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "ngfw_blocked_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.5605,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.3,
+        "L6_alpn_anomaly": 0.45,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 9051,
+      "recommendation": "⚠️ پورت مسدود — سعی کنید از پورت 443 استفاده کنید | Blocked port: try port 443",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 82.64.116.242:9030 A6B123B5A88B8432EFB746F0E0BBA6326B9856B8 cert=mVxe357ZzM7NSh42qiWFw7IPjm1lubjtJjYs/UjqXiRxzZK1Ffn7O60Dnt6zgyAxF7p9VQ iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "ngfw_blocked_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.5605,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.3,
+        "L6_alpn_anomaly": 0.45,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 9030,
+      "recommendation": "⚠️ پورت مسدود — سعی کنید از پورت 443 استفاده کنید | Blocked port: try port 443",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 87.104.244.88:9051 6C392D9ED154A05F2D82DA6ABBED85F048686B73 cert=zxwr6QSQ9EASp/JgDumtT1r9i59mXYqObuFwTqekmPJCKedIu0SLs5bSvzDkxjmwZC5yBQ iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
@@ -37272,14 +37320,14 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 1109,
+    "COVERT": 1111,
     "DETECTED": 477,
     "PHANTOM": 4,
     "STEALTH": 68
   },
-  "total_scored": 1658,
+  "total_scored": 1660,
   "transport_summary": {
-    "obfs4": 1172,
+    "obfs4": 1174,
     "snowflake": 2,
     "vanilla": 477,
     "webtunnel": 7
