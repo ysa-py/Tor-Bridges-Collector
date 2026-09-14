@@ -7,32 +7,32 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1786,
+      "count": 1787,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1657,
+      "count": 1658,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 1665,
+      "count": 1666,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 244,
+      "count": 235,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 1657,
+      "count": 1658,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 562,
+      "count": 564,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -42,7 +42,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-09-14T03:40:19.555040286+00:00",
+  "generated_at": "2026-09-14T12:10:16.369938887+00:00",
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
@@ -80,22 +80,22 @@
     "iran_likely_working_all.txt": 407,
     "iran_likely_working_obfs4.txt": 401,
     "iran_likely_working_snowflake.txt": 2,
-    "iran_likely_working_vanilla.txt": 161,
+    "iran_likely_working_vanilla.txt": 159,
     "iran_likely_working_webtunnel.txt": 4,
-    "obfs4.txt": 841,
+    "obfs4.txt": 842,
     "obfs4_tested.txt": 5,
     "tested_global_obfs4.txt": 401,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 2,
     "vanilla.txt": 475,
-    "vanilla_tested.txt": 159,
+    "vanilla_tested.txt": 161,
     "webtunnel.txt": 4,
     "webtunnel_ipv6.txt": 0
   },
   "relay_coverage": {
-    "candidates": 1657,
-    "relay_observations": 1665,
-    "relay_success": 244,
+    "candidates": 1658,
+    "relay_observations": 1666,
+    "relay_success": 235,
     "unobserved_by_transport": {
       "no_literal_endpoint": 9
     },
@@ -183,7 +183,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2084,
+        "fetched_lines": 2087,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
