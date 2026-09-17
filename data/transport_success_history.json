@@ -26,15 +26,15 @@
     },
     {
       "advisory_only": true,
-      "current_rate": 0.344,
-      "current_total": 1187,
-      "current_working": 408,
-      "drop_pp": 0.5,
+      "current_rate": 0.347,
+      "current_total": 1189,
+      "current_working": 412,
+      "drop_pp": 0.2,
       "status": "within_baseline",
-      "trailing_mean": 0.349,
+      "trailing_mean": 0.348,
       "trailing_sd": 0.003,
       "transport": "obfs4",
-      "z": -1.44
+      "z": -0.59
     },
     {
       "advisory_only": true,
@@ -50,15 +50,15 @@
     },
     {
       "advisory_only": true,
-      "current_rate": 0.344,
+      "current_rate": 0.346,
       "current_total": 480,
-      "current_working": 165,
-      "drop_pp": -0.3,
+      "current_working": 166,
+      "drop_pp": -0.5,
       "status": "within_baseline",
       "trailing_mean": 0.341,
       "trailing_sd": 0.004,
       "transport": "vanilla",
-      "z": 0.92
+      "z": 1.46
     },
     {
       "advisory_only": true,
@@ -1436,23 +1436,52 @@
         ]
       },
       "ts": "2026-09-17T16:38:30.051613900+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          412,
+          1189
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          166,
+          480
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-17T21:24:37.191262824+00:00"
     }
   ],
   "note": "per-transport working/total per pipeline run, appended by drift_advisory (Stage 8u); working mirrors bridge_publication.rs::is_likely_working",
   "step_change_disclaimer": "a step-change is an externally-observable reachability-rate shift; this repo has no visibility into Iran's actual filtering rules and makes no claim about DPI mechanisms",
   "step_changes": [
     {
-      "mean_after": 0.3457306719323429,
+      "mean_after": 0.3457631302682149,
       "mean_before": 0.3511686950140223,
-      "n_after": 23,
+      "n_after": 24,
       "n_before": 24,
       "split_ts": "2026-09-13T03:26:03.485703349+00:00",
       "transport": "obfs4"
     },
     {
-      "mean_after": 0.33951499268732827,
+      "mean_after": 0.3396729512034784,
       "mean_before": 0.3453816201461183,
-      "n_after": 39,
+      "n_after": 40,
       "n_before": 8,
       "split_ts": "2026-09-10T03:23:53.554395553+00:00",
       "transport": "vanilla"
