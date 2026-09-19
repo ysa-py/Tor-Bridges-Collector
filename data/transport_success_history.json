@@ -34,7 +34,7 @@
       "trailing_mean": 0.348,
       "trailing_sd": 0.003,
       "transport": "obfs4",
-      "z": -0.92
+      "z": -0.9
     },
     {
       "advisory_only": true,
@@ -50,15 +50,15 @@
     },
     {
       "advisory_only": true,
-      "current_rate": 0.34,
+      "current_rate": 0.338,
       "current_total": 482,
-      "current_working": 164,
-      "drop_pp": 0.0,
+      "current_working": 163,
+      "drop_pp": 0.2,
       "status": "within_baseline",
       "trailing_mean": 0.341,
       "trailing_sd": 0.003,
       "transport": "vanilla",
-      "z": -0.13
+      "z": -0.74
     },
     {
       "advisory_only": true,
@@ -1755,23 +1755,52 @@
         ]
       },
       "ts": "2026-09-19T18:15:56.638797091+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          414,
+          1201
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          163,
+          482
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-19T20:29:00.966182070+00:00"
     }
   ],
   "note": "per-transport working/total per pipeline run, appended by drift_advisory (Stage 8u); working mirrors bridge_publication.rs::is_likely_working",
   "step_change_disclaimer": "a step-change is an externally-observable reachability-rate shift; this repo has no visibility into Iran's actual filtering rules and makes no claim about DPI mechanisms",
   "step_changes": [
     {
-      "mean_after": 0.34542959267955653,
+      "mean_after": 0.34540911115682194,
       "mean_before": 0.3511686950140223,
-      "n_after": 34,
+      "n_after": 35,
       "n_before": 24,
       "split_ts": "2026-09-13T03:26:03.485703349+00:00",
       "transport": "obfs4"
     },
     {
-      "mean_after": 0.33994479249805243,
+      "mean_after": 0.3399100764463048,
       "mean_before": 0.3453816201461183,
-      "n_after": 50,
+      "n_after": 51,
       "n_before": 8,
       "split_ts": "2026-09-10T03:23:53.554395553+00:00",
       "transport": "vanilla"
