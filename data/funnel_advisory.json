@@ -2,7 +2,7 @@
   "advisory_only": true,
   "funnel": [
     {
-      "count": 23,
+      "count": 22,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
@@ -22,7 +22,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 235,
+      "count": 240,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -37,12 +37,12 @@
       "stage": "tcp_reachable"
     },
     {
-      "count": 425,
+      "count": 426,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-09-20T03:40:59.463124454+00:00",
+  "generated_at": "2026-09-20T11:04:23.740086679+00:00",
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
@@ -77,25 +77,25 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 425,
-    "iran_likely_working_obfs4.txt": 419,
+    "iran_likely_working_all.txt": 426,
+    "iran_likely_working_obfs4.txt": 420,
     "iran_likely_working_snowflake.txt": 2,
     "iran_likely_working_vanilla.txt": 164,
     "iran_likely_working_webtunnel.txt": 4,
     "obfs4.txt": 872,
     "obfs4_tested.txt": 5,
-    "tested_global_obfs4.txt": 419,
+    "tested_global_obfs4.txt": 420,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 2,
     "vanilla.txt": 480,
-    "vanilla_tested.txt": 164,
+    "vanilla_tested.txt": 163,
     "webtunnel.txt": 4,
     "webtunnel_ipv6.txt": 0
   },
   "relay_coverage": {
     "candidates": 1699,
     "relay_observations": 1707,
-    "relay_success": 235,
+    "relay_success": 240,
     "unobserved_by_transport": {
       "no_literal_endpoint": 9
     },
@@ -148,7 +148,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2,
+        "fetched_lines": 1,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_settings_single_transport"
@@ -183,7 +183,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2103,
+        "fetched_lines": 2106,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
