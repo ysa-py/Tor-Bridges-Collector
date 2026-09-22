@@ -349,18 +349,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 84.52.216.169:8080 07BD9CFA8FFADD4F6E98551AA386B9303A70EA18",
-      "host": "84.52.216.169",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 8080,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "obfs4 103.149.168.186:8443 2D16215A86522A3CFCBBBE30BFF7C706413336A9 cert=ebVLQlo1wEnp/HYtJ+nSuikwe+dSt632ka33wJAiUeVK0IeYs5M6w5DwoPX8gYLsJfADSA iat-mode=0",
       "host": "103.149.168.186",
       "nin_flags": [
@@ -3332,6 +3320,17 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 84.52.216.169:8080 07BD9CFA8FFADD4F6E98551AA386B9303A70EA18",
+      "host": "84.52.216.169",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 8080,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 86.60.180.28:443 1A13209935B6FBC6F16A90532CFE6D0B0B5EED37",
       "host": "86.60.180.28",
       "nin_flags": [
@@ -5693,6 +5692,17 @@
       ],
       "nin_score": 0.1,
       "port": 6624,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 154.83.84.213:30001 CB4E5A8866B1C16D3D921D0643F035AC84CD117D cert=llTRyUlgyQeUNfEpqF+kTVdnsE6u426hcE/4Yhsi7cCu53F2px405jaqgFKvIMMlfNhQOg iat-mode=0",
+      "host": "154.83.84.213",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 30001,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -18373,11 +18383,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1704,
-    "candidates_probed": 397,
-    "candidates_scored": 1704,
+    "candidates_input": 1705,
+    "candidates_probed": 393,
+    "candidates_scored": 1705,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 609.525
+    "probe_elapsed_secs": 611.01
   }
 }
