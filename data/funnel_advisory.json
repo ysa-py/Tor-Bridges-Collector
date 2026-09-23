@@ -22,7 +22,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 235,
+      "count": 238,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -32,17 +32,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 583,
+      "count": 580,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 424,
+      "count": 421,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-09-23T16:34:04.769670288+00:00",
+  "generated_at": "2026-09-23T21:32:29.543820249+00:00",
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
@@ -77,14 +77,14 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 424,
-    "iran_likely_working_obfs4.txt": 418,
+    "iran_likely_working_all.txt": 421,
+    "iran_likely_working_obfs4.txt": 415,
     "iran_likely_working_snowflake.txt": 2,
     "iran_likely_working_vanilla.txt": 163,
     "iran_likely_working_webtunnel.txt": 4,
     "obfs4.txt": 880,
     "obfs4_tested.txt": 5,
-    "tested_global_obfs4.txt": 418,
+    "tested_global_obfs4.txt": 415,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 2,
     "vanilla.txt": 482,
@@ -95,7 +95,7 @@
   "relay_coverage": {
     "candidates": 1710,
     "relay_observations": 1718,
-    "relay_success": 235,
+    "relay_success": 238,
     "unobserved_by_transport": {
       "no_literal_endpoint": 9
     },
@@ -183,7 +183,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2118,
+        "fetched_lines": 2119,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
