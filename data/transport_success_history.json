@@ -27,14 +27,14 @@
     {
       "advisory_only": true,
       "current_rate": 0.342,
-      "current_total": 1228,
-      "current_working": 420,
+      "current_total": 1231,
+      "current_working": 421,
       "drop_pp": 0.4,
       "status": "within_baseline",
       "trailing_mean": 0.346,
       "trailing_sd": 0.004,
       "transport": "obfs4",
-      "z": -1.18
+      "z": -1.17
     },
     {
       "advisory_only": true,
@@ -2567,23 +2567,52 @@
         ]
       },
       "ts": "2026-09-25T16:57:45.448301504+00:00"
+    },
+    {
+      "rates": {
+        "conjure": [
+          0,
+          1
+        ],
+        "meek_lite": [
+          0,
+          2
+        ],
+        "obfs4": [
+          421,
+          1231
+        ],
+        "snowflake": [
+          0,
+          2
+        ],
+        "vanilla": [
+          165,
+          485
+        ],
+        "webtunnel": [
+          2,
+          4
+        ]
+      },
+      "ts": "2026-09-25T21:34:53.797713150+00:00"
     }
   ],
   "note": "per-transport working/total per pipeline run, appended by drift_advisory (Stage 8u); working mirrors bridge_publication.rs::is_likely_working",
   "step_change_disclaimer": "a step-change is an externally-observable reachability-rate shift; this repo has no visibility into Iran's actual filtering rules and makes no claim about DPI mechanisms",
   "step_changes": [
     {
-      "mean_after": 0.34444230817095134,
+      "mean_after": 0.34440351558577165,
       "mean_before": 0.3511686950140223,
-      "n_after": 62,
+      "n_after": 63,
       "n_before": 24,
       "split_ts": "2026-09-13T03:26:03.485703349+00:00",
       "transport": "obfs4"
     },
     {
-      "mean_after": 0.3388624513907447,
+      "mean_after": 0.3388794606841151,
       "mean_before": 0.3453816201461183,
-      "n_after": 78,
+      "n_after": 79,
       "n_before": 8,
       "split_ts": "2026-09-10T03:23:53.554395553+00:00",
       "transport": "vanilla"
