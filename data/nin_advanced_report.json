@@ -337,6 +337,18 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 70.109.178.27:443 5E07802E4E16519993534E00CE31B8E6657179EB",
+      "host": "70.109.178.27",
+      "nin_flags": [
+        "nin_port_open",
+        "tcp_alive"
+      ],
+      "nin_score": 0.3,
+      "port": 443,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 80.67.172.3:443 088ACF1F2F1720AA41BE8575F45AD202FBD59296",
       "host": "80.67.172.3",
       "nin_flags": [
@@ -3264,17 +3276,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 70.109.178.27:443 5E07802E4E16519993534E00CE31B8E6657179EB",
-      "host": "70.109.178.27",
-      "nin_flags": [
-        "nin_port_open"
-      ],
-      "nin_score": 0.2,
-      "port": 443,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 74.12.120.248:80 A6364CE9DCAF5FBDD745B4C44C580584D9FD2CD2",
       "host": "74.12.120.248",
       "nin_flags": [
@@ -5079,6 +5080,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 112.120.165.105:53540 F8C666DE8CC24BCDC13F71B821D2AC6C1BB1ADB9 cert=KzkElf/urMb1lysk+Wa9l9oNN4ozBOekJa62J07IP1Gu8S1lR8UxolwvC42HSirdQlrGBQ iat-mode=0",
+      "host": "112.120.165.105",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 53540,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 118.211.52.72:9002 0DD5CB58DC61A7D44F4DC09F0125CD087394C1E8 cert=L2SAZQiRUJktDnKgzfYCgFlXeAEeZtYQwJ+UYvNIj4vzhezHMZRLkBSc8KiUoMifjQ1tbQ iat-mode=0",
       "host": "118.211.52.72",
       "nin_flags": [
@@ -5988,6 +6000,17 @@
       ],
       "nin_score": 0.1,
       "port": 9998,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 159.195.29.172:8000 E8CF988AE8E7753DE2CDC163EE22FD88A40A26F8 cert=FmFvynK7++yUWQZZ437R/cD5LNC4Q9/EVpa82RT7Rx+EXwXqurWNne2K2AWOeIs+T+EacQ iat-mode=0",
+      "host": "159.195.29.172",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 8000,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -18657,11 +18680,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1729,
-    "candidates_probed": 400,
-    "candidates_scored": 1729,
+    "candidates_input": 1731,
+    "candidates_probed": 402,
+    "candidates_scored": 1731,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 614.887
+    "probe_elapsed_secs": 612.86
   }
 }
