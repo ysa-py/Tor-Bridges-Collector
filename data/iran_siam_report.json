@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-27T16:39:43.437581+00:00",
+  "generated_at": "2026-09-27T21:08:23.966629+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -6155,6 +6155,29 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 109.104.155.161:65535 386FEC9E8D1CEC12FED47BF490ACD035F7DEDFAF cert=TIHBEP6C0a2YOigO9dIGGk6DdtoYMNkDRl9TqdA9Gj5tysoLpqcKDjkvaiKm+Oe50KAfEA iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 65535,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 109.110.170.208:29323 B93BAE4F17CEACD9E491920C5D283C0D4C3D6D3D cert=p+n8+6mTYmEMpFy+rDuQSyNy4X5pxarA9MzDknqk+WAukqpVa+uE0JJymTK8b8wSyK5pJw iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
@@ -10250,6 +10273,29 @@
     },
     {
       "bridge_line": "obfs4 192.3.118.67:9130 0988065FEB0676F0FEDCCFDA22B2036DDB4D3D23 cert=cC/udgIDigxuZagFD0qchFDQVtkUgrItUnwVNzkMcFjKumckVA9U4QTJBg7EqRdKHa4THg iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 9130,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 192.3.173.85:9130 259E403602D036FDFA567C27C06407D6148CC58F cert=thF9Ls/NHsBdt7XiBREUm4ePtXD9SHZ4MVaEuf2iKA1RKKRqmDstUZOFZUcko1saEmCmZA iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -21290,6 +21336,29 @@
     },
     {
       "bridge_line": "obfs4 [2003:d5:af03:7800:f1e9:baec:96aa:d8c3]:27015 87D694EB41A19275D726D188A5411E85BA9D3BA2 cert=RXxFEnSgq4/f4glsVtmXaerRaMJaHrh2bvEzjQPQVX+onFY/XGb6dPzVZOV/QwxP7pQwfw iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": null,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 [2003:d5:af04:ce00:3200:f1ec:b02:af04]:27015 87D694EB41A19275D726D188A5411E85BA9D3BA2 cert=RXxFEnSgq4/f4glsVtmXaerRaMJaHrh2bvEzjQPQVX+onFY/XGb6dPzVZOV/QwxP7pQwfw iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -39163,14 +39232,14 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 1183,
+    "COVERT": 1186,
     "DETECTED": 485,
     "PHANTOM": 4,
     "STEALTH": 68
   },
-  "total_scored": 1740,
+  "total_scored": 1743,
   "transport_summary": {
-    "obfs4": 1246,
+    "obfs4": 1249,
     "snowflake": 2,
     "vanilla": 485,
     "webtunnel": 7
