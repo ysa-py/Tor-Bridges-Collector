@@ -569,9 +569,9 @@
       "working": 0
     },
     "155.133.222.18:9001": {
-      "avg_dpi_score": 0.0,
+      "avg_dpi_score": 0.01,
       "blocked": 0,
-      "dpi_risk_flags": 1,
+      "dpi_risk_flags": 0,
       "observed_block_rate": 0.0,
       "tested": 1,
       "working": 0
@@ -1577,6 +1577,14 @@
       "working": 0
     },
     "203.221.235.230:9221": {
+      "avg_dpi_score": 0.16,
+      "blocked": 0,
+      "dpi_risk_flags": 0,
+      "observed_block_rate": 0.0,
+      "tested": 1,
+      "working": 0
+    },
+    "203.51.39.83:1629": {
       "avg_dpi_score": 0.16,
       "blocked": 0,
       "dpi_risk_flags": 0,
@@ -3865,11 +3873,11 @@
       "working": 0
     },
     "obfs4": {
-      "avg_dpi_score": 0.718,
+      "avg_dpi_score": 0.7181,
       "blocked": 0,
-      "dpi_risk_flags": 3,
+      "dpi_risk_flags": 2,
       "observed_block_rate": 0.0,
-      "tested": 1252,
+      "tested": 1255,
       "working": 0
     },
     "snowflake": {
@@ -3889,7 +3897,7 @@
       "working": 0
     }
   },
-  "generated_at": "2026-09-27T23:55:34Z",
+  "generated_at": "2026-09-28T03:44:19Z",
   "iran_dpi_notes": "Iran's SIAM (v3, deployed 2023) uses AI-based flow classifiers that can identify obfs4 at ~82% accuracy under sustained monitoring. Snowflake and WebTunnel remain undetected as of 2026 OONI data. Bridges on port 443 with CDN fronting have the highest survival rates.",
   "next_gen_to_add": {
     "hysteria2": {
@@ -3919,7 +3927,7 @@
     "meek_lite",
     "obfs4"
   ],
-  "total_bridges_analyzed": 1746,
+  "total_bridges_analyzed": 1750,
   "transport_profiles": {
     "hysteria2": {
       "add_to_project": true,
