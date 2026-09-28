@@ -1,6 +1,6 @@
 {
  "engine": "torshield-rust-nin-recommended-transport-v1",
- "generated_at": "2026-09-28T03:54:50.935828+00:00",
+ "generated_at": "2026-09-28T13:18:43.426604+00:00",
  "input_files": [
   "export/nin_cut_survivable.txt",
   "data/nin_eligible.json"
@@ -17,11 +17,11 @@
    "primary": "obfs4",
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 299,
-    "primary_share": 0.9967,
+    "pool_lines_total": 300,
+    "primary_share": 0.9933,
     "primary_share_wilson_95": [
-     0.9813,
-     0.9994
+     0.976,
+     0.9982
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -38,11 +38,11 @@
    "primary": "snowflake",
    "evidence_confidence": {
     "primary_pool_lines": 0,
-    "pool_lines_total": 299,
+    "pool_lines_total": 300,
     "primary_share": 0.0,
     "primary_share_wilson_95": [
      0.0,
-     0.0127
+     0.0126
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -69,11 +69,11 @@
    ],
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 299,
-    "primary_share": 0.9967,
+    "pool_lines_total": 300,
+    "primary_share": 0.9933,
     "primary_share_wilson_95": [
-     0.9813,
-     0.9994
+     0.976,
+     0.9982
     ],
     "order_basis": "evidence order derived from this run's probe-survivable + strict-NIN-eligible counts",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -85,8 +85,10 @@
    "obfs4": 298,
    "vanilla": 1
   },
-  "strict_nin_eligible": {},
+  "strict_nin_eligible": {
+   "vanilla": 1
+  },
   "probe_survivable_total": 299,
-  "strict_nin_eligible_total": 0
+  "strict_nin_eligible_total": 1
  }
 }
