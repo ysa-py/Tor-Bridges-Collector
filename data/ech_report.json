@@ -329,7 +329,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 2660,
+        "latency_ms": 1807,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -545,7 +545,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 76,
+        "latency_ms": 16,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -563,7 +563,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 12,
+        "latency_ms": 107,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -689,7 +689,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 107,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -1909,14 +1909,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 4806,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -2003,7 +2003,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 624,
+        "latency_ms": 1238,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2021,7 +2021,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 624,
+        "latency_ms": 1238,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2039,7 +2039,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 687,
+        "latency_ms": 1416,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2057,7 +2057,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 742,
+        "latency_ms": 1428,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2111,7 +2111,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 3341,
+        "latency_ms": 3398,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2449,14 +2449,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 4870,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -2593,14 +2593,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 4728,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -2642,6 +2642,24 @@
     },
     {
       "bridge_line": "obfs4 157.173.114.54:8443 DD598CF8769B5047B2D51B424B08EF587E53D484 cert=LZKAhKAiZlqRORhiH/MmkvaOeMvbAp83wKbCaiOTyT5QtOFkwjqKUhOAKwclQihAu8xMdg iat-mode=0",
+      "ech_verification": "static_inference_no_live_handshake",
+      "flags": [
+        "obfs4_obfuscated",
+        "non_standard_port"
+      ],
+      "front_reachability": "relay_verified_unreachable",
+      "iran_dpi_evasion_score": 0.25,
+      "relay_probe": {
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
+        "observed": true,
+        "probe_type": "tcp",
+        "success": false
+      },
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 157.180.27.92:21478 FC08D663CE67D41D93D74B2BC8BDC6909BBBE7B2 cert=II6pIN0tBJ8e5AKWn44eb3AHSdJXucK/+09j7mrOTH1wa4BCGqFqGqR32emn+V6O2ZlBMg iat-mode=0",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [
         "obfs4_obfuscated",
@@ -2705,7 +2723,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 195,
+        "latency_ms": 117,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2975,7 +2993,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 320,
+        "latency_ms": 225,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -2993,7 +3011,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 479,
+        "latency_ms": 341,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3029,7 +3047,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 698,
+        "latency_ms": 477,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3101,7 +3119,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 148,
+        "latency_ms": 97,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3209,7 +3227,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 175,
+        "latency_ms": 233,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3227,7 +3245,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 42,
+        "latency_ms": 31,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3677,7 +3695,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 1617,
+        "latency_ms": 3160,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3695,7 +3713,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 181,
+        "latency_ms": 129,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3713,7 +3731,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 192,
+        "latency_ms": 129,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3749,7 +3767,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 179,
+        "latency_ms": 160,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3857,7 +3875,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 158,
+        "latency_ms": 110,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -3875,7 +3893,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 158,
+        "latency_ms": 129,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4159,14 +4177,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 104,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -4289,7 +4307,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 113,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4325,7 +4343,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 118,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4343,7 +4361,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 113,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4811,7 +4829,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 205,
+        "latency_ms": 104,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4829,7 +4847,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 111,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4847,7 +4865,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 173,
+        "latency_ms": 111,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4865,7 +4883,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 168,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4883,7 +4901,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 201,
+        "latency_ms": 116,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4919,7 +4937,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 173,
+        "latency_ms": 120,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -4937,7 +4955,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 165,
+        "latency_ms": 109,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -5279,7 +5297,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 117,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -5333,7 +5351,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 111,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -5405,7 +5423,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 180,
+        "latency_ms": 335,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -5783,7 +5801,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 170,
+        "latency_ms": 125,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -6665,7 +6683,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 659,
+        "latency_ms": 728,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -6899,7 +6917,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 151,
+        "latency_ms": 102,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -6917,7 +6935,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 149,
+        "latency_ms": 98,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -7061,7 +7079,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 182,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -7151,7 +7169,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 225,
+        "latency_ms": 266,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -7475,7 +7493,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 36,
+        "latency_ms": 68,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -7961,7 +7979,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 3166,
+        "latency_ms": 3125,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -7997,7 +8015,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 77,
+        "latency_ms": 47,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -8015,7 +8033,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 3211,
+        "latency_ms": 3139,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -8249,7 +8267,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 4844,
+        "latency_ms": 4560,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -8267,7 +8285,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 4992,
+        "latency_ms": 4666,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -8281,14 +8299,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 4725,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -8299,14 +8317,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 1760,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -8393,7 +8411,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 1731,
+        "latency_ms": 119,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -8587,14 +8605,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 191,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -8951,7 +8969,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 110,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -8969,7 +8987,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 29,
+        "latency_ms": 54,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -9041,7 +9059,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 165,
+        "latency_ms": 118,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -9149,7 +9167,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 71,
+        "latency_ms": 19,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -9167,7 +9185,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 142,
+        "latency_ms": 103,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -9221,7 +9239,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 103,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -9671,7 +9689,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 171,
+        "latency_ms": 213,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -10013,7 +10031,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 193,
+        "latency_ms": 130,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -10031,7 +10049,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 194,
+        "latency_ms": 119,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -10607,7 +10625,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 33,
+        "latency_ms": 64,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -10868,6 +10886,24 @@
     },
     {
       "bridge_line": "obfs4 76.230.235.57:45139 F89417AF6BF0D72AC2E5F55FEC8E4B09E2E0F12D cert=J2YwEEK3j51pb8N+2os6wX2+rPqH/bGw/nK7PyjA5NjzwaXjZGZexbg3kVlkS0SS9tpIHg iat-mode=0",
+      "ech_verification": "static_inference_no_live_handshake",
+      "flags": [
+        "obfs4_obfuscated",
+        "non_standard_port"
+      ],
+      "front_reachability": "relay_verified_unreachable",
+      "iran_dpi_evasion_score": 0.25,
+      "relay_probe": {
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
+        "observed": true,
+        "probe_type": "tcp",
+        "success": false
+      },
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 76.65.124.4:2443 54580BC2413FDA921947F059D45B4467FFF438DF cert=dCsbFO/9Wk6MyC3wolITIVdmGPi5EwqBp4NirZ0qPuTET7Cv7gnxB3BuFu1hRwpVFXdKbA iat-mode=0",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [
         "obfs4_obfuscated",
@@ -12083,7 +12119,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -12101,7 +12137,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 165,
+        "latency_ms": 107,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -12155,7 +12191,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 221,
+        "latency_ms": 155,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -12191,7 +12227,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 154,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -12299,7 +12335,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 174,
+        "latency_ms": 134,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -12583,14 +12619,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 2123,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -12961,14 +12997,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 4961,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -13105,14 +13141,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 3256,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -13123,14 +13159,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 147,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -13163,7 +13199,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 170,
+        "latency_ms": 128,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -13181,7 +13217,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 159,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -13271,7 +13307,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 117,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -13775,7 +13811,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 147,
+        "latency_ms": 100,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -13847,7 +13883,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 345,
+        "latency_ms": 134,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -13865,7 +13901,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 364,
+        "latency_ms": 270,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -14203,14 +14239,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 160,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -14243,7 +14279,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 185,
+        "latency_ms": 123,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -14261,7 +14297,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 110,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -14653,14 +14689,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 121,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -14671,14 +14707,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 117,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -14693,7 +14729,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 170,
+        "latency_ms": 112,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -14837,7 +14873,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 3224,
+        "latency_ms": 3298,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -14927,7 +14963,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 179,
+        "latency_ms": 144,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -14999,7 +15035,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 313,
+        "latency_ms": 106,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -15193,14 +15229,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 113,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -15233,7 +15269,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 181,
+        "latency_ms": 139,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -15296,6 +15332,24 @@
     },
     {
       "bridge_line": "obfs4 93.202.145.60:6398 A1090166A62FCDBE6C02FEE623CE8151CDF8BBA2 cert=/pko9YkncouF3VLt8fUdvHHTTm873BLJFB7Gk+pI5NB6Ht7Chj9M3wHP5pWYq/o7Gzhmdg iat-mode=0",
+      "ech_verification": "static_inference_no_live_handshake",
+      "flags": [
+        "obfs4_obfuscated",
+        "non_standard_port"
+      ],
+      "front_reachability": "relay_verified_unreachable",
+      "iran_dpi_evasion_score": 0.25,
+      "relay_probe": {
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
+        "observed": true,
+        "probe_type": "tcp",
+        "success": false
+      },
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 93.218.10.181:27015 87D694EB41A19275D726D188A5411E85BA9D3BA2 cert=RXxFEnSgq4/f4glsVtmXaerRaMJaHrh2bvEzjQPQVX+onFY/XGb6dPzVZOV/QwxP7pQwfw iat-mode=0",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [
         "obfs4_obfuscated",
@@ -15737,7 +15791,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 180,
+        "latency_ms": 127,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -15755,7 +15809,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 2826,
+        "latency_ms": 376,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -20794,7 +20848,7 @@
       "iran_dpi_evasion_score": 0.15,
       "relay_probe": {
         "error": null,
-        "latency_ms": 67,
+        "latency_ms": 22,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -20811,7 +20865,7 @@
       "iran_dpi_evasion_score": 0.15,
       "relay_probe": {
         "error": null,
-        "latency_ms": 67,
+        "latency_ms": 22,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -20845,7 +20899,7 @@
       "iran_dpi_evasion_score": 0.15,
       "relay_probe": {
         "error": null,
-        "latency_ms": 159,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -20981,7 +21035,7 @@
       "iran_dpi_evasion_score": 0.15,
       "relay_probe": {
         "error": null,
-        "latency_ms": 73,
+        "latency_ms": 20,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21066,7 +21120,7 @@
       "iran_dpi_evasion_score": 0.15,
       "relay_probe": {
         "error": null,
-        "latency_ms": 180,
+        "latency_ms": 216,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21147,14 +21201,14 @@
       "flags": [
         "obfs4_obfuscated"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.15,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 120,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -21185,7 +21239,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 318,
+        "latency_ms": 248,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21219,7 +21273,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 168,
+        "latency_ms": 129,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21236,7 +21290,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 164,
+        "latency_ms": 125,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21253,7 +21307,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 125,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21270,7 +21324,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 164,
+        "latency_ms": 120,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21372,7 +21426,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 31,
+        "latency_ms": 309,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21576,7 +21630,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 4713,
+        "latency_ms": 4939,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -21844,14 +21898,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 23,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -21865,7 +21919,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 78,
+        "latency_ms": 52,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -22048,14 +22102,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 101,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -22065,14 +22119,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 196,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -22082,14 +22136,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 300,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -22103,7 +22157,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 153,
+        "latency_ms": 104,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -22154,7 +22208,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 127,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -22171,7 +22225,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 2436,
+        "latency_ms": 1513,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -22511,7 +22565,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 177,
+        "latency_ms": 223,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -22528,7 +22582,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 45,
+        "latency_ms": 31,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -22664,7 +22718,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 78,
+        "latency_ms": 37,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23038,7 +23092,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 107,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23055,7 +23109,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 118,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23072,7 +23126,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 120,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23089,7 +23143,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 109,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23106,7 +23160,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 167,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23123,7 +23177,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23140,7 +23194,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23157,7 +23211,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23174,7 +23228,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23191,7 +23245,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23208,7 +23262,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 160,
+        "latency_ms": 107,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23225,7 +23279,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23242,7 +23296,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23259,7 +23313,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 110,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23276,7 +23330,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23786,7 +23840,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 149,
+        "latency_ms": 121,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23803,7 +23857,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 145,
+        "latency_ms": 105,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23820,7 +23874,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 170,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -23837,7 +23891,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 146,
+        "latency_ms": 103,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24194,7 +24248,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 167,
+        "latency_ms": 107,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24428,14 +24482,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 4778,
+        "error": "probe timed out after 5000ms",
+        "latency_ms": null,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "vanilla"
     },
@@ -24534,7 +24588,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 3236,
+        "latency_ms": 3221,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24857,7 +24911,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 113,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24874,7 +24928,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 2882,
+        "latency_ms": 3078,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24891,7 +24945,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 2871,
+        "latency_ms": 3075,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24925,7 +24979,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 73,
+        "latency_ms": 50,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -24993,7 +25047,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 336,
+        "latency_ms": 251,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25180,7 +25234,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 156,
+        "latency_ms": 113,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25299,7 +25353,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 165,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25350,7 +25404,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 85,
+        "latency_ms": 99,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25384,7 +25438,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 73,
+        "latency_ms": 4119,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25894,7 +25948,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 191,
+        "latency_ms": 141,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25911,7 +25965,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 179,
+        "latency_ms": 140,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -25928,7 +25982,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 169,
+        "latency_ms": 135,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -26013,7 +26067,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 169,
+        "latency_ms": 139,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -26625,7 +26679,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 179,
+        "latency_ms": 130,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -26642,7 +26696,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 176,
+        "latency_ms": 156,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -26693,7 +26747,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 164,
+        "latency_ms": 104,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -26727,7 +26781,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 166,
+        "latency_ms": 119,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27050,7 +27104,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 562,
+        "latency_ms": 3035,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27135,7 +27189,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 138,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27169,7 +27223,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 165,
+        "latency_ms": 131,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27356,7 +27410,7 @@
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
-        "latency_ms": 4921,
+        "latency_ms": 4776,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27536,14 +27590,14 @@
       "bridge_line": "Bridge 134.209.113.118:9001 6D195D68B80BEDBA8FF156C5DF9064DAC1237F9A",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
-        "error": "probe timed out after 5000ms",
-        "latency_ms": null,
+        "error": null,
+        "latency_ms": 23,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -27585,7 +27639,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 153,
+        "latency_ms": 115,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27690,7 +27744,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 173,
+        "latency_ms": 220,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27720,7 +27774,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 1890,
+        "latency_ms": 867,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -27810,7 +27864,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 145,
+        "latency_ms": 104,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28020,7 +28074,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 170,
+        "latency_ms": 99,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28080,7 +28134,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 407,
+        "latency_ms": 427,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28320,7 +28374,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 167,
+        "latency_ms": 103,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28335,7 +28389,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 161,
+        "latency_ms": 103,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28350,7 +28404,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 163,
+        "latency_ms": 114,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28395,7 +28449,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 171,
+        "latency_ms": 110,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28410,7 +28464,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 3052,
+        "latency_ms": 3177,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28485,7 +28539,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 154,
+        "latency_ms": 115,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28500,7 +28554,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 153,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28830,7 +28884,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 162,
+        "latency_ms": 108,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28860,7 +28914,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 326,
+        "latency_ms": 220,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -29010,7 +29064,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 172,
+        "latency_ms": 131,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -29025,7 +29079,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 168,
+        "latency_ms": 119,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -29040,7 +29094,7 @@
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
-        "latency_ms": 172,
+        "latency_ms": 126,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -29229,9 +29283,9 @@
     }
   ],
   "evidence": {
-    "bridges_with_relay_observation": 1392,
+    "bridges_with_relay_observation": 1395,
     "ech_status_is": "static_inference_no_live_handshake",
-    "relay_observations_available": 1751,
+    "relay_observations_available": 1754,
     "source": "data/pt_results.json (live probe-relay observations)"
   }
 }
