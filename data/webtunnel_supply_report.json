@@ -9,16 +9,22 @@
         {
           "attempt": 1,
           "method": "GET",
-          "status": 200
+          "status": 403
+        },
+        {
+          "attempt": 2,
+          "method": "GET+browser-headers",
+          "status": 403
+        },
+        {
+          "attempt": 3,
+          "method": "HEAD",
+          "status": 403
         }
       ],
-      "bytes": 21358,
       "doc": "rdsys-readme",
-      "mechanism_tokens": [
-        "email",
-        "https"
-      ],
-      "status": 200,
+      "error": "non-2xx",
+      "status": 403,
       "url": "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/README.md"
     },
     {
@@ -26,16 +32,22 @@
         {
           "attempt": 1,
           "method": "GET",
-          "status": 200
+          "status": 403
+        },
+        {
+          "attempt": 2,
+          "method": "GET+browser-headers",
+          "status": 403
+        },
+        {
+          "attempt": 3,
+          "method": "HEAD",
+          "status": 403
         }
       ],
-      "bytes": 21358,
       "doc": "rdsys-distributor-config",
-      "mechanism_tokens": [
-        "email",
-        "https"
-      ],
-      "status": 200,
+      "error": "non-2xx",
+      "status": 403,
       "url": "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/config/rdsys.yaml"
     },
     {
@@ -43,16 +55,22 @@
         {
           "attempt": 1,
           "method": "GET",
-          "status": 200
+          "status": 403
+        },
+        {
+          "attempt": 2,
+          "method": "GET+browser-headers",
+          "status": 403
+        },
+        {
+          "attempt": 3,
+          "method": "HEAD",
+          "status": 403
         }
       ],
-      "bytes": 21358,
       "doc": "webtunnel-project-readme",
-      "mechanism_tokens": [
-        "email",
-        "https"
-      ],
-      "status": 200,
+      "error": "non-2xx",
+      "status": 403,
       "url": "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel/-/raw/main/README.md"
     },
     {
@@ -63,14 +81,14 @@
           "status": 200
         }
       ],
-      "bytes": 6492,
+      "bytes": 6563,
       "doc": "bridges-torproject-home",
       "mechanism_tokens": [],
       "status": 200,
       "url": "https://bridges.torproject.org/"
     }
   ],
-  "generated_at": "2026-10-05T13:50:04.067683192+00:00",
+  "generated_at": "2026-10-05T22:06:58.232909968+00:00",
   "relay_observations": {
     "by_host": {
       "Bridge|102.212.98.168": {
@@ -367,8 +385,7 @@
         "attempted": 1
       },
       "Bridge|172.86.69.87": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "Bridge|173.21.185.152": {
         "attempted": 1,
@@ -527,7 +544,8 @@
         "attempted": 1
       },
       "Bridge|185.79.138.146": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|185.85.87.222": {
         "attempted": 2
@@ -536,7 +554,8 @@
         "attempted": 1
       },
       "Bridge|186.223.114.50": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "Bridge|188.150.39.66": {
         "attempted": 1
@@ -1015,8 +1034,7 @@
         "attempted": 1
       },
       "Bridge|67.232.181.118": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "Bridge|69.159.178.38": {
         "attempted": 1
@@ -1590,12 +1608,10 @@
         "attempted": 1
       },
       "obfs4|104.194.154.187": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|104.223.120.171": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|104.223.85.48": {
         "attempted": 1
@@ -1625,7 +1641,8 @@
         "attempted": 1
       },
       "obfs4|107.189.7.185": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|107.210.123.168": {
         "attempted": 1
@@ -1637,8 +1654,7 @@
         "attempted": 1
       },
       "obfs4|108.165.236.100": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|108.198.146.110": {
         "attempted": 1
@@ -1889,8 +1905,7 @@
         "success": 1
       },
       "obfs4|147.90.234.50": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|147.90.235.92": {
         "attempted": 1
@@ -1926,7 +1941,8 @@
         "attempted": 1
       },
       "obfs4|151.115.79.198": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|151.204.137.147": {
         "attempted": 1
@@ -1989,8 +2005,7 @@
         "attempted": 1
       },
       "obfs4|157.180.73.81": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|157.245.145.227": {
         "attempted": 1
@@ -2189,7 +2204,8 @@
         "attempted": 1
       },
       "obfs4|178.236.245.209": {
-        "attempted": 2
+        "attempted": 2,
+        "success": 2
       },
       "obfs4|178.43.154.13": {
         "attempted": 1
@@ -2900,8 +2916,7 @@
         "success": 1
       },
       "obfs4|38.40.91.122": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|43.106.30.175": {
         "attempted": 1
@@ -2925,7 +2940,8 @@
         "attempted": 1
       },
       "obfs4|45.140.213.235": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|45.142.17.142": {
         "attempted": 1
@@ -3056,7 +3072,8 @@
         "attempted": 1
       },
       "obfs4|5.45.65.149": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|5.45.66.140": {
         "attempted": 1
@@ -3080,8 +3097,7 @@
         "attempted": 1
       },
       "obfs4|51.154.72.128": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|51.159.59.157": {
         "attempted": 1
@@ -3668,7 +3684,8 @@
         "attempted": 1
       },
       "obfs4|83.229.15.194": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|83.229.15.208": {
         "attempted": 1
@@ -4647,8 +4664,7 @@
         "attempted": 1
       },
       "obfs4|[2605:e440:3c::29a]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2606:4e80:130e:2be1:100:7:da:c00b]": {
         "attempted": 1
@@ -4678,8 +4694,7 @@
         "attempted": 1
       },
       "obfs4|[2607:8700:5501:bef::2]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2607:9d00:2000:26b::2ac3:51c7]": {
         "attempted": 1
@@ -5010,14 +5025,14 @@
         "attempted": 1
       },
       "obfs4|[2a03:4000:27:976:48da:75ff:fe93:a550]": {
-        "attempted": 1,
-        "success": 1
+        "attempted": 1
       },
       "obfs4|[2a03:4000:40:ad::1]": {
         "attempted": 1
       },
       "obfs4|[2a03:4000:4e:654:e83e:d5ff:fe2c:d48]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a03:4000:53:105::1337]": {
         "attempted": 1
@@ -5026,7 +5041,8 @@
         "attempted": 1
       },
       "obfs4|[2a03:4000:7:61b:6424:d1ff:feda:25c6]": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "obfs4|[2a03:8c00:1a:10:a46a:8ff:fe73:4227]": {
         "attempted": 2
@@ -5292,7 +5308,8 @@
         "attempted": 1
       },
       "webtunnel|jochenkessler.de": {
-        "attempted": 1
+        "attempted": 1,
+        "success": 1
       },
       "webtunnel|vault.005184.xyz": {
         "attempted": 1
@@ -5315,14 +5332,15 @@
       },
       "obfs4": {
         "attempted": 1306,
-        "success": 133
+        "success": 132
       },
       "snowflake": {
         "attempted": 6,
         "success": 6
       },
       "webtunnel": {
-        "attempted": 4
+        "attempted": 4,
+        "success": 1
       }
     },
     "entries": 1812

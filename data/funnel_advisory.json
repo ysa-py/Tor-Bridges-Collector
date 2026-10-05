@@ -2,7 +2,7 @@
   "advisory_only": true,
   "funnel": [
     {
-      "count": 2,
+      "count": 23,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
@@ -32,17 +32,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 639,
+      "count": 635,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 485,
+      "count": 484,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-05T14:03:36.505078686+00:00",
+  "generated_at": "2026-10-05T22:20:55.500895301+00:00",
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
@@ -77,18 +77,18 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 485,
-    "iran_likely_working_obfs4.txt": 467,
+    "iran_likely_working_all.txt": 484,
+    "iran_likely_working_obfs4.txt": 466,
     "iran_likely_working_snowflake.txt": 14,
-    "iran_likely_working_vanilla.txt": 171,
+    "iran_likely_working_vanilla.txt": 169,
     "iran_likely_working_webtunnel.txt": 4,
     "obfs4.txt": 957,
     "obfs4_tested.txt": 5,
-    "tested_global_obfs4.txt": 467,
+    "tested_global_obfs4.txt": 466,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 2,
     "vanilla.txt": 487,
-    "vanilla_tested.txt": 169,
+    "vanilla_tested.txt": 166,
     "webtunnel.txt": 4,
     "webtunnel_ipv6.txt": 0
   },
@@ -142,7 +142,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 0,
+        "fetched_lines": 7,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_builtin_single_transport"
@@ -156,14 +156,14 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 0,
+        "fetched_lines": 7,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_builtin_geolocated_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 0,
+        "fetched_lines": 7,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_builtin_unblocked_ir_single_transport"
@@ -204,11 +204,11 @@
         "successes": 0
       },
       {
-        "classification": "unreachable_from_relay",
+        "classification": "healthy",
         "endpoint_is_placeholder": false,
         "front": "jochenkessler.de",
         "observations": 1,
-        "successes": 0
+        "successes": 1
       },
       {
         "classification": "unreachable_from_relay",
@@ -230,9 +230,9 @@
     "lines_examined": 4,
     "summary": {
       "degraded": 0,
-      "healthy": 0,
+      "healthy": 1,
       "no_evidence": 0,
-      "unreachable_from_relay": 4
+      "unreachable_from_relay": 3
     },
     "unique_fronts": 4
   }
