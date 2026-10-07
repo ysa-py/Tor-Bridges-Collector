@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-07T00:43:15.278974+00:00",
+  "generated_at": "2026-10-07T10:06:50.962087+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -2016,6 +2016,29 @@
       },
       "layers_bypassed": 5,
       "port": 14309,
+      "recommendation": "⚠️ متوسط — برخی لایه‌های SIAM تشخیص می‌دهند | Moderate: some SIAM layers detect",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 185.177.207.193:12193 C05ADFA4BB9601B7B8BAD2689D3CA95878ED2CAA cert=dKV8dNsZ7VDV/wqkIFFKuKAUHSPk00655bKZTrVT5OoNK0DCTeJn6hx9SDHVUuUHcM0lAw iat-mode=1",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_1_evasion"
+      ],
+      "iran_siam_score": 0.7112,
+      "layer_scores": {
+        "L1_packet_length": 0.85,
+        "L2_iat_timing": 0.78,
+        "L3_flow_features": 0.8,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.72,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 5,
+      "port": 12193,
       "recommendation": "⚠️ متوسط — برخی لایه‌های SIAM تشخیص می‌دهند | Moderate: some SIAM layers detect",
       "transport": "obfs4"
     },
@@ -41010,14 +41033,14 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 1245,
+    "COVERT": 1246,
     "DETECTED": 489,
     "PHANTOM": 16,
     "STEALTH": 70
   },
-  "total_scored": 1820,
+  "total_scored": 1821,
   "transport_summary": {
-    "obfs4": 1310,
+    "obfs4": 1311,
     "snowflake": 14,
     "vanilla": 489,
     "webtunnel": 7
