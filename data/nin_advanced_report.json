@@ -337,6 +337,18 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 150.241.65.244:8443 8A6F30BED9218B953490402394FCAD3837115795",
+      "host": "150.241.65.244",
+      "nin_flags": [
+        "nin_port_open",
+        "tcp_alive"
+      ],
+      "nin_score": 0.3,
+      "port": 8443,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 172.178.90.66:8080 F55C4471F07FE4B355CAF074D8FBC3D51AF56B0E",
       "host": "172.178.90.66",
       "nin_flags": [
@@ -501,6 +513,18 @@
       ],
       "nin_score": 0.3,
       "port": 443,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 84.52.216.169:8080 07BD9CFA8FFADD4F6E98551AA386B9303A70EA18",
+      "host": "84.52.216.169",
+      "nin_flags": [
+        "nin_port_open",
+        "tcp_alive"
+      ],
+      "nin_score": 0.3,
+      "port": 8080,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -3513,17 +3537,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 150.241.65.244:8443 8A6F30BED9218B953490402394FCAD3837115795",
-      "host": "150.241.65.244",
-      "nin_flags": [
-        "nin_port_open"
-      ],
-      "nin_score": 0.2,
-      "port": 8443,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 186.223.114.50:8080 78FC3BD3B0240095E421912F688F5D28EA8BCA49",
       "host": "186.223.114.50",
       "nin_flags": [
@@ -3784,17 +3797,6 @@
       ],
       "nin_score": 0.2,
       "port": 8443,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 84.52.216.169:8080 07BD9CFA8FFADD4F6E98551AA386B9303A70EA18",
-      "host": "84.52.216.169",
-      "nin_flags": [
-        "nin_port_open"
-      ],
-      "nin_score": 0.2,
-      "port": 8080,
       "tcp_reachable": false,
       "transport": "vanilla"
     },
@@ -5280,6 +5282,17 @@
       ],
       "nin_score": 0.1,
       "port": 9100,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 107.174.63.120:9130 920AF4E8BADEBDC1A5028F358E6BB2AB3D6041CE cert=gZLc7n2wlqPERLq3Z3i8cOplNfk84GO5blFVgLAQiC3TwLcaRzXgvvh0aU+Zb6La9BIWfQ iat-mode=0",
+      "host": "107.174.63.120",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9130,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -7000,6 +7013,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 178.22.69.144:8414 811115E721E9B530A3BA41D3FCE6B71D64E4DC5A cert=Sye+7gmUheN9ohPm8TV1pyNiuMwr4NMAKJXC3p6Du8m56VyorhG6S7u2NgklFS91rwpKBA iat-mode=0",
+      "host": "178.22.69.144",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 8414,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 178.236.245.209:9100 A5DDBD72FD8B63EC0F2455AF8C97EE88E52E7E6B cert=/OuQ+vKEUjIqJ9rHME3ML3dwvzXSCWLw094Ic+v2wRciEoWw72POdr0eLX6D5dm7vMVnBA iat-mode=0",
       "host": "178.236.245.209",
       "nin_flags": [
@@ -8657,6 +8681,17 @@
       ],
       "nin_score": 0.1,
       "port": 1776,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 25.8.89.151:9443 2096E8E90BCDE473150448766F71B3F7E36E49BE cert=wUXdLMrAuk8BwQ8I1N7JFf5BkI1/HVw0onBfcBLfRWUbE+n3shOMFWhU/hzz660x3+EOKw iat-mode=0",
+      "host": "25.8.89.151",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9443,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -19743,11 +19778,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1826,
-    "candidates_probed": 398,
-    "candidates_scored": 1826,
+    "candidates_input": 1829,
+    "candidates_probed": 401,
+    "candidates_scored": 1829,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 613.714
+    "probe_elapsed_secs": 610.578
   }
 }
