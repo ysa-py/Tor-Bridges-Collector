@@ -115,7 +115,7 @@ impl SourceCircuitBreaker {
             .split_once("://")
             .map(|(_, remainder)| remainder)
             .unwrap_or(url)
-            .split(|character| matches!(character, '/' | '?' | '#'))
+            .split(['/', '?', '#'])
             .next()
             .unwrap_or_default();
         let host_port = authority.rsplit('@').next().unwrap_or_default();
