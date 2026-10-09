@@ -1,7 +1,7 @@
 //! Stage 8u — Drift & survivability advisories (ADDITIVE, NON-BLOCKING).
 //!
 //! This binary produces three ADVISORY artifacts. It never gates CI, never
-//! edits any of the 55 contracted `bridge/` files, and never changes a score,
+//! edits any contracted `bridge/` file, and never changes a score,
 //! a membership decision, or a ranking. Its entire output is new files under
 //! `data/` plus `::notice` annotations in the run log.
 //!

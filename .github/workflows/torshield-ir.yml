@@ -27,11 +27,10 @@
 # the release packaging, and the cleanup call are preserved.
 #
 # DUAL PUBLICATION CONTRACT (bridge/ + README.md + Telegram, one verified payload):
-#   Stage 9 rebuilds and verifies ALL 55 public files in bridge/ — every
-#   transport .txt plus its _72h/_ipv6/_72h_ipv6/_tested variants, all
-#   iran_likely_working_* advisory sets, bridge_history.json,
-#   bridge_list_for_testing.json, bridge_scores.json, iran_results.json,
-#   telegram_manifest.json and tor_bridges.zip — via the Rust publisher
+#   Stage 9 rebuilds and verifies the complete REQUIRED_FILES inventory in
+#   bridge/ — including explicit IPv4/IPv6/all-family projections, historical
+#   aliases, JSON inputs/reports, telegram_manifest.json and tor_bridges.zip —
+#   via the Rust publisher
 #   (src/bridge_publication.rs, driven by sync_bridge_outputs). The same
 #   step re-renders README.md from the verified snapshot and, when the
 #   TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets are configured, delivers
@@ -46,8 +45,11 @@
 #   mirroring the skipped Stage 11 git commit).
 #   Stage 9b re-verifies the complete contract with --verify-only (JSON
 #   shapes, every SHA-256 manifest entry, byte-identical ZIP contents), and
-#   Stage 10 inventories all 55 files and fails the run if any is missing —
-#   a broken publication can never reach the commit step.
+#   Stage 10 reads that inventory from telegram_manifest.json and fails the
+#   run if any contract file is missing — a broken publication cannot commit.
+#   Collection/publication is scheduled hourly (UTC). Runs targeting the same
+#   branch serialize without cancellation so every artifact starts from the
+#   latest committed state; a full run over an hour can delay/coalesce refreshes.
 # ══════════════════════════════════════════════════════════════════════════
 name: TorShield-IR Bridge Intelligence
 
@@ -56,7 +58,7 @@ name: TorShield-IR Bridge Intelligence
     branches: ["**"]
   pull_request:
   schedule:
-  - cron: '0 */3 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       upload_to_telegram:
@@ -98,8 +100,9 @@ permissions:
   contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Include the PR base branch so previews cannot race the scheduled main run.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.base.ref || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
 
@@ -1708,6 +1711,11 @@ jobs:
     name: scrape-and-test (finalize)
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Defense-in-depth publication lock: never cancel a run while it is
+    # verifying or committing the bridge artifact.
+    concurrency:
+      group: ${{ github.workflow }}-publish-${{ github.ref }}
+      cancel-in-progress: false
     needs:
     - scrape-and-test
     - analytics-ml-zig
@@ -1818,7 +1826,7 @@ jobs:
 
       # Stage 8u (additive, 2026-09-08): drift & survivability advisories.
       # PURELY ADVISORY — writes only NEW files under data/ plus ::notice
-      # annotations; it can never gate CI, edit any of the 55 contracted
+      # annotations; it can never gate CI, edit any contracted
       # bridge/ files, or change a score/membership/ranking. Produces:
       #   data/bridge_drift_report.json        — per-bridge stale-positive
       #     cohort from the collector's existing EWMA health score (which
@@ -1849,7 +1857,7 @@ jobs:
       #     from retry_engine's backoff curve;
       #   * the evidence-driven webtunnel front-domain health advisory
       #     (built ONLY from live probe-relay observations).
-      # Advisory only: never gates CI, never edits the 55 contracted
+      # Advisory only: never gates CI, never edits contracted
       # bridge/ files, never changes a score or membership decision.
     - name: Stage 8v — Pipeline funnel advisory (additive, non-blocking)
       continue-on-error: true
@@ -1859,7 +1867,7 @@ jobs:
         cargo run --quiet --bin funnel_advisory
 
       # Dual persist, one verified payload: the Rust publisher atomically
-      # rewrites ALL 55 public bridge/ files, re-renders README.md from the
+      # rewrites every REQUIRED_FILES bridge/ output, re-renders README.md from the
       # verified snapshot, byte-verifies tor_bridges.zip, and then delivers
       # that exact ZIP to Telegram — GitHub and Telegram always store the
       # same bytes. Delivery defaults to ON; the bash guard below degrades
@@ -1907,11 +1915,11 @@ jobs:
         echo "═══ README.md re-rendered from the verified snapshot ═══"
         sed -n '1,8p' README.md
 
-      # Real self-test of the publication: re-validates all 55 required files,
+      # Real self-test of the publication: re-validates every required file,
       # the JSON shapes, every SHA-256 entry in telegram_manifest.json, and
       # byte-compare each tor_bridges.zip entry against its repository
       # counterpart. Any drift fails the run before anything is committed.
-    - name: Stage 9b — Verify publication contract (all 55 files, byte-identical
+    - name: Stage 9b — Verify publication contract (all files, byte-identical
         ZIP)
       timeout-minutes: 3
       run: |
@@ -1922,87 +1930,24 @@ jobs:
         echo "✅ Publication contract verified: every required file present,"
         echo "   manifest hashes match, archive contents byte-identical."
 
-      # Post-execution FAILSAFE — positioned immediately before Stage 10
-      # (per directive §4: FAILSAFE must run after every scraper/tester/export
-      # stage and right before publication). Two layers of guarantee:
-      #
-      #   1. The Rust failsafe_bridges engine force-populates every missing or
-      #      0-byte transport *.txt from the compiled-in static fallback lines
-      #      of its family, and re-initialises any empty *.json to a valid [].
-      #   2. The explicit audit loop below re-checks every projection that has
-      #      a valid static fallback. WebTunnel is intentionally omitted:
-      #      URL-only metadata cannot be converted into a client bridge, so its
-      #      projection may remain empty when no literal endpoint exists.
-      #      Empty JSON files are still repaired to valid [] documents.
-      #
-      #      Stage 10 permits an empty WebTunnel projection and reports it as
-      #      an advisory warning rather than fabricating a bridge line.
+      # Do not run the force-populating FAILSAFE after publication: empty
+      # *_tested.txt or *_72h*.txt files are truthful when no qualifying
+      # observation exists, and changing any file after Stage 9b would break
+      # the manifest hashes and verified ZIP. The pre-probe FAILSAFE above
+      # remains in place for collector inputs.
 
-    - name: FAILSAFE — post-execution pre-publication guarantee (Rust port)
+    - name: Stage 10 — Full bridge/ inventory (manifest contract)
       timeout-minutes: 3
       run: |
         set -euo pipefail
-        cargo run --quiet --bin failsafe_bridges
-        # ── Explicit audit + last-resort repopulation for valid fallbacks ──
-        mkdir -p bridge
-        FALLBACK_SRC="bridge/iran_likely_working_all.txt"
-        REPOP=0
-        for glob in 'bridge/obfs4*.txt' 'bridge/vanilla*.txt' \
-                    'bridge/conjure*.txt' 'bridge/meek*.txt' \
-                    'bridge/meek-azure*.txt' 'bridge/snowflake*.txt'; do
-          for f in $glob; do
-            [ -e "$f" ] || continue
-            if [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -eq 0 ]; then
-              echo "FAILSAFE: $f is 0 bytes — writing fallback line"
-              if [ -s "$FALLBACK_SRC" ]; then
-                cp "$FALLBACK_SRC" "$f"
-              else
-                echo "::error::Rust FAILSAFE produced no valid fallback source; refusing to invent a placeholder bridge"
-                exit 1
-              fi
-              REPOP=$((REPOP + 1))
-            fi
-          done
-        done
-        # Any empty *.json output is re-initialised to a valid empty array.
-        for f in bridge/*.json; do
-          [ -e "$f" ] || continue
-          if [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -eq 0 ]; then
-            echo "FAILSAFE: $f is 0 bytes — writing valid []"
-            printf '[]\n' > "$f"
-          fi
-        done
-        echo "✅ FAILSAFE complete: repopulated $REPOP transport .txt file(s); every *.json is a valid document."
-
-    - name: Stage 10 — Full bridge/ inventory (all 55 required files)
-      timeout-minutes: 3
-      run: |
-        set -euo pipefail
-        REQUIRED="bridge_history.json bridge_list_for_testing.json bridge_scores.json \
-          conjure.txt conjure_72h.txt conjure_tested.txt \
-          iran_blocked.txt iran_likely_working_all.txt iran_likely_working_nin.txt \
-          iran_likely_working_obfs4.txt iran_likely_working_snowflake.txt \
-          iran_likely_working_vanilla.txt iran_likely_working_webtunnel.txt \
-          iran_results.json \
-          meek-azure.txt meek-azure_72h.txt meek-azure_tested.txt \
-          meek_lite.txt meek_lite_72h.txt meek_lite_72h_ipv6.txt \
-          meek_lite_ipv6.txt meek_lite_ipv6_tested.txt meek_lite_tested.txt \
-          obfs4.txt obfs4_72h.txt obfs4_72h_ipv6.txt \
-          obfs4_ipv6.txt obfs4_ipv6_72h.txt obfs4_ipv6_tested.txt obfs4_tested.txt \
-          snowflake.txt snowflake_72h.txt snowflake_72h_ipv6.txt \
-          snowflake_ipv6.txt snowflake_ipv6_tested.txt snowflake_tested.txt \
-          telegram_manifest.json \
-          tested_global_obfs4.txt tested_global_vanilla.txt tested_global_webtunnel.txt \
-          tor_bridges.zip \
-          vanilla.txt vanilla_72h.txt vanilla_72h_ipv6.txt \
-          vanilla_ipv6.txt vanilla_ipv6_72h.txt vanilla_ipv6_tested.txt vanilla_tested.txt \
-          webtunnel.txt webtunnel_72h.txt webtunnel_72h_ipv6.txt \
-          webtunnel_ipv6.txt webtunnel_ipv6_72h.txt webtunnel_ipv6_tested.txt webtunnel_tested.txt"
-        echo "═══ Full bridge/ publication inventory ═══"
+        MANIFEST=bridge/telegram_manifest.json
+        test -s "$MANIFEST" || { echo "::error::Missing bridge publication manifest"; exit 1; }
+        jq -e '.required_files | type == "array" and length > 0' "$MANIFEST" >/dev/null
+        mapfile -t REQUIRED < <(jq -r '.required_files[]' "$MANIFEST")
+        echo "═══ Full bridge/ publication inventory (${#REQUIRED[@]} required files) ═══"
         MISSING=0
-        TOTAL=0
-        for name in $REQUIRED; do
-          TOTAL=$((TOTAL + 1))
+        TOTAL=${#REQUIRED[@]}
+        for name in "${REQUIRED[@]}"; do
           f="bridge/$name"
           if [ ! -f "$f" ]; then
             printf '❌ %-42s MISSING\n' "$name"
@@ -2011,7 +1956,7 @@ jobs:
           fi
           size=$(stat -c %s "$f")
           case "$name" in
-            *.txt)
+            *.txt|snowflake_ipv6_tested)
               count=$(grep -c . "$f" 2>/dev/null) || count=0
               count=${count//[$'\t\r\n ']/}
               count=${count:-0}
@@ -2019,6 +1964,7 @@ jobs:
               ;;
             *.json) printf '✅ %-42s   json   (%d bytes)\n' "$name" "$size" ;;
             *.zip)  printf '✅ %-42s   zip    (%d bytes)\n' "$name" "$size" ;;
+            *)      printf '✅ %-42s   text   (%d bytes)\n' "$name" "$size" ;;
           esac
         done
         echo "═══════════════════════════════════════════"
@@ -2049,7 +1995,7 @@ jobs:
         fi
 
     # Informational, additive: BEFORE/AFTER line counts for the low-supply
-    # files, comparing this run's output (after Stage 9/9b/FAILSAFE/Stage 10)
+    # files, comparing this run's output (after Stage 9/9b/Stage 10)
     # against the committed tree the job started from (git HEAD). Emitted as
     # workflow notices so the numbers are visible on the run page. Purely
     # report-only: never alters files and never fails the job on a delta.
@@ -2088,10 +2034,10 @@ jobs:
       # finalizer guarantees the published pack always carries the full
       # survivable candidate set. Deterministic; advisory (runner-side).
       #
-      # This MUST run after Stage 9 (dual-persist bridge/ files), Stage 9b
-      # and the FAILSAFE step: those stages rewrite the 55 committed bridge/
-      # projection files (including bridge/iran_likely_working_nin.txt) from
-      # the final verified snapshot. Running the finalizer before them
+      # This MUST run after Stage 9 (dual-persist bridge/ files) and Stage 9b:
+      # those stages rewrite the complete REQUIRED_FILES inventory (including
+      # bridge/iran_likely_working_nin.txt) from the final verified snapshot.
+      # Running the finalizer before them
       # published a cut-pack built from an intermediate bridge set, which the
       # invariant audit (C11 cutpack-freshness) then correctly rejected.
     - name: Stage 8p2 — NIN cut-pack finalizer (user-facing iran_cut_pack.txt)

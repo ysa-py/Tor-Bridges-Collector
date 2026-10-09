@@ -117,8 +117,9 @@ BridgeDB pool anyway.
      HEAD (informational, additive)**, placed after Stage 10.  It emits one
      workflow `::notice` per low-supply file with `before=<committed>`
      `after=<this run>` line counts (report-only, never fails on a delta).
-   The Stage 9b 55-file publication contract, FAILSAFE, Stage 10, and every
-   existing test are untouched and still run.
+   The later publisher update uses a manifest-defined 79-path contract.
+   Stage 9b verifies it and Stage 10 inventories it; the pre-probe FAILSAFE
+   remains, while no force-populating FAILSAFE runs after verification.
 
 ## 3b. Probing-capability investigation (why no probe-path change was made)
 
@@ -167,8 +168,10 @@ legitimately raise counts, and they are implemented as described.
   time).  Raw counts only ever grow or stay equal: merging is additive and
   history pruning keeps records for 30 days.
 - **Projection/tested AFTER**: the `bridge/*.txt` projections of the same
-  run (Stage 9b verifies the full 55-file contract byte-identically; FAILSAFE
-  and Stage 10 run after it).  New lines drawn by Stage 1x enter the raw pool
+  run (Stage 9b verifies the manifest-defined contract byte-identically and
+  Stage 10 inventories it; the pre-probe FAILSAFE runs before Stage 2, and no
+  mutating FAILSAFE runs after publication verification). New lines drawn by
+  Stage 1x enter the raw pool
   the same run (the publisher regenerates projections from history at Stage 9)
   and become probe candidates on the *following* run, because probing input
   (`bridge_list_for_testing.json`) is snapshotted earlier in the pipeline.

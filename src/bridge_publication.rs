@@ -24,6 +24,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::{self, File};
 use std::io::{self, Read, Write};
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
@@ -44,9 +45,14 @@ pub const REQUIRED_FILES: &[&str] = &[
     "bridge_scores.json",
     "conjure.txt",
     "conjure_72h.txt",
+    "conjure_72h_ipv4.txt",
+    "conjure_72h_ipv6.txt",
+    "conjure_ipv4_ipv6_all.txt",
     "conjure_tested.txt",
     "iran_blocked.txt",
+    "iran_blocked_ipv4_ipv6_all.txt",
     "iran_likely_working_all.txt",
+    "iran_likely_working_ipv4_ipv6_all.txt",
     "iran_likely_working_nin.txt",
     "iran_likely_working_obfs4.txt",
     "iran_likely_working_snowflake.txt",
@@ -55,24 +61,35 @@ pub const REQUIRED_FILES: &[&str] = &[
     "iran_results.json",
     "meek-azure.txt",
     "meek-azure_72h.txt",
+    "meek-azure_all.txt",
     "meek-azure_tested.txt",
     "meek_lite.txt",
     "meek_lite_72h.txt",
+    "meek_lite_72h_ipv4.txt",
     "meek_lite_72h_ipv6.txt",
+    "meek_lite_ipv4.txt",
+    "meek_lite_ipv4_ipv6_all.txt",
     "meek_lite_ipv6.txt",
     "meek_lite_ipv6_tested.txt",
     "meek_lite_tested.txt",
     "obfs4.txt",
     "obfs4_72h.txt",
+    "obfs4_72h_ipv4.txt",
     "obfs4_72h_ipv6.txt",
+    "obfs4_ipv4_ipv6_all.txt",
+    "obfs4_ipv4_tested.txt",
     "obfs4_ipv6.txt",
     "obfs4_ipv6_72h.txt",
     "obfs4_ipv6_tested.txt",
     "obfs4_tested.txt",
+    "snowflak_ipv4_ipv6_all.txt",
     "snowflake.txt",
     "snowflake_72h.txt",
+    "snowflake_72h_ipv4.txt",
     "snowflake_72h_ipv6.txt",
+    "snowflake_ipv4_ipv6_all.txt",
     "snowflake_ipv6.txt",
+    "snowflake_ipv6_tested",
     "snowflake_ipv6_tested.txt",
     "snowflake_tested.txt",
     "telegram_manifest.json",
@@ -83,13 +100,21 @@ pub const REQUIRED_FILES: &[&str] = &[
     "vanilla.txt",
     "vanilla_72h.txt",
     "vanilla_72h_ipv6.txt",
+    "vanilla_ipv4.txt",
+    "vanilla_ipv4_72h.txt",
+    "vanilla_ipv4_ipv6_all.txt",
+    "vanilla_ipv4_tested.txt",
     "vanilla_ipv6.txt",
     "vanilla_ipv6_72h.txt",
     "vanilla_ipv6_tested.txt",
     "vanilla_tested.txt",
     "webtunnel.txt",
     "webtunnel_72h.txt",
+    "webtunnel_72h_ipv4.txt",
     "webtunnel_72h_ipv6.txt",
+    "webtunnel_ipv4.txt",
+    "webtunnel_ipv4_ipv6_all.txt",
+    "webtunnel_ipv4_tested.txt",
     "webtunnel_ipv6.txt",
     "webtunnel_ipv6_72h.txt",
     "webtunnel_ipv6_tested.txt",
@@ -453,28 +478,29 @@ fn ensure_testing_list(
         .iter()
         .map(|candidate| candidate.raw.clone())
         .collect();
-    let existing = if path.is_file() {
+    let existing_order = if path.is_file() {
         read_json(path).ok().and_then(|value| {
-            value.as_array().map(|array| {
-                array
+            value.as_array().and_then(|array| {
+                let lines: Vec<String> = array
                     .iter()
                     .filter_map(Value::as_str)
                     .map(|line| line.trim().to_string())
                     .filter(|line| !line.is_empty())
-                    .collect::<BTreeSet<_>>()
+                    .collect();
+                let unique: BTreeSet<String> = lines.iter().cloned().collect();
+                (lines.len() == expected.len() && unique == expected).then_some(lines)
             })
         })
     } else {
         None
     };
 
-    // Preserve adaptive-selector ordering when the existing list is complete.
-    if existing.as_ref() == Some(&expected) {
-        return Ok(expected.len());
-    }
-    let values: Vec<Value> = expected.into_iter().map(Value::String).collect();
+    // Preserve adaptive-selector ordering when the existing list is complete,
+    // but atomically rewrite it on every publication just like every projection.
+    let lines = existing_order.unwrap_or_else(|| expected.iter().cloned().collect());
+    let values: Vec<Value> = lines.iter().cloned().map(Value::String).collect();
     write_json_atomic(path, &Value::Array(values))?;
-    Ok(candidates.len())
+    Ok(lines.len())
 }
 
 fn write_scores(path: &Path, candidates: &[Candidate]) -> Result<(), Box<dyn std::error::Error>> {
@@ -540,6 +566,23 @@ fn record_publication_fallback(
     }
 }
 
+fn filtered_family_lines(
+    candidates: &[Candidate],
+    transport: &str,
+    ipv6: Option<bool>,
+    fresh: bool,
+    tested: bool,
+) -> Vec<String> {
+    candidates
+        .iter()
+        .filter(|candidate| candidate.transport == transport)
+        .filter(|candidate| ipv6.map_or(true, |version| candidate.ipv6 == version))
+        .filter(|candidate| !fresh || candidate.fresh)
+        .filter(|candidate| !tested || candidate.tested)
+        .map(|candidate| candidate.raw.clone())
+        .collect()
+}
+
 fn family_lines(
     candidates: &[Candidate],
     transport: &str,
@@ -547,13 +590,40 @@ fn family_lines(
     fresh: bool,
     tested: bool,
 ) -> Vec<String> {
-    candidates
-        .iter()
-        .filter(|candidate| candidate.transport == transport)
-        .filter(|candidate| candidate.ipv6 == ipv6)
-        .filter(|candidate| !fresh || candidate.fresh)
-        .filter(|candidate| !tested || candidate.tested)
-        .map(|candidate| candidate.raw.clone())
+    filtered_family_lines(candidates, transport, Some(ipv6), fresh, tested)
+}
+
+fn static_line_ip_version(line: &str) -> Option<bool> {
+    for token in line.split_whitespace() {
+        if token.contains('=') {
+            continue;
+        }
+        if token.starts_with('[') {
+            if let Some(close) = token.find(']') {
+                if let Ok(address) = token[1..close].parse::<IpAddr>() {
+                    return Some(address.is_ipv6());
+                }
+            }
+            continue;
+        }
+        let host = token
+            .rsplit_once(':')
+            .map(|(host, _port)| host)
+            .unwrap_or(token);
+        if let Ok(address) = host.parse::<IpAddr>() {
+            return Some(address.is_ipv6());
+        }
+    }
+    None
+}
+
+fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
+    static_bridges::fallback_lines(transport)
+        .into_iter()
+        .map(str::to_string)
+        .filter(|line| {
+            ipv6.map_or(true, |wanted_ipv6| static_line_ip_version(line) == Some(wanted_ipv6))
+        })
         .collect()
 }
 
@@ -565,16 +635,10 @@ fn write_transport_family(
     with_ipv6: bool,
     counts: &mut BTreeMap<String, usize>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // When live collection produces no candidates, use compiled-in static
-    // lines only when they contain a valid client endpoint. WebTunnel's
-    // bundled metadata is URL-only, so its empty projections remain empty
-    // until a source supplies a literal IP:PORT or [IPv6]:PORT.
-    let fallback = || -> Vec<String> {
-        static_bridges::fallback_lines(transport)
-            .into_iter()
-            .map(str::to_string)
-            .collect()
-    };
+    // Static fallback lines are valid for unfiltered family inventories only.
+    // Do not copy an untested or stale fallback into `_tested`/`_72h` outputs,
+    // and do not put IPv4 fallback lines in an IPv6-specific projection.
+    let fallback = |ipv6: Option<bool>| fallback_family_lines(transport, ipv6);
 
     let standard = [
         (format!("{stem}.txt"), false, false, false),
@@ -583,16 +647,26 @@ fn write_transport_family(
     ];
     for (name, ipv6, fresh, tested) in standard {
         let mut lines = family_lines(candidates, transport, ipv6, fresh, tested);
-        if lines.is_empty() {
-            let fallback_lines = fallback();
-            record_publication_fallback(
-                bridge_dir,
-                &name,
-                transport,
-                fallback_lines.len(),
-                "empty_transport_projection",
-            );
-            lines = fallback_lines;
+        if lines.is_empty() && !fresh && !tested {
+            // The unqualified base file remains compatible with transports
+            // whose bridge lines have no direct IP endpoint (e.g. Snowflake).
+            // Every family-labelled alias below requires an actual IP version.
+            let fallback_scope = if name == format!("{stem}.txt") {
+                None
+            } else {
+                Some(ipv6)
+            };
+            let fallback_lines = fallback(fallback_scope);
+            if !fallback_lines.is_empty() {
+                record_publication_fallback(
+                    bridge_dir,
+                    &name,
+                    transport,
+                    fallback_lines.len(),
+                    "empty_transport_projection",
+                );
+                lines = fallback_lines;
+            }
         }
         let count = write_lines(&bridge_dir.join(&name), lines)?;
         counts.insert(name, count);
@@ -606,16 +680,18 @@ fn write_transport_family(
         ];
         for (name, fresh, tested) in ipv6_outputs {
             let mut lines = family_lines(candidates, transport, true, fresh, tested);
-            if lines.is_empty() {
-                let fallback_lines = fallback();
-                record_publication_fallback(
-                    bridge_dir,
-                    &name,
-                    transport,
-                    fallback_lines.len(),
-                    "empty_transport_ipv6_projection",
-                );
-                lines = fallback_lines;
+            if lines.is_empty() && !fresh && !tested {
+                let fallback_lines = fallback(Some(true));
+                if !fallback_lines.is_empty() {
+                    record_publication_fallback(
+                        bridge_dir,
+                        &name,
+                        transport,
+                        fallback_lines.len(),
+                        "empty_transport_ipv6_projection",
+                    );
+                    lines = fallback_lines;
+                }
             }
             let count = write_lines(&bridge_dir.join(&name), lines)?;
             counts.insert(name, count);
@@ -625,22 +701,124 @@ fn write_transport_family(
         // to the canonical *_72h_ipv6 form rather than dropping compatibility.
         if matches!(stem, "obfs4" | "vanilla" | "webtunnel") {
             let alias = format!("{stem}_ipv6_72h.txt");
-            let mut lines = family_lines(candidates, transport, true, true, false);
-            if lines.is_empty() {
-                let fallback_lines = fallback();
-                record_publication_fallback(
-                    bridge_dir,
-                    &alias,
-                    transport,
-                    fallback_lines.len(),
-                    "empty_transport_ipv6_alias",
-                );
-                lines = fallback_lines;
-            }
+            let lines = family_lines(candidates, transport, true, true, false);
             let count = write_lines(&bridge_dir.join(&alias), lines)?;
             counts.insert(alias, count);
         }
     }
+    Ok(())
+}
+
+/// Build the explicit IPv4/IPv6 and all-address-family names requested by
+/// bridge consumers, while retaining the historical filenames above. Full
+/// inventory aliases may use a transport's compiled-in bridge fallback;
+/// freshness- and test-qualified files are evidence-only and never receive
+/// fallback lines.
+fn write_requested_projections(
+    bridge_dir: &Path,
+    candidates: &[Candidate],
+    counts: &mut BTreeMap<String, usize>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // name, transport, IP version (None = both), recent-only, tested-only,
+    // permit static fallback. Base files and *_all files are inventories;
+    // *_72h and *_tested files must reflect recorded evidence only.
+    const PROJECTIONS: &[(&str, &str, Option<bool>, bool, bool, bool)] = &[
+        ("conjure_ipv4_ipv6_all.txt", "conjure", None, false, false, true),
+        ("conjure_72h_ipv4.txt", "conjure", Some(false), true, false, false),
+        ("conjure_72h_ipv6.txt", "conjure", Some(true), true, false, false),
+        ("conjure_72h.txt", "conjure", None, true, false, false),
+        ("conjure_tested.txt", "conjure", None, false, true, false),
+        ("meek-azure_all.txt", "meek-azure", None, false, false, true),
+        ("meek-azure_72h.txt", "meek-azure", None, true, false, false),
+        ("meek-azure_tested.txt", "meek-azure", None, false, true, false),
+        ("meek_lite_ipv4_ipv6_all.txt", "meek_lite", None, false, false, true),
+        ("meek_lite_ipv4.txt", "meek_lite", Some(false), false, false, true),
+        ("meek_lite_72h_ipv4.txt", "meek_lite", Some(false), true, false, false),
+        ("meek_lite_72h_ipv6.txt", "meek_lite", Some(true), true, false, false),
+        ("meek_lite_ipv6.txt", "meek_lite", Some(true), false, false, true),
+        ("meek_lite_ipv6_tested.txt", "meek_lite", Some(true), false, true, false),
+        ("meek_lite_tested.txt", "meek_lite", Some(false), false, true, false),
+        ("meek_lite_72h.txt", "meek_lite", Some(false), true, false, false),
+        ("obfs4_ipv4_ipv6_all.txt", "obfs4", None, false, false, true),
+        ("obfs4_tested.txt", "obfs4", Some(false), false, true, false),
+        ("obfs4_72h_ipv4.txt", "obfs4", Some(false), true, false, false),
+        ("obfs4_72h_ipv6.txt", "obfs4", Some(true), true, false, false),
+        ("obfs4_ipv4_tested.txt", "obfs4", Some(false), false, true, false),
+        ("obfs4_ipv6_tested.txt", "obfs4", Some(true), false, true, false),
+        ("obfs4_72h.txt", "obfs4", Some(false), true, false, false),
+        ("obfs4_ipv6.txt", "obfs4", Some(true), false, false, true),
+        ("obfs4_ipv6_72h.txt", "obfs4", Some(true), true, false, false),
+        ("snowflak_ipv4_ipv6_all.txt", "snowflake", None, false, false, true),
+        ("snowflake_ipv4_ipv6_all.txt", "snowflake", None, false, false, true),
+        ("snowflake_tested.txt", "snowflake", Some(false), false, true, false),
+        ("snowflake_ipv6_tested", "snowflake", Some(true), false, true, false),
+        ("snowflake_ipv6_tested.txt", "snowflake", Some(true), false, true, false),
+        ("snowflake_ipv6.txt", "snowflake", Some(true), false, false, true),
+        ("snowflake_72h_ipv4.txt", "snowflake", Some(false), true, false, false),
+        ("snowflake_72h_ipv6.txt", "snowflake", Some(true), true, false, false),
+        ("snowflake_72h.txt", "snowflake", Some(false), true, false, false),
+        ("vanilla_ipv4_ipv6_all.txt", "vanilla", None, false, false, true),
+        ("vanilla_tested.txt", "vanilla", Some(false), false, true, false),
+        ("vanilla_72h.txt", "vanilla", Some(false), true, false, false),
+        ("vanilla_72h_ipv6.txt", "vanilla", Some(true), true, false, false),
+        ("vanilla_ipv4.txt", "vanilla", Some(false), false, false, true),
+        ("vanilla_ipv4_72h.txt", "vanilla", Some(false), true, false, false),
+        ("vanilla_ipv4_tested.txt", "vanilla", Some(false), false, true, false),
+        ("vanilla_ipv6.txt", "vanilla", Some(true), false, false, true),
+        ("vanilla_ipv6_72h.txt", "vanilla", Some(true), true, false, false),
+        ("vanilla_ipv6_tested.txt", "vanilla", Some(true), false, true, false),
+        ("webtunnel_ipv4_ipv6_all.txt", "webtunnel", None, false, false, true),
+        ("webtunnel_tested.txt", "webtunnel", Some(false), false, true, false),
+        ("webtunnel_ipv4.txt", "webtunnel", Some(false), false, false, true),
+        ("webtunnel_ipv4_tested.txt", "webtunnel", Some(false), false, true, false),
+        ("webtunnel_ipv6_tested.txt", "webtunnel", Some(true), false, true, false),
+        ("webtunnel_ipv6.txt", "webtunnel", Some(true), false, false, true),
+        ("webtunnel_72h.txt", "webtunnel", Some(false), true, false, false),
+        ("webtunnel_72h_ipv4.txt", "webtunnel", Some(false), true, false, false),
+        ("webtunnel_72h_ipv6.txt", "webtunnel", Some(true), true, false, false),
+        ("webtunnel_ipv6_72h.txt", "webtunnel", Some(true), true, false, false),
+    ];
+
+    for (name, transport, ipv6, fresh, tested, allow_fallback) in PROJECTIONS {
+        let mut lines = filtered_family_lines(candidates, transport, *ipv6, *fresh, *tested);
+        if lines.is_empty() && *allow_fallback {
+            lines = fallback_family_lines(transport, *ipv6);
+        }
+        let count = write_lines(&bridge_dir.join(name), lines)?;
+        counts.insert((*name).to_string(), count);
+    }
+
+    // Keep readable historical names alongside the unambiguous all-family
+    // aliases. These are byte-identical copies, included in the same manifest
+    // and verified ZIP as every other output.
+    copy_projection_alias(
+        bridge_dir,
+        "iran_likely_working_all.txt",
+        "iran_likely_working_ipv4_ipv6_all.txt",
+        counts,
+    )?;
+    copy_projection_alias(
+        bridge_dir,
+        "iran_blocked.txt",
+        "iran_blocked_ipv4_ipv6_all.txt",
+        counts,
+    )?;
+    Ok(())
+}
+
+fn copy_projection_alias(
+    bridge_dir: &Path,
+    source: &str,
+    alias: &str,
+    counts: &mut BTreeMap<String, usize>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let bytes = fs::read(bridge_dir.join(source))?;
+    let line_count = bytes
+        .split(|byte| *byte == b'\n')
+        .filter(|line| !line.iter().all(u8::is_ascii_whitespace))
+        .count();
+    write_atomic(&bridge_dir.join(alias), &bytes)?;
+    counts.insert(alias.to_string(), line_count);
     Ok(())
 }
 
@@ -791,23 +969,9 @@ fn write_iran_projections(
                 .total_cmp(&left.0)
                 .then_with(|| left.1.cmp(&right.1))
         });
-        let mut lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
-        // Apply the same validated-fallback policy to global tested
-        // projections; URL-only WebTunnel metadata is not emitted.
-        if lines.is_empty() {
-            let fallback_lines = static_bridges::fallback_lines(transport)
-                .into_iter()
-                .map(str::to_string)
-                .collect::<Vec<_>>();
-            record_publication_fallback(
-                bridge_dir,
-                &format!("tested_global_{transport}.txt"),
-                transport,
-                fallback_lines.len(),
-                "empty_global_tested_projection",
-            );
-            lines = fallback_lines;
-        }
+        // These outputs are evidence-qualified. Never fill an empty tested
+        // projection with an unprobed static bridge.
+        let lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
         let name = format!("tested_global_{transport}.txt");
         let count = write_lines(&bridge_dir.join(&name), lines)?;
         counts.insert(name, count);
@@ -821,6 +985,34 @@ fn required_missing(bridge_dir: &Path) -> Vec<String> {
         .filter(|name| !bridge_dir.join(name).is_file())
         .map(|name| (*name).to_string())
         .collect()
+}
+
+fn prune_unmanaged_files(bridge_dir: &Path) -> Result<usize, Box<dyn std::error::Error>> {
+    let mut removed = 0;
+    for entry in fs::read_dir(bridge_dir)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else {
+            continue;
+        };
+        if REQUIRED_FILES.contains(&name) {
+            continue;
+        }
+        let path = entry.path();
+        let kind = entry.file_type()?;
+        if kind.is_dir() {
+            fs::remove_dir_all(path)?;
+            removed += 1;
+        } else if kind.is_file() || kind.is_symlink() {
+            fs::remove_file(path)?;
+            removed += 1;
+        }
+    }
+    Ok(removed)
+}
+
+fn is_text_output(name: &str) -> bool {
+    name.ends_with(".txt") || name == "snowflake_ipv6_tested"
 }
 
 fn count_non_empty_lines(path: &Path) -> usize {
@@ -945,7 +1137,7 @@ fn write_manifest(
                 name: name.to_string(),
                 raw_url: format!("{}/bridge/{name}", options.repo_url.trim_end_matches('/')),
                 size_bytes: path.metadata()?.len(),
-                non_empty_lines: name.ends_with(".txt").then(|| count_non_empty_lines(&path)),
+                non_empty_lines: is_text_output(name).then(|| count_non_empty_lines(&path)),
                 sha256: sha256_file(&path)?,
             })
         })
@@ -1051,13 +1243,14 @@ fn render_readme(
 
 ## What the automation actually does
 
-The GitHub Actions workflow is Rust-native and runs a bounded, reproducible pipeline:
+The GitHub Actions workflow is Rust-native and schedules the full pipeline at minute 0 of every UTC hour on the default branch. Runs targeting the same branch serialize without cancellation so artifacts start from the latest committed state; a run taking longer than an hour can delay or coalesce a refresh because GitHub scheduling is best-effort:
 
 1. Collects from built-in fallback bridges and, when available, Tor Project/MOAT sources.
 2. Runs bounded concurrent TCP reachability probes from the GitHub runner. A TCP success is clearly recorded as a **runner-side observation**, not a claim that the endpoint works in Iran.
 3. Applies the existing Rust DPI, NIN, transport-rotation, and Iran scoring components to produce advisory output sets.
-4. Rebuilds **every required file** in `bridge/`, writes a deterministic ZIP, validates JSON/text inputs, and byte-compares every archive entry to its repository counterpart.
-5. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
+4. Rewrites each derived `bridge/` output with atomic file replacement, creates a deterministic ZIP, and verifies every manifest hash and archive entry.
+5. Keeps the canonical history and latest probe report as inputs; removes stale/unmanaged bridge-directory files only after the new publication has passed verification.
+6. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
 
 ## Autonomous diagnostics and dynamic yield
 
@@ -1092,6 +1285,12 @@ Telegram delivery uses a bot token and distributes a bridge inventory outside Gi
 - `iran_likely_working_*` and anti-DPI scores are decision aids, not guarantees. Censorship conditions vary by ISP, region, time, and Tor Browser version.
 - The AI/DPI-labelled reports in `data/` are deterministic scoring/telemetry analyses. They are not a promise that an AI system can defeat filtering or DPI.
 - Never place personal credentials in bridge files, commit messages, workflow inputs, or Telegram captions.
+
+## Filename conventions
+
+- `*_ipv4_ipv6_all.txt` combines candidates across both address families; `*_ipv4.txt` and `*_ipv6.txt` are family-specific.
+- `*_72h*` is limited to candidates observed within the 72-hour freshness window. `*_tested*` is evidence-only; an empty file means no qualifying observation, not a failed build.
+- Historical filenames remain available as compatibility aliases. The requested misspelling `snowflak_ipv4_ipv6_all.txt` and extensionless `snowflake_ipv6_tested` are generated too; correctly spelled `.txt` aliases are included as well.
 
 ## Complete `bridge/` contract
 
@@ -1224,6 +1423,7 @@ pub fn publish_at(
         )?;
     }
     write_iran_projections(&options.bridge_dir, &candidates, &probes, &mut counts)?;
+    write_requested_projections(&options.bridge_dir, &candidates, &mut counts)?;
 
     // `bridge_history.json` and `iran_results.json` are canonical inputs but
     // are still represented in the summary so the manifest makes their use
@@ -1253,6 +1453,14 @@ pub fn publish_at(
     };
     verify_publication(options)?;
     render_readme(options, &report)?;
+    // Do not clear the canonical history/probe inputs. Once a replacement
+    // publication has passed manifest+ZIP verification, discard stale or
+    // unknown bridge-directory files so the published directory is a clean,
+    // exact contract on every scheduled refresh.
+    let pruned = prune_unmanaged_files(&options.bridge_dir)?;
+    if pruned > 0 {
+        eprintln!("sync_bridge_outputs: removed {pruned} stale bridge file(s)/directory(s)");
+    }
     Ok(report)
 }
 
@@ -1285,7 +1493,7 @@ pub fn verify_publication(options: &PublishOptions) -> Result<(), Box<dyn std::e
         }
     }
 
-    for name in REQUIRED_FILES.iter().filter(|name| name.ends_with(".txt")) {
+    for name in REQUIRED_FILES.iter().filter(|name| is_text_output(name)) {
         let body = fs::read_to_string(options.bridge_dir.join(name))?;
         if body.contains('\0') {
             return Err(invalid(format!("text output contains NUL byte: {name}")));
@@ -1302,6 +1510,22 @@ pub fn verify_publication(options: &PublishOptions) -> Result<(), Box<dyn std::e
             "telegram_manifest.json does not attest a complete inventory",
         ));
     }
+    let listed_files = manifest
+        .get("required_files")
+        .and_then(Value::as_array)
+        .ok_or_else(|| invalid("telegram_manifest.json required_files must be an array"))?
+        .iter()
+        .map(|name| {
+            name.as_str()
+                .ok_or_else(|| invalid("telegram_manifest.json required_files entries must be strings"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    if listed_files != REQUIRED_FILES.to_vec() {
+        return Err(invalid(
+            "telegram_manifest.json required_files does not match the publisher contract",
+        ));
+    }
+
     let file_entries = manifest
         .get("files")
         .and_then(Value::as_array)
@@ -1386,17 +1610,23 @@ mod tests {
     }
 
     #[test]
-    fn write_transport_family_falls_back_to_static_lines_when_empty() {
+    fn write_transport_family_falls_back_only_for_unqualified_inventory() {
         let dir = std::env::temp_dir().join(format!("pub_fb_{}", std::process::id()));
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let mut counts = BTreeMap::new();
-        // No candidates at all -> every obfs4 projection must be populated
-        // from the static fallback, never truncated to 0 bytes.
+        // A static bridge is valid in the unqualified inventory, but must not
+        // be labelled recent, tested, or IPv6 without supporting evidence.
         write_transport_family(&bridge_dir, &[], "obfs4", "obfs4", true, &mut counts)
             .expect("write family");
+        let base = std::fs::read_to_string(bridge_dir.join("obfs4.txt")).expect("base file");
+        assert!(!base.trim().is_empty(), "obfs4 base inventory uses static fallback");
+        assert_eq!(
+            *counts.get("obfs4.txt").expect("counted"),
+            base.lines().count(),
+            "obfs4 base count mismatch"
+        );
         for name in [
-            "obfs4.txt",
             "obfs4_72h.txt",
             "obfs4_ipv6.txt",
             "obfs4_72h_ipv6.txt",
@@ -1405,12 +1635,8 @@ mod tests {
             "obfs4_tested.txt",
         ] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
-            assert!(body.lines().count() > 0, "{name} must not be empty");
-            assert_eq!(
-                *counts.get(name).expect("counted"),
-                body.lines().count(),
-                "{name} count mismatch"
-            );
+            assert!(body.trim().is_empty(), "{name} must not claim unsupported evidence");
+            assert_eq!(*counts.get(name).expect("counted"), 0);
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1432,16 +1658,18 @@ mod tests {
             &mut counts,
         )
         .expect("write meek-azure");
+        for name in ["conjure.txt", "meek-azure.txt"] {
+            let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
+            assert!(body.lines().count() > 0, "{name} must contain static inventory");
+        }
         for name in [
-            "conjure.txt",
             "conjure_72h.txt",
             "conjure_tested.txt",
-            "meek-azure.txt",
             "meek-azure_72h.txt",
             "meek-azure_tested.txt",
         ] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
-            assert!(body.lines().count() > 0, "{name} must not be empty");
+            assert!(body.trim().is_empty(), "{name} must reflect evidence only");
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1512,10 +1740,9 @@ mod tests {
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let mut counts = BTreeMap::new();
-        // Empty candidates AND empty probes -> projections use validated
-        // static fallbacks where available. WebTunnel remains empty because
-        // its bundled metadata has no direct client endpoint; blocked stays
-        // empty because there is no evidence.
+        // Empty candidates AND empty probes -> advisory working sets use
+        // validated static fallbacks where available. Evidence-qualified
+        // global-tested and blocked lists remain empty without observations.
         write_iran_projections(&bridge_dir, &[], &[], &mut counts).expect("write projections");
         for name in [
             "iran_likely_working_obfs4.txt",
@@ -1523,20 +1750,20 @@ mod tests {
             "iran_likely_working_snowflake.txt",
             "iran_likely_working_all.txt",
             "iran_likely_working_nin.txt",
-            "tested_global_obfs4.txt",
-            "tested_global_vanilla.txt",
         ] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
             assert!(body.lines().count() > 0, "{name} must not be empty");
         }
         for name in [
             "iran_likely_working_webtunnel.txt",
+            "tested_global_obfs4.txt",
+            "tested_global_vanilla.txt",
             "tested_global_webtunnel.txt",
         ] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
             assert!(
                 body.trim().is_empty(),
-                "{name} must not contain URL-only WebTunnel metadata"
+                "{name} must remain empty without corresponding evidence"
             );
         }
         let blocked = std::fs::read_to_string(bridge_dir.join("iran_blocked.txt")).expect("file");

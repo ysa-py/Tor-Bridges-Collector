@@ -330,8 +330,9 @@ jobs:
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 10b: invariant-audit — always-on static/data integrity magnifier.
-  # Verifies JSON parse-ability, the 55-file publication contract, the lib.rs
-  # module graph, pipeline STAGES<->dispatch<->workflow wiring, per-bridge
+  # Verifies JSON parse-ability, the manifest-driven bridge publication
+  # contract, the lib.rs module graph, pipeline STAGES<->dispatch<->workflow
+  # wiring, per-bridge
   # evidence stamps, duplicate-free bridge lists, shell syntax, and that the
   # committed Stage 8s Anti-DPI Elite artifacts are fresh (identical to a
   # regeneration from the committed reports). Offline, fast, fail-loud.

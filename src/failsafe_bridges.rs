@@ -37,9 +37,9 @@
 //!   6. **Empty JSON repair.** Any 0-byte `bridge/*.json` file is rewritten
 //!      as a valid empty JSON array `[]` so downstream parsers never fail.
 //!
-//! The workflow runs this FAILSAFE twice: once right after the scrapers
-//! (historical placement) and once more after every scraper/tester/export
-//! stage finishes, immediately before publication.
+//! The workflow runs this FAILSAFE before the probe stages to prepare collector
+//! inputs. The final publisher later rebuilds and verifies the output contract;
+//! it does not run this force-populator after manifest/ZIP verification.
 
 use std::collections::BTreeSet;
 use std::fs;

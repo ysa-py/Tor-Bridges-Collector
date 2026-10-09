@@ -70,11 +70,13 @@ but the v50/v60 directive language ("ML/ONNX inference") is **not** what these
 modules are.
 
 ## GAP-9 — Fresh collection cadence (PARTIAL)
-`torshield-ir.yml` schedules `0 */3 * * *` (every 3 h) and `main-ci.yml`
-every 6 h; the v50 "15 min / 30 min / 1 h" source cadences do not exist as a
-scheduler. The 74-minute full pipeline makes sub-hourly crons impractical
-without splitting stages; the pipeline's adaptive yield logic
-(`collector_yield_*`) is the existing mitigation.
+`torshield-ir.yml` now schedules `0 * * * *` (hourly UTC); scheduled runs
+share a non-cancelling concurrency group with other runs targeting the same
+branch so overlapping artifacts cannot race publication. The full pipeline can
+take longer than an hour, and GitHub permits only one pending run per group, so
+completed refreshes can be delayed or scheduled events coalesced. The v50
+"15 min / 30 min / 1 h" per-source cadences are still not independent
+schedulers; adaptive yield logic (`collector_yield_*`) remains the mitigation.
 
 ## GAP-10 — Sandbox disk budget (RESOLVED this session)
 The 6 GB overlay filled during the first full test build; resolved by removing
