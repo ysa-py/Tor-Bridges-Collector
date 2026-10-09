@@ -319,7 +319,7 @@ jobs:
     # annotations. Re-run only after a lint failure and publish each warning as
     # an annotation so the exact file, line, and lint remain visible in Checks.
     - name: Annotate Clippy diagnostics
-      if: steps.clippy.outcome == 'failure'
+      if: ${{ failure() && steps.clippy.outcome == 'failure' }}
       run: |
         set -euo pipefail
         diagnostic_log="$RUNNER_TEMP/clippy-diagnostics.jsonl"
