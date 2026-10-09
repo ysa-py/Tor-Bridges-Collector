@@ -362,6 +362,17 @@ def c14_workflow_automation_gates():
     )
     main_only_collection = bool(collection_gate) and collection_gate.group(1) == expected_collection_gate
 
+    main_ci_path = os.path.join(REPO, ".github", "workflows", "main-ci.yml")
+    main_ci = open(main_ci_path, encoding="utf-8").read()
+    main_ci_pipeline_gate = bool(
+        re.search(
+            r"(?m)^      - name: Run pipeline \(--all\)\n"
+            r"        if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n"
+            r"        run: cargo run --release --bin pipeline -- --all$",
+            main_ci,
+        )
+    )
+
     def guard_sets(header, assignment):
         block = re.search(re.escape(header) + r"\n(.*?)^\s*fi\s*$", workflow, re.M | re.S)
         return bool(block and re.search(rf"(?m)^\s*{re.escape(assignment)}\s*$", block.group(1)))
@@ -386,13 +397,20 @@ def c14_workflow_automation_gates():
         pull_request_upload_block and non_main_upload_block and commit_main_only
     )
     production_mutations_main_only = main_only_collection and non_main_deploy_block
-    ok = hourly and main_only_collection and publication_gates and production_mutations_main_only
+    ok = (
+        hourly
+        and main_only_collection
+        and publication_gates
+        and production_mutations_main_only
+        and main_ci_pipeline_gate
+    )
     record(
         "C14 workflow-automation-gates",
         ok,
         f"hourly={hourly}, main-only_collection={main_only_collection}, "
         f"main-only_dual-persist={publication_gates}, "
-        f"main-only_deploy={production_mutations_main_only}",
+        f"main-only_deploy={production_mutations_main_only}, "
+        f"main-ci-pipeline={main_ci_pipeline_gate}",
     )
 
 

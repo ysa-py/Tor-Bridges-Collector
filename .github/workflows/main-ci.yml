@@ -212,7 +212,9 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-scrape-
       - name: Build pipeline
         run: cargo build --release --bin pipeline --bin tor-bridges-collector
+      # PRs still compile/validate; only main may run live pipeline stages.
       - name: Run pipeline (--all)
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: cargo run --release --bin pipeline -- --all
 
   # ──────────────────────────────────────────────────────────────────────
