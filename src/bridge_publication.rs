@@ -622,7 +622,9 @@ fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
         .into_iter()
         .map(str::to_string)
         .filter(|line| {
-            ipv6.map_or(true, |wanted_ipv6| static_line_ip_version(line) == Some(wanted_ipv6))
+            ipv6.map_or(true, |wanted_ipv6| {
+                static_line_ip_version(line) == Some(wanted_ipv6)
+            })
         })
         .collect()
 }
@@ -723,60 +725,382 @@ fn write_requested_projections(
     // permit static fallback. Base files and *_all files are inventories;
     // *_72h and *_tested files must reflect recorded evidence only.
     const PROJECTIONS: &[(&str, &str, Option<bool>, bool, bool, bool)] = &[
-        ("conjure_ipv4_ipv6_all.txt", "conjure", None, false, false, true),
-        ("conjure_72h_ipv4.txt", "conjure", Some(false), true, false, false),
-        ("conjure_72h_ipv6.txt", "conjure", Some(true), true, false, false),
+        (
+            "conjure_ipv4_ipv6_all.txt",
+            "conjure",
+            None,
+            false,
+            false,
+            true,
+        ),
+        (
+            "conjure_72h_ipv4.txt",
+            "conjure",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "conjure_72h_ipv6.txt",
+            "conjure",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
         ("conjure_72h.txt", "conjure", None, true, false, false),
         ("conjure_tested.txt", "conjure", None, false, true, false),
         ("meek-azure_all.txt", "meek-azure", None, false, false, true),
         ("meek-azure_72h.txt", "meek-azure", None, true, false, false),
-        ("meek-azure_tested.txt", "meek-azure", None, false, true, false),
-        ("meek_lite_ipv4_ipv6_all.txt", "meek_lite", None, false, false, true),
-        ("meek_lite_ipv4.txt", "meek_lite", Some(false), false, false, true),
-        ("meek_lite_72h_ipv4.txt", "meek_lite", Some(false), true, false, false),
-        ("meek_lite_72h_ipv6.txt", "meek_lite", Some(true), true, false, false),
-        ("meek_lite_ipv6.txt", "meek_lite", Some(true), false, false, true),
-        ("meek_lite_ipv6_tested.txt", "meek_lite", Some(true), false, true, false),
-        ("meek_lite_tested.txt", "meek_lite", Some(false), false, true, false),
-        ("meek_lite_72h.txt", "meek_lite", Some(false), true, false, false),
+        (
+            "meek-azure_tested.txt",
+            "meek-azure",
+            None,
+            false,
+            true,
+            false,
+        ),
+        (
+            "meek_lite_ipv4_ipv6_all.txt",
+            "meek_lite",
+            None,
+            false,
+            false,
+            true,
+        ),
+        (
+            "meek_lite_ipv4.txt",
+            "meek_lite",
+            Some(false),
+            false,
+            false,
+            true,
+        ),
+        (
+            "meek_lite_72h_ipv4.txt",
+            "meek_lite",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "meek_lite_72h_ipv6.txt",
+            "meek_lite",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "meek_lite_ipv6.txt",
+            "meek_lite",
+            Some(true),
+            false,
+            false,
+            true,
+        ),
+        (
+            "meek_lite_ipv6_tested.txt",
+            "meek_lite",
+            Some(true),
+            false,
+            true,
+            false,
+        ),
+        (
+            "meek_lite_tested.txt",
+            "meek_lite",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "meek_lite_72h.txt",
+            "meek_lite",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
         ("obfs4_ipv4_ipv6_all.txt", "obfs4", None, false, false, true),
         ("obfs4_tested.txt", "obfs4", Some(false), false, true, false),
-        ("obfs4_72h_ipv4.txt", "obfs4", Some(false), true, false, false),
-        ("obfs4_72h_ipv6.txt", "obfs4", Some(true), true, false, false),
-        ("obfs4_ipv4_tested.txt", "obfs4", Some(false), false, true, false),
-        ("obfs4_ipv6_tested.txt", "obfs4", Some(true), false, true, false),
+        (
+            "obfs4_72h_ipv4.txt",
+            "obfs4",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "obfs4_72h_ipv6.txt",
+            "obfs4",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "obfs4_ipv4_tested.txt",
+            "obfs4",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "obfs4_ipv6_tested.txt",
+            "obfs4",
+            Some(true),
+            false,
+            true,
+            false,
+        ),
         ("obfs4_72h.txt", "obfs4", Some(false), true, false, false),
         ("obfs4_ipv6.txt", "obfs4", Some(true), false, false, true),
-        ("obfs4_ipv6_72h.txt", "obfs4", Some(true), true, false, false),
-        ("snowflak_ipv4_ipv6_all.txt", "snowflake", None, false, false, true),
-        ("snowflake_ipv4_ipv6_all.txt", "snowflake", None, false, false, true),
-        ("snowflake_tested.txt", "snowflake", Some(false), false, true, false),
-        ("snowflake_ipv6_tested", "snowflake", Some(true), false, true, false),
-        ("snowflake_ipv6_tested.txt", "snowflake", Some(true), false, true, false),
-        ("snowflake_ipv6.txt", "snowflake", Some(true), false, false, true),
-        ("snowflake_72h_ipv4.txt", "snowflake", Some(false), true, false, false),
-        ("snowflake_72h_ipv6.txt", "snowflake", Some(true), true, false, false),
-        ("snowflake_72h.txt", "snowflake", Some(false), true, false, false),
-        ("vanilla_ipv4_ipv6_all.txt", "vanilla", None, false, false, true),
-        ("vanilla_tested.txt", "vanilla", Some(false), false, true, false),
-        ("vanilla_72h.txt", "vanilla", Some(false), true, false, false),
-        ("vanilla_72h_ipv6.txt", "vanilla", Some(true), true, false, false),
-        ("vanilla_ipv4.txt", "vanilla", Some(false), false, false, true),
-        ("vanilla_ipv4_72h.txt", "vanilla", Some(false), true, false, false),
-        ("vanilla_ipv4_tested.txt", "vanilla", Some(false), false, true, false),
-        ("vanilla_ipv6.txt", "vanilla", Some(true), false, false, true),
-        ("vanilla_ipv6_72h.txt", "vanilla", Some(true), true, false, false),
-        ("vanilla_ipv6_tested.txt", "vanilla", Some(true), false, true, false),
-        ("webtunnel_ipv4_ipv6_all.txt", "webtunnel", None, false, false, true),
-        ("webtunnel_tested.txt", "webtunnel", Some(false), false, true, false),
-        ("webtunnel_ipv4.txt", "webtunnel", Some(false), false, false, true),
-        ("webtunnel_ipv4_tested.txt", "webtunnel", Some(false), false, true, false),
-        ("webtunnel_ipv6_tested.txt", "webtunnel", Some(true), false, true, false),
-        ("webtunnel_ipv6.txt", "webtunnel", Some(true), false, false, true),
-        ("webtunnel_72h.txt", "webtunnel", Some(false), true, false, false),
-        ("webtunnel_72h_ipv4.txt", "webtunnel", Some(false), true, false, false),
-        ("webtunnel_72h_ipv6.txt", "webtunnel", Some(true), true, false, false),
-        ("webtunnel_ipv6_72h.txt", "webtunnel", Some(true), true, false, false),
+        (
+            "obfs4_ipv6_72h.txt",
+            "obfs4",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "snowflak_ipv4_ipv6_all.txt",
+            "snowflake",
+            None,
+            false,
+            false,
+            true,
+        ),
+        (
+            "snowflake_ipv4_ipv6_all.txt",
+            "snowflake",
+            None,
+            false,
+            false,
+            true,
+        ),
+        (
+            "snowflake_tested.txt",
+            "snowflake",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "snowflake_ipv6_tested",
+            "snowflake",
+            Some(true),
+            false,
+            true,
+            false,
+        ),
+        (
+            "snowflake_ipv6_tested.txt",
+            "snowflake",
+            Some(true),
+            false,
+            true,
+            false,
+        ),
+        (
+            "snowflake_ipv6.txt",
+            "snowflake",
+            Some(true),
+            false,
+            false,
+            true,
+        ),
+        (
+            "snowflake_72h_ipv4.txt",
+            "snowflake",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "snowflake_72h_ipv6.txt",
+            "snowflake",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "snowflake_72h.txt",
+            "snowflake",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "vanilla_ipv4_ipv6_all.txt",
+            "vanilla",
+            None,
+            false,
+            false,
+            true,
+        ),
+        (
+            "vanilla_tested.txt",
+            "vanilla",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "vanilla_72h.txt",
+            "vanilla",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "vanilla_72h_ipv6.txt",
+            "vanilla",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "vanilla_ipv4.txt",
+            "vanilla",
+            Some(false),
+            false,
+            false,
+            true,
+        ),
+        (
+            "vanilla_ipv4_72h.txt",
+            "vanilla",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "vanilla_ipv4_tested.txt",
+            "vanilla",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "vanilla_ipv6.txt",
+            "vanilla",
+            Some(true),
+            false,
+            false,
+            true,
+        ),
+        (
+            "vanilla_ipv6_72h.txt",
+            "vanilla",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "vanilla_ipv6_tested.txt",
+            "vanilla",
+            Some(true),
+            false,
+            true,
+            false,
+        ),
+        (
+            "webtunnel_ipv4_ipv6_all.txt",
+            "webtunnel",
+            None,
+            false,
+            false,
+            true,
+        ),
+        (
+            "webtunnel_tested.txt",
+            "webtunnel",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "webtunnel_ipv4.txt",
+            "webtunnel",
+            Some(false),
+            false,
+            false,
+            true,
+        ),
+        (
+            "webtunnel_ipv4_tested.txt",
+            "webtunnel",
+            Some(false),
+            false,
+            true,
+            false,
+        ),
+        (
+            "webtunnel_ipv6_tested.txt",
+            "webtunnel",
+            Some(true),
+            false,
+            true,
+            false,
+        ),
+        (
+            "webtunnel_ipv6.txt",
+            "webtunnel",
+            Some(true),
+            false,
+            false,
+            true,
+        ),
+        (
+            "webtunnel_72h.txt",
+            "webtunnel",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "webtunnel_72h_ipv4.txt",
+            "webtunnel",
+            Some(false),
+            true,
+            false,
+            false,
+        ),
+        (
+            "webtunnel_72h_ipv6.txt",
+            "webtunnel",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
+        (
+            "webtunnel_ipv6_72h.txt",
+            "webtunnel",
+            Some(true),
+            true,
+            false,
+            false,
+        ),
     ];
 
     for (name, transport, ipv6, fresh, tested, allow_fallback) in PROJECTIONS {
@@ -1516,8 +1840,9 @@ pub fn verify_publication(options: &PublishOptions) -> Result<(), Box<dyn std::e
         .ok_or_else(|| invalid("telegram_manifest.json required_files must be an array"))?
         .iter()
         .map(|name| {
-            name.as_str()
-                .ok_or_else(|| invalid("telegram_manifest.json required_files entries must be strings"))
+            name.as_str().ok_or_else(|| {
+                invalid("telegram_manifest.json required_files entries must be strings")
+            })
         })
         .collect::<Result<Vec<_>, _>>()?;
     if listed_files != REQUIRED_FILES.to_vec() {
@@ -1620,7 +1945,10 @@ mod tests {
         write_transport_family(&bridge_dir, &[], "obfs4", "obfs4", true, &mut counts)
             .expect("write family");
         let base = std::fs::read_to_string(bridge_dir.join("obfs4.txt")).expect("base file");
-        assert!(!base.trim().is_empty(), "obfs4 base inventory uses static fallback");
+        assert!(
+            !base.trim().is_empty(),
+            "obfs4 base inventory uses static fallback"
+        );
         assert_eq!(
             *counts.get("obfs4.txt").expect("counted"),
             base.lines().count(),
@@ -1635,7 +1963,10 @@ mod tests {
             "obfs4_tested.txt",
         ] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
-            assert!(body.trim().is_empty(), "{name} must not claim unsupported evidence");
+            assert!(
+                body.trim().is_empty(),
+                "{name} must not claim unsupported evidence"
+            );
             assert_eq!(*counts.get(name).expect("counted"), 0);
         }
         let _ = std::fs::remove_dir_all(&dir);
@@ -1660,7 +1991,10 @@ mod tests {
         .expect("write meek-azure");
         for name in ["conjure.txt", "meek-azure.txt"] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
-            assert!(body.lines().count() > 0, "{name} must contain static inventory");
+            assert!(
+                body.lines().count() > 0,
+                "{name} must contain static inventory"
+            );
         }
         for name in [
             "conjure_72h.txt",

@@ -63,10 +63,18 @@ fn preflight(repo_root: &Path) -> Value {
         "Cargo.lock",
         "src/lib.rs",
         "src/pipeline_diagnostics.rs",
-        "bridge/iran_results.json",
         "scripts/self_heal.sh",
         "scripts/self_heal.ps1",
     ];
+    // Collection outputs are created by later stages and are intentionally
+    // absent from a fresh checkout. Report them for visibility without making
+    // Stage 00 fail before the collector has had a chance to run.
+    let pipeline_outputs = ["bridge/iran_results.json"];
+    let pending_pipeline_outputs: Vec<&str> = pipeline_outputs
+        .iter()
+        .copied()
+        .filter(|path| !repo_root.join(path).is_file())
+        .collect();
     let missing: Vec<&str> = required
         .iter()
         .copied()
@@ -78,6 +86,7 @@ fn preflight(repo_root: &Path) -> Value {
         "status": if missing.is_empty() { "healthy" } else { "unhealthy" },
         "required_files_checked": required.len(),
         "missing_files": missing,
+        "pipeline_outputs_pending": pending_pipeline_outputs,
         "safe_repairs": [
             "ensure data directory",
             "initialise empty JSON output documents",

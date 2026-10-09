@@ -141,11 +141,7 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
     let options = options(&root);
     std::fs::write(options.bridge_dir.join("obsolete-output.txt"), "stale\n").unwrap();
     std::fs::create_dir_all(options.bridge_dir.join("old-output")).unwrap();
-    std::fs::write(
-        options.bridge_dir.join("old-output/old.txt"),
-        "stale\n",
-    )
-    .unwrap();
+    std::fs::write(options.bridge_dir.join("old-output/old.txt"), "stale\n").unwrap();
     let now = Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap();
     let report = publish_at(&options, now).unwrap();
 
@@ -232,8 +228,14 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
         "tor_bridges.zip",
     ];
     for name in USER_REQUESTED_FILES {
-        assert!(REQUIRED_FILES.contains(name), "missing contract entry for {name}");
-        assert!(options.bridge_dir.join(*name).is_file(), "missing output {name}");
+        assert!(
+            REQUIRED_FILES.contains(name),
+            "missing contract entry for {name}"
+        );
+        assert!(
+            options.bridge_dir.join(*name).is_file(),
+            "missing output {name}"
+        );
     }
 
     assert_eq!(
@@ -259,10 +261,22 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
     assert!(read("snowflake_ipv6_tested").trim().is_empty());
     assert!(read("vanilla_ipv6.txt").contains("[2001:4860:4860::8844]:443"));
     assert!(read("vanilla_ipv6_tested.txt").trim().is_empty());
-    assert_eq!(read("iran_likely_working_all.txt"), read("iran_likely_working_ipv4_ipv6_all.txt"));
-    assert_eq!(read("iran_blocked.txt"), read("iran_blocked_ipv4_ipv6_all.txt"));
-    assert_eq!(read("snowflak_ipv4_ipv6_all.txt"), read("snowflake_ipv4_ipv6_all.txt"));
-    assert_eq!(read("snowflake_ipv6_tested"), read("snowflake_ipv6_tested.txt"));
+    assert_eq!(
+        read("iran_likely_working_all.txt"),
+        read("iran_likely_working_ipv4_ipv6_all.txt")
+    );
+    assert_eq!(
+        read("iran_blocked.txt"),
+        read("iran_blocked_ipv4_ipv6_all.txt")
+    );
+    assert_eq!(
+        read("snowflak_ipv4_ipv6_all.txt"),
+        read("snowflake_ipv4_ipv6_all.txt")
+    );
+    assert_eq!(
+        read("snowflake_ipv6_tested"),
+        read("snowflake_ipv6_tested.txt")
+    );
 
     let manifest: serde_json::Value = serde_json::from_str(
         &std::fs::read_to_string(options.bridge_dir.join("telegram_manifest.json")).unwrap(),

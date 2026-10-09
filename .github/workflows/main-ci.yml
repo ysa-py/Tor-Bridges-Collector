@@ -204,8 +204,16 @@ jobs:
             target
           key: ${{ runner.os }}-cargo-rerank-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-rerank-
+      - name: Ensure bridge dir and fallback input
+        run: |
+          set -euo pipefail
+          mkdir -p bridge
+          if [[ ! -f bridge/iran_results.json ]]; then
+            printf '%s\n' '{"bridges":[],"summary":{"total_tested":0}}' > bridge/iran_results.json
+            echo "No checked-out bridge snapshot; using an empty input for the reranker smoke test."
+          fi
       - name: Run AI Bridge Re-Ranker
-        run: cargo run --release --bin ai_bridge_reranker
+        run: cargo run --release --bin ai_bridge_reranker -- --input bridge/iran_results.json --output bridge/bridges_ai_iran_ranked.json --censorship-level 4 --top-n 0
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 6: Package Final Artifact

@@ -64,7 +64,7 @@ ndarray = "=0.15.6"
 # Use Rustls' ring provider explicitly. Disabling default features prevents an
 # ambiguous aws-lc/ring process-wide provider when the collector builds its
 # controlled TLS ClientHello profiles.
-rustls = { version = "=0.23.41", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 pqcrypto-kyber = "=0.8.1"
 pqcrypto-mlkem = "=0.1.1"
 hickory-dns = "=0.25.2"
