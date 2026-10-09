@@ -64,6 +64,10 @@ jobs:
         run: ./target/release/security_scan .
       - name: Test optional-secret reporter
         run: bash scripts/test_report_optional_secrets.sh
+      - name: Test probe relay secret validation
+        run: bash scripts/test_validate_probe_relay_secrets.sh
+      - name: Test probe relay smoke retries and redaction
+        run: bash scripts/test_probe_relay_smoke.sh
       - name: Optional secret availability
         id: secret_presence
         env:

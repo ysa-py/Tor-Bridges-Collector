@@ -173,6 +173,10 @@ jobs:
       # ── Optional-secret telemetry passes booleans only, never secret values ─
     - name: Test optional-secret reporter
       run: bash scripts/test_report_optional_secrets.sh
+    - name: Test probe relay secret validation
+      run: bash scripts/test_validate_probe_relay_secrets.sh
+    - name: Test probe relay smoke retries and redaction
+      run: bash scripts/test_probe_relay_smoke.sh
 
     - name: Optional secret availability
       id: secret_presence
@@ -641,11 +645,9 @@ jobs:
       #      using the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
       #      secrets (NEVER the CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11
       #      slots, which belong to the AI Gateway provider rotation system).
-      #   2. Run a live smoke-test curl to confirm the Worker is alive and
-      #      returns 200 — fail loudly if it does not.
-      #   3. If CF_WORKER_ACCOUNT_ID or PROBE_RELAY_URL is unset, skip
-      #      Stage 4 cleanly (exit 0, logged as SKIPPED) rather than burning
-      #      10+ minutes on guaranteed HTTP 404s.
+      #   2. Run a bounded, redacted live smoke test; retry transient failures.
+      #   3. If credentials are unavailable or the relay remains unreachable,
+      #      explicitly skip Stage 4 while collection and publication continue.
     - name: Stage 4-prep — Deploy probe relay + live smoke test
       id: relay_prep
       env:
@@ -653,85 +655,24 @@ jobs:
         PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
         CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID }}
         CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
+        HAS_PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL != '' }}
+        HAS_PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN != '' }}
+        HAS_CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID != '' }}
+        HAS_CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN != '' }}
       run: |
         set -euo pipefail
         echo "═══ Stage 4-prep: Probe Relay Deployment + Smoke Test ═══"
 
-        # ── Secret validation helper ───────────────────────────────
-        # Validates each secret with three distinct failure modes:
-        #   1. UNSET: the secret was never created (env var absent)
-        #   2. EMPTY: secret exists but value is empty string or whitespace
-        #   3. INVALID: secret set but fails format validation
-        #
-        # Outputs a clear, actionable error for each failure mode so the
-        # owner knows exactly what to fix — no more confusing "not set"
-        # messages when the secret exists but is blank.
-        validate_secret() {
-          local name="$1"
-          local raw_val="$2"
-          local format_check="${3:-}"
-
-          # Mode 1: secret variable does not exist at all
-          if [ -z "${raw_val+set}" ]; then
-            echo "::error::SECRET UNSET: '${name}' was never created. Go to GitHub → Settings → Secrets and variables → Actions → New repository secret, name it exactly '${name}'."
-            return 1
-          fi
-
-          # Mode 2: secret exists but value is empty or only whitespace
-          local trimmed
-          trimmed="$(printf '%s' "${raw_val}" | xargs)"
-          if [ -z "${trimmed}" ]; then
-            echo "::error::SECRET EMPTY: '${name}' exists in GitHub Secrets but its value is blank (empty string or whitespace only). Go to GitHub → Settings → Secrets and variables → Actions → edit '${name}' and set a real value."
-            return 1
-          fi
-
-          # Mode 3: format validation (optional, caller-specified)
-          if [ -n "${format_check}" ]; then
-            case "${format_check}" in
-              HTTPS_URL)
-                if ! printf '%s' "${trimmed}" | grep -qE '^https://[a-zA-Z0-9.-]+(\.[a-zA-Z]{2,})+(/.*)?$'; then
-                  echo "::error::SECRET INVALID: '${name}' is set to '${trimmed}' but does not look like a valid HTTPS URL (must start with https:// and contain a valid hostname). Update the secret value."
-                  return 1
-                fi
-                ;;
-              CF_ACCOUNT_ID)
-                if ! printf '%s' "${trimmed}" | grep -qE '^[a-f0-9]{32}$'; then
-                  echo "::error::SECRET INVALID: '${name}' is set but does not look like a Cloudflare Account ID (32 hex chars). Update the secret value."
-                  return 1
-                fi
-                ;;
-              CF_API_TOKEN)
-                if [ "${#trimmed}" -lt 20 ]; then
-                  echo "::error::SECRET INVALID: '${name}' is set but too short to be a valid Cloudflare API token (< 20 chars). Update the secret value."
-                  return 1
-                fi
-                ;;
-              NONEMPTY)
-                # Already validated by the empty check above
-                ;;
-            esac
-          fi
-
-          echo "  ✓ ${name} is valid (length=${#trimmed})"
-          return 0
-        }
-
-        # ── Validate all four Stage 4 secrets ─────────────────────
-        ERRORS=0
-        validate_secret "PROBE_RELAY_URL"     "${PROBE_RELAY_URL:-}"     "HTTPS_URL"      || ERRORS=$((ERRORS + 1))
-        validate_secret "PROBE_RELAY_TOKEN"   "${PROBE_RELAY_TOKEN:-}"   "NONEMPTY"       || ERRORS=$((ERRORS + 1))
-        validate_secret "CF_WORKER_ACCOUNT_ID" "${CF_WORKER_ACCOUNT_ID:-}" "CF_ACCOUNT_ID" || ERRORS=$((ERRORS + 1))
-        validate_secret "CF_WORKER_API_TOKEN" "${CF_WORKER_API_TOKEN:-}" "CF_API_TOKEN"   || ERRORS=$((ERRORS + 1))
-
-        if [ "$ERRORS" -gt 0 ]; then
-          echo ""
-          echo "::error::❌ ${ERRORS} Stage 4 secret(s) failed validation. Stage 4 will be skipped."
-          echo "::notice::Fix the secrets listed above, then re-run this workflow."
-          echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
+        # Validate explicit secret-presence booleans and formats without
+        # printing values. The tested helper emits PROBE_RELAY_SKIP=true when
+        # optional deployment credentials are absent or invalid.
+        if ! bash scripts/validate_probe_relay_secrets.sh; then
+          echo "::error::Stage 4 secret validator failed unexpectedly."
+          exit 1
+        fi
+        if grep -Fqx 'PROBE_RELAY_SKIP=true' "${GITHUB_OUTPUT}"; then
           exit 0
         fi
-
-        echo "Relay URL: ${PROBE_RELAY_URL}"
 
         # ── Version-safe deploy guard (additive, 2026-09-08) ──────────
         # MEASURED PROBLEM: the relay's deployed version is not branch-pinned.
@@ -773,10 +714,26 @@ jobs:
         fi
         echo "Incoming relay version: sha=${INCOMING_SHA} ts=${INCOMING_TS} (last commit touching probe-relay/)"
 
-        LIVE_BODY="$(curl -s -m 15 -o /tmp/relay_live_version.json -w '%{http_code}' "${RELAY_BASE_URL}/" 2>/dev/null || echo "000")"
-        LIVE_SHA="$(jq -r '.version.git_sha // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
-        LIVE_TS="$(jq -r '.version.git_ts // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
-        echo "Live relay version query: HTTP ${LIVE_BODY} sha=${LIVE_SHA:-<none>} ts=${LIVE_TS:-<none>}"
+        rm -f /tmp/relay_live_version.json
+        LIVE_HTTP_CODE=000
+        if LIVE_HTTP_CODE="$(curl --silent --show-error --max-time 15 \
+            --output /tmp/relay_live_version.json --write-out '%{http_code}' \
+            "${RELAY_BASE_URL}/" 2>/dev/null)"; then
+          :
+        else
+          LIVE_HTTP_CODE=000
+        fi
+        LIVE_SHA_RAW="$(jq -r '.version.git_sha // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
+        LIVE_TS_RAW="$(jq -r '.version.git_ts // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
+        LIVE_SHA=""
+        LIVE_TS=""
+        if [[ "$LIVE_SHA_RAW" =~ ^[0-9a-f]{40}$ ]]; then
+          LIVE_SHA="$LIVE_SHA_RAW"
+        fi
+        if [[ "$LIVE_TS_RAW" =~ ^[0-9]{1,12}$ ]]; then
+          LIVE_TS="$LIVE_TS_RAW"
+        fi
+        echo "Live relay version query: HTTP ${LIVE_HTTP_CODE} sha=${LIVE_SHA:-<none>} ts=${LIVE_TS:-<none>}"
 
         DEPLOY_RELAY=true
         SKIP_REASON=""
@@ -864,73 +821,37 @@ jobs:
           npx wrangler@latest deployments list --config probe-relay/wrangler.toml 2>&1 || true
         fi
 
-        # ── Live smoke test: single curl before the 49-chunk batch ──
-        # Normalize URL: strip trailing slash, strip /probe suffix if
-        # owner accidentally included it, then append /probe.
-        # This makes the system format-tolerant so the owner can set:
-        #   https://foo.workers.dev       → /probe
-        #   https://foo.workers.dev/      → /probe
-        #   https://foo.workers.dev/probe → /probe (no doubling)
-        SMOKE_URL="${PROBE_RELAY_URL%/}"
-        SMOKE_URL="${SMOKE_URL%/probe}"
-        SMOKE_URL="${SMOKE_URL}/probe"
-        echo "Smoke-testing ${SMOKE_URL} …"
-        # The Worker expects {"host","port","transport"} — NOT "address".
-        # Schema validated at: probe-relay/src/index.ts "Each bridge must have host, port, and transport fields"
-        SMOKE_BODY='[{"host":"127.0.0.1","port":9999,"transport":"obfs4"}]'
-        SMOKE_CODE=$(curl -s -o /tmp/smoke_resp.json -w "%{http_code}" \
-          -X POST "$SMOKE_URL" \
-          -H "Content-Type: application/json" \
-          -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
-          -d "$SMOKE_BODY" \
-          --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
-        echo "Smoke test HTTP status: ${SMOKE_CODE}"
-        if [ -s /tmp/smoke_resp.json ]; then
-          echo "Smoke test response body (first 5 lines):"
-          head -5 /tmp/smoke_resp.json
-        fi
-        if [ "$SMOKE_CODE" != "200" ]; then
-          echo "::error::Probe relay smoke test FAILED — HTTP ${SMOKE_CODE} (expected 200)"
-          echo "::error::Check PROBE_RELAY_URL secret and Worker deployment status"
+        # ── Live smoke test: bounded, redacted gate ─────────────────
+        # The helper suppresses the endpoint, auth header, curl stderr, and
+        # response body; transport failures are classified without leaking data.
+        if bash scripts/probe_relay_smoke.sh; then
+          echo "✅ Required IPv4 probe relay canary passed (HTTP 200) — Stage 4 will proceed"
+          echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
+        else
+          echo "::notice::Required probe relay canary did not pass; Stage 4 is explicitly skipped for this run. Collection and publication continue."
           echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
           exit 0
         fi
-        echo "✅ Probe relay smoke test passed (HTTP 200) — Stage 4 will proceed"
-        echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
 
-        # ── Dual-stack smoke probe (ADDITIVE, informational only) ──────────
-        # The IPv4 loopback canary above remains the SOLE proceed/fail gate.
-        # This second canary probes the IPv6 loopback equivalent (::1:9999)
-        # and only logs its own pass/fail/skip — it can never block the
-        # pipeline. If the runner reports no IPv6 loopback support the probe
-        # logs a clear skip notice instead of an error. 0.0.0.0 is NOT used:
-        # it is a wildcard bind address, not a connectable target.
+        # ── Dual-stack smoke probe (informational only) ─────────────
+        # The required IPv4 canary above is the sole Stage 4 gate. Probe ::1
+        # only when the runner exposes IPv6 loopback; failure cannot block work.
         echo ""
-        echo "═══ IPv6-loopback smoke probe (informational, additive) ═══"
+        echo "═══ IPv6-loopback smoke probe (informational only) ═══"
         IPV6_CAPABLE=true
         if command -v ip >/dev/null 2>&1 && ! ip -6 addr show lo >/dev/null 2>&1; then
           IPV6_CAPABLE=false
         fi
-        if [ "$IPV6_CAPABLE" != "true" ]; then
-          echo "::notice::Runner lacks IPv6 loopback (::1) support — IPv6-loopback smoke probe skipped (informational only; the IPv4 gate above is unchanged)"
+        if [[ "$IPV6_CAPABLE" != true ]]; then
+          echo "::notice::Runner lacks IPv6 loopback (::1) support; optional IPv6 canary skipped."
+        elif PROBE_RELAY_SMOKE_HOST='::1' \
+             PROBE_RELAY_SMOKE_MAX_ATTEMPTS=1 \
+             PROBE_RELAY_SMOKE_RETRY_DELAY_SECS=0 \
+             PROBE_RELAY_SMOKE_FAILURE_MODE=informational \
+             bash scripts/probe_relay_smoke.sh; then
+          echo "✅ Optional IPv6-loopback canary passed (HTTP 200)."
         else
-          SMOKE6_BODY='[{"host":"::1","port":9999,"transport":"obfs4"}]'
-          SMOKE6_CODE=$(curl -s -o /tmp/smoke6_resp.json -w "%{http_code}" \
-            -X POST "$SMOKE_URL" \
-            -H "Content-Type: application/json" \
-            -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
-            -d "$SMOKE6_BODY" \
-            --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
-          echo "IPv6-loopback smoke test HTTP status: ${SMOKE6_CODE}"
-          if [ -s /tmp/smoke6_resp.json ]; then
-            echo "IPv6-loopback smoke response body (first 5 lines):"
-            head -5 /tmp/smoke6_resp.json
-          fi
-          if [ "$SMOKE6_CODE" = "200" ]; then
-            echo "✅ IPv6-loopback smoke probe delivered (HTTP 200) — informational only; the IPv4 gate above is unchanged"
-          else
-            echo "::warning::IPv6-loopback smoke probe returned HTTP ${SMOKE6_CODE} — informational only; the IPv4 gate above is unchanged and Stage 4 proceeds exactly as before"
-          fi
+          echo "::notice::Optional IPv6-loopback canary did not pass; this is informational and Stage 4 remains enabled."
         fi
 
       # Stage 4 — External Probe Relay (CI Egress Fix)
