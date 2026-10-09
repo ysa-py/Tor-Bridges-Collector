@@ -95,11 +95,8 @@ pub enum OoniError {
     },
 
     /// JSON (de)serialization failure.
-    #[error("ooni JSON error: {source}")]
-    Json {
-        #[from]
-        source: serde_json::Error,
-    },
+    #[error("ooni JSON error: {0}")]
+    Json(#[from] serde_json::Error),
 
     /// Underlying HTTP client error (production `reqwest` path only).
     #[error("ooni HTTP error for {url}: {message}")]

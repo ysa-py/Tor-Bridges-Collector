@@ -719,7 +719,8 @@ fn write_requested_projections(
     // name, transport, IP version (None = both), recent-only, tested-only,
     // permit static fallback. Base files and *_all files are inventories;
     // *_72h and *_tested files must reflect recorded evidence only.
-    const PROJECTIONS: &[(&str, &str, Option<bool>, bool, bool, bool)] = &[
+    type OutputProjection = (&'static str, &'static str, Option<bool>, bool, bool, bool);
+    const PROJECTIONS: &[OutputProjection] = &[
         (
             "conjure_ipv4_ipv6_all.txt",
             "conjure",
