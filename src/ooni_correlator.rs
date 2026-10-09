@@ -59,6 +59,8 @@ use serde_json::{json, Value};
 use thiserror::Error;
 
 use crate::generated_json_loader::load_generated_json;
+#[cfg(feature = "network")]
+use crate::network_safety::{safe_reqwest_error_summary, safe_url_origin};
 use crate::quarantine_manager::QuarantineManager;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1150,13 +1152,13 @@ impl OoniHttpFetch for ReqwestOoniHttpFetch {
             req = req.query(&[(name.to_string(), value.clone())]);
         }
         let resp = req.send().map_err(|err| OoniError::Http {
-            url: url.to_string(),
-            message: err.to_string(),
+            url: safe_url_origin(url),
+            message: safe_reqwest_error_summary(&err).to_string(),
         })?;
         let status = resp.status().as_u16();
         let body = resp.text().map_err(|err| OoniError::Http {
-            url: url.to_string(),
-            message: err.to_string(),
+            url: safe_url_origin(url),
+            message: safe_reqwest_error_summary(&err).to_string(),
         })?;
         Ok(OoniHttpResponse { status, body })
     }
@@ -1165,6 +1167,19 @@ impl OoniHttpFetch for ReqwestOoniHttpFetch {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "network")]
+    #[test]
+    fn reqwest_ooni_errors_redact_credentials_and_query_parameters() {
+        let client = ReqwestOoniHttpFetch::default();
+        let url = "https://alice:sample-secret@example.invalid:invalid/private?token=query-secret";
+        let params = [("api_key", "parameter-secret".to_string())];
+        let error = client.get(url, &params).unwrap_err().to_string();
+        assert!(error.starts_with("ooni HTTP error for invalid URL:"));
+        assert!(!error.contains("sample-secret"));
+        assert!(!error.contains("query-secret"));
+        assert!(!error.contains("parameter-secret"));
+    }
 
     #[test]
     fn ooni_factor_empty_returns_neutral() {
