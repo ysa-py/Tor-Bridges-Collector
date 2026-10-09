@@ -653,12 +653,7 @@ fn write_transport_family(
             // The unqualified base file remains compatible with transports
             // whose bridge lines have no direct IP endpoint (e.g. Snowflake).
             // Every family-labelled alias below requires an actual IP version.
-            let fallback_scope = if name == format!("{stem}.txt") {
-                None
-            } else {
-                Some(ipv6)
-            };
-            let fallback_lines = fallback(fallback_scope);
+            let fallback_lines = fallback(None);
             if !fallback_lines.is_empty() {
                 record_publication_fallback(
                     bridge_dir,
