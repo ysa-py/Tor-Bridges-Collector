@@ -241,7 +241,8 @@ jobs:
         run: cargo build --release --bin tor-bridges-collector && cargo build --release -p bridge-probe
       - name: Package artifacts
         run: |
-          mkdir -p dist
+          set -euo pipefail
+          mkdir -p dist bridge export data
           cp target/release/tor-bridges-collector dist/ 2>/dev/null || true
           cp target/release/bridge-probe dist/ 2>/dev/null || true
           tar -czf TorShield-IR-Final-Package.tar.gz --exclude='*.tar.gz' dist/ bridge/ export/ data/

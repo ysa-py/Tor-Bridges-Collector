@@ -312,7 +312,45 @@ jobs:
       run: cargo fmt --all -- --check
 
     - name: Clippy (all features, deny warnings)
+      id: clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+    # GitHub does not automatically turn rustc's JSON diagnostics into check
+    # annotations. Re-run only after a lint failure and publish each warning as
+    # an annotation so the exact file, line, and lint remain visible in Checks.
+    - name: Annotate Clippy diagnostics
+      if: steps.clippy.outcome == 'failure'
+      run: |
+        set -euo pipefail
+        diagnostic_log="$RUNNER_TEMP/clippy-diagnostics.jsonl"
+        set +e
+        cargo clippy --workspace --all-targets --all-features --message-format=json -- -D warnings >"$diagnostic_log" 2>&1
+        clippy_status=$?
+        set -e
+        if command -v jq >/dev/null 2>&1; then
+          set +e
+          jq -Rr '
+            fromjson?
+            | select(.reason == "compiler-message" and (.message.level == "warning" or .message.level == "error"))
+            | .message as $message
+            | ([ $message.spans[]? | select(.is_primary) ][0] // {}) as $span
+            | [($span.file_name // ""), ($span.line_start // 1 | tostring), ($span.line_end // ($span.line_start // 1) | tostring), ($message.code.code // "rustc"), $message.message]
+            | @tsv
+          ' "$diagnostic_log" | while IFS=$'\t' read -r file line end_line title message; do
+            [[ -n "$file" ]] || continue
+            file=${file//'%'/'%25'}
+            file=${file//','/'%2C'}
+            title=${title//'%'/'%25'}
+            title=${title//','/'%2C'}
+            title=${title//':'/'%3A'}
+            message=${message//'%'/'%25'}
+            message=${message//$'\r'/'%0D'}
+            message=${message//$'\n'/'%0A'}
+            printf '::error file=%s,line=%s,endLine=%s,title=%s::%s\n' "$file" "$line" "$end_line" "$title" "$message"
+          done
+          set -e
+        fi
+        echo "Clippy diagnostic replay exited with status $clippy_status; see the annotations above."
 
     - name: Full Rust test suite (all features)
       run: cargo test --workspace --all-targets --all-features
