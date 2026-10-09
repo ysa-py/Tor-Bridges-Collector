@@ -336,6 +336,54 @@ def c13_nin_recommended_freshness():
                else "committed manifest is stale vs regeneration")
 
 
+# ── C14. Hourly automation, rerank-only skip, and publication side-effect gates ──
+def c14_workflow_automation_gates():
+    path = os.path.join(REPO, ".github", "workflows", "torshield-ir.yml")
+    workflow = open(path, encoding="utf-8").read()
+    hourly = bool(
+        re.search(
+            r"(?m)^\s*-\s*cron:\s*['\"]?0 \* \* \* \*['\"]?\s*$",
+            workflow,
+        )
+    )
+
+    jobs_start = workflow.find("\njobs:")
+    scrape_start = workflow.find("\n  scrape-and-test:\n", jobs_start)
+    rerank_start = workflow.find("\n  ai-rerank:\n", scrape_start)
+    scrape_block = (
+        workflow[scrape_start:rerank_start]
+        if scrape_start >= 0 and rerank_start > scrape_start
+        else ""
+    )
+    rerank_gate = re.search(r"(?m)^    if:\s*(.*?)\s*$", scrape_block)
+    rerank_only_skip = bool(rerank_gate) and rerank_gate.group(1) == (
+        "github.event_name != 'workflow_dispatch' || inputs.rerank_only != true"
+    )
+
+    def guard_disables_upload(header):
+        block = re.search(re.escape(header) + r"\n(.*?)^\s*fi\s*$", workflow, re.M | re.S)
+        return bool(block and re.search(r"(?m)^\s*UPLOAD=false\s*$", block.group(1)))
+
+    pull_request_block = guard_disables_upload(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then'
+    )
+    non_main_block = guard_disables_upload(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then'
+    )
+    commit_main_only = (
+        "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
+        in workflow
+    )
+    publication_gates = pull_request_block and non_main_block and commit_main_only
+    ok = hourly and rerank_only_skip and publication_gates
+    record(
+        "C14 workflow-automation-gates",
+        ok,
+        f"hourly={hourly}, rerank_only_skip={rerank_only_skip}, "
+        f"main-only_dual-persist={publication_gates}",
+    )
+
+
 def main():
     print("═══ verify_repo_invariants ═══")
     c1_json_parse()
@@ -351,6 +399,7 @@ def main():
     c11_cutpack_freshness()
     c12_pq_scores_freshness()
     c13_nin_recommended_freshness()
+    c14_workflow_automation_gates()
     print(f"═══ {len(CHECKS) - len(FAILURES)}/{len(CHECKS)} checks passed ═══")
     if FAILURES:
         for f in FAILURES:
