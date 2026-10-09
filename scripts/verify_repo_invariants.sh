@@ -373,6 +373,17 @@ def c14_workflow_automation_gates():
         )
     )
 
+    egress_path = os.path.join(REPO, ".github", "workflows", "egress-diagnostic.yml")
+    egress_workflow = open(egress_path, encoding="utf-8").read()
+    diagnostic_worker_main_only = bool(
+        re.search(
+            r"(?m)^  diagnose:\n"
+            r"    name: Isolate meek/conjure TLS timeout mechanism\n"
+            r"    if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n",
+            egress_workflow,
+        )
+    )
+
     def guard_sets(header, assignment):
         block = re.search(re.escape(header) + r"\n(.*?)^\s*fi\s*$", workflow, re.M | re.S)
         return bool(block and re.search(rf"(?m)^\s*{re.escape(assignment)}\s*$", block.group(1)))
@@ -403,6 +414,7 @@ def c14_workflow_automation_gates():
         and publication_gates
         and production_mutations_main_only
         and main_ci_pipeline_gate
+        and diagnostic_worker_main_only
     )
     record(
         "C14 workflow-automation-gates",
@@ -410,7 +422,8 @@ def c14_workflow_automation_gates():
         f"hourly={hourly}, main-only_collection={main_only_collection}, "
         f"main-only_dual-persist={publication_gates}, "
         f"main-only_deploy={production_mutations_main_only}, "
-        f"main-ci-pipeline={main_ci_pipeline_gate}",
+        f"main-ci-pipeline={main_ci_pipeline_gate}, "
+        f"main-only_diag-worker={diagnostic_worker_main_only}",
     )
 
 

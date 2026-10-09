@@ -50,6 +50,7 @@ concurrency:
 jobs:
   diagnose:
     name: Isolate meek/conjure TLS timeout mechanism
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
