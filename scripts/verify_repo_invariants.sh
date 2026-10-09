@@ -355,32 +355,44 @@ def c14_workflow_automation_gates():
         if scrape_start >= 0 and rerank_start > scrape_start
         else ""
     )
-    rerank_gate = re.search(r"(?m)^    if:\s*(.*?)\s*$", scrape_block)
-    rerank_only_skip = bool(rerank_gate) and rerank_gate.group(1) == (
-        "github.event_name != 'workflow_dispatch' || inputs.rerank_only != true"
+    collection_gate = re.search(r"(?m)^    if:\s*(.*?)\s*$", scrape_block)
+    expected_collection_gate = (
+        "github.ref == 'refs/heads/main' && "
+        "(github.event_name != 'workflow_dispatch' || inputs.rerank_only != true)"
     )
+    main_only_collection = bool(collection_gate) and collection_gate.group(1) == expected_collection_gate
 
-    def guard_disables_upload(header):
+    def guard_sets(header, assignment):
         block = re.search(re.escape(header) + r"\n(.*?)^\s*fi\s*$", workflow, re.M | re.S)
-        return bool(block and re.search(r"(?m)^\s*UPLOAD=false\s*$", block.group(1)))
+        return bool(block and re.search(rf"(?m)^\s*{re.escape(assignment)}\s*$", block.group(1)))
 
-    pull_request_block = guard_disables_upload(
-        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then'
+    pull_request_upload_block = guard_sets(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then',
+        "UPLOAD=false",
     )
-    non_main_block = guard_disables_upload(
-        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then'
+    non_main_upload_block = guard_sets(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then',
+        "UPLOAD=false",
+    )
+    non_main_deploy_block = guard_sets(
+        'if [ "${GITHUB_REF}" != "refs/heads/main" ] || [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then',
+        "DEPLOY_RELAY=false",
     )
     commit_main_only = (
         "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
         in workflow
     )
-    publication_gates = pull_request_block and non_main_block and commit_main_only
-    ok = hourly and rerank_only_skip and publication_gates
+    publication_gates = (
+        pull_request_upload_block and non_main_upload_block and commit_main_only
+    )
+    production_mutations_main_only = main_only_collection and non_main_deploy_block
+    ok = hourly and main_only_collection and publication_gates and production_mutations_main_only
     record(
         "C14 workflow-automation-gates",
         ok,
-        f"hourly={hourly}, rerank_only_skip={rerank_only_skip}, "
-        f"main-only_dual-persist={publication_gates}",
+        f"hourly={hourly}, main-only_collection={main_only_collection}, "
+        f"main-only_dual-persist={publication_gates}, "
+        f"main-only_deploy={production_mutations_main_only}",
     )
 
 
