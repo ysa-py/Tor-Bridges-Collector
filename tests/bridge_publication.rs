@@ -139,6 +139,16 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
     let root = scratch("complete");
     write_fixture(&root);
     let options = options(&root);
+    let canonical_inputs = [
+        (
+            "bridge_history.json",
+            std::fs::read(options.bridge_dir.join("bridge_history.json")).unwrap(),
+        ),
+        (
+            "iran_results.json",
+            std::fs::read(options.bridge_dir.join("iran_results.json")).unwrap(),
+        ),
+    ];
     std::fs::write(options.bridge_dir.join("obsolete-output.txt"), "stale\n").unwrap();
     std::fs::create_dir_all(options.bridge_dir.join("old-output")).unwrap();
     std::fs::write(options.bridge_dir.join("old-output/old.txt"), "stale\n").unwrap();
@@ -162,6 +172,15 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
     assert!(!options.bridge_dir.join("old-output").exists());
     assert!(options.bridge_dir.join("bridge_history.json").is_file());
     assert!(options.bridge_dir.join("iran_results.json").is_file());
+    for (name, original) in &canonical_inputs {
+        assert_eq!(
+            std::fs::read(options.bridge_dir.join(name))
+                .unwrap()
+                .as_slice(),
+            original.as_slice(),
+            "publisher must preserve canonical input bytes in {name}"
+        );
+    }
 
     const USER_REQUESTED_FILES: &[&str] = &[
         "bridge_history.json",

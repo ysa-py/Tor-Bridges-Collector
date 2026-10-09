@@ -58,6 +58,7 @@ pub mod ml_predictor;
 pub mod monitoring;
 pub mod monitoring_structured_logger;
 pub mod multi_vantage;
+pub mod network_safety;
 pub mod nin_advanced_bypass;
 pub mod nin_cut_tester;
 pub mod nin_internet_cut_classifier;

@@ -110,6 +110,8 @@ use tokio::net::TcpStream;
 use tokio::time::timeout as tokio_timeout;
 
 use crate::dt_utils::utc_now_iso;
+#[cfg(feature = "network")]
+use crate::network_safety::safe_reqwest_error_summary;
 
 /// Well-known international DNS/HTTPS endpoints. Mirrors
 /// `_INTERNATIONAL_PROBES`.
@@ -447,7 +449,10 @@ impl NinDetector {
             .header("User-Agent", "TorShield-IR")
             .send()
         {
-            tracing::debug!("[NinDetector] telegram send failed: {e}");
+            tracing::debug!(
+                "[NinDetector] telegram send failed ({})",
+                safe_reqwest_error_summary(&e)
+            );
         }
     }
 

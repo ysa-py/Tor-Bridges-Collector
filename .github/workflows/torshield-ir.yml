@@ -37,12 +37,13 @@
 #   the byte-identical verified tor_bridges.zip to Telegram inside the very
 #   same run whose Stage 11 commits the payload to git ("dual persist":
 #   GitHub and Telegram always receive the same bytes).
-#   Telegram delivery is ON by default (schedule/push/dispatch). It can be
-#   disabled per-run with the upload_to_telegram=false dispatch input or
-#   repo-wide by setting the TELEGRAM_AUTO_UPLOAD repository variable to
-#   false. Runs without the secrets configured skip delivery with a warning
-#   instead of failing, and pull_request runs never deliver (preview only,
-#   mirroring the skipped Stage 11 git commit).
+#   Telegram delivery is ON by default for main-branch schedule/push/dispatch
+#   runs. It can be disabled per-run with the upload_to_telegram=false dispatch
+#   input or repo-wide by setting the TELEGRAM_AUTO_UPLOAD repository variable
+#   to false. Non-main refs and pull_request runs are preview-only and never
+#   deliver, so Telegram cannot receive output that Stage 11 will not commit.
+#   Runs without the secrets configured skip delivery with a notice instead
+#   of failing.
 #   Stage 9b re-verifies the complete contract with --verify-only (JSON
 #   shapes, every SHA-256 manifest entry, byte-identical ZIP contents), and
 #   Stage 10 reads that inventory from telegram_manifest.json and fails the
@@ -1852,6 +1853,11 @@ jobs:
         if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           echo "pull_request run — publication preview only; Telegram delivery deferred"
           echo "to the main-branch run (mirrors the skipped Stage 11 git commit)."
+          UPLOAD=false
+        fi
+        if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "non-main ref ${GITHUB_REF} — publication preview only; Telegram delivery deferred"
+          echo "to the main-branch run where Stage 11 can commit the same verified payload."
           UPLOAD=false
         fi
         if [ "$UPLOAD" = "true" ] && { [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; }; then

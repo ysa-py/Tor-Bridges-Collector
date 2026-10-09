@@ -10,6 +10,8 @@ use reqwest::multipart::{Form, Part};
 use zip::write::FileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
+use crate::network_safety::safe_reqwest_error_summary;
+
 use super::config::{CollectorConfig, ListSpec, Transport};
 
 /// Counts for one generated bridge-list projection.
@@ -161,7 +163,12 @@ pub async fn upload_telegram(
         .multipart(form)
         .send()
         .await
-        .context("Telegram upload request failed")?;
+        .map_err(|error| {
+            anyhow!(
+                "Telegram upload request failed ({})",
+                safe_reqwest_error_summary(&error)
+            )
+        })?;
     if response.status().is_success() {
         Ok(())
     } else {

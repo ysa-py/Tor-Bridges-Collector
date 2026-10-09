@@ -14,6 +14,8 @@ use serde_json::Value;
 use tokio::task::JoinSet;
 use tokio::time::{sleep, timeout};
 
+use crate::network_safety::safe_reqwest_error_summary;
+
 use super::config::{CollectorConfig, Transport, COMMUNITY_SOURCE_BASES, USER_AGENT};
 use super::parsing::{clean_output_line, is_ipv6_line, is_valid_bridge_line};
 
@@ -107,13 +109,30 @@ impl SourceCircuitBreaker {
         }
     }
 
-    /// Extract a stable source key from a URL (hostname component).
+    /// Extract a stable, credential-free source key from a URL hostname.
     pub fn key_from_url(url: &str) -> String {
-        url.split('/')
-            .nth(2)
-            .map(|h| h.split(':').next().unwrap_or("unknown"))
-            .unwrap_or("unknown")
-            .to_ascii_lowercase()
+        let authority = url
+            .split_once("://")
+            .map(|(_, remainder)| remainder)
+            .unwrap_or(url)
+            .split(|character| matches!(character, '/' | '?' | '#'))
+            .next()
+            .unwrap_or_default();
+        let host_port = authority.rsplit('@').next().unwrap_or_default();
+        let host = if let Some(ipv6_authority) = host_port.strip_prefix('[') {
+            ipv6_authority
+                .split_once(']')
+                .map(|(host, _)| host)
+                .unwrap_or_default()
+        } else {
+            host_port.split(':').next().unwrap_or_default()
+        };
+
+        if host.is_empty() {
+            "unknown".to_string()
+        } else {
+            host.to_ascii_lowercase()
+        }
     }
 }
 
@@ -231,27 +250,31 @@ impl SourceFetcher {
         while let Some(joined) = tasks.join_next().await {
             match joined {
                 Ok((base, Ok(Ok(response)))) if response.status().is_success() => {
-                    tracing::info!(mirror = %base, "mirror validated (HEAD OK)");
+                    let source_key = SourceCircuitBreaker::key_from_url(&base);
+                    tracing::info!(source = %source_key, "mirror validated (HEAD OK)");
                     valid.push(base);
                 }
                 Ok((base, Ok(Ok(response)))) => {
+                    let source_key = SourceCircuitBreaker::key_from_url(&base);
                     let status = response.status();
                     tracing::warn!(
-                        mirror = %base,
+                        source = %source_key,
                         http_status = %status,
                         "mirror HEAD check returned non-success; removing from active list"
                     );
                 }
                 Ok((base, Ok(Err(error)))) => {
+                    let source_key = SourceCircuitBreaker::key_from_url(&base);
                     tracing::warn!(
-                        mirror = %base,
-                        %error,
+                        source = %source_key,
+                        error = safe_reqwest_error_summary(&error),
                         "mirror HEAD check network error; removing from active list"
                     );
                 }
                 Ok((base, Err(_timeout))) => {
+                    let source_key = SourceCircuitBreaker::key_from_url(&base);
                     tracing::warn!(
-                        mirror = %base,
+                        source = %source_key,
                         "mirror HEAD check timed out; removing from active list"
                     );
                 }
@@ -281,7 +304,6 @@ impl SourceFetcher {
             if !fetcher.circuit_breaker.allow(&source_key) {
                 tracing::warn!(
                     source = %source_key,
-                    url = %url,
                     transport = %transport,
                     ipv6,
                     "community mirror circuit-broken; skipping this run"
@@ -303,9 +325,9 @@ impl SourceFetcher {
                     self.circuit_breaker.record(&source_key, true);
                     fetched.extend(body.lines().map(clean_output_line));
                 }
-                Ok((url, source_key, Err(error))) => {
+                Ok((_url, source_key, Err(error))) => {
                     self.circuit_breaker.record(&source_key, false);
-                    failures.push(format!("{url}: {error}"));
+                    failures.push(format!("{source_key}: {error}"));
                 }
                 Err(error) => failures.push(format!("source task failed: {error}")),
             }
@@ -420,16 +442,23 @@ impl SourceFetcher {
         .await
         .map_err(|_| anyhow!("Telegram getUpdates request timed out"))?;
 
-        let response = response.map_err(|error| anyhow!("Telegram getUpdates failed: {error}"))?;
+        let response = response.map_err(|error| {
+            anyhow!(
+                "Telegram getUpdates failed ({})",
+                safe_reqwest_error_summary(&error)
+            )
+        })?;
         let status = response.status();
         if !status.is_success() {
             self.circuit_breaker.record(&source_key, false);
             return Err(anyhow!("Telegram API returned HTTP {status}"));
         }
-        let body = response
-            .text()
-            .await
-            .map_err(|error| anyhow!("unable to read Telegram response: {error}"))?;
+        let body = response.text().await.map_err(|error| {
+            anyhow!(
+                "unable to read Telegram response ({})",
+                safe_reqwest_error_summary(&error)
+            )
+        })?;
         let parsed = response_json(&body);
         if !parsed.get("ok").and_then(Value::as_bool).unwrap_or(false) {
             self.circuit_breaker.record(&source_key, false);
@@ -495,7 +524,10 @@ impl SourceFetcher {
                             Ok(text) if !text.trim().is_empty() => return Ok(text),
                             Ok(_) => last_error = Some(anyhow!("upstream returned an empty body")),
                             Err(error) => {
-                                last_error = Some(anyhow!("unable to read response body: {error}"))
+                                last_error = Some(anyhow!(
+                                    "unable to read response body ({})",
+                                    safe_reqwest_error_summary(&error)
+                                ))
                             }
                         }
                     } else {
@@ -503,7 +535,10 @@ impl SourceFetcher {
                     }
                 }
                 Ok(Err(error)) => {
-                    last_error = Some(anyhow!("upstream request failed: {error}"));
+                    last_error = Some(anyhow!(
+                        "upstream request failed ({})",
+                        safe_reqwest_error_summary(&error)
+                    ));
                 }
                 Err(_elapsed) => {
                     last_error = Some(anyhow!(
@@ -528,7 +563,7 @@ impl SourceFetcher {
             }
         }
         Err(last_error.unwrap_or_else(|| anyhow!("source fetch failed without an error")))
-            .with_context(|| format!("fetching {url}"))
+            .with_context(|| format!("fetching upstream source {source_key}"))
     }
 }
 
@@ -704,12 +739,30 @@ mod tests {
     }
 
     #[test]
-    fn key_from_url_extracts_hostname() {
+    fn key_from_url_extracts_hostname_without_credentials_or_query() {
         assert_eq!(
             SourceCircuitBreaker::key_from_url(
                 "https://raw.githubusercontent.com/Delta-Kronecker/Repo/main/bridge/obfs4.txt"
             ),
             "raw.githubusercontent.com"
+        );
+        assert_eq!(
+            SourceCircuitBreaker::key_from_url(
+                "https://user:private@example.com:8443/list?token=private"
+            ),
+            "example.com"
+        );
+        assert_eq!(
+            SourceCircuitBreaker::key_from_url("https://example.com?token=private"),
+            "example.com"
+        );
+        assert_eq!(
+            SourceCircuitBreaker::key_from_url("api.telegram.org"),
+            "api.telegram.org"
+        );
+        assert_eq!(
+            SourceCircuitBreaker::key_from_url("https://[2001:db8::1]:8443/bridges"),
+            "2001:db8::1"
         );
     }
 
