@@ -17,7 +17,7 @@
 //!   (excluding `.git`/`vendor`, like the old py_compile sweep) and fails
 //!   listing any survivor.
 //! - `report [root]` — regenerate `data/quality_report.json` with the
-//!   exact schema the Python quality report produced.
+//!   legacy quality-report fields plus truthful step outcomes.
 //!
 //! All four subcommands keep the original step's output banners and exit
 //! semantics (0 pass / 1 fail) so dashboards and logs keep their shape.
@@ -208,30 +208,52 @@ fn count_with_suffix(files: &[PathBuf], suffixes: &[&str]) -> usize {
         .count()
 }
 
-/// Subcommand: regenerate `data/quality_report.json` with the exact schema of
-/// the retired `_quality_report.py`.
+/// Normalize a GitHub Actions step/job result for the stable quality-report
+/// schema. Missing or unrecognized values are explicitly `not_run`, never a
+/// misleading green `passed`.
+fn normalize_report_status(value: Option<&str>) -> &'static str {
+    match value {
+        Some("success" | "passed") => "passed",
+        Some("failure" | "failed") => "failed",
+        Some("cancelled") => "cancelled",
+        Some("skipped") => "skipped",
+        Some("partial") => "partial",
+        Some("not_configured") => "not_configured",
+        Some("warning") => "warning",
+        _ => "not_run",
+    }
+}
+
+fn report_status(key: &str) -> &'static str {
+    let value = std::env::var(key).ok();
+    normalize_report_status(value.as_deref())
+}
+
+/// Subcommand: regenerate `data/quality_report.json` with the legacy fields
+/// plus explicit statuses for the Rust-native workflow/security validators.
+/// Outcomes are supplied by workflow step outputs; unprovided outcomes are
+/// reported as `not_run` rather than being falsely marked as successful.
 pub fn report(root: &Path) -> i32 {
     let mut files = Vec::new();
     let _ = walk(root, REPORT_PRUNE_DIRS, &mut files);
     let py_count = count_with_suffix(&files, &[".py"]);
     let yml_count = count_with_suffix(&files, &[".yml", ".yaml"]);
 
-    let env_flag = |key: &str| match std::env::var(key) {
-        Ok(value) if value == "failed" => "failed",
-        _ => "passed",
-    };
     let report = json!({
         "timestamp": Utc::now().to_rfc3339_opts(SecondsFormat::Micros, false),
         "run_id": std::env::var("GITHUB_RUN_ID").unwrap_or_else(|_| "unknown".to_string()),
         "checks": {
-            "python_syntax": env_flag("PYTHON_SYNTAX_RESULT"),
-            "yaml_lint": env_flag("YAML_LINT_RESULT"),
-            "requirements_validation": "passed",
-            "secret_presence": "passed",
+            "python_syntax": report_status("PYTHON_SYNTAX_RESULT"),
+            "yaml_lint": report_status("YAML_LINT_RESULT"),
+            "workflow_validation": report_status("WORKFLOW_VALIDATION_RESULT"),
+            "requirements_validation": report_status("REQUIREMENTS_VALIDATION_RESULT"),
+            "security_scan": report_status("SECURITY_SCAN_RESULT"),
+            "secret_presence": report_status("SECRET_PRESENCE_RESULT"),
+            "webtunnel_validation": report_status("WEBTUNNEL_VALIDATION_RESULT"),
             "python_file_count": py_count,
             "yaml_file_count": yml_count,
         },
-        "quality_gate": "passed",
+        "quality_gate": report_status("QUALITY_GATE_RESULT"),
     });
 
     let data_dir = root.join("data");
@@ -1073,6 +1095,19 @@ mod tests {
     }
 
     #[test]
+    fn report_statuses_distinguish_missing_optional_and_failed_checks() {
+        assert_eq!(normalize_report_status(None), "not_run");
+        assert_eq!(normalize_report_status(Some("success")), "passed");
+        assert_eq!(normalize_report_status(Some("failure")), "failed");
+        assert_eq!(
+            normalize_report_status(Some("not_configured")),
+            "not_configured"
+        );
+        assert_eq!(normalize_report_status(Some("partial")), "partial");
+        assert_eq!(normalize_report_status(Some("unexpected-value")), "not_run");
+    }
+
+    #[test]
     fn report_writes_schema_compliant_json() {
         let dir = std::env::temp_dir().join(format!("qg_rep_{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("temp dir");
@@ -1082,7 +1117,10 @@ mod tests {
         let written = std::fs::read_to_string(report_path).expect("report exists");
         let value: serde_json::Value =
             serde_json::from_str(&written).expect("report is valid JSON");
-        assert_eq!(value["quality_gate"], "passed");
+        assert_eq!(value["quality_gate"], "not_run");
+        assert_eq!(value["checks"]["python_syntax"], "not_run");
+        assert_eq!(value["checks"]["secret_presence"], "not_run");
+        assert_eq!(value["checks"]["security_scan"], "not_run");
         assert_eq!(value["checks"]["python_file_count"], 0);
         assert_eq!(value["checks"]["yaml_file_count"], 1);
         assert!(value["timestamp"].as_str().is_some_and(|t| t.contains('T')));

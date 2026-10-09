@@ -45,29 +45,58 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-
       - name: Build quality-gate tooling (Rust)
-        run: cargo build --release --bin quality_gate
+        id: quality_gate_tooling
+        run: cargo build --release --bin quality_gate --bin security_scan --bin validate_workflows
       - name: Python-free gate (py-check)
-        run: cargo run --quiet --bin quality_gate -- py-check .
+        id: python_free_gate
+        run: ./target/release/quality_gate py-check .
       - name: YAML linting
-        run: cargo run --quiet --bin quality_gate -- yaml-lint .
+        id: yaml_lint
+        run: ./target/release/quality_gate yaml-lint .
       - name: Validate GitHub Actions workflows (structure + platform-shell rules)
-        run: cargo run --quiet --bin quality_gate -- yaml-lint .github/workflows
+        id: workflow_validation
+        run: ./target/release/validate_workflows .github/workflows
       - name: Validate requirements.txt
-        run: cargo run --quiet --bin quality_gate -- requirements requirements.txt
+        id: requirements_validation
+        run: ./target/release/quality_gate requirements requirements.txt
       - name: Security scan (dangerous sinks + hard-coded credentials)
-        run: cargo run --quiet --bin quality_gate -- yaml-lint .
-      - name: Secret presence check
-        run: cargo run --quiet --bin quality_gate -- yaml-lint .
+        id: security_scan
+        run: ./target/release/security_scan .
+      - name: Test optional-secret reporter
+        run: bash scripts/test_report_optional_secrets.sh
+      - name: Optional secret availability
+        id: secret_presence
+        env:
+          HAS_CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 != '' }}
+          HAS_PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 != '' }}
+          HAS_CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 != '' }}
+          HAS_CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 != '' }}
+          HAS_GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX != '' }}
+        run: bash scripts/report_optional_secrets.sh
       - name: WebTunnel v0.0.4 validation
+        id: webtunnel_validation
         continue-on-error: true
-        run: cargo run --quiet --bin quality_gate -- webtunnel-check .
+        run: ./target/release/quality_gate webtunnel-check .
       - name: Generate quality report
-        run: cargo run --quiet --bin quality_gate -- report .
+        if: ${{ always() && steps.quality_gate_tooling.outcome == 'success' }}
+        env:
+          PYTHON_SYNTAX_RESULT: ${{ steps.python_free_gate.outcome }}
+          YAML_LINT_RESULT: ${{ steps.yaml_lint.outcome }}
+          WORKFLOW_VALIDATION_RESULT: ${{ steps.workflow_validation.outcome }}
+          REQUIREMENTS_VALIDATION_RESULT: ${{ steps.requirements_validation.outcome }}
+          SECURITY_SCAN_RESULT: ${{ steps.security_scan.outcome }}
+          SECRET_PRESENCE_RESULT: ${{ steps.secret_presence.outputs.result || steps.secret_presence.outcome }}
+          WEBTUNNEL_VALIDATION_RESULT: ${{ steps.webtunnel_validation.outcome }}
+          QUALITY_GATE_RESULT: ${{ job.status }}
+        run: ./target/release/quality_gate report .
       - name: Upload quality report
+        if: always()
         uses: actions/upload-artifact@v6
         with:
           name: quality-report
           path: data/quality_report.json
+          retention-days: 7
+          if-no-files-found: warn
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 2: build-rust

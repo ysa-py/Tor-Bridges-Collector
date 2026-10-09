@@ -140,60 +140,61 @@ jobs:
         restore-keys: ${{ runner.os }}-cargo-
 
     - name: Build quality-gate tooling (Rust)
+      id: quality_gate_tooling
       run: |
         set -euo pipefail
         cargo build --bin quality_gate --bin security_scan --bin validate_workflows
 
       # ── Python-free tree check (replaces the py_compile sweep) ────────────
     - name: Python-free gate (py-check)
+      id: python_free_gate
       run: cargo run --quiet --bin quality_gate -- py-check .
 
       # ── YAML linting (replaces the PyYAML heredoc) ────────────────────────
     - name: YAML linting
+      id: yaml_lint
       run: cargo run --quiet --bin quality_gate -- yaml-lint .
 
       # ── Workflow structural validation (port of validate_workflows.py) ────
     - name: Validate GitHub Actions workflows (structure + platform-shell rules)
+      id: workflow_validation
       run: cargo run --quiet --bin validate_workflows -- .github/workflows
 
       # ── Requirements.txt validation (unchanged schema, Rust engine) ───────
     - name: Validate requirements.txt
+      id: requirements_validation
       run: cargo run --quiet --bin quality_gate -- requirements requirements.txt
 
       # ── Secrets static scan (port of security_scan.py) ────────────────────
     - name: Security scan (dangerous sinks + hard-coded credentials)
-      continue-on-error: true
+      id: security_scan
       run: cargo run --quiet --bin security_scan -- .
 
-      # ── Secret presence check (pure bash — unchanged) ─────────────────────
-    - name: Secret presence check
-      env:
-        CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
-        PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
-        CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
-        CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
-        GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX }}
-      run: |
-        echo "═══ Secret Presence Check ═══"
-        SECRETS_FOUND=0
-        SECRETS_TOTAL=5
-        for var in CEREBRAS_API_KEY_1 PORTKEY_API_KEY_1 CF_ACCOUNT_ID_1 CF_API_TOKEN_1 GH_PAT_AUTOFIX; do
-          eval "VAL=\${$var:-}"
-          if [ -n "$VAL" ]; then
-            echo "  ✓ $var is set"
-            SECRETS_FOUND=$((SECRETS_FOUND + 1))
-          else
-            echo "  ✗ $var is EMPTY"
-          fi
-        done
-        echo "  Secrets found: ${SECRETS_FOUND}/${SECRETS_TOTAL}"
-        if [ "$SECRETS_FOUND" -eq 0 ]; then
-          echo "::warning::No optional AI/provider secrets configured; continuing with offline Rust-native checks."
-        fi
+      # ── Optional-secret telemetry passes booleans only, never secret values ─
+    - name: Test optional-secret reporter
+      run: bash scripts/test_report_optional_secrets.sh
 
-      # ── Generate quality report (same data/quality_report.json schema) ────
+    - name: Optional secret availability
+      id: secret_presence
+      env:
+        HAS_CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 != '' }}
+        HAS_PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 != '' }}
+        HAS_CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 != '' }}
+        HAS_CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 != '' }}
+        HAS_GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX != '' }}
+      run: bash scripts/report_optional_secrets.sh
+
+      # ── Generate a legacy-compatible report with actual step outcomes ────
     - name: Generate quality report
-      if: always()
+      if: ${{ always() && steps.quality_gate_tooling.outcome == 'success' }}
+      env:
+        PYTHON_SYNTAX_RESULT: ${{ steps.python_free_gate.outcome }}
+        YAML_LINT_RESULT: ${{ steps.yaml_lint.outcome }}
+        WORKFLOW_VALIDATION_RESULT: ${{ steps.workflow_validation.outcome }}
+        REQUIREMENTS_VALIDATION_RESULT: ${{ steps.requirements_validation.outcome }}
+        SECURITY_SCAN_RESULT: ${{ steps.security_scan.outcome }}
+        SECRET_PRESENCE_RESULT: ${{ steps.secret_presence.outputs.result || steps.secret_presence.outcome }}
+        QUALITY_GATE_RESULT: ${{ job.status }}
       run: cargo run --quiet --bin quality_gate -- report .
 
     - name: Upload quality report
