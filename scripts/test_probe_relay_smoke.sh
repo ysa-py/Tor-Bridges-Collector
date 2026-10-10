@@ -5,7 +5,7 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 smoke_script="$repo_root/scripts/probe_relay_smoke.sh"
-selector="$repo_root/scripts/select_probe_relay_timeout_controls.py"
+selector="$repo_root/scripts/select_probe_relay_timeout_controls.sh"
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
 fake_bin="$tmp_dir/bin"
@@ -190,7 +190,7 @@ assert_redacted() {
 
 # Selector rejects private/reserved/malformed targets, de-duplicates, and prefers
 # four independent /24s. The smoke still requires a fresh, worker-observed timeout.
-selected="$(python3 "$selector" "$multi_control_file" 2>/dev/null)" || fail 'timeout-control selection failed'
+selected="$(bash "$selector" "$multi_control_file" 2>/dev/null)" || fail 'timeout-control selection failed'
 [[ "$(jq 'length' <<< "$selected")" == 4 ]] || fail 'selector did not choose four bounded controls'
 jq -e '
   map(.id) == ["timeout-control-1","timeout-control-2","timeout-control-3","timeout-control-4"] and
@@ -235,7 +235,7 @@ if run_smoke > "$log_file" 2>&1; then :; else fail 'expected HTTP 503 retry foll
 assert_redacted
 
 # Multiple current timeout controls are safely correlated to the submitted endpoints.
-multi_expected="$(python3 "$selector" "$multi_control_file" 2>/dev/null)" || fail 'multi-control selector failed'
+multi_expected="$(bash "$selector" "$multi_control_file" 2>/dev/null)" || fail 'multi-control selector failed'
 printf '200 0 valid\n' > "$sequence_file"
 : > "$count_file"
 if PROBE_RELAY_SMOKE_DEAD_CONTROL_FILE="$multi_control_file" \

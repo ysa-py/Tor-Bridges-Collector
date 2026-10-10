@@ -42,26 +42,26 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-
+          key: ${{ runner.os }}-cargo-gate-debug-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-gate-debug-
       - name: Build quality-gate tooling (Rust)
         id: quality_gate_tooling
-        run: cargo build --release --bin quality_gate --bin security_scan --bin validate_workflows
+        run: cargo build --bin quality_gate --bin security_scan --bin validate_workflows
       - name: Python-free gate (py-check)
         id: python_free_gate
-        run: ./target/release/quality_gate py-check .
+        run: ./target/debug/quality_gate py-check .
       - name: YAML linting
         id: yaml_lint
-        run: ./target/release/quality_gate yaml-lint .
+        run: ./target/debug/quality_gate yaml-lint .
       - name: Validate GitHub Actions workflows (structure + platform-shell rules)
         id: workflow_validation
-        run: ./target/release/validate_workflows .github/workflows
+        run: ./target/debug/validate_workflows .github/workflows
       - name: Validate requirements.txt
         id: requirements_validation
-        run: ./target/release/quality_gate requirements requirements.txt
+        run: ./target/debug/quality_gate requirements requirements.txt
       - name: Security scan (dangerous sinks + hard-coded credentials)
         id: security_scan
-        run: ./target/release/security_scan .
+        run: ./target/debug/security_scan .
       - name: Test optional-secret reporter
         run: bash scripts/test_report_optional_secrets.sh
       - name: Test probe relay secret validation
@@ -80,7 +80,7 @@ jobs:
       - name: WebTunnel v0.0.4 validation
         id: webtunnel_validation
         continue-on-error: true
-        run: ./target/release/quality_gate webtunnel-check .
+        run: ./target/debug/quality_gate webtunnel-check .
       - name: Generate quality report
         if: ${{ always() && steps.quality_gate_tooling.outcome == 'success' }}
         env:
@@ -92,7 +92,7 @@ jobs:
           SECRET_PRESENCE_RESULT: ${{ steps.secret_presence.outputs.result || steps.secret_presence.outcome }}
           WEBTUNNEL_VALIDATION_RESULT: ${{ steps.webtunnel_validation.outcome }}
           QUALITY_GATE_RESULT: ${{ job.status }}
-        run: ./target/release/quality_gate report .
+        run: ./target/debug/quality_gate report .
       - name: Upload quality report
         if: always()
         uses: actions/upload-artifact@v6

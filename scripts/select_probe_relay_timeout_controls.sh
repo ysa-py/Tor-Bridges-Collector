@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env bash
+set -euo pipefail
+exec python3 - "$@" <<'PY'
 """Choose bounded public TCP timeout-control candidates without trusting them as evidence.
 
 The selected descriptors come from prior repository data only as target candidates.
@@ -107,3 +109,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+PY

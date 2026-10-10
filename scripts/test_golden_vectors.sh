@@ -1,4 +1,6 @@
-#!/usr/bin/env python3
+#!/usr/bin/env bash
+set -euo pipefail
+exec python3 - "$@" <<'PY'
 """Independent golden vectors for RFC 6455 Accept and observation freshness.
 
 These checks are intentionally stdlib-only so they can run when cargo/go are
@@ -222,3 +224,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+PY

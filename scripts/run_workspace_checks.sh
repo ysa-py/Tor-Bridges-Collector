@@ -49,7 +49,7 @@ fi
 
 # ── Python golden vectors ───────────────────────────────────────
 if command -v python3 >/dev/null 2>&1; then
-  run_gate "Python golden vectors" python3 "$ROOT/scripts/test_golden_vectors.py"
+  run_gate "Python golden vectors" bash "$ROOT/scripts/test_golden_vectors.sh"
   if [[ -f "$ROOT/scripts/test_probe_relay_smoke.sh" ]]; then
     run_gate "probe-relay smoke unit tests" bash "$ROOT/scripts/test_probe_relay_smoke.sh"
   fi
