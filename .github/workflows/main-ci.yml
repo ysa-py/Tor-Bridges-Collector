@@ -194,7 +194,27 @@ jobs:
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-test-
       - name: Run Rust tests
-        run: cargo test --workspace
+        run: |
+          set -o pipefail
+          if ! cargo test --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
+            python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          log = Path(os.environ["RUNNER_TEMP"]) / "cargo-test.log"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
+          lines = plain.splitlines()
+          emitted = 0
+          for i, line in enumerate(lines):
+              if "error[" in line or line.startswith("error:") or "FAILED" in line or line.startswith("test result:"):
+                  for chunk in lines[i:i+20]:
+                      print(f"::error::{chunk[:900]}")
+                      emitted += 1
+                  if emitted > 120:
+                      break
+          PY
+            exit 101
+          fi
       - name: Run hermetic WebTunnel tests
         run: cargo test --test webtunnel_v2_tests
 
