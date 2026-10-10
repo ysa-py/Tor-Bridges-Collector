@@ -54,7 +54,6 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  NODE_NO_WARNINGS: '1'
 
 'on':
   workflow_run:
@@ -286,7 +285,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 'stable'
+          toolchain: '1.90.0'
           components: rustfmt, clippy
 
       # FIX (was: hardcoded `powershell` on ubuntu-latest — `powershell` is

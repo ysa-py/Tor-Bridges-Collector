@@ -48,7 +48,7 @@ jobs:
         id: quality_gate_tooling
         run: |
           set -o pipefail
-          if ! cargo build --bin quality_gate --bin security_scan --bin validate_workflows 2>&1 | tee "${RUNNER_TEMP}/cargo-gate.log"; then
+          if ! cargo build --locked --bin quality_gate --bin security_scan --bin validate_workflows 2>&1 | tee "${RUNNER_TEMP}/cargo-gate.log"; then
             python3 - <<'PY'
           from pathlib import Path
           import os, re
@@ -149,7 +149,7 @@ jobs:
       - name: Build (debug)
         run: |
           set -o pipefail
-          if ! cargo build --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-workspace.log"; then
+          if ! cargo build --locked --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-workspace.log"; then
             python3 - <<'PY'
           from pathlib import Path
           import os, re
@@ -169,7 +169,7 @@ jobs:
             exit 101
           fi
       - name: Build (release)
-        run: cargo build --release --workspace
+        run: cargo build --locked --release --workspace
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 3: rust-parity-tests
@@ -196,12 +196,12 @@ jobs:
       - name: Run Rust tests
         run: |
           set -o pipefail
-          if ! cargo test --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
+          if ! cargo test --locked --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
             bash scripts/annotate_cargo_log.sh "${RUNNER_TEMP}/cargo-test.log"
             exit 101
           fi
       - name: Run hermetic WebTunnel tests
-        run: cargo test --test webtunnel_v2_tests
+        run: cargo test --locked --test webtunnel_v2_tests
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 3b: probe-relay-vitest (ADDITIVE 2026-09-08)
@@ -258,11 +258,11 @@ jobs:
           key: ${{ runner.os }}-cargo-scrape-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-scrape-
       - name: Build pipeline
-        run: cargo build --release --bin pipeline --bin tor-bridges-collector
+        run: cargo build --locked --release --bin pipeline --bin tor-bridges-collector
       # PRs still compile/validate; only main may run live pipeline stages.
       - name: Run pipeline (--all)
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
-        run: cargo run --release --bin pipeline -- --all
+        run: cargo run --locked --release --bin pipeline -- --all
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 5: AI Bridge Re-Ranker (Iran)
@@ -295,7 +295,7 @@ jobs:
             echo "No checked-out bridge snapshot; using an empty input for the reranker smoke test."
           fi
       - name: Run AI Bridge Re-Ranker
-        run: cargo run --release --bin ai_bridge_reranker -- --input bridge/iran_results.json --output bridge/bridges_ai_iran_ranked.json --censorship-level 4 --top-n 0
+        run: cargo run --locked --release --bin ai_bridge_reranker -- --input bridge/iran_results.json --output bridge/bridges_ai_iran_ranked.json --censorship-level 4 --top-n 0
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 6: Package Final Artifact
@@ -320,7 +320,7 @@ jobs:
           key: ${{ runner.os }}-cargo-pkg-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-pkg-
       - name: Build final package
-        run: cargo build --release --bin tor-bridges-collector && cargo build --release -p bridge-probe
+        run: cargo build --locked --release --bin tor-bridges-collector && cargo build --locked --release -p bridge-probe
       - name: Package artifacts
         run: |
           set -euo pipefail
@@ -371,7 +371,7 @@ jobs:
       - name: Install ARMv7 musl target
         run: bash scripts/retry_cmd.sh rustup target add armv7-unknown-linux-musleabihf
       - name: Cross-compile check (ARMv7 musl)
-        run: cargo check --target armv7-unknown-linux-musleabihf --workspace --release
+        run: cargo check --locked --target armv7-unknown-linux-musleabihf --workspace --release
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 9: x86_64-unknown-linux-musl release build
@@ -400,7 +400,7 @@ jobs:
           key: ${{ runner.os }}-cargo-musl-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-musl-
       - name: Build release (x86_64-unknown-linux-musl)
-        run: cargo build --release --workspace --target x86_64-unknown-linux-musl
+        run: cargo build --locked --release --workspace --target x86_64-unknown-linux-musl
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 10: shell-check
@@ -539,6 +539,6 @@ jobs:
       - name: Run unified workspace checks
         run: bash scripts/run_workspace_checks.sh
       - name: Validate self-heal recovery
-        run: cargo test --test self_heal_verify_contract
+        run: cargo test --locked --test self_heal_verify_contract
       - name: Validate pipeline diagnostics
-        run: cargo test --test pipeline_diagnostics
+        run: cargo test --locked --test pipeline_diagnostics

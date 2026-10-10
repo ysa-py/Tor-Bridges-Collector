@@ -568,6 +568,69 @@ pub fn emit_notices(report: &Value) {
     }
 }
 
+fn funnel_count(report: &Value, name: &str) -> u64 {
+    let Some(stages) = report.get("funnel").and_then(Value::as_array) else {
+        return 0;
+    };
+    for stage in stages {
+        let stage_name = stage.get("stage").and_then(Value::as_str);
+        if stage_name != Some(name) {
+            continue;
+        }
+        return stage.get("count").and_then(Value::as_u64).unwrap_or(0);
+    }
+    0
+}
+
+/// Live empty/broken funnels fail; validation_noop zeros pass.
+pub fn contract_violations(report: &Value) -> Vec<String> {
+    let mut out = Vec::new();
+    let live = report
+        .get("live_collection")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    let attempted = funnel_count(report, "relay_attempted");
+    let success = funnel_count(report, "relay_success");
+    let tested = funnel_count(report, "tcp_tested");
+    let reachable = funnel_count(report, "tcp_reachable");
+    if success > attempted {
+        out.push(format!(
+            "relay_success {success} exceeds relay_attempted {attempted}"
+        ));
+    }
+    if reachable > tested {
+        out.push(format!(
+            "tcp_reachable {reachable} exceeds tcp_tested {tested}"
+        ));
+    }
+    if live {
+        let sources = funnel_count(report, "sources_fetched_lines");
+        let testing = funnel_count(report, "testing_candidates");
+        if sources == 0 && testing == 0 && attempted == 0 {
+            out.push("live mode produced an empty this-run funnel".into());
+        }
+    } else {
+        for name in [
+            "sources_fetched_lines",
+            "candidates_in_history",
+            "testing_candidates",
+            "relay_attempted",
+            "relay_success",
+            "tcp_tested",
+            "tcp_reachable",
+            "published_advisory_working",
+        ] {
+            let count = funnel_count(report, name);
+            if count != 0 {
+                out.push(format!(
+                    "{name}={count} but validation_noop expects 0"
+                ));
+            }
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -752,5 +815,76 @@ mod tests {
         assert_eq!(report["relay_coverage"]["unobserved_candidates"], 0);
         emit_notices(&report);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn live_empty_funnel_fails_contract() {
+        let report = json!({
+            "live_collection": true,
+            "funnel": [
+                {"stage": "sources_fetched_lines", "count": 0},
+                {"stage": "testing_candidates", "count": 0},
+                {"stage": "relay_attempted", "count": 0},
+                {"stage": "relay_success", "count": 0},
+                {"stage": "tcp_tested", "count": 0},
+                {"stage": "tcp_reachable", "count": 0}
+            ]
+        });
+        let violations = contract_violations(&report);
+        assert!(!violations.is_empty());
+        assert!(violations
+            .iter()
+            .any(|msg| msg.contains("empty this-run funnel")));
+    }
+
+    #[test]
+    fn validation_noop_zeros_pass_contract() {
+        let report = json!({
+            "live_collection": false,
+            "funnel": [
+                {"stage": "sources_fetched_lines", "count": 0},
+                {"stage": "candidates_in_history", "count": 0},
+                {"stage": "testing_candidates", "count": 0},
+                {"stage": "relay_attempted", "count": 0},
+                {"stage": "relay_success", "count": 0},
+                {"stage": "tcp_tested", "count": 0},
+                {"stage": "tcp_reachable", "count": 0},
+                {"stage": "published_advisory_working", "count": 0}
+            ]
+        });
+        assert!(contract_violations(&report).is_empty());
+    }
+
+    #[test]
+    fn live_nonempty_funnel_passes_contract() {
+        let report = json!({
+            "live_collection": true,
+            "funnel": [
+                {"stage": "sources_fetched_lines", "count": 12},
+                {"stage": "testing_candidates", "count": 4},
+                {"stage": "relay_attempted", "count": 4},
+                {"stage": "relay_success", "count": 1},
+                {"stage": "tcp_tested", "count": 4},
+                {"stage": "tcp_reachable", "count": 2}
+            ]
+        });
+        assert!(contract_violations(&report).is_empty());
+    }
+
+    #[test]
+    fn relay_success_cannot_exceed_attempted() {
+        let report = json!({
+            "live_collection": true,
+            "funnel": [
+                {"stage": "sources_fetched_lines", "count": 3},
+                {"stage": "testing_candidates", "count": 3},
+                {"stage": "relay_attempted", "count": 1},
+                {"stage": "relay_success", "count": 2},
+                {"stage": "tcp_tested", "count": 1},
+                {"stage": "tcp_reachable", "count": 1}
+            ]
+        });
+        let violations = contract_violations(&report);
+        assert!(violations.iter().any(|msg| msg.contains("relay_success")));
     }
 }

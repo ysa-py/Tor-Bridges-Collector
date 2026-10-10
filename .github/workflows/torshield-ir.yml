@@ -94,16 +94,14 @@ name: TorShield-IR Bridge Intelligence
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  NODE_NO_WARNINGS: '1'
 
 permissions:
-  actions: write
-  contents: write
+  contents: read
 
 concurrency:
-  # PR validation shares main's group, while only main can enter the live
-  # collection/deployment job; serialize against scheduled production runs.
-  group: ${{ github.workflow }}-${{ github.event.pull_request.base.ref || github.ref_name }}
+  # PRs must not share the hourly main group. A long PR scrape would
+  # otherwise queue behind (or delay) production publication.
+  group: torshield-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -129,7 +127,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -144,32 +142,32 @@ jobs:
       id: quality_gate_tooling
       run: |
         set -euo pipefail
-        cargo build --bin quality_gate --bin security_scan --bin validate_workflows
+        cargo build --locked --bin quality_gate --bin security_scan --bin validate_workflows
 
       # ── Python-free tree check (replaces the py_compile sweep) ────────────
     - name: Python-free gate (py-check)
       id: python_free_gate
-      run: cargo run --quiet --bin quality_gate -- py-check .
+      run: cargo run --locked --quiet --bin quality_gate -- py-check .
 
       # ── YAML linting (replaces the PyYAML heredoc) ────────────────────────
     - name: YAML linting
       id: yaml_lint
-      run: cargo run --quiet --bin quality_gate -- yaml-lint .
+      run: cargo run --locked --quiet --bin quality_gate -- yaml-lint .
 
       # ── Workflow structural validation (port of validate_workflows.py) ────
     - name: Validate GitHub Actions workflows (structure + platform-shell rules)
       id: workflow_validation
-      run: cargo run --quiet --bin validate_workflows -- .github/workflows
+      run: cargo run --locked --quiet --bin validate_workflows -- .github/workflows
 
       # ── Requirements.txt validation (unchanged schema, Rust engine) ───────
     - name: Validate requirements.txt
       id: requirements_validation
-      run: cargo run --quiet --bin quality_gate -- requirements requirements.txt
+      run: cargo run --locked --quiet --bin quality_gate -- requirements requirements.txt
 
       # ── Secrets static scan (port of security_scan.py) ────────────────────
     - name: Security scan (dangerous sinks + hard-coded credentials)
       id: security_scan
-      run: cargo run --quiet --bin security_scan -- .
+      run: cargo run --locked --quiet --bin security_scan -- .
 
       # ── Optional-secret telemetry passes booleans only, never secret values ─
     - name: Test optional-secret reporter
@@ -200,7 +198,7 @@ jobs:
         SECURITY_SCAN_RESULT: ${{ steps.security_scan.outcome }}
         SECRET_PRESENCE_RESULT: ${{ steps.secret_presence.outputs.result || steps.secret_presence.outcome }}
         QUALITY_GATE_RESULT: ${{ job.status }}
-      run: cargo run --quiet --bin quality_gate -- report .
+      run: cargo run --locked --quiet --bin quality_gate -- report .
 
     - name: Upload quality report
       if: always()
@@ -209,7 +207,7 @@ jobs:
         name: quality-report-${{ github.run_id }}
         path: data/quality_report.json
         retention-days: 7
-        if-no-files-found: warn
+        if-no-files-found: error
 
   # ────────────────────────────────────────────────────────────────────────────
   build-rust:
@@ -227,7 +225,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
         components: rustfmt, clippy
 
       # Cargo.lock is kept deterministic so the cache key below is stable.
@@ -259,7 +257,7 @@ jobs:
         RUSTFLAGS: "-D warnings"
       run: |
         set -euo pipefail
-        cargo build --release 2>&1
+        cargo build --locked --release 2>&1
 
     - name: Stage bridge-probe artifact
       run: |
@@ -301,7 +299,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
         components: rustfmt, clippy
 
     - uses: actions/cache@v5
@@ -331,7 +329,7 @@ jobs:
 
     - name: Clippy (all features, deny warnings)
       id: clippy
-      run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+      run: cargo clippy --locked --workspace --all-targets --all-features -- -D warnings
 
     # GitHub does not automatically turn rustc's JSON diagnostics into check
     # annotations. Replay clippy JSON whenever this job was not cancelled and
@@ -343,7 +341,7 @@ jobs:
         set -euo pipefail
         diagnostic_log="$RUNNER_TEMP/clippy-diagnostics.jsonl"
         set +e
-        cargo clippy --workspace --all-targets --all-features --message-format=json -- -D warnings >"$diagnostic_log" 2>&1
+        cargo clippy --locked --workspace --all-targets --all-features --message-format=json -- -D warnings >"$diagnostic_log" 2>&1
         clippy_status=$?
         set -e
         if command -v jq >/dev/null 2>&1; then
@@ -396,13 +394,13 @@ jobs:
     - name: Full Rust test suite (all features)
       run: |
         set -o pipefail
-        if ! cargo test --workspace --all-targets --all-features 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
+        if ! cargo test --locked --workspace --all-targets --all-features 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
           bash scripts/annotate_cargo_log.sh "${RUNNER_TEMP}/cargo-test.log"
           exit 101
         fi
 
     - name: Release build verification
-      run: cargo build --workspace --release
+      run: cargo build --locked --workspace --release
 
   # ────────────────────────────────────────────────────────────────────────────
   scrape-and-test:
@@ -440,7 +438,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -482,12 +480,12 @@ jobs:
         } >> "${GITHUB_STEP_SUMMARY}"
         echo "live_collection=${collect} (${reason})"
         if [ "${collect}" = "true" ]; then
-          cargo run --quiet --bin this_run_snapshot -- --mode live --reason "${reason}"
+          cargo run --locked --quiet --bin this_run_snapshot -- --mode live --reason "${reason}"
         else
           # Valid empty this-run schemas (zero bridges, not fabricated rows)
           # so analytics do not exit 1 on missing JSON and FUNNEL cannot
           # count a prior live run's data/pt_results.json as this run.
-          cargo run --quiet --bin this_run_snapshot -- --mode validation_noop --reason "${reason}"
+          cargo run --locked --quiet --bin this_run_snapshot -- --mode validation_noop --reason "${reason}"
         fi
         echo "Snapshot directories:"
         for d in bridge data export docs diagnostics; do
@@ -515,7 +513,7 @@ jobs:
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
           exit 0
         fi
-        cargo run --quiet --features network --bin vercel_cleanup
+        cargo run --locked --quiet --features network --bin vercel_cleanup
 
       # IPv4 obfs4 verification is protocol-level: the collector starts this
       # client and confirms SOCKS CONNECT after the obfs4 layer. Package names
@@ -541,7 +539,7 @@ jobs:
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
           exit 0
         fi
-        cargo build --release --bin tor-bridges-collector
+        cargo build --locked --release --bin tor-bridges-collector
 
     - name: Stage 00 — Autonomous self-heal pipeline diagnostics
       timeout-minutes: 5
@@ -555,7 +553,7 @@ jobs:
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
           exit 0
         fi
-        cargo run --quiet --bin self_heal -- --heal --strict --output \
+        cargo run --locked --quiet --bin self_heal -- --heal --strict --output \
           diagnostics/torshield_ir_self_heal.json
 
     - uses: actions/download-artifact@v8
@@ -643,7 +641,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --features network --bin community_mirrors
+        cargo run --locked --quiet --features network --bin community_mirrors
 
     - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
       continue-on-error: true
@@ -653,7 +651,7 @@ jobs:
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
           exit 0
         fi
-        cargo run --quiet --features network --bin scraper
+        cargo run --locked --quiet --features network --bin scraper
 
       # One Rust entry point merges OnionHop.py's source/protocol behavior and
       # vip.py's history/README/ZIP/Telegram behavior. No Python collector is
@@ -706,7 +704,7 @@ jobs:
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
           exit 0
         fi
-        cargo run --quiet --bin scraper
+        cargo run --locked --quiet --bin scraper
 
     - name: Stage 1 — Scraper (all sources)
       timeout-minutes: 10
@@ -716,7 +714,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --features network --bin scraper
+        cargo run --locked --quiet --features network --bin scraper
 
     - name: Stage 1x — Extended low-supply source draws + supply diagnostics (additive)
       continue-on-error: true
@@ -735,7 +733,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --features network --bin supply_extender
+        cargo run --locked --quiet --features network --bin supply_extender
 
     - name: FAILSAFE — ensure bridge files always have content (Rust port)
       timeout-minutes: 3
@@ -745,7 +743,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --bin failsafe_bridges
+        cargo run --locked --quiet --bin failsafe_bridges
 
     - uses: actions/setup-go@v6
       with:
@@ -1119,7 +1117,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --features network --bin webtunnel_supply_advanced
+        cargo run --locked --quiet --features network --bin webtunnel_supply_advanced
 
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
@@ -1149,7 +1147,7 @@ jobs:
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
           exit 0
         fi
-        cargo run --quiet --features network --bin ooni_correlator
+        cargo run --locked --quiet --features network --bin ooni_correlator
 
     - name: Stage 6a — Score bridges
       timeout-minutes: 8
@@ -1159,7 +1157,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --bin pipeline -- --stage ml --stage rotation --report data/stage6a_score_report.json
+        cargo run --locked --quiet --bin pipeline -- --stage ml --stage rotation --report data/stage6a_score_report.json
 
     - name: Stage 6b — Export bridge files
       timeout-minutes: 5
@@ -1169,14 +1167,14 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --quiet --bin pipeline -- --stage results --report data/stage6b_export_report.json
+        cargo run --locked --quiet --bin pipeline -- --stage results --report data/stage6b_export_report.json
 
     - uses: actions/upload-artifact@v6
       with:
         name: bridge-snapshot
         path: "bridge/\ndata/\nexport/\ndocs/\ndiagnostics/"
         retention-days: 1
-        if-no-files-found: ignore
+        if-no-files-found: error
   ai-rerank:
     # MERGED from ai_bridge_reranker.yml (2026-08-01 consolidation), ported to
     # the Rust-native ai_bridge_reranker binary (the retired
@@ -1204,7 +1202,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1252,7 +1250,7 @@ jobs:
         AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
       run: |
         set -euo pipefail
-        cargo run --quiet --bin ai_bridge_reranker -- \
+        cargo run --locked --quiet --bin ai_bridge_reranker -- \
           --input "$BRIDGE_FILE" \
           --output bridge/bridges_ai_iran_ranked.json \
           --censorship-level 4 \
@@ -1279,6 +1277,9 @@ jobs:
     - ai-rerank
     runs-on: ubuntu-26.04
     if: always()
+    permissions:
+      contents: write
+      actions: read
 
     steps:
     - name: Checkout full repo
@@ -1362,7 +1363,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1388,12 +1389,12 @@ jobs:
     - name: Stage 7 — ML blocking predictor
       continue-on-error: true
       timeout-minutes: 8
-      run: cargo run --quiet --bin ml_predictor
+      run: cargo run --locked --quiet --bin ml_predictor
 
     - name: Stage 8 — Adaptive transport engine
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin pipeline -- --stage adaptive --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage adaptive --report 
         data/adaptive_transport_report.json
 
     - name: Restore Zig toolchain cache
@@ -1486,7 +1487,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1512,18 +1513,18 @@ jobs:
     - name: Stage 8b — DPI intelligence report
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin dpi_evasion_advanced
+      run: cargo run --locked --quiet --bin dpi_evasion_advanced
 
     - name: Stage 8n — JA3/TLS fingerprint rotation engine
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin pipeline -- --stage ja3 --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage ja3 --report 
         data/ja3_pipeline_report.json
 
     - name: Stage 8i — Anti-AI DPI scoring
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin anti_ai_dpi
+      run: cargo run --locked --quiet --bin anti_ai_dpi
 
     - name: Stage 8i-smart — Smart Iran AI re-ranker (v9.0)
       continue-on-error: true
@@ -1534,7 +1535,7 @@ jobs:
         AI_RERANK_TOP_N: ${{ vars.AI_RERANK_TOP_N }}
       run: |
         set -euo pipefail
-        cargo run --quiet --bin ai_bridge_reranker -- \
+        cargo run --locked --quiet --bin ai_bridge_reranker -- \
           --input bridge/iran_results.json \
           --output data/smart_iran_results.json \
           --top-n "${AI_RERANK_TOP_N:-0}"
@@ -1549,7 +1550,7 @@ jobs:
         PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
         CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: cargo run --quiet --bin pipeline -- --stage dpi --stage anti-ai-dpi 
+      run: cargo run --locked --quiet --bin pipeline -- --stage dpi --stage anti-ai-dpi 
         --stage rotation --report data/ai_dpi_mutator_report.json
 
       # Bounded 64-worker pool fixes the former sequential 1,584 × 3-second
@@ -1559,7 +1560,7 @@ jobs:
     - name: Stage 8r — Iran SIAM/NGFW Anti-AI DPI evasion analysis
       continue-on-error: true
       timeout-minutes: 6
-      run: cargo run --quiet --bin iran_anti_siam
+      run: cargo run --locked --quiet --bin iran_anti_siam
 
       # Stage 8s fuses the per-run Iran intelligence reports (Stage 8i
       # anti-AI-DPI scoring, Stage 8r SIAM evasion tiers, Stage 8i-smart
@@ -1596,7 +1597,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1622,7 +1623,7 @@ jobs:
     - name: Stage 8g — ECH fingerprint evasion scoring
       continue-on-error: true
       timeout-minutes: 20
-      run: cargo run --quiet --bin ech_fingerprint_evasion
+      run: cargo run --locked --quiet --bin ech_fingerprint_evasion
 
     - uses: actions/upload-artifact@v6
       with:
@@ -1649,7 +1650,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1675,7 +1676,7 @@ jobs:
     - name: Stage 8h — NIN advanced bypass analysis
       continue-on-error: true
       timeout-minutes: 20
-      run: cargo run --quiet --bin pipeline -- --stage nin-advanced --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-advanced --report 
         data/nin_advanced_pipeline_report.json
 
     - uses: actions/upload-artifact@v6
@@ -1704,7 +1705,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1730,13 +1731,13 @@ jobs:
     - name: Stage 8d — NIN internet-cut bridge pack
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin pipeline -- --stage nin-pack --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-pack --report 
         data/nin_pack_pipeline_report.json
 
     - name: Stage 8d2 — NIN bypass analysis (ECH/CDN survivability scoring)
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin pipeline -- --stage nin-bypass --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-bypass --report 
         data/nin_bypass_pipeline_report.json
 
     - name: Stage 8k — NIN internet-cut survivability tester
@@ -1746,13 +1747,13 @@ jobs:
         NIN_CUT_MAX_WORKERS: '64'
         NIN_CUT_MAX_BRIDGES: '2000'
         NIN_CUT_TIMEOUT_SECS: '3'
-      run: cargo run --quiet --bin pipeline -- --stage nin-cut --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-cut --report 
         data/nin_cut_pipeline_report.json
 
     - name: Stage 8p — NIN internet-cut bridge classifier
       continue-on-error: true
       timeout-minutes: 6
-      run: cargo run --quiet --bin pipeline -- --stage nin-classify --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-classify --report 
         data/nin_classify_pipeline_report.json
 
       # Install Zig 0.14.0 directly — replaces mlugg/setup-zig@v2 (which
@@ -1790,7 +1791,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -1816,37 +1817,37 @@ jobs:
     - name: Stage 8c — Next-gen protocol scan (Hysteria2/REALITY/VLESS)
       continue-on-error: true
       timeout-minutes: 8
-      run: cargo run --quiet --bin pipeline -- --stage nextgen --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nextgen --report 
         data/nextgen_pipeline_report.json
 
     - name: Stage 8e — ECH/post-quantum bridge scoring
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin pipeline -- --stage quantum --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage quantum --report 
         data/quantum_pipeline_report.json
 
     - name: Stage 8f — WARP bootstrap check
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin pipeline -- --stage warp --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage warp --report 
         data/warp_pipeline_report.json
 
     - name: Stage 8l — XTLS-Reality VLESS config generator
       continue-on-error: true
       timeout-minutes: 8
-      run: cargo run --quiet --bin pipeline -- --stage reality --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage reality --report 
         data/reality_pipeline_report.json
 
     - name: Stage 8m — eBPF/XDP deployment blueprint generator
       continue-on-error: true
       timeout-minutes: 3
-      run: cargo run --quiet --bin pipeline -- --stage ebpf --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage ebpf --report 
         data/ebpf_pipeline_report.json
 
     - name: Stage 8o — Certificate Transparency MITM monitor
       continue-on-error: true
       timeout-minutes: 15
-      run: cargo run --quiet --bin pipeline -- --stage ct --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage ct --report 
         data/ct_pipeline_report.json
 
     - uses: actions/upload-artifact@v6
@@ -1865,6 +1866,9 @@ jobs:
     if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
     timeout-minutes: 60
+    permissions:
+      contents: write
+      actions: read
     # Defense-in-depth publication lock: never cancel a run while it is
     # verifying or committing the bridge artifact.
     concurrency:
@@ -1936,7 +1940,7 @@ jobs:
 
     - uses: dtolnay/rust-toolchain@stable
       with:
-        toolchain: 'stable'
+        toolchain: '1.90.0'
 
     - uses: actions/cache@v5
       with:
@@ -2056,7 +2060,7 @@ jobs:
       timeout-minutes: 5
       run: |
         set -euo pipefail
-        cargo run --quiet --bin drift_advisory
+        cargo run --locked --quiet --bin drift_advisory
 
       # Stage 8v (ADDITIVE 2026-09-08): pipeline funnel advisory — turns the
       # Section-1 diagnostic funnel into a repeatable per-run artifact:
@@ -2077,7 +2081,7 @@ jobs:
       timeout-minutes: 10
       run: |
         set -euo pipefail
-        cargo run --quiet --bin funnel_advisory
+        cargo run --locked --quiet --bin funnel_advisory
 
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites every REQUIRED_FILES bridge/ output, re-renders README.md from the
@@ -2102,13 +2106,23 @@ jobs:
         set -euo pipefail
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
           echo "self no-op: live publication rewrite stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          if [ -f bridge/telegram_manifest.json ]; then
+            cargo run --locked --quiet --bin sync_bridge_outputs -- \
+              --bridge-dir bridge \
+              --verify-only
+          else
+            echo "declared: no committed publication contract on this ref"
+            echo "missing: bridge/telegram_manifest.json (none committed)"
+            echo "reason: validation_noop does not invent bridge/ rows"
+          fi
           {
             echo "### Stage 9"
             echo "- publication: self no-op (main-only)"
+            echo "- verify_only: committed tree or declared missing"
           } >> "${GITHUB_STEP_SUMMARY}"
           exit 0
         fi
-        cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
+        cargo run --locked --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
         UPLOAD="$(printf '%s' "${TELEGRAM_INPUT:-${TELEGRAM_REPO_VAR:-true}}" | tr '[:upper:]' '[:lower:]')"
         if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           echo "pull_request run — publication preview only; Telegram delivery deferred"
@@ -2132,7 +2146,7 @@ jobs:
           UPLOAD=false
         fi
         echo "Telegram dual-persist mode: $UPLOAD"
-        cargo run --quiet --features network --bin sync_bridge_outputs -- \
+        cargo run --locked --quiet --features network --bin sync_bridge_outputs -- \
           --bridge-dir bridge \
           --readme README.md \
           --repo-url "$REPO_URL" \
@@ -2154,7 +2168,7 @@ jobs:
           echo "self no-op: publication contract verify stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
           exit 0
         fi
-        cargo run --quiet --bin sync_bridge_outputs -- \
+        cargo run --locked --quiet --bin sync_bridge_outputs -- \
           --bridge-dir bridge \
           --verify-only
         echo "✅ Publication contract verified: every required file present,"
@@ -2383,8 +2397,10 @@ jobs:
           export/ct_flagged_domains.txt
           export/ct_clean_bridges.txt
           docs/ebpf_xdp_blueprint.md
+          data/funnel_advisory.json
+          data/collection_mode.json
         retention-days: 7
-        if-no-files-found: ignore
+        if-no-files-found: error
 
   # ────────────────────────────────────────────────────────────────────────────
 
@@ -2396,7 +2412,7 @@ jobs:
     name: CI contract
     if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
-    timeout-minutes: 5
+    timeout-minutes: 20
     needs:
     - quality-gate
     - build-rust
@@ -2486,3 +2502,36 @@ jobs:
           exit 1
         fi
         echo "CI contract satisfied."
+
+    - name: Mode-aware funnel contract
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
+      uses: actions/checkout@v5
+
+    - uses: dtolnay/rust-toolchain@stable
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
+      with:
+        toolchain: '1.90.0'
+
+    - uses: actions/cache@v5
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git
+          target
+        key: ${{ runner.os }}-cargo-parity-${{ hashFiles('Cargo.toml',
+          'Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-
+
+    - name: Restore this-run snapshot
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
+      uses: actions/download-artifact@v8
+      with:
+        name: bridge-snapshot
+        path: .
+
+    - name: Check funnel contract
+      if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
+      run: |
+        set -euo pipefail
+        cargo run --locked --quiet --bin funnel_advisory -- --check-contract
