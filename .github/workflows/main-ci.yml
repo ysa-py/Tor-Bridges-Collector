@@ -197,51 +197,7 @@ jobs:
         run: |
           set -o pipefail
           if ! cargo test --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
-            python3 - <<'PY'
-          from pathlib import Path
-          import os, re
-          log = Path(os.environ["RUNNER_TEMP"]) / "cargo-test.log"
-          text = log.read_text(errors="replace") if log.exists() else ""
-          plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
-          lines = plain.splitlines()
-          emitted = 0
-          seen = set()
-
-          def emit(chunk):
-              global emitted
-              print(f"::error::{chunk[:900]}")
-              emitted += 1
-
-          def interesting(line):
-              stripped = line.strip()
-              if "error[" in line or line.startswith("error:"):
-                  return True
-              if "panicked at" in line or stripped.endswith("... FAILED"):
-                  return True
-              if stripped == "failures:" or stripped.startswith("error: test failed"):
-                  return True
-              if line.startswith("test result:") and "FAILED" in line:
-                  return True
-              return False
-
-          for i, line in enumerate(lines):
-              if not interesting(line):
-                  continue
-              for j in range(i, min(len(lines), i + 24)):
-                  if j in seen:
-                      continue
-                  seen.add(j)
-                  emit(lines[j])
-                  if emitted > 100:
-                      break
-              if emitted > 100:
-                  break
-          emit("----- cargo-test.log tail -----")
-          if not lines:
-              emit("cargo-test.log was empty; cargo test failed before producing output")
-          for chunk in lines[-80:]:
-              emit(chunk)
-          PY
+            python3 scripts/annotate_cargo_log.py "${RUNNER_TEMP}/cargo-test.log"
             exit 101
           fi
       - name: Run hermetic WebTunnel tests
@@ -561,6 +517,16 @@ jobs:
         uses: actions/checkout@v5
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.22"
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: probe-relay/package-lock.json
       - name: Cache Cargo
         uses: actions/cache@v5
         with:

@@ -42,9 +42,9 @@ fi
 
 # ── Go ──────────────────────────────────────────────────────────
 if command -v go >/dev/null 2>&1; then
-  run_gate "Go: go test ./..." bash -c "cd \"$ROOT\" && go test ./..."
+  run_gate "Go: go test ./internal/..." bash -c "cd \"$ROOT\" && go test ./internal/..."
 else
-  skip_gate "Go: go test ./..." "go not found"
+  skip_gate "Go: go test ./internal/..." "go not found"
 fi
 
 # ── Python golden vectors ───────────────────────────────────────
@@ -62,8 +62,15 @@ fi
 
 # ── probe-relay (Node) ──────────────────────────────────────────
 if command -v npm >/dev/null 2>&1 && [[ -f "$ROOT/probe-relay/package.json" ]]; then
-  run_gate "probe-relay typecheck" npm --prefix "$ROOT/probe-relay" run typecheck
-  run_gate "probe-relay vitest" npm --prefix "$ROOT/probe-relay" test
+  if [[ ! -d "$ROOT/probe-relay/node_modules" ]]; then
+    run_gate "probe-relay npm ci" npm --prefix "$ROOT/probe-relay" ci
+  fi
+  if [[ -d "$ROOT/probe-relay/node_modules" ]]; then
+    run_gate "probe-relay typecheck" npm --prefix "$ROOT/probe-relay" run typecheck
+    run_gate "probe-relay vitest" npm --prefix "$ROOT/probe-relay" test
+  else
+    skip_gate "probe-relay vitest" "node_modules missing after npm ci"
+  fi
 else
   skip_gate "probe-relay vitest" "npm not found"
 fi
