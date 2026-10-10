@@ -21,7 +21,7 @@ use serde_json::{json, Value};
 pub const COLLECTION_MODE_PATH: &str = "data/collection_mode.json";
 
 /// Empty but schema-valid `bridge/iran_results.json`.
-pub const EMPTY_IRAN_RESULTS: &str = "{\n  \"bridges\": [],\n  \"summary\": {\n    \"count\": 0\n  }\n}\n";
+pub const EMPTY_IRAN_RESULTS: &str = "{\"bridges\":[],\"summary\":{\"count\":0}}\n";
 
 /// Empty but schema-valid `bridge/bridge_history.json` (JSON object).
 pub const EMPTY_BRIDGE_HISTORY: &str = "{}\n";

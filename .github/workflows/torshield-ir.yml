@@ -315,7 +315,19 @@ jobs:
         restore-keys: ${{ runner.os }}-cargo-
 
     - name: Format check
-      run: cargo fmt --all -- --check
+      run: |
+        set -euo pipefail
+        fmt_log="${RUNNER_TEMP}/rustfmt-check.txt"
+        if cargo fmt --all -- --check >"${fmt_log}" 2>&1; then
+          echo "cargo fmt --all -- --check clean"
+          exit 0
+        fi
+        echo "::error::cargo fmt --all -- --check failed"
+        sed -n '1,120p' "${fmt_log}"
+        grep -E '^Diff in ' "${fmt_log}" | while IFS= read -r line; do
+          echo "::error::${line}"
+        done
+        exit 1
 
     - name: Clippy (all features, deny warnings)
       id: clippy
