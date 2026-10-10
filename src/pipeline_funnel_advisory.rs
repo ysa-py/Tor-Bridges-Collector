@@ -31,7 +31,7 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 
-use crate::this_run_snapshot::{read_collection_mode, CollectionMode};
+use crate::this_run_snapshot::{CollectionMode, read_collection_mode};
 
 /// Advisory report path (new file; nothing existing is overwritten).
 pub const REPORT_FILE: &str = "data/funnel_advisory.json";

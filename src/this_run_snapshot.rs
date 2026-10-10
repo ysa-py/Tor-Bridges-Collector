@@ -167,8 +167,9 @@ mod tests {
             .unwrap()
             .as_nanos();
         let dir = std::env::temp_dir().join(format!(
-            "this_run_snapshot_{}_{nanos}",
-            std::process::id()
+            "this_run_snapshot_{}_{}",
+            std::process::id(),
+            nanos
         ));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).unwrap();

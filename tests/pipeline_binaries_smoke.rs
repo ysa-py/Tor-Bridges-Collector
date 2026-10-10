@@ -389,3 +389,67 @@ fn bridge_intelligence_produces_the_iran_reports() {
     }
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+/// Validation no-ops must write schema-valid empty observation files so
+/// analytics do not `exit 1` and Stage 8u does not emit "unreadable" notices.
+#[test]
+fn this_run_snapshot_validation_noop_writes_readable_empty_schemas() {
+    let dir = scratch("this-run-noop");
+    std::fs::write(
+        dir.join("data/pt_results.json"),
+        r#"[{"host":"1.2.3.4","port":443,"success":true}]"#,
+    )
+    .unwrap();
+    let output = run(
+        env!("CARGO_BIN_EXE_this_run_snapshot"),
+        &dir,
+        &[
+            "--mode",
+            "validation_noop",
+            "--reason",
+            "not the default branch",
+        ],
+    );
+    assert_success("this_run_snapshot --mode validation_noop", &output);
+
+    let iran: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("bridge/iran_results.json")).unwrap(),
+    )
+    .expect("iran_results.json must parse");
+    assert_eq!(iran["bridges"].as_array().unwrap().len(), 0);
+
+    let history: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("bridge/bridge_history.json")).unwrap(),
+    )
+    .expect("bridge_history.json must parse");
+    assert!(history.as_object().unwrap().is_empty());
+
+    let pt: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("data/pt_results.json")).unwrap(),
+    )
+    .expect("pt_results.json must parse");
+    assert_eq!(pt.as_array().unwrap().len(), 0);
+
+    let mode: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("data/collection_mode.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(mode["mode"], "validation_noop");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A truthful zero-yield elite pack is an empty file, not a missing file.
+/// Stage 8s used `test -s` which treated that as ::error::.
+#[test]
+fn empty_elite_pack_file_is_a_valid_zero_yield() {
+    let dir = scratch("elite-empty");
+    let path = dir.join("export/iran_anti_dpi_elite.txt");
+    std::fs::write(&path, "").unwrap();
+    assert!(path.is_file(), "elite pack file must exist");
+    assert_eq!(
+        std::fs::metadata(&path).unwrap().len(),
+        0,
+        "zero-yield pack is empty, not fabricated"
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
