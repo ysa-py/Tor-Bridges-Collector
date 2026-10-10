@@ -240,7 +240,7 @@ fn url_only_webtunnel_requires_typed_s2_vantage_and_iran_status() {
                 "probe_type": "websocket-101",
                 "observed_at": iran_at
             }
-        })
+        }),
     ];
     let stats = write_result_files(&root, &records).unwrap();
 

@@ -389,7 +389,10 @@ mod tls_probe {
 
         let response_text = String::from_utf8_lossy(&response[..n]);
         let signature_verified =
-            torshield_ir_ultra::websocket_signature::has_valid_upgrade_signature(&response_text, &key);
+            torshield_ir_ultra::websocket_signature::has_valid_upgrade_signature(
+                &response_text,
+                &key,
+            );
         let status_line = response_text.split("\r\n").next().unwrap_or_default();
         let returned_101 = status_line
             .split_ascii_whitespace()
@@ -467,7 +470,10 @@ async fn probe_one(line: String, timeout_duration: Duration) -> Value {
 }
 
 fn stamp_probe_evidence(mut result: Value) -> Value {
-    let method = result.get("probe_method").and_then(Value::as_str).unwrap_or("none");
+    let method = result
+        .get("probe_method")
+        .and_then(Value::as_str)
+        .unwrap_or("none");
     let probe_status = result
         .get("probe_status")
         .and_then(Value::as_str)
@@ -784,14 +790,17 @@ mod tests {
 
     #[test]
     fn unprobed_snowflake_is_not_reported_as_transport_capable() {
-        let result = stamp_probe_evidence(snowflake_capability_result("snowflake example".to_string()));
+        let result =
+            stamp_probe_evidence(snowflake_capability_result("snowflake example".to_string()));
         assert_eq!(result["tcp_reachable"], false);
         assert_eq!(result["transport_capable"], false);
         assert_eq!(result["iran_status"], "iran_unknown");
         assert_eq!(result["verification"]["status"], "inconclusive");
         assert_eq!(result["verification"]["stage"], "S0");
         assert!(result["verification"]["vantage"].is_null());
-        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(&result));
+        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &result
+        ));
     }
 
     #[test]
@@ -807,8 +816,13 @@ mod tests {
         }));
         assert_eq!(result["verification"]["status"], "connected");
         assert_eq!(result["verification"]["stage"], "S1");
-        assert_eq!(result["verification"]["probe_type"], "websocket-front-check");
-        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(&result));
+        assert_eq!(
+            result["verification"]["probe_type"],
+            "websocket-front-check"
+        );
+        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &result
+        ));
     }
 
     #[test]
@@ -825,8 +839,13 @@ mod tests {
         assert_eq!(result["verification"]["status"], "connected");
         assert_eq!(result["verification"]["stage"], "S2");
         assert_eq!(result["verification"]["probe_type"], "websocket-101");
-        assert_eq!(result["verification"]["vantage"]["type"], "github_actions_runner");
-        assert!(torshield_ir_ultra::evidence_stamp::has_verified_s2plus(&result));
+        assert_eq!(
+            result["verification"]["vantage"]["type"],
+            "github_actions_runner"
+        );
+        assert!(torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &result
+        ));
         assert_eq!(result["iran_status"], "iran_unknown");
     }
 
@@ -841,7 +860,10 @@ mod tests {
         }));
         assert_eq!(result["verification"]["status"], "refused");
         assert_eq!(result["verification"]["stage"], "S0");
-        assert_eq!(result["verification"]["vantage"]["type"], "github_actions_runner");
+        assert_eq!(
+            result["verification"]["vantage"]["type"],
+            "github_actions_runner"
+        );
         assert_eq!(result["iran_status"], "iran_unknown");
         assert_eq!(
             torshield_ir_ultra::evidence_stamp::scoring_reachability(&result),
@@ -849,10 +871,7 @@ mod tests {
         );
 
         let mut stamped = result;
-        torshield_ir_ultra::evidence_stamp::stamp_entry(
-            &mut stamped,
-            "2026-10-10T10:00:00Z",
-        );
+        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut stamped, "2026-10-10T10:00:00Z");
         assert_eq!(stamped["test_tier"], "tier_0_attempt");
         assert_eq!(stamped["test_result"], "tested_failing");
     }
@@ -868,15 +887,15 @@ mod tests {
         }));
         assert_eq!(result["verification"]["status"], "timeout");
         assert_eq!(result["verification"]["stage"], "S0");
-        assert_eq!(result["verification"]["vantage"]["type"], "github_actions_runner");
+        assert_eq!(
+            result["verification"]["vantage"]["type"],
+            "github_actions_runner"
+        );
         assert_eq!(
             torshield_ir_ultra::evidence_stamp::scoring_reachability(&result),
             None
         );
-        torshield_ir_ultra::evidence_stamp::stamp_entry(
-            &mut result,
-            "2026-10-10T10:00:00Z",
-        );
+        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut result, "2026-10-10T10:00:00Z");
         assert_eq!(result["test_tier"], "tier_0_attempt");
         assert_eq!(result["test_result"], "untested (rate-limited)");
     }
@@ -891,7 +910,9 @@ mod tests {
         assert_eq!(tls_reachable["verification"]["status"], "connected");
         assert_eq!(tls_reachable["verification"]["stage"], "S1");
         assert_eq!(tls_reachable["verification"]["probe_type"], "tls");
-        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(&tls_reachable));
+        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &tls_reachable
+        ));
 
         for (probe_status, expected_status) in [("refused", "refused"), ("timeout", "timeout")] {
             let result = stamp_probe_evidence(json!({
@@ -901,7 +922,10 @@ mod tests {
             }));
             assert_eq!(result["verification"]["status"], expected_status);
             assert_eq!(result["verification"]["stage"], "S0");
-            assert_eq!(result["verification"]["vantage"]["type"], "github_actions_runner");
+            assert_eq!(
+                result["verification"]["vantage"]["type"],
+                "github_actions_runner"
+            );
         }
     }
 

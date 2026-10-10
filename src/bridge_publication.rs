@@ -1954,8 +1954,10 @@ mod tests {
         let now = chrono::Utc::now();
         let cutoff = now - chrono::Duration::hours(72);
         let observed_at = (now - chrono::Duration::seconds(30)).to_rfc3339();
-        let verified = "webtunnel AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://front.example/x ver=0.0.4";
-        let legacy_tcp = "webtunnel BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB url=https://legacy.example/x ver=0.0.4";
+        let verified =
+            "webtunnel AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA url=https://front.example/x ver=0.0.4";
+        let legacy_tcp =
+            "webtunnel BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB url=https://legacy.example/x ver=0.0.4";
         let legacy_test_pass = "obfs4 192.0.2.1:443 cert=x iat-mode=2";
         let history = serde_json::json!({
             "verified": {
@@ -2058,8 +2060,7 @@ mod tests {
         ]);
         let probes = extract_probe_records(&records, now).expect("typed probe records");
         let mut counts = BTreeMap::new();
-        write_iran_projections(&bridge_dir, &[], &probes, &mut counts)
-            .expect("write projections");
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts).expect("write projections");
 
         let working = std::fs::read_to_string(bridge_dir.join("iran_likely_working_webtunnel.txt"))
             .expect("working output");
@@ -2104,5 +2105,4 @@ mod tests {
         }
         let _ = std::fs::remove_dir_all(&dir);
     }
-
 }

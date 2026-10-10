@@ -366,7 +366,9 @@ pub fn anomaly_rows(
         }
         let prior_rates: Vec<f64> = prior_entries
             .iter()
-            .filter(|entry| entry.get("metric").and_then(Value::as_str) == Some(TRANSPORT_RATE_METRIC))
+            .filter(|entry| {
+                entry.get("metric").and_then(Value::as_str) == Some(TRANSPORT_RATE_METRIC)
+            })
             .filter_map(|entry| {
                 entry
                     .get("rates")?
@@ -867,17 +869,19 @@ mod tests {
     fn current_transport_rates_require_iran_assessment_and_s2plus_for_working() {
         let now = Utc::now();
         let ooni_measured_at = now.to_rfc3339();
-        let assessment = |status: &str| json!({
-            "status": status,
-            "source": "ooni_measurements_api",
-            "checked": true,
-            "vantage": {"type":"ooni_probe", "country":"IR"},
-            "queried_at":ooni_measured_at.clone(),
-            "measurement_at":ooni_measured_at.clone(),
-            "measurement_window_days":7,
-            "historical_measurement_at":ooni_measured_at.clone(),
-            "historical_window_days":90
-        });
+        let assessment = |status: &str| {
+            json!({
+                "status": status,
+                "source": "ooni_measurements_api",
+                "checked": true,
+                "vantage": {"type":"ooni_probe", "country":"IR"},
+                "queried_at":ooni_measured_at.clone(),
+                "measurement_at":ooni_measured_at.clone(),
+                "measurement_window_days":7,
+                "historical_measurement_at":ooni_measured_at.clone(),
+                "historical_window_days":90
+            })
+        };
         let s1 = json!({
             "status":"connected", "stage":"S1",
             "vantage":{"type":"github_actions_runner"}, "probe_type":"tcp",

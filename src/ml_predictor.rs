@@ -429,7 +429,8 @@ pub fn load_labeled_data_with_paths(
 
                 let status = r.get("iran_status").and_then(|v| v.as_str()).unwrap_or("");
                 let iran_evidence = crate::evidence_stamp::has_iran_specific_assessment_at(r, now);
-                let iran_working_evidence = crate::evidence_stamp::has_iran_specific_working_assessment_at(r, now);
+                let iran_working_evidence =
+                    crate::evidence_stamp::has_iran_specific_working_assessment_at(r, now);
                 let label = if BLOCKED_STATUSES.contains(&status) && iran_evidence {
                     Some(1)
                 } else if WORKING_STATUSES.contains(&status) && iran_working_evidence {

@@ -283,7 +283,10 @@ mod tests {
         };
         let result = normalize(&response);
         assert_eq!(result.measurement_ref, "newest");
-        assert_eq!(result.measured_at.to_rfc3339(), "2026-08-14T00:00:00.125+00:00");
+        assert_eq!(
+            result.measured_at.to_rfc3339(),
+            "2026-08-14T00:00:00.125+00:00"
+        );
     }
 
     #[test]

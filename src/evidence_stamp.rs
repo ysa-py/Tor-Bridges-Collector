@@ -50,7 +50,6 @@ pub const RESULT_REACHABLE_S1: &str = "tcp_reachable_s1";
 pub const RESULT_FAILING: &str = "tested_failing";
 pub const RESULT_UNTESTED: &str = "untested (rate-limited)";
 
-
 /// Return the typed verification object, accepting the relay's flat result
 /// shape as a compatibility input. Published bridge records use the nested
 /// `verification` object so the evidence stays distinct from Iran assessment.
@@ -111,9 +110,7 @@ pub fn observation_is_fresh_at(entry: &Value, now: DateTime<Utc>) -> bool {
     verification(entry)
         .and_then(|evidence| evidence.get("observed_at"))
         .and_then(Value::as_str)
-        .is_some_and(|timestamp| {
-            timestamp_is_fresh_at(timestamp, now, OBSERVATION_MAX_AGE_SECONDS)
-        })
+        .is_some_and(|timestamp| timestamp_is_fresh_at(timestamp, now, OBSERVATION_MAX_AGE_SECONDS))
 }
 
 /// True only for positive S2+ protocol evidence from a recognized vantage
@@ -212,10 +209,7 @@ pub fn has_iran_measurement_provenance_at(entry: &Value, now: DateTime<Utc>) -> 
     };
     if !matches!(
         status,
-        "iran_likely_working"
-            | "iran_likely_blocked"
-            | "iran_frequently_blocked"
-            | "iran_unknown"
+        "iran_likely_working" | "iran_likely_blocked" | "iran_frequently_blocked" | "iran_unknown"
     ) {
         return false;
     }
@@ -309,9 +303,9 @@ fn default_verification(entry: &Value, _fallback_timestamp: &str) -> Value {
         object
             .entry("observed_at".to_string())
             .or_insert(Value::Null);
-        object.entry("source".to_string()).or_insert_with(|| {
-            Value::String("iran_results".to_string())
-        });
+        object
+            .entry("source".to_string())
+            .or_insert_with(|| Value::String("iran_results".to_string()));
         return Value::Object(object);
     }
 
@@ -365,11 +359,7 @@ pub fn merge_verification_observation(entry: &mut Value, incoming: Value) {
 }
 
 /// Deterministic-clock variant of [`merge_verification_observation`].
-pub fn merge_verification_observation_at(
-    entry: &mut Value,
-    incoming: Value,
-    now: DateTime<Utc>,
-) {
+pub fn merge_verification_observation_at(entry: &mut Value, incoming: Value, now: DateTime<Utc>) {
     let current = verification(entry).cloned();
     let mut observations = current
         .as_ref()
@@ -403,7 +393,10 @@ fn normalize_line(line: &str) -> String {
 
 fn relay_observation(result: &Value) -> Option<Value> {
     let status = result.get("status").and_then(Value::as_str)?;
-    if !matches!(status, "connected" | "refused" | "timeout" | "inconclusive" | "error") {
+    if !matches!(
+        status,
+        "connected" | "refused" | "timeout" | "inconclusive" | "error"
+    ) {
         return None;
     }
     let stage = result.get("stage").and_then(Value::as_str)?;
@@ -542,7 +535,10 @@ pub fn derive_tier_at(entry: &Value, now: DateTime<Utc>) -> String {
     let evidence = default_verification(entry, "");
     if rank >= 1
         && has_observing_vantage(&evidence)
-        && matches!(status, "connected" | "refused" | "timeout" | "inconclusive" | "error")
+        && matches!(
+            status,
+            "connected" | "refused" | "timeout" | "inconclusive" | "error"
+        )
     {
         return TIER_1_TCP.to_string();
     }
@@ -730,16 +726,22 @@ mod tests {
 
     #[test]
     fn explicit_refusal_is_failing_but_timeout_is_neutral() {
-        let refused = json!({ "verification": typed("refused", "S0", "tcp", Some("cloudflare_worker")) });
+        let refused =
+            json!({ "verification": typed("refused", "S0", "tcp", Some("cloudflare_worker")) });
         assert_eq!(derive_tier(&refused), TIER_0_ATTEMPT);
         assert_eq!(derive_result(&refused), RESULT_FAILING);
         assert_eq!(scoring_reachability(&refused), Some(false));
 
         for status in ["timeout", "inconclusive", "error"] {
-            let entry = json!({ "verification": typed(status, "S0", "tcp", Some("cloudflare_worker")) });
+            let entry =
+                json!({ "verification": typed(status, "S0", "tcp", Some("cloudflare_worker")) });
             assert_eq!(derive_tier(&entry), TIER_0_ATTEMPT);
             assert_eq!(derive_result(&entry), RESULT_UNTESTED);
-            assert_eq!(scoring_reachability(&entry), None, "{status} must be neutral");
+            assert_eq!(
+                scoring_reachability(&entry),
+                None,
+                "{status} must be neutral"
+            );
         }
     }
 
@@ -750,10 +752,21 @@ mod tests {
         });
         merge_verification_observation(
             &mut entry,
-            typed("connected", "S1", "websocket-front-check", Some("github_actions_runner")),
+            typed(
+                "connected",
+                "S1",
+                "websocket-front-check",
+                Some("github_actions_runner"),
+            ),
         );
         assert_eq!(entry["verification"]["stage"], "S3");
-        assert_eq!(entry["verification"]["observations"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            entry["verification"]["observations"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     #[test]
@@ -763,13 +776,18 @@ mod tests {
         assert_eq!(derive_tier(&good), TIER_2_PT_HANDSHAKE);
         assert_eq!(derive_result(&good), RESULT_WORKING);
 
-        let s1 = json!({ "verification": typed("connected", "S1", "tcp", Some("cloudflare_worker")) });
+        let s1 =
+            json!({ "verification": typed("connected", "S1", "tcp", Some("cloudflare_worker")) });
         let no_vantage = json!({ "verification": typed("connected", "S2", "websocket-101", None) });
         let unknown_vantage = json!({ "verification": typed("connected", "S2", "websocket-101", Some("unrecognized")) });
         let refused = json!({ "verification": typed("refused", "S0", "websocket-101", Some("cloudflare_worker")) });
-        let tcp_only = json!({ "verification": typed("connected", "S2", "tcp", Some("cloudflare_worker")) });
+        let tcp_only =
+            json!({ "verification": typed("connected", "S2", "tcp", Some("cloudflare_worker")) });
         for evidence in [&s1, &no_vantage, &unknown_vantage, &refused, &tcp_only] {
-            assert!(!has_verified_s2plus(evidence), "unexpected evidence: {evidence}");
+            assert!(
+                !has_verified_s2plus(evidence),
+                "unexpected evidence: {evidence}"
+            );
         }
         assert_eq!(derive_result(&s1), RESULT_REACHABLE_S1);
         assert_eq!(derive_result(&no_vantage), RESULT_UNTESTED);
@@ -983,7 +1001,13 @@ mod tests {
         assert_eq!(summary["s2plus_connected"], 1);
         assert!(has_verified_s2plus(&bridges[0]));
         assert_eq!(bridges[0]["verification"]["stage"], "S2");
-        assert_eq!(bridges[0]["verification"]["observations"].as_array().unwrap().len(), 2);
+        assert_eq!(
+            bridges[0]["verification"]["observations"]
+                .as_array()
+                .unwrap()
+                .len(),
+            2
+        );
     }
 
     #[test]
@@ -1044,7 +1068,10 @@ mod tests {
         assert!(!observation_is_fresh_at(&too_far_future, now));
         let malformed = observation("not-an-iso-timestamp");
         assert!(!observation_is_fresh_at(&malformed, now));
-        assert!(!observation_is_fresh_at(&json!({"status":"connected", "stage":"S2"}), now));
+        assert!(!observation_is_fresh_at(
+            &json!({"status":"connected", "stage":"S2"}),
+            now
+        ));
     }
 
     #[test]

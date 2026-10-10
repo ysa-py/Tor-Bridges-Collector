@@ -346,8 +346,7 @@ pub fn update_dpi_report(
             s.avg_dpi_score = python_round_4(s.avg_dpi_score / s.tested as f64);
         }
         if s.iran_assessed > 0 {
-            s.observed_block_rate =
-                Some(python_round_4(s.blocked as f64 / s.iran_assessed as f64));
+            s.observed_block_rate = Some(python_round_4(s.blocked as f64 / s.iran_assessed as f64));
         }
     }
 

@@ -14,7 +14,11 @@ use std::{
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 const WORKING_STATUSES: &[&str] = &["iran_likely_working"];
-const BLOCKED_STATUSES: &[&str] = &["iran_likely_blocked", "iran_frequently_blocked", "iran_asn_blocked"];
+const BLOCKED_STATUSES: &[&str] = &[
+    "iran_likely_blocked",
+    "iran_frequently_blocked",
+    "iran_asn_blocked",
+];
 const WORKING_TRANSPORTS: &[&str] = &["obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite"];
 const GLOBAL_TRANSPORTS: &[&str] = &["obfs4", "webtunnel", "vanilla"];
 

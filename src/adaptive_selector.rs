@@ -355,8 +355,10 @@ impl AdaptiveBridgeSelector {
         let asn_factor = if iran_specific_working {
             1.0
         } else if iran_status == "iran_asn_blocked"
-            || (matches!(iran_status, "iran_likely_blocked" | "iran_frequently_blocked")
-                && iran_specific_assessment)
+            || (matches!(
+                iran_status,
+                "iran_likely_blocked" | "iran_frequently_blocked"
+            ) && iran_specific_assessment)
         {
             0.0
         } else if is_cdn_good(
@@ -394,8 +396,10 @@ impl AdaptiveBridgeSelector {
             }
         } else if iran_specific_working {
             1.0
-        } else if matches!(iran_status, "iran_likely_blocked" | "iran_frequently_blocked")
-            && iran_specific_assessment
+        } else if matches!(
+            iran_status,
+            "iran_likely_blocked" | "iran_frequently_blocked"
+        ) && iran_specific_assessment
         {
             0.0
         } else {
@@ -424,9 +428,10 @@ impl AdaptiveBridgeSelector {
         };
         // Inconclusive or unproven Iran labels do not add a failure penalty.
         // An explicit typed refusal may; timeouts/errors remain neutral.
-        let iran_blocked =
-            matches!(iran_status, "iran_likely_blocked" | "iran_frequently_blocked")
-                && iran_specific_assessment;
+        let iran_blocked = matches!(
+            iran_status,
+            "iran_likely_blocked" | "iran_frequently_blocked"
+        ) && iran_specific_assessment;
         let typed_refused = typed_reachability == Some(false);
         let failed = iran_blocked || typed_refused;
         let default_closed = Value::String("closed".to_string());
@@ -708,7 +713,9 @@ mod tests {
             BTreeMap::new(),
             BTreeMap::new(),
         );
-        let (_, meta) = selector.score(line, &json!({ "transport": "obfs4" })).unwrap();
+        let (_, meta) = selector
+            .score(line, &json!({ "transport": "obfs4" }))
+            .unwrap();
         assert_eq!(meta["adaptive_signals"]["tcp"], json!(0.5));
     }
 
@@ -724,7 +731,14 @@ mod tests {
         let record = json!({"transport":"obfs4"});
         let (baseline, _) = baseline_selector.score(line, &record).unwrap();
 
-        for status in ["reachable", "success", "refused", "failed", "blocked", "timeout"] {
+        for status in [
+            "reachable",
+            "success",
+            "refused",
+            "failed",
+            "blocked",
+            "timeout",
+        ] {
             let selector = AdaptiveBridgeSelector::with_data(
                 AdaptiveConfig::default(),
                 BTreeMap::new(),
@@ -795,7 +809,10 @@ mod tests {
         });
         let (_, refusal_meta) = selector.score(line, &refusal).unwrap();
         assert_eq!(refusal_meta["adaptive_signals"]["tcp"], json!(0.0));
-        assert_eq!(refusal_meta["adaptive_signals"]["failure_penalty"], json!(0.2));
+        assert_eq!(
+            refusal_meta["adaptive_signals"]["failure_penalty"],
+            json!(0.2)
+        );
 
         let timeout = json!({
             "transport":"obfs4",
@@ -807,7 +824,10 @@ mod tests {
         });
         let (_, timeout_meta) = selector.score(line, &timeout).unwrap();
         assert_eq!(timeout_meta["adaptive_signals"]["tcp"], json!(0.5));
-        assert_eq!(timeout_meta["adaptive_signals"]["failure_penalty"], json!(0.0));
+        assert_eq!(
+            timeout_meta["adaptive_signals"]["failure_penalty"],
+            json!(0.0)
+        );
     }
 
     #[test]
@@ -885,10 +905,16 @@ mod tests {
             .unwrap();
 
         assert_eq!(legacy_failure.0, baseline.0);
-        assert_eq!(legacy_failure.1["adaptive_signals"]["failure_penalty"], json!(0.0));
+        assert_eq!(
+            legacy_failure.1["adaptive_signals"]["failure_penalty"],
+            json!(0.0)
+        );
         assert_eq!(typed_timeout.0, baseline.0);
         assert_eq!(typed_timeout.1["adaptive_signals"]["tcp"], json!(0.5));
-        assert_eq!(typed_timeout.1["adaptive_signals"]["failure_penalty"], json!(0.0));
+        assert_eq!(
+            typed_timeout.1["adaptive_signals"]["failure_penalty"],
+            json!(0.0)
+        );
     }
 
     #[test]

@@ -80,10 +80,12 @@ impl CensorshipSignals {
                 signals.tcp_unreachable += 1;
             }
 
-            let status = bridge.get("iran_status").and_then(Value::as_str).unwrap_or("");
+            let status = bridge
+                .get("iran_status")
+                .and_then(Value::as_str)
+                .unwrap_or("");
             let iran_assessed = crate::evidence_stamp::has_iran_specific_assessment(bridge);
-            let iran_measurement =
-                crate::evidence_stamp::has_iran_measurement_provenance(bridge);
+            let iran_measurement = crate::evidence_stamp::has_iran_measurement_provenance(bridge);
             if iran_measurement {
                 signals.ooni_checked += 1;
             }
@@ -296,7 +298,7 @@ mod tests {
             json!({
                 "iran_status": "iran_unknown",
                 "verification": {"status":"refused", "stage":"S0", "vantage":{"type":"iran_probe", "country":"IR"}, "probe_type":"tls", "observed_at":observed_at.clone()}
-            })
+            }),
         ];
         let signals = CensorshipSignals::from_bridge_results(&bridges);
         assert_eq!(signals.tcp_unreachable, 1);

@@ -204,10 +204,8 @@ mod tls_ws {
             .read(&mut buf)
             .map_err(|e| format!("read response: {e}"))?;
         let response = String::from_utf8_lossy(&buf[..n]).to_string();
-        let signature_verified = crate::websocket_signature::has_valid_upgrade_signature(
-            &response,
-            WS_PROBE_KEY,
-        );
+        let signature_verified =
+            crate::websocket_signature::has_valid_upgrade_signature(&response, WS_PROBE_KEY);
         Ok((response, resolved_ip, signature_verified))
     }
 }
@@ -354,7 +352,9 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
             let detail = result
                 .get("evidence_scope")
                 .and_then(Value::as_str)
-                .unwrap_or("WebTunnel front response received; bridge-specific handshake not performed.")
+                .unwrap_or(
+                    "WebTunnel front response received; bridge-specific handshake not performed.",
+                )
                 .to_string();
             let (stage, probe_type) = if signature_verified {
                 ("S2", "websocket-101")
@@ -410,7 +410,11 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
             } else {
                 "error"
             };
-            let stage = if no_attempt || failed_before_tcp { "S0" } else { "S1" };
+            let stage = if no_attempt || failed_before_tcp {
+                "S0"
+            } else {
+                "S1"
+            };
             let vantage = if no_attempt {
                 Value::Null
             } else {

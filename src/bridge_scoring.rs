@@ -1025,7 +1025,10 @@ mod tests {
         });
         let (baseline, _) = score_bridge(&no_observation, None, Some(now), None).unwrap();
         let (timeout, reasons) = score_bridge(&inconclusive, None, Some(now), None).unwrap();
-        assert_eq!(timeout, baseline, "timeout evidence must not lower the score");
+        assert_eq!(
+            timeout, baseline,
+            "timeout evidence must not lower the score"
+        );
         assert!(reasons.iter().any(|reason| reason.contains("no penalty")));
 
         let refused = json!({
@@ -1041,7 +1044,10 @@ mod tests {
             }
         });
         let (refused_score, _) = score_bridge(&refused, None, Some(now), None).unwrap();
-        assert!(refused_score < baseline, "explicit refusal remains a negative result");
+        assert!(
+            refused_score < baseline,
+            "explicit refusal remains a negative result"
+        );
     }
 
     #[test]
@@ -1069,7 +1075,10 @@ mod tests {
                 object.insert(key.clone(), value.clone());
             }
             let (score, _) = score_bridge(&record, None, Some(now), None).unwrap();
-            assert_eq!(score, baseline, "untyped evidence changed the score: {legacy}");
+            assert_eq!(
+                score, baseline,
+                "untyped evidence changed the score: {legacy}"
+            );
         }
     }
 

@@ -1259,7 +1259,10 @@ mod tests {
         // notcp + nooni + notripe = 0.325 (legacy explicit false input)
         assert_eq!(compute_composite(false, &[], None, false), 0.325);
         // Inconclusive TCP is neutral rather than a failed connection.
-        assert_eq!(compute_composite_with_tcp_observation(None, &[], None, false), 0.5);
+        assert_eq!(
+            compute_composite_with_tcp_observation(None, &[], None, false),
+            0.5
+        );
         // tcp + ooni-clean + notripe = 0.875
         assert_eq!(
             compute_composite(true, &[json!({"anomaly": false})], None, false),

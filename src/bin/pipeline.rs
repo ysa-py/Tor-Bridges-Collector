@@ -233,7 +233,10 @@ fn stage_results(input: &Path) -> StageResult {
                 if let Some(obj) = root.as_object_mut() {
                     obj.insert("bridges".to_string(), json!(bridges));
                     if let Some(summary) = obj.get_mut("summary").and_then(|s| s.as_object_mut()) {
-                        summary.insert("webtunnel_ws_probed".to_string(), json!(webtunnel_ws_probed));
+                        summary.insert(
+                            "webtunnel_ws_probed".to_string(),
+                            json!(webtunnel_ws_probed),
+                        );
                     }
                 }
                 stamp = evidence_stamp::stamp_results(&mut root, &fallback_now);
