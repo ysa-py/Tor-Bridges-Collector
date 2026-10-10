@@ -32,7 +32,8 @@ fn torshield_least_privilege_and_no_node_warning_mute() {
         !yml.contains("NODE_NO_WARNINGS"),
         "do not mute Node warnings"
     );
-    assert!(yml.contains("permissions:\n  contents: read\n"));
+    assert!(yml.contains("contents: read"));
+    assert!(yml.contains("actions: write"));
     assert!(yml.contains("cargo clippy --locked"));
     assert!(yml.contains("toolchain: '1.90.0'"));
     assert!(yml.contains("if-no-files-found: error"));

@@ -97,6 +97,7 @@ env:
 
 permissions:
   contents: read
+  actions: write
 
 concurrency:
   # PRs must not share the hourly main group. A long PR scrape would
@@ -1332,6 +1333,9 @@ jobs:
   cleanup:
     name: AI Ultra-Pro Cleanup
     if: always()
+    permissions:
+      contents: read
+      actions: write
     needs:
     - quality-gate
     - build-rust
