@@ -870,8 +870,12 @@ mod tests {
             Some(false)
         );
 
+        let run_timestamp = result["verification"]["observed_at"]
+            .as_str()
+            .expect("probe stamps observed_at")
+            .to_string();
         let mut stamped = result;
-        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut stamped, "2026-10-10T10:00:00Z");
+        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut stamped, &run_timestamp);
         assert_eq!(stamped["test_tier"], "tier_0_attempt");
         assert_eq!(stamped["test_result"], "tested_failing");
     }
@@ -895,7 +899,11 @@ mod tests {
             torshield_ir_ultra::evidence_stamp::scoring_reachability(&result),
             None
         );
-        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut result, "2026-10-10T10:00:00Z");
+        let run_timestamp = result["verification"]["observed_at"]
+            .as_str()
+            .expect("probe stamps observed_at")
+            .to_string();
+        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut result, &run_timestamp);
         assert_eq!(result["test_tier"], "tier_0_attempt");
         assert_eq!(result["test_result"], "untested (rate-limited)");
     }
