@@ -746,7 +746,7 @@ jobs:
         set -euo pipefail
         cargo run --locked --quiet --bin failsafe_bridges
 
-    - uses: actions/setup-go@v6
+    - uses: actions/setup-go@v7
       with:
         go-version: '1.24'
         # Enable Go module + build-cache reuse across runs. go.sum is
