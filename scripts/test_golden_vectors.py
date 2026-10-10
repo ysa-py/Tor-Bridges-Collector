@@ -78,6 +78,30 @@ def observation_is_fresh(timestamp: str, now: datetime) -> bool:
     return -OBSERVATION_FUTURE_SKEW <= age <= OBSERVATION_MAX_AGE
 
 
+def classify_ooni_recent(measurements: list[dict], now: datetime, max_age: timedelta) -> str:
+    newest = None
+    newest_at = None
+    for measurement in measurements:
+        raw = measurement.get("measurement_start_time") or measurement.get("test_start_time") or ""
+        try:
+            measured_at = parse_rfc3339(raw) if raw else None
+        except ValueError:
+            measured_at = None
+        if measured_at is None:
+            continue
+        age = now - measured_at
+        if not (-OBSERVATION_FUTURE_SKEW <= age <= max_age):
+            continue
+        if newest_at is None or measured_at > newest_at:
+            newest = measurement
+            newest_at = measured_at
+    if newest is None:
+        return "iran_unknown"
+    if newest.get("anomaly") or newest.get("confirmed"):
+        return "iran_likely_blocked"
+    return "iran_likely_working"
+
+
 def main() -> int:
     print("═══ Golden vectors (RFC 6455 + freshness) ═══")
     record(
@@ -140,6 +164,52 @@ def main() -> int:
         not observation_is_fresh("2026-10-10T12:02:01Z", now),
     )
     record("unparseable timestamp rejected", not observation_is_fresh("not-a-timestamp", now))
+
+    print("═══ Golden vectors (OONI original-time classify) ═══")
+    ooni_now = datetime(2026, 10, 10, 12, 0, 0, tzinfo=timezone.utc)
+    record(
+        "newest in-window clean beats older confirmed block",
+        classify_ooni_recent(
+            [
+                {"confirmed": True, "measurement_start_time": "2026-10-08T09:00:00Z"},
+                {
+                    "confirmed": False,
+                    "anomaly": False,
+                    "measurement_start_time": "2026-10-10T11:00:00.125Z",
+                },
+                {"confirmed": True, "measurement_start_time": "not-a-timestamp"},
+            ],
+            ooni_now,
+            timedelta(days=7),
+        )
+        == "iran_likely_working",
+    )
+    record(
+        "newest in-window anomaly is blocked",
+        classify_ooni_recent(
+            [
+                {"confirmed": False, "measurement_start_time": "2026-10-09T09:00:00Z"},
+                {"anomaly": True, "measurement_start_time": "2026-10-10T11:00:00Z"},
+            ],
+            ooni_now,
+            timedelta(days=7),
+        )
+        == "iran_likely_blocked",
+    )
+    record(
+        "stale original time does not become a current block",
+        classify_ooni_recent(
+            [{"confirmed": True, "measurement_start_time": "2026-10-01T12:00:00Z"}],
+            ooni_now,
+            timedelta(days=7),
+        )
+        == "iran_unknown",
+    )
+    record(
+        "missing original time stays unknown",
+        classify_ooni_recent([{"confirmed": True, "anomaly": True}], ooni_now, timedelta(days=7))
+        == "iran_unknown",
+    )
 
     if FAILURES:
         print("═══ Golden vectors: FAILED ═══")

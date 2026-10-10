@@ -130,6 +130,7 @@ type TCPObservation struct {
 	RTTMS      *float64
 	Detail     string
 	ErrorClass string
+	ObservedAt string
 }
 
 // Summary aggregates the full run statistics.
@@ -263,6 +264,10 @@ func classifyBridge(
 	tcpObservation := tcpProbeWithContext(bridgeCtx, b, timeout)
 	tcpOK := tcpObservation.Reachable
 	result.TCPReachable = tcpOK
+	observedAt := tcpObservation.ObservedAt
+	if observedAt == "" {
+		observedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	}
 	result.Verification = Verification{
 		Status: tcpObservation.Status,
 		Stage: tcpObservation.Stage,
@@ -271,7 +276,7 @@ func classifyBridge(
 		ProbeType: "tcp",
 		Detail: tcpObservation.Detail,
 		ErrorClass: tcpObservation.ErrorClass,
-		ObservedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		ObservedAt: observedAt,
 	}
 
 	// Runner TCP is a separate S1 observation, not an Iran assessment. Never
@@ -430,18 +435,21 @@ func lineForTransport(b *bridge.Transport) string {
 // tcpProbeWithContext performs only an S1 TCP connect and records a typed
 // result. It deliberately does not infer transport capability or Iran reachability.
 func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.Duration) TCPObservation {
+	observedAt := time.Now().UTC().Format(time.RFC3339Nano)
 	if b.Host == "" || b.Port == 0 {
 		return TCPObservation{
 			Status: "inconclusive",
 			Stage: "S0",
 			Detail: "no literal TCP endpoint is available to this probe stage",
 			ErrorClass: "endpoint_unavailable",
+			ObservedAt: observedAt,
 		}
 	}
 	started := time.Now()
 	vantage := &ProbeVantage{Type: "github_actions_runner"}
 	dialer := net.Dialer{Timeout: timeout}
 	conn, err := dialer.DialContext(ctx, "tcp", lineForTransport(b))
+	observedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	if err != nil {
 		status := "error"
 		errorClass := "tcp_connect_error"
@@ -457,7 +465,7 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 		}
 		// S1 is reached only after a successful TCP connect. A refusal,
 		// timeout, or error is an S0 attempt with an explicit runner vantage.
-		return TCPObservation{Status: status, Stage: "S0", Vantage: vantage, Detail: detail, ErrorClass: errorClass}
+		return TCPObservation{Status: status, Stage: "S0", Vantage: vantage, Detail: detail, ErrorClass: errorClass, ObservedAt: observedAt}
 	}
 	_ = conn.Close()
 	rtt := float64(time.Since(started).Microseconds()) / 1000.0
@@ -468,6 +476,7 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 		Vantage: vantage,
 		RTTMS: &rtt,
 		Detail: "TCP connection established; no transport handshake was performed",
+		ObservedAt: observedAt,
 	}
 }
 

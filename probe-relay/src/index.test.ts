@@ -416,6 +416,22 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
     });
   });
 
+  it("rejects duplicate Connection headers instead of picking first or last", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, async (req) => {
+        const valid = await validWebSocketResponse(req);
+        return valid.replace("Connection: Upgrade\r\n", "Connection: Upgrade\r\nConnection: Upgrade\r\n");
+      }),
+    );
+    await expect(
+      wsUpgradeFrontProbe({ id: "w-dup-conn", transport: "webtunnel", host: "front.example", port: 443 }, 5000),
+    ).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_signature_invalid",
+      stage: "S1",
+    });
+  });
+
   it("rejects duplicate Upgrade headers instead of picking first or last", async () => {
     mockConnect.mockImplementation(() =>
       makeFakeSocket(0, false, false, async (req) => {

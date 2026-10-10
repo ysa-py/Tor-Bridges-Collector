@@ -61,6 +61,7 @@ type Client struct {
 	mu      sync.Mutex // protects ticker channel drain
 	cache   map[string]*analysisResult
 	cacheMu sync.Mutex
+	now     func() time.Time
 }
 
 type analysisResult struct {
@@ -141,12 +142,41 @@ func timestampedAnomalyCount(measurements []Measurement) int {
 	return count
 }
 
+const observationFutureSkew = 120 * time.Second
+
+func inAgeWindow(measuredAt, now time.Time, maxAge time.Duration) bool {
+	age := now.Sub(measuredAt)
+	return age >= -observationFutureSkew && age <= maxAge
+}
+
+func filterByOriginalTime(measurements []Measurement, now time.Time, maxAge time.Duration) []Measurement {
+	filtered := make([]Measurement, 0, len(measurements))
+	for _, measurement := range measurements {
+		measuredAt, _, ok := measurementTimestamp(measurement)
+		if !ok {
+			continue
+		}
+		if inAgeWindow(measuredAt, now, maxAge) {
+			filtered = append(filtered, measurement)
+		}
+	}
+	return filtered
+}
+
+func (c *Client) clock() time.Time {
+	if c != nil && c.now != nil {
+		return c.now()
+	}
+	return time.Now().UTC()
+}
+
 // New creates a Client that honours a 5-requests-per-second rate limit.
 func New() *Client {
 	return &Client{
 		hc:     &http.Client{Timeout: 30 * time.Second},
 		ticker: time.NewTicker(200 * time.Millisecond), // 5 req/s
 		cache:  make(map[string]*analysisResult),
+		now:    func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -248,7 +278,9 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 	}
 	c.cacheMu.Unlock()
 
-	now := time.Now().UTC()
+	now := c.clock()
+	recentWindow := time.Duration(recentDays) * 24 * time.Hour
+	temporalWindow := time.Duration(temporalDays) * 24 * time.Hour
 
 	// ── Recent window (7 days) ──────────────────────────────────────────
 	recentURL := buildURL(ip, now.AddDate(0, 0, -recentDays), now, 5)
@@ -257,18 +289,8 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 		return StatusUnknown, 0, false
 	}
 
-	var status OONIStatus
-	if len(recentData.Results) == 0 {
-		// No OONI measurements for this IP from Iranian probes.
-		// This is the common case for:
-		//   - New bridges not yet widely used in Iran
-		//   - WebTunnel bridges (OONI queries by IP, WebTunnel uses HTTPS domains)
-		//   - obfs4 bridges on less common ports
-		// The caller should apply transport-specific fallback logic.
-		status = StatusUnknown
-	} else {
-		status = classifyRecentStatus(recentData.Results)
-	}
+	recentInWindow := filterByOriginalTime(recentData.Results, now, recentWindow)
+	status := classifyRecentStatus(recentInWindow)
 
 	// ── Temporal window (90 days) ───────────────────────────────────────
 	temporalURL := buildURL(ip, now.AddDate(0, 0, -temporalDays), now, 100)
@@ -276,11 +298,13 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 
 	var recurrenceRate float64
 	var latestTemporalMeasurementAt string
+	var temporalInWindow []Measurement
 	if temporalData != nil {
-		latestTemporalMeasurementAt = latestMeasurementAt(temporalData.Results)
+		temporalInWindow = filterByOriginalTime(temporalData.Results, now, temporalWindow)
+		latestTemporalMeasurementAt = latestMeasurementAt(temporalInWindow)
 	}
-	if err == nil && temporalData != nil && len(temporalData.Results) > 0 {
-		anomalyCount := timestampedAnomalyCount(temporalData.Results)
+	if err == nil && len(temporalInWindow) > 0 {
+		anomalyCount := timestampedAnomalyCount(temporalInWindow)
 		// blocks per 30-day period
 		recurrenceRate = float64(anomalyCount) / (float64(temporalDays) / 30.0)
 		if recurrenceRate > freqBlockThresh {
@@ -289,10 +313,10 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 	}
 
 	result := &analysisResult{
-		Status:                    status,
-		RecurrenceRate:            recurrenceRate,
-		Checked:                   true,
-		LatestRecentMeasurementAt:    latestMeasurementAt(recentData.Results),
+		Status:                      status,
+		RecurrenceRate:              recurrenceRate,
+		Checked:                     true,
+		LatestRecentMeasurementAt:   latestMeasurementAt(recentInWindow),
 		LatestTemporalMeasurementAt: latestTemporalMeasurementAt,
 	}
 	c.cacheMu.Lock()

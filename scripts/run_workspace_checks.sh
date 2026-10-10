@@ -50,6 +50,12 @@ fi
 # ── Python golden vectors ───────────────────────────────────────
 if command -v python3 >/dev/null 2>&1; then
   run_gate "Python golden vectors" python3 "$ROOT/scripts/test_golden_vectors.py"
+  if [[ -f "$ROOT/scripts/test_probe_relay_smoke.sh" ]]; then
+    run_gate "probe-relay smoke unit tests" bash "$ROOT/scripts/test_probe_relay_smoke.sh"
+  fi
+  if [[ -f "$ROOT/scripts/test_validate_probe_relay_secrets.sh" ]]; then
+    run_gate "probe-relay secret validator tests" bash "$ROOT/scripts/test_validate_probe_relay_secrets.sh"
+  fi
 else
   skip_gate "Python golden vectors" "python3 not found"
 fi
