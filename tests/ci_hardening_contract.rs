@@ -9,9 +9,11 @@ fn repo_root() -> PathBuf {
 }
 
 fn read(rel: &str) -> String {
-    fs::read_to_string(repo_root().join(rel)).unwrap_or_else(|err| {
-        panic!("read {rel}: {err}")
-    })
+    let path = repo_root().join(rel);
+    match fs::read_to_string(&path) {
+        Ok(body) => body,
+        Err(err) => panic!("read {rel}: {err}"),
+    }
 }
 
 #[test]

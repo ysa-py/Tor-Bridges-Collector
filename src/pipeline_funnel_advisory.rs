@@ -569,7 +569,8 @@ pub fn emit_notices(report: &Value) {
 }
 
 fn funnel_count(report: &Value, name: &str) -> u64 {
-    let Some(stages) = report.get("funnel").and_then(Value::as_array) else {
+    let stages = report.get("funnel").and_then(Value::as_array);
+    let Some(stages) = stages else {
         return 0;
     };
     for stage in stages {
@@ -594,23 +595,20 @@ pub fn contract_violations(report: &Value) -> Vec<String> {
     let tested = funnel_count(report, "tcp_tested");
     let reachable = funnel_count(report, "tcp_reachable");
     if success > attempted {
-        out.push(format!(
-            "relay_success {success} exceeds relay_attempted {attempted}"
-        ));
+        out.push(format!("relay_success {success} > {attempted}"));
     }
     if reachable > tested {
-        out.push(format!(
-            "tcp_reachable {reachable} exceeds tcp_tested {tested}"
-        ));
+        out.push(format!("tcp_reachable {reachable} > {tested}"));
     }
     if live {
         let sources = funnel_count(report, "sources_fetched_lines");
         let testing = funnel_count(report, "testing_candidates");
-        if sources == 0 && testing == 0 && attempted == 0 {
+        let empty = sources == 0 && testing == 0 && attempted == 0;
+        if empty {
             out.push("live mode produced an empty this-run funnel".into());
         }
     } else {
-        for name in [
+        let names = [
             "sources_fetched_lines",
             "candidates_in_history",
             "testing_candidates",
@@ -619,12 +617,11 @@ pub fn contract_violations(report: &Value) -> Vec<String> {
             "tcp_tested",
             "tcp_reachable",
             "published_advisory_working",
-        ] {
+        ];
+        for name in names {
             let count = funnel_count(report, name);
             if count != 0 {
-                out.push(format!(
-                    "{name}={count} but validation_noop expects 0"
-                ));
+                out.push(format!("{name}={count} expected 0"));
             }
         }
     }

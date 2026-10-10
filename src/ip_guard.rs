@@ -310,12 +310,12 @@ mod tests {
 
     #[test]
     fn cidr_v4_table_is_non_empty() {
-        assert!(!RESERVED_CIDR_V4.is_empty());
+        assert!(RESERVED_CIDR_V4.first().is_some());
     }
 
     #[test]
     fn cidr_v6_table_is_non_empty() {
-        assert!(!RESERVED_CIDR_V6.is_empty());
+        assert!(RESERVED_CIDR_V6.first().is_some());
     }
 
     #[test]
