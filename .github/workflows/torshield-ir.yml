@@ -357,13 +357,13 @@ jobs:
           set -e
         fi
         echo "Clippy diagnostic replay exited with status $clippy_status; see the annotations above."
-        python3 scripts/annotate_cargo_log.py "$diagnostic_log"
+        bash scripts/annotate_cargo_log.sh "$diagnostic_log"
 
     - name: Full Rust test suite (all features)
       run: |
         set -o pipefail
         if ! cargo test --workspace --all-targets --all-features 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
-          python3 scripts/annotate_cargo_log.py "${RUNNER_TEMP}/cargo-test.log"
+          bash scripts/annotate_cargo_log.sh "${RUNNER_TEMP}/cargo-test.log"
           exit 101
         fi
 

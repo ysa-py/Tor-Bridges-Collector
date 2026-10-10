@@ -197,7 +197,7 @@ jobs:
         run: |
           set -o pipefail
           if ! cargo test --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
-            python3 scripts/annotate_cargo_log.py "${RUNNER_TEMP}/cargo-test.log"
+            bash scripts/annotate_cargo_log.sh "${RUNNER_TEMP}/cargo-test.log"
             exit 101
           fi
       - name: Run hermetic WebTunnel tests
