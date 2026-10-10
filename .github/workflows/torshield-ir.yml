@@ -137,9 +137,8 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-          key: ${{ runner.os }}-cargo-gate-debug-${{ hashFiles('Cargo.toml',
-          'Cargo.lock') }}
-          restore-keys: ${{ runner.os }}-cargo-gate-debug-
+        key: ${{ runner.os }}-cargo-gate-debug-${{ hashFiles('Cargo.toml', 'Cargo.lock') }}
+        restore-keys: ${{ runner.os }}-cargo-gate-debug-
 
     - name: Build quality-gate tooling (Rust)
       id: quality_gate_tooling
@@ -358,9 +357,69 @@ jobs:
           set -e
         fi
         echo "Clippy diagnostic replay exited with status $clippy_status; see the annotations above."
+        python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          log = Path(os.environ["RUNNER_TEMP"]) / "clippy-diagnostics.jsonl"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
+          lines = [ln for ln in plain.splitlines() if ln and not ln.startswith("{")]
+          print("::error::----- clippy non-JSON tail -----")
+          for chunk in lines[-60:] or ["clippy diagnostic log was empty"]:
+              print(f"::error::{chunk[:900]}")
+          PY
 
     - name: Full Rust test suite (all features)
-      run: cargo test --workspace --all-targets --all-features
+      run: |
+        set -o pipefail
+        if ! cargo test --workspace --all-targets --all-features 2>&1 | tee "${RUNNER_TEMP}/cargo-test.log"; then
+          python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          log = Path(os.environ["RUNNER_TEMP"]) / "cargo-test.log"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
+          lines = plain.splitlines()
+          emitted = 0
+          seen = set()
+
+          def emit(chunk):
+              global emitted
+              print(f"::error::{chunk[:900]}")
+              emitted += 1
+
+          def interesting(line):
+              stripped = line.strip()
+              if "error[" in line or line.startswith("error:"):
+                  return True
+              if "panicked at" in line or stripped.endswith("... FAILED"):
+                  return True
+              if stripped == "failures:" or stripped.startswith("error: test failed"):
+                  return True
+              if line.startswith("test result:") and "FAILED" in line:
+                  return True
+              return False
+
+          for i, line in enumerate(lines):
+              if not interesting(line):
+                  continue
+              for j in range(i, min(len(lines), i + 24)):
+                  if j in seen:
+                      continue
+                  seen.add(j)
+                  emit(lines[j])
+                  if emitted > 100:
+                      break
+              if emitted > 100:
+                  break
+          emit("----- cargo-test.log tail -----")
+          if not lines:
+              emit("cargo-test.log was empty; cargo test failed before producing output")
+          for chunk in lines[-80:]:
+              emit(chunk)
+          PY
+          exit 101
+        fi
 
     - name: Release build verification
       run: cargo build --workspace --release

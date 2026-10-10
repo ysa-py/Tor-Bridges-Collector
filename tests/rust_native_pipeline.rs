@@ -159,7 +159,7 @@ fn result_writer_preserves_output_capabilities_without_promoting_tcp_or_unknown(
                 "status": "connected", "stage": "S2",
                 "vantage": { "type": "cloudflare_worker", "colo": "FRA" },
                 "probe_type": "obfs4-handshake",
-                "observed_at": iran_at
+                "observed_at": iran_at.clone()
             }
         }),
         json!({

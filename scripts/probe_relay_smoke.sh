@@ -219,7 +219,7 @@ for ((attempt = 1; attempt <= max_attempts; attempt++)); do
     if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
       {
         echo '### Probe relay smoke evidence'
-        echo "- Evidence class: \\`${evidence_label}\\`"
+        printf -- '- Evidence class: `%s`\n' "$evidence_label"
         echo "- Result: passed; authenticated live content controls matched the typed contract."
         echo "- Attempt: ${attempt}/${max_attempts}; target details and credentials redacted."
       } >> "$GITHUB_STEP_SUMMARY"
@@ -266,7 +266,7 @@ write_failure_report failed "$attempt" "$last_http_code" "$failure_class" || tru
 if [[ -n "${GITHUB_STEP_SUMMARY:-}" ]]; then
   {
     echo '### Probe relay smoke evidence'
-    echo "- Evidence class: \\`${evidence_label}\\`"
+    printf -- '- Evidence class: `%s`\n' "$evidence_label"
     echo "- Result: failed closed; no bridge outcome was promoted."
     echo "- Attempts: ${attempt}/${max_attempts}; response details and credentials redacted."
   } >> "$GITHUB_STEP_SUMMARY"

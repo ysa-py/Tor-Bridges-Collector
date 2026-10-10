@@ -205,13 +205,42 @@ jobs:
           plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
           lines = plain.splitlines()
           emitted = 0
+          seen = set()
+
+          def emit(chunk):
+              global emitted
+              print(f"::error::{chunk[:900]}")
+              emitted += 1
+
+          def interesting(line):
+              stripped = line.strip()
+              if "error[" in line or line.startswith("error:"):
+                  return True
+              if "panicked at" in line or stripped.endswith("... FAILED"):
+                  return True
+              if stripped == "failures:" or stripped.startswith("error: test failed"):
+                  return True
+              if line.startswith("test result:") and "FAILED" in line:
+                  return True
+              return False
+
           for i, line in enumerate(lines):
-              if "error[" in line or line.startswith("error:") or "FAILED" in line or line.startswith("test result:"):
-                  for chunk in lines[i:i+20]:
-                      print(f"::error::{chunk[:900]}")
-                      emitted += 1
-                  if emitted > 120:
+              if not interesting(line):
+                  continue
+              for j in range(i, min(len(lines), i + 24)):
+                  if j in seen:
+                      continue
+                  seen.add(j)
+                  emit(lines[j])
+                  if emitted > 100:
                       break
+              if emitted > 100:
+                  break
+          emit("----- cargo-test.log tail -----")
+          if not lines:
+              emit("cargo-test.log was empty; cargo test failed before producing output")
+          for chunk in lines[-80:]:
+              emit(chunk)
           PY
             exit 101
           fi
