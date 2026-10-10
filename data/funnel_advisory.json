@@ -8,12 +8,12 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1495,
+      "count": 1497,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1495,
+      "count": 1497,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -28,12 +28,16 @@
       "stage": "relay_success"
     },
     {
-      "count": 1495,
+      "count": 1497,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
+<<<<<<< Updated upstream
       "count": 428,
+=======
+      "count": 429,
+>>>>>>> Stashed changes
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,7 +47,11 @@
       "stage": "published_advisory_working"
     }
   ],
+<<<<<<< Updated upstream
   "generated_at": "2026-10-10T20:29:38.118922712+00:00",
+=======
+  "generated_at": "2026-10-10T21:06:31.616395480+00:00",
+>>>>>>> Stashed changes
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -67,7 +75,7 @@
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 0,
     "iran_likely_working_webtunnel.txt": 0,
-    "obfs4.txt": 662,
+    "obfs4.txt": 664,
     "obfs4_tested.txt": 0,
     "tested_global_obfs4.txt": 0,
     "tested_global_vanilla.txt": 0,
@@ -78,17 +86,17 @@
     "webtunnel_ipv6.txt": 0
   },
   "relay_coverage": {
-    "candidates": 1495,
+    "candidates": 1497,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
       "no_literal_endpoint": 4,
-      "obfs4": 1006,
+      "obfs4": 1008,
       "vanilla": 485
     },
-    "unobserved_candidates": 1491,
+    "unobserved_candidates": 1493,
     "unobserved_non_routable": 0,
-    "unobserved_other": 1491
+    "unobserved_other": 1493
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -108,7 +116,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1491
+    "unobserved_candidates": 1493
   },
   "sources": {
     "sources": [
