@@ -31,7 +31,7 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 
-use crate::this_run_snapshot::{CollectionMode, read_collection_mode};
+use crate::this_run_snapshot::{read_collection_mode, CollectionMode};
 
 /// Advisory report path (new file; nothing existing is overwritten).
 pub const REPORT_FILE: &str = "data/funnel_advisory.json";
@@ -749,7 +749,7 @@ mod tests {
                 stage["count"],
                 0,
                 "stage {} must be a this-run zero",
-                stage["stage"]
+                stage["stage"],
             );
         }
         assert_eq!(report["relay_coverage"]["relay_observations"], 0);

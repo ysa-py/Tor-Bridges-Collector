@@ -193,10 +193,9 @@ mod tests {
         )
         .unwrap();
 
-        let iran: Value = serde_json::from_str(
-            &fs::read_to_string(root.join("bridge/iran_results.json")).unwrap(),
-        )
-        .unwrap();
+        let iran: Value =
+            serde_json::from_str(&fs::read_to_string(root.join("bridge/iran_results.json")).unwrap())
+                .unwrap();
         assert_eq!(iran["bridges"].as_array().unwrap().len(), 0);
         assert_eq!(iran["summary"]["count"], 0);
 
@@ -212,10 +211,9 @@ mod tests {
         .unwrap();
         assert_eq!(testing.as_array().unwrap().len(), 0);
 
-        let pt: Value = serde_json::from_str(
-            &fs::read_to_string(root.join("data/pt_results.json")).unwrap(),
-        )
-        .unwrap();
+        let pt: Value =
+            serde_json::from_str(&fs::read_to_string(root.join("data/pt_results.json")).unwrap())
+                .unwrap();
         assert_eq!(pt.as_array().unwrap().len(), 0);
 
         assert_eq!(read_collection_mode(&root), CollectionMode::ValidationNoop);
