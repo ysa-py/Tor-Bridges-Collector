@@ -1291,6 +1291,8 @@ jobs:
           dist/Tor-Bridges-Collector-main-ultra-quantum-vip-vip-super-ultra-vip-ultra-quantum-ultra-vip-ultra-quantum.tar.gz
         retention-days: 90
 
+    # Documented skip: GitHub Release upload is tag-only (no draft release on
+    # ordinary push/PR/schedule). The package artifact is still uploaded above.
     - name: Publish to GitHub Release
       uses: softprops/action-gh-release@v2
       if: startsWith(github.ref, 'refs/tags/')
@@ -2058,6 +2060,14 @@ jobs:
           }}/refs/heads/${{ github.ref_name }}
       run: |
         set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: live publication rewrite stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          {
+            echo "### Stage 9"
+            echo "- publication: self no-op (main-only)"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 0
+        fi
         cargo run --quiet --bin pipeline -- --stage results --report data/results_writer_report.json
         UPLOAD="$(printf '%s' "${TELEGRAM_INPUT:-${TELEGRAM_REPO_VAR:-true}}" | tr '[:upper:]' '[:lower:]')"
         if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
@@ -2100,6 +2110,10 @@ jobs:
       timeout-minutes: 3
       run: |
         set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: publication contract verify stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          exit 0
+        fi
         cargo run --quiet --bin sync_bridge_outputs -- \
           --bridge-dir bridge \
           --verify-only
@@ -2116,6 +2130,10 @@ jobs:
       timeout-minutes: 3
       run: |
         set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: bridge/ inventory contract stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          exit 0
+        fi
         MANIFEST=bridge/telegram_manifest.json
         test -s "$MANIFEST" || { echo "::error::Missing bridge publication manifest"; exit 1; }
         jq -e '.required_files | type == "array" and length > 0' "$MANIFEST" >/dev/null
@@ -2179,6 +2197,10 @@ jobs:
       timeout-minutes: 2
       run: |
         set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: COUNT_DELTA vs HEAD stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          exit 0
+        fi
         FILES="webtunnel_tested.txt webtunnel.txt webtunnel_ipv6_tested.txt \
           snowflake_tested.txt snowflake.txt snowflake_ipv6_tested.txt \
           conjure_tested.txt conjure.txt \
@@ -2221,6 +2243,10 @@ jobs:
       timeout-minutes: 5
       run: |
         set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: iran_cut_pack finalizer stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          exit 0
+        fi
         bash scripts/build_iran_cut_pack.sh
         echo "✅ Iran internet-cut pack: $(grep -c '^[^#]' export/iran_cut_pack.txt) bridges"
 

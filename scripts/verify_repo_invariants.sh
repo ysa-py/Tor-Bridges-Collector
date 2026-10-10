@@ -355,12 +355,20 @@ def c14_workflow_automation_gates():
         if scrape_start >= 0 and rerank_start > scrape_start
         else ""
     )
-    collection_gate = re.search(r"(?m)^    if:\s*(.*?)\s*$", scrape_block)
-    expected_collection_gate = (
-        "github.ref == 'refs/heads/main' && "
-        "(github.event_name != 'workflow_dispatch' || inputs.rerank_only != true)"
+    collect_main_only = (
+        'if [ "${GITHUB_EVENT_NAME}" != "pull_request" ] && '
+        '[ "${GITHUB_REF}" = "refs/heads/main" ]; then' in scrape_block
+        and "collect=true" in scrape_block
+        and scrape_block.count(
+            "self no-op: live collection, Worker deploy, and Telegram stay on main"
+        )
+        >= 20
     )
-    main_only_collection = bool(collection_gate) and collection_gate.group(1) == expected_collection_gate
+    rerank_skip = (
+        "!cancelled() && (github.event_name != 'workflow_dispatch' || "
+        "inputs.rerank_only != true)" in scrape_block
+    )
+    main_only_collection = collect_main_only and rerank_skip
 
     main_ci_path = os.path.join(REPO, ".github", "workflows", "main-ci.yml")
     main_ci = open(main_ci_path, encoding="utf-8").read()
@@ -401,8 +409,10 @@ def c14_workflow_automation_gates():
         "DEPLOY_RELAY=false",
     )
     commit_main_only = (
-        "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
-        in workflow
+        "self no-op: Stage 11 publication commits stay on main" in workflow
+        and "git push" in workflow
+        and 'if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || '
+        '[ "${GITHUB_REF}" != "refs/heads/main" ]; then' in workflow
     )
     publication_gates = (
         pull_request_upload_block and non_main_upload_block and commit_main_only
