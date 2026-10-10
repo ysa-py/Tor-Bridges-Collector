@@ -1,33 +1,26 @@
 # TorShield-IR — Internet Cut Pack (شبکه ملی / NIN Mode)
-# Bridges: 314  (survivable during full international internet cut)
+# Bridges: 305  (survivable during full international internet cut)
 # Order: source priority — strict NIN-eligible, classifier packs, then
 # probe-survivable domestic/CDN set (each stage's own internal order).
 #
 # Merged automatically (Stage 8p2) from every NIN-cut intelligence artifact:
-#   data/nin_eligible.json=1 lines (+1 unique)
-#   bridge/iran_likely_working_nin.txt=3 lines (+2 unique)
-#   export/nin_cut_bridges.txt=11 lines (+11 unique)
-#   export/iran_nin_pack.txt=2 lines (+1 unique)
-#   export/nin_cut_survivable.txt=299 lines (+299 unique)
+#   data/nin_eligible.json=3 lines (+3 unique)
+#   bridge/iran_likely_working_nin.txt=0 lines (+0 unique)
+#   export/nin_cut_bridges.txt=5 lines (+3 unique)
+#   export/iran_nin_pack.txt=2 lines (+2 unique)
+#   export/nin_cut_survivable.txt=299 lines (+297 unique)
 #
 # Advisory: runner-side evidence, not Iranian-side measurement.
 # Usage: Tor Browser -> Settings -> Connection -> Bridges -> paste lines.
 
-Bridge snowflake 141.212.118.18:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net/
-webtunnel 172.67.201.245:443 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4
-webtunnel 95.216.166.73:443 96E16DE2F8DA38060D93A554DC56C90A681F6FE4 url=https://jochenkessler.de/D82XI88Vz3nttmFEc9OBXGRD ver=0.0.3
 snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn
 snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn
-snowflake 141.212.118.18:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net/
-snowflake 193.187.88.42:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
-snowflake 193.187.88.43:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
-snowflake 193.187.88.44:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
-snowflake 193.187.88.45:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
-snowflake 193.187.88.46:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
+meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com
 meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com
 meek_lite 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 url=https://a0.awsstatic.com/ front=a0.awsstatic.com
 meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=cloudflightcdn.azureedge.net
-Bridge snowflake [2607:f018:600:8:be30:5bff:fe1:c6fa]:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net/
+obfs4 3.109.201.210:8443 899051E020499F2EB2ACFCE3F9407A46999D7C04 cert=ohcUhuGZxiRDGARFQA+GgN3MLtr2XP6ZtScy7SHr7Oakbam5JD7f9wre/0KA4OLDhTJleg iat-mode=0
+obfs4 52.156.24.175:8443 F5689F0476F52345313A8CCAA0DFEABDF85E1B91 cert=+1BKpT/Kh/GiB1neEtyoPW+maNfNRCNZl0Ig3utK8fc+lO/vgSyDja0/H9xoUf7VPBN7Hw iat-mode=0
 Bridge 5.161.255.247:8080 5C70E3D1E109F2192C07CDE8F3E3E3708C6CA68F
 obfs4 103.149.168.186:8443 2D16215A86522A3CFCBBBE30BFF7C706413336A9 cert=ebVLQlo1wEnp/HYtJ+nSuikwe+dSt632ka33wJAiUeVK0IeYs5M6w5DwoPX8gYLsJfADSA iat-mode=0
 obfs4 103.149.168.234:8443 2DF354DFB45E818F3437B525A312166ACE94D2F0 cert=bNk4dmMz77mVUxInj7ca7++JO8RceUxXzLkBAD3fQg3/yxoVfH5l0GtQ8FcNpjrkgyzhLQ iat-mode=0
@@ -141,7 +134,6 @@ obfs4 217.60.199.248:443 5B5F87EFACAEF3ED0AACFDE6B9301C8CBCFEE520 cert=Oyq7RfVDe
 obfs4 23.136.20.234:8443 2DF354DFB45E818F3437B525A312166ACE94D2F0 cert=bNk4dmMz77mVUxInj7ca7++JO8RceUxXzLkBAD3fQg3/yxoVfH5l0GtQ8FcNpjrkgyzhLQ iat-mode=0
 obfs4 23.26.133.175:8443 F9A3BDE673AFCB9FB835724766A388647A109C6A cert=eBVN+LT2X+2pFGOK0p9a/5MjMmkxF5NiK5Hr9F6NdmOduIZCoRA8QNEjczKPFqd7YX6YQw iat-mode=0
 obfs4 23.94.67.165:8443 FE3A1689F7C0A05EA2A19ED29CCF0C1232FB3C80 cert=TpjGpYEVMYDr20KSEAV7ejlX8QdBL5j6VsnqVjukgK+6V7CpC7onEFLnozaOpOw3Lef8Bw iat-mode=0
-obfs4 3.109.201.210:8443 899051E020499F2EB2ACFCE3F9407A46999D7C04 cert=ohcUhuGZxiRDGARFQA+GgN3MLtr2XP6ZtScy7SHr7Oakbam5JD7f9wre/0KA4OLDhTJleg iat-mode=0
 obfs4 31.25.239.133:443 AB1F924F90723494D7BFBEEB16B171F1436DD6F3 cert=ev13D685CfUEQXrhpxGqxYDV9u36UAKbRidWEls5G5jAhffVpDGQ4BmBpO2IGDfTxrYzXQ iat-mode=0
 obfs4 37.221.64.195:8443 B679D14EAED9B74543048CB7C9C8184596B3959F cert=LVPGGkWwz7fqw3Osp7SpXbIiMl0qQlIvsnHmhNrWOB5yUWJG3c/OJ7XfpacqJoH9N8UaPA iat-mode=0
 obfs4 37.228.129.84:8443 6CE81F88D8C686EDB7A6CEBBF6FA257D4D4C0AF9 cert=2TzCqNYkQPFedZNEinALcWWz4aLdwgZbEwKze73fb7TdbGMQYecC1qHeTYMWuwsLl3XRAA iat-mode=0
@@ -164,7 +156,6 @@ obfs4 51.222.13.177:80 5EDAC3B810E12B01F6FD8050D2FD3E277B289A08 cert=2uplIpLQ0q9
 obfs4 51.75.207.79:443 EB25E719A7A1C1C1D5B8EB637B3831B2F1A0BE1B cert=PXrZbce37lFWcsqnlZqvaHaJGgAI1OXrwhPeQE2KAIfh7ZaFptgITMRBiis1HPhSnwUyCw iat-mode=0
 obfs4 51.75.76.84:443 590418053C3D0ED3B67C809E2CB370BD0E6CA796 cert=m6Ehj12SrcMEjzTcsVfmv5nCHSBMnRC1MXWvScZ+Ndd3j0/lG9JU0aUJWMtplqjjVKY2RA iat-mode=0
 obfs4 51.81.26.157:443 8A7322A463C051DB6DC35B1159F119FC3373BB06 cert=kp6Czj/f+McG9OKwltQ4kGb41mjj8Mzp3flpTG8/VK5zXtfnZ+DToe33fumyq7Yq7WnbGA iat-mode=0
-obfs4 52.156.24.175:8443 F5689F0476F52345313A8CCAA0DFEABDF85E1B91 cert=+1BKpT/Kh/GiB1neEtyoPW+maNfNRCNZl0Ig3utK8fc+lO/vgSyDja0/H9xoUf7VPBN7Hw iat-mode=0
 obfs4 62.224.103.253:443 0C6DDE3F9FC377A5E69DC044E81C857277148D71 cert=6vp+cyZmJOp+QFtytv9Ca+Z+ASF4l7r12MeEevvufl4OcDimBhjQlxctjfgdCmnT7iu7Lg iat-mode=0
 obfs4 62.224.106.13:443 0C6DDE3F9FC377A5E69DC044E81C857277148D71 cert=6vp+cyZmJOp+QFtytv9Ca+Z+ASF4l7r12MeEevvufl4OcDimBhjQlxctjfgdCmnT7iu7Lg iat-mode=0
 obfs4 62.224.107.157:443 0C6DDE3F9FC377A5E69DC044E81C857277148D71 cert=6vp+cyZmJOp+QFtytv9Ca+Z+ASF4l7r12MeEevvufl4OcDimBhjQlxctjfgdCmnT7iu7Lg iat-mode=0

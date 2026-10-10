@@ -1,6 +1,6 @@
 {
  "engine": "torshield-rust-nin-recommended-transport-v1",
- "generated_at": "2026-10-09T10:27:25.925550+00:00",
+ "generated_at": "2026-10-10T18:41:07.408280+00:00",
  "input_files": [
   "export/nin_cut_survivable.txt",
   "data/nin_eligible.json"
@@ -17,11 +17,11 @@
    "primary": "obfs4",
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 300,
-    "primary_share": 0.9933,
+    "pool_lines_total": 302,
+    "primary_share": 0.9868,
     "primary_share_wilson_95": [
-     0.976,
-     0.9982
+     0.9664,
+     0.9948
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -37,12 +37,12 @@
    "rationale": "CDN-fronted transports first when international routes are partially filtered.",
    "primary": "snowflake",
    "evidence_confidence": {
-    "primary_pool_lines": 0,
-    "pool_lines_total": 300,
-    "primary_share": 0.0,
+    "primary_pool_lines": 2,
+    "pool_lines_total": 302,
+    "primary_share": 0.0066,
     "primary_share_wilson_95": [
-     0.0,
-     0.0126
+     0.0018,
+     0.0238
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -51,6 +51,8 @@
   "full_internet_cut": {
    "recommended_order": [
     "obfs4",
+    "snowflake",
+    "meek_lite",
     "vanilla"
    ],
    "rationale": "evidence order from this run: strict NIN-eligible + probe-survivable counts.",
@@ -69,11 +71,11 @@
    ],
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 300,
-    "primary_share": 0.9933,
+    "pool_lines_total": 302,
+    "primary_share": 0.9868,
     "primary_share_wilson_95": [
-     0.976,
-     0.9982
+     0.9664,
+     0.9948
     ],
     "order_basis": "evidence order derived from this run's probe-survivable + strict-NIN-eligible counts",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -86,9 +88,10 @@
    "vanilla": 1
   },
   "strict_nin_eligible": {
-   "vanilla": 1
+   "snowflake": 2,
+   "meek_lite": 1
   },
   "probe_survivable_total": 299,
-  "strict_nin_eligible_total": 1
+  "strict_nin_eligible_total": 3
  }
 }

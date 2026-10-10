@@ -1,20 +1,6 @@
 {
   "activations": [
     {
-      "file": "snowflake_ipv6_tested.txt",
-      "lines": 4,
-      "reason": "empty_or_missing_projection",
-      "timestamp": "2026-10-04T16:33:11.667177803+00:00",
-      "transport": "snowflake"
-    },
-    {
-      "file": "snowflake_tested.txt",
-      "lines": 4,
-      "reason": "empty_or_missing_projection",
-      "timestamp": "2026-10-04T16:33:11.674749859+00:00",
-      "transport": "snowflake"
-    },
-    {
       "file": "vanilla_72h_ipv6.txt",
       "lines": 4,
       "reason": "empty_or_missing_projection",
@@ -3721,8 +3707,23 @@
       "reason": "empty_transport_ipv6_projection",
       "timestamp": "2026-10-09T10:28:13.409203259+00:00",
       "transport": "meek_lite"
+    },
+    {
+      "file": "meek_lite.txt",
+      "lines": 3,
+      "reason": "empty_or_missing_projection",
+      "timestamp": "2026-10-10T18:17:29.389153487+00:00",
+      "transport": "meek_lite"
+    },
+    {
+      "file": "meek-azure.txt",
+      "lines": 1,
+      "producer": "bridge_publication",
+      "reason": "empty_transport_projection",
+      "timestamp": "2026-10-10T18:42:12.797107731+00:00",
+      "transport": "meek-azure"
     }
   ],
-  "generated_at": "2026-10-09T10:28:13.409208577+00:00",
+  "generated_at": "2026-10-10T18:42:12.797119423+00:00",
   "note": "Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data."
 }

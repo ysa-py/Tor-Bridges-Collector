@@ -1,78 +1,5 @@
 {
-  "anomalies": [
-    {
-      "advisory_only": true,
-      "current_rate": 0.0,
-      "current_total": 1,
-      "current_working": 0,
-      "drop_pp": 0.0,
-      "status": "within_baseline",
-      "trailing_mean": 0.0,
-      "trailing_sd": 0.0,
-      "transport": "conjure",
-      "z": 0.0
-    },
-    {
-      "advisory_only": true,
-      "current_rate": 0.0,
-      "current_total": 2,
-      "current_working": 0,
-      "drop_pp": 0.0,
-      "status": "within_baseline",
-      "trailing_mean": 0.0,
-      "trailing_sd": 0.0,
-      "transport": "meek_lite",
-      "z": 0.0
-    },
-    {
-      "advisory_only": true,
-      "current_rate": 0.355,
-      "current_total": 1320,
-      "current_working": 468,
-      "drop_pp": -0.7,
-      "status": "within_baseline",
-      "trailing_mean": 0.348,
-      "trailing_sd": 0.005,
-      "transport": "obfs4",
-      "z": 1.46
-    },
-    {
-      "advisory_only": true,
-      "current_rate": 0.0,
-      "current_total": 2,
-      "current_working": 0,
-      "drop_pp": 0.0,
-      "status": "within_baseline",
-      "trailing_mean": 0.0,
-      "trailing_sd": 0.0,
-      "transport": "snowflake",
-      "z": 0.0
-    },
-    {
-      "advisory_only": true,
-      "current_rate": 0.335,
-      "current_total": 502,
-      "current_working": 168,
-      "drop_pp": 0.5,
-      "status": "within_baseline",
-      "trailing_mean": 0.339,
-      "trailing_sd": 0.004,
-      "transport": "vanilla",
-      "z": -1.23
-    },
-    {
-      "advisory_only": true,
-      "current_rate": 0.5,
-      "current_total": 4,
-      "current_working": 2,
-      "drop_pp": 0.0,
-      "status": "within_baseline",
-      "trailing_mean": 0.5,
-      "trailing_sd": 0.0,
-      "transport": "webtunnel",
-      "z": 0.0
-    }
-  ],
+  "anomalies": [],
   "entries": [
     {
       "rates": {
@@ -4075,26 +4002,14 @@
         ]
       },
       "ts": "2026-10-09T10:27:59.218780938+00:00"
+    },
+    {
+      "metric": "iran_assessed_s2plus_yield_v1",
+      "rates": {},
+      "ts": "2026-10-10T18:41:56.633455073+00:00"
     }
   ],
   "note": "per-transport working/total per pipeline run, appended by drift_advisory (Stage 8u); working mirrors bridge_publication.rs::is_likely_working",
   "step_change_disclaimer": "a step-change is an externally-observable reachability-rate shift; this repo has no visibility into Iran's actual filtering rules and makes no claim about DPI mechanisms",
-  "step_changes": [
-    {
-      "mean_after": 0.3567747952750034,
-      "mean_before": 0.3467603012690188,
-      "n_after": 14,
-      "n_before": 124,
-      "split_ts": "2026-10-05T04:24:38.665387160+00:00",
-      "transport": "obfs4"
-    },
-    {
-      "mean_after": 0.3390275541032731,
-      "mean_before": 0.3453816201461183,
-      "n_after": 130,
-      "n_before": 8,
-      "split_ts": "2026-09-10T03:23:53.554395553+00:00",
-      "transport": "vanilla"
-    }
-  ]
+  "step_changes": []
 }

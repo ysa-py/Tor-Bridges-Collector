@@ -2,11 +2,11 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-10-09T10:28:13Z` · **Archive payload SHA-256:** `14e4f78447bf60d97e7c48e09753a8697ff33045162bf2bff157649dd4ab2207`
+> **Last publication:** `2026-10-10T18:42:12Z` · **Archive payload SHA-256:** `4f7e8b40ce7f18f5ec216502d5615107a19dab36fe20b15fd868fb8e14c854e9`
 
 ## Quick use for Iran
 
-1. Start with [iran_likely_working_ipv4_ipv6_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_ipv4_ipv6_all.txt) (the legacy [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) remains available) for the current advisory working set.
+1. Start with [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) for the current advisory working set.
 2. Prefer [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) under ordinary DPI and [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) / [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) when a CDN/WebRTC route is appropriate.
 3. During a national-internet-cut scenario, try [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt); it is a prioritized *advisory* set, not a connectivity guarantee.
 4. Import the selected lines in Tor Browser: **Settings → Connection → Bridges → Add a Bridge Manually**.
@@ -15,24 +15,24 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `638` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `468` | obfs4-oriented fallback for conventional DPI |
-| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `2` | WebTunnel candidates |
-| [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `1` | Snowflake capability candidates |
-| [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `3` | NIN/cut-mode priority candidates |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `0` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `0` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `0` | WebTunnel candidates |
+| [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `0` | Snowflake capability candidates |
+| [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `0` | NIN/cut-mode priority candidates |
 | [iran_blocked.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_blocked.txt) | `0` | Observations classified as blocked |
 | [tor_bridges.zip](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tor_bridges.zip) | `78` files | Same verified payload used for Telegram delivery |
 | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | — | SHA-256 inventory, evidence scope, and archive contract |
 
 ## What the automation actually does
 
-The GitHub Actions workflow is Rust-native and schedules the full bounded pipeline at minute 0 of every UTC hour on the default branch. Runs targeting the same branch serialize without cancellation so artifacts start from the latest committed state; a run taking longer than an hour can delay or coalesce a refresh because GitHub scheduling is best-effort:
+The GitHub Actions workflow is Rust-native and schedules the full pipeline at minute 0 of every UTC hour on the default branch. Runs targeting the same branch serialize without cancellation so artifacts start from the latest committed state; a run taking longer than an hour can delay or coalesce a refresh because GitHub scheduling is best-effort:
 
 1. Collects from built-in fallback bridges and, when available, Tor Project/MOAT sources.
 2. Runs bounded concurrent TCP reachability probes from the GitHub runner. A TCP success is clearly recorded as a **runner-side observation**, not a claim that the endpoint works in Iran.
 3. Applies the existing Rust DPI, NIN, transport-rotation, and Iran scoring components to produce advisory output sets.
-4. Rewrites each derived `bridge/` output with atomic file replacement, including explicit IPv4/IPv6/all-family aliases; verifies JSON shapes, manifest hashes, and every ZIP entry.
-5. Preserves `bridge_history.json` and `iran_results.json` as canonical inputs, and removes stale/unmanaged files only after the new publication verifies successfully.
+4. Rewrites each derived `bridge/` output with atomic file replacement, creates a deterministic ZIP, and verifies every manifest hash and archive entry.
+5. Keeps the canonical history and latest probe report as inputs; removes stale/unmanaged bridge-directory files only after the new publication has passed verification.
 6. Uses that exact ZIP for Telegram upload when explicitly enabled and configured, then commits the same verified `bridge/` payload and this README.
 
 ## Autonomous diagnostics and dynamic yield
@@ -46,13 +46,15 @@ BridgeDB query variants, MOAT top-level/settings schemas, and redundant communit
 Every successful publication appends a timestamped entry to
 `data/publication_changelog.json` (schema version, ISO-8601 UTC run time, the
 verified archive SHA-256, per-file entry counts, and evidence tier/result
-counts). Each entry in `bridge/iran_results.json` is stamped with `tested_at`
-(the run timestamp), `test_tier` (`tier_2_pt_handshake` / `tier_1_tcp` /
-`untested`), and `test_result` (`tested_working` / `tested_failing` /
-`untested (rate-limited)`) derived from the recorded probe observations; the
-run-level `evidence` block summarises the stamping pass. Tiers and results are
-per-observation — they record *how* an endpoint was tested, never an assertion
-of Iranian reachability.
+counts). Each entry in `bridge/iran_results.json` carries `verification` with
+the actual highest typed stage, observer vantage, observation time, RTT, and
+bounded detail. `tested_at` records the stamping run; `test_tier` distinguishes
+`tier_4_pt_handshake` / `tier_3_transport` / `tier_2_pt_handshake` /
+`tier_1_tcp` / `tier_0_attempt` / `untested`; and `test_result` distinguishes
+`tested_working` (S2+ only) / `tcp_reachable_s1` / `tested_failing` /
+`untested (rate-limited)`. Inconclusive outcomes never become working or
+failing counts. The run-level `evidence` block summarises these counts; none
+asserts Iranian reachability unless backed by a separate, current Iran vantage.
 
 ## Telegram dual persistence
 
@@ -64,7 +66,7 @@ Telegram delivery uses a bot token and distributes a bridge inventory outside Gi
 
 ## Evidence and safety notes
 
-- `*_tested.txt` means the latest pipeline recorded a successful TCP observation or a transport-capability check where raw TCP is not meaningful (for example Snowflake). It does **not** prove a full Tor circuit or Iranian reachability.
+- `*_tested.txt` is restricted to typed, positive S2+ protocol evidence. An S1 TCP connection is recorded as `tcp_reachable_s1` but is only a prefilter; it is not a working bridge and does **not** prove a full Tor circuit or Iranian reachability.
 - `iran_likely_working_*` and anti-DPI scores are decision aids, not guarantees. Censorship conditions vary by ISP, region, time, and Tor Browser version.
 - The AI/DPI-labelled reports in `data/` are deterministic scoring/telemetry analyses. They are not a promise that an AI system can defeat filtering or DPI.
 - Never place personal credentials in bridge files, commit messages, workflow inputs, or Telegram captions.
