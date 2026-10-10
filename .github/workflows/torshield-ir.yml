@@ -431,6 +431,12 @@ jobs:
     - uses: actions/checkout@v5
       with:
         fetch-depth: 0
+    - name: Stage 0z — Self-heal corrupt generated files (conflict markers / invalid JSON)
+      run: |
+        set -euo pipefail
+        # A previously committed conflict-marker payload must never poison
+        # bridge_history.json / iran_results.json evidence for this run.
+        python3 scripts/repair_conflict_markers.py
 
     - name: Bootstrap environment defaults
       run: |
@@ -2327,29 +2333,58 @@ jobs:
         fi
         git config --global user.name  "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git pull origin main --rebase --autostash
-        # Stage ONLY paths that exist in the tree. A single missing
-        # pathspec (e.g. core/, which is absent) makes `git add` fail
-        # atomically and stage NOTHING — hidden by the old `|| true`,
-        # that silently turned this step into a permanent no-op and
-        # blocked every bridge/ + README.md commit for days.
+        # ROOT-CAUSE FIX (2026-10-11): the old `git pull --rebase --autostash`
+        # ran AFTER the pipeline had regenerated bridge/ + data/. Autostash
+        # re-applied those fresh files on top of the previous hourly commit
+        # that touched the same generated files, and git wrote
+        # `<<<<<<< Updated upstream` conflict markers into 56 JSON/text
+        # files, which `git add` then committed. Every later run read
+        # corrupt bridge_history.json / iran_results.json and lost its
+        # verification evidence (=> empty *_tested / iran_likely_working_*).
+        # Now: heal -> validate -> COMMIT FIRST -> rebase with generated
+        # content winning (-X theirs = our freshly generated commit) -> verify
+        # -> push, retrying on non-fast-forward. No stash is ever used.
+        python3 scripts/repair_conflict_markers.py
         PATHS="bridge/ data/ docs/ export/ README.md go.mod go.sum \
                src/bin/sync_bridge_outputs.rs cmd/ internal/ zig-scanner/ \
                generate_quantum_project.sh scripts/"
+        # Stage ONLY paths that exist in the tree. A single missing
+        # pathspec makes `git add` fail atomically and stage NOTHING.
         for opt in core bridge-probe/Cargo.lock; do
           [ -e "$opt" ] && PATHS="$PATHS $opt"
         done
         echo "Staging paths: $PATHS"
         git add $PATHS
-        git status --porcelain -- bridge/ README.md | head -20
+        # Publication guard: never commit a corrupt payload.
+        for f in bridge/*.json; do
+          python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$f" \
+            || { echo "::error::refusing to publish invalid JSON: $f"; exit 1; }
+        done
         if git diff --staged --quiet; then
           echo "No changes to commit."
-        else
-          WORKING=$(grep -c . bridge/iran_likely_working_all.txt 2>/dev/null || echo 0)
-          WORKING=${WORKING//[$'\t\r\n ']/}
-          git commit -m "chore: dual-persist bridge/ + README.md (advisory working: ${WORKING:-0}, run ${GITHUB_RUN_ID}) [skip ci]"
-          git push
+          exit 0
         fi
+        git status --porcelain -- bridge/ README.md | head -20
+        WORKING=$(grep -c . bridge/iran_likely_working_all.txt 2>/dev/null || echo 0)
+        WORKING=${WORKING//[$'\t\r\n ']/}
+        git commit -m "chore: dual-persist bridge/ + README.md (advisory working: ${WORKING:-0}, run ${GITHUB_RUN_ID}) [skip ci]"
+        # Leftover tracked edits outside PATHS (build byproducts) would block
+        # the rebase; they are never published, so drop them (no stash).
+        git checkout -- . 2>/dev/null || true
+        pushed=0
+        for attempt in 1 2 3 4 5; do
+          git fetch origin main
+          if git rebase -X theirs origin/main; then
+            python3 scripts/repair_conflict_markers.py --check \
+              || { python3 scripts/repair_conflict_markers.py; git add $PATHS; git commit -m "chore: heal conflict markers [skip ci]" || true; }
+            if git push origin HEAD:main; then pushed=1; break; fi
+          else
+            echo "rebase conflict on attempt ${attempt}; aborting and retrying"
+            git rebase --abort || true
+          fi
+          sleep $((attempt * 7))
+        done
+        [ "$pushed" = "1" ] || { echo "::error::could not push publication commit after 5 attempts"; exit 1; }
 
     - uses: actions/upload-artifact@v7
       if: always()
