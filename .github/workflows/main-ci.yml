@@ -147,7 +147,27 @@ jobs:
           key: ${{ runner.os }}-cargo-build-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo-build-
       - name: Build (debug)
-        run: cargo build --workspace
+        run: |
+          set -o pipefail
+          if ! cargo build --workspace 2>&1 | tee "${RUNNER_TEMP}/cargo-workspace.log"; then
+            python3 - <<'PY'
+          from pathlib import Path
+          import os, re
+          log = Path(os.environ["RUNNER_TEMP"]) / "cargo-workspace.log"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
+          lines = plain.splitlines()
+          emitted = 0
+          for i, line in enumerate(lines):
+              if "error[" in line or line.startswith("error:"):
+                  for chunk in lines[i:i+16]:
+                      print(f"::error::{chunk[:900]}")
+                      emitted += 1
+                  if emitted > 80:
+                      break
+          PY
+            exit 101
+          fi
       - name: Build (release)
         run: cargo build --release --workspace
 

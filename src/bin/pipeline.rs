@@ -257,9 +257,9 @@ fn stage_results(input: &Path) -> StageResult {
                     );
                 } else {
                     println!(
-                        "results-stage: persisted {} stamped bridges ({} webtunnel working) to {}",
+                        "results-stage: persisted {} stamped bridges ({} webtunnel ws-probed) to {}",
                         bridge_count,
-                        webtunnel_working,
+                        webtunnel_ws_probed,
                         input.display()
                     );
                 }
