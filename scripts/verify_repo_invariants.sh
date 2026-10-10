@@ -376,7 +376,7 @@ def c14_workflow_automation_gates():
         re.search(
             r"(?m)^      - name: Run pipeline \(--all\)\n"
             r"        if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n"
-            r"        run: cargo run --release --bin pipeline -- --all$",
+            r"        run: cargo run --locked --release --bin pipeline -- --all$",
             main_ci,
         )
     )

@@ -64,3 +64,18 @@ fn pr_publication_declares_missing_bridge_contract() {
     assert!(yml.contains("--check-contract"));
     assert!(yml.contains("validation_noop does not invent"));
 }
+
+#[test]
+fn c14_requires_locked_main_only_pipeline() {
+    let script = read("scripts/verify_repo_invariants.sh");
+    assert!(script.contains(
+        "cargo run --locked --release --bin pipeline -- --all"
+    ));
+    let yml = read(".github/workflows/main-ci.yml");
+    assert!(yml.contains(
+        "run: cargo run --locked --release --bin pipeline -- --all"
+    ));
+    assert!(yml.contains(
+        "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
+    ));
+}
