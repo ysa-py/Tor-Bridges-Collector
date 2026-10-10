@@ -1,15 +1,38 @@
 {
   "advisory_only": true,
-  "generated_at": "2026-10-10T18:41:56.633455073+00:00",
-  "stale_positives": [],
+  "generated_at": "2026-10-10T20:29:37.355782743+00:00",
+  "stale_positives": [
+    {
+      "days_since_last_probe": 0,
+      "health_score": 0.4800000000000001,
+      "last_probe": "2026-10-10T20:00:45.806087132+00:00",
+      "lifetime_success_ratio": 0.5,
+      "probe_failures": 1,
+      "probe_successes": 1,
+      "raw": "94.112.227.176:43594 BF61F24DD6852920E5DF3D8B03A4136CDA6E0C4B",
+      "transport": "vanilla"
+    },
+    {
+      "days_since_last_probe": 0,
+      "health_score": 0.4800000000000001,
+      "last_probe": "2026-10-10T20:00:45.806087132+00:00",
+      "lifetime_success_ratio": 0.5,
+      "probe_failures": 1,
+      "probe_successes": 1,
+      "raw": "obfs4 87.104.241.106:14015 716EE92A2E93ED69113D8F81E98530BA9A30DC31 cert=dcv5KagmC0iZVBMXHe6U93RLC+5lG6tyHIdtbJeQ4Uh0aPdpdAw//3MZwXd414Ju7yFdAg iat-mode=0",
+      "transport": "obfs4"
+    }
+  ],
   "summary": {
     "counts": {
-      "healthy": 428,
-      "no_history": 1067
+      "healthy": 429,
+      "no_history": 1064,
+      "stale_positive": 2
     },
     "median_drift_evidence_by_class": {
-      "healthy": 0.6000000000000001,
-      "no_history": 0.4
+      "healthy": 0.6800000000000002,
+      "no_history": 0.32000000000000006,
+      "stale_positive": 0.4800000000000001
     },
     "note": "drift evidence = collector EWMA health_score (0.8*old + 0.2*outcome, src/tor_collector/storage.rs::record_probe) with lifetime success-ratio fallback; stale_positive = historical successes + currently unreachable + non-fronted transport",
     "total_records": 1495
