@@ -270,7 +270,7 @@ jobs:
 
       - name: Upload Health Report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: gateway-health-${{ github.run_id }}
           path: data/gateway_health_report.json
@@ -295,7 +295,7 @@ jobs:
 
       - name: Upload Observability Report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: observability-report-${{ github.run_id }}
           path: data/observability_report.json
@@ -304,7 +304,7 @@ jobs:
 
       - name: Upload All Reports
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: health-and-observability-${{ github.run_id }}
           path: |
