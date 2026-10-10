@@ -51,12 +51,21 @@ jobs:
           if ! cargo build --bin quality_gate --bin security_scan --bin validate_workflows 2>&1 | tee "${RUNNER_TEMP}/cargo-gate.log"; then
             python3 - <<'PY'
           from pathlib import Path
-          import os
+          import os, re
           log = Path(os.environ["RUNNER_TEMP"]) / "cargo-gate.log"
           text = log.read_text(errors="replace") if log.exists() else ""
-          for line in text.splitlines():
-              if line.startswith("error") or "error[" in line or line.startswith("error:"):
-                  print(f"::error::{line[:900]}")
+          plain = re.sub(r"\x1b\[[0-9;]*m", "", text)
+          lines = plain.splitlines()
+          emitted = 0
+          for i, line in enumerate(lines):
+              if "error[" in line or line.startswith("error:"):
+                  for chunk in lines[i:i+16]:
+                      print(f"::error::{chunk[:900]}")
+                      emitted += 1
+                  if emitted > 80:
+                      break
+          if emitted == 0:
+              print("::error::cargo build failed without a rustc error line")
           PY
             exit 101
           fi
