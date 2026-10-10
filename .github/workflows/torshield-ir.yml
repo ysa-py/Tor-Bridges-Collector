@@ -27,27 +27,30 @@
 # the release packaging, and the cleanup call are preserved.
 #
 # DUAL PUBLICATION CONTRACT (bridge/ + README.md + Telegram, one verified payload):
-#   Stage 9 rebuilds and verifies ALL 55 public files in bridge/ — every
-#   transport .txt plus its _72h/_ipv6/_72h_ipv6/_tested variants, all
-#   iran_likely_working_* advisory sets, bridge_history.json,
-#   bridge_list_for_testing.json, bridge_scores.json, iran_results.json,
-#   telegram_manifest.json and tor_bridges.zip — via the Rust publisher
+#   Stage 9 rebuilds and verifies the complete REQUIRED_FILES inventory in
+#   bridge/ — including explicit IPv4/IPv6/all-family projections, historical
+#   aliases, JSON inputs/reports, telegram_manifest.json and tor_bridges.zip —
+#   via the Rust publisher
 #   (src/bridge_publication.rs, driven by sync_bridge_outputs). The same
 #   step re-renders README.md from the verified snapshot and, when the
 #   TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID secrets are configured, delivers
 #   the byte-identical verified tor_bridges.zip to Telegram inside the very
 #   same run whose Stage 11 commits the payload to git ("dual persist":
 #   GitHub and Telegram always receive the same bytes).
-#   Telegram delivery is ON by default (schedule/push/dispatch). It can be
-#   disabled per-run with the upload_to_telegram=false dispatch input or
-#   repo-wide by setting the TELEGRAM_AUTO_UPLOAD repository variable to
-#   false. Runs without the secrets configured skip delivery with a warning
-#   instead of failing, and pull_request runs never deliver (preview only,
-#   mirroring the skipped Stage 11 git commit).
+#   Full bridge collection/publication and Telegram delivery run only on the
+#   main branch (hourly schedule, main push, or main dispatch); pull_request and
+#   non-main refs run validation without production collection or deployment.
+#   Delivery is ON by default for eligible main runs. It can be disabled per-run
+#   with upload_to_telegram=false or repo-wide with TELEGRAM_AUTO_UPLOAD=false.
+#   Stage 11 has the same main-only guard, so Telegram and GitHub persistence
+#   cannot diverge. Missing Telegram secrets degrade to repo-only publication.
 #   Stage 9b re-verifies the complete contract with --verify-only (JSON
 #   shapes, every SHA-256 manifest entry, byte-identical ZIP contents), and
-#   Stage 10 inventories all 55 files and fails the run if any is missing —
-#   a broken publication can never reach the commit step.
+#   Stage 10 reads that inventory from telegram_manifest.json and fails the
+#   run if any contract file is missing — a broken publication cannot commit.
+#   Collection/publication is scheduled hourly (UTC). Runs targeting the same
+#   branch serialize without cancellation so every artifact starts from the
+#   latest committed state; a full run over an hour can delay/coalesce refreshes.
 # ══════════════════════════════════════════════════════════════════════════
 name: TorShield-IR Bridge Intelligence
 
@@ -56,7 +59,7 @@ name: TorShield-IR Bridge Intelligence
     branches: ["**"]
   pull_request:
   schedule:
-  - cron: '0 */3 * * *'
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       upload_to_telegram:
@@ -98,8 +101,10 @@ permissions:
   contents: write
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # PR validation shares main's group, while only main can enter the live
+  # collection/deployment job; serialize against scheduled production runs.
+  group: ${{ github.workflow }}-${{ github.event.pull_request.base.ref || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
 
@@ -137,60 +142,65 @@ jobs:
         restore-keys: ${{ runner.os }}-cargo-
 
     - name: Build quality-gate tooling (Rust)
+      id: quality_gate_tooling
       run: |
         set -euo pipefail
         cargo build --bin quality_gate --bin security_scan --bin validate_workflows
 
       # ── Python-free tree check (replaces the py_compile sweep) ────────────
     - name: Python-free gate (py-check)
+      id: python_free_gate
       run: cargo run --quiet --bin quality_gate -- py-check .
 
       # ── YAML linting (replaces the PyYAML heredoc) ────────────────────────
     - name: YAML linting
+      id: yaml_lint
       run: cargo run --quiet --bin quality_gate -- yaml-lint .
 
       # ── Workflow structural validation (port of validate_workflows.py) ────
     - name: Validate GitHub Actions workflows (structure + platform-shell rules)
+      id: workflow_validation
       run: cargo run --quiet --bin validate_workflows -- .github/workflows
 
       # ── Requirements.txt validation (unchanged schema, Rust engine) ───────
     - name: Validate requirements.txt
+      id: requirements_validation
       run: cargo run --quiet --bin quality_gate -- requirements requirements.txt
 
       # ── Secrets static scan (port of security_scan.py) ────────────────────
     - name: Security scan (dangerous sinks + hard-coded credentials)
-      continue-on-error: true
+      id: security_scan
       run: cargo run --quiet --bin security_scan -- .
 
-      # ── Secret presence check (pure bash — unchanged) ─────────────────────
-    - name: Secret presence check
-      env:
-        CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 }}
-        PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 }}
-        CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 }}
-        CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 }}
-        GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX }}
-      run: |
-        echo "═══ Secret Presence Check ═══"
-        SECRETS_FOUND=0
-        SECRETS_TOTAL=5
-        for var in CEREBRAS_API_KEY_1 PORTKEY_API_KEY_1 CF_ACCOUNT_ID_1 CF_API_TOKEN_1 GH_PAT_AUTOFIX; do
-          eval "VAL=\${$var:-}"
-          if [ -n "$VAL" ]; then
-            echo "  ✓ $var is set"
-            SECRETS_FOUND=$((SECRETS_FOUND + 1))
-          else
-            echo "  ✗ $var is EMPTY"
-          fi
-        done
-        echo "  Secrets found: ${SECRETS_FOUND}/${SECRETS_TOTAL}"
-        if [ "$SECRETS_FOUND" -eq 0 ]; then
-          echo "::warning::No optional AI/provider secrets configured; continuing with offline Rust-native checks."
-        fi
+      # ── Optional-secret telemetry passes booleans only, never secret values ─
+    - name: Test optional-secret reporter
+      run: bash scripts/test_report_optional_secrets.sh
+    - name: Test probe relay secret validation
+      run: bash scripts/test_validate_probe_relay_secrets.sh
+    - name: Test probe relay smoke retries and redaction
+      run: bash scripts/test_probe_relay_smoke.sh
 
-      # ── Generate quality report (same data/quality_report.json schema) ────
+    - name: Optional secret availability
+      id: secret_presence
+      env:
+        HAS_CEREBRAS_API_KEY_1: ${{ secrets.CEREBRAS_API_KEY_1 != '' }}
+        HAS_PORTKEY_API_KEY_1: ${{ secrets.PORTKEY_API_KEY_1 != '' }}
+        HAS_CF_ACCOUNT_ID_1: ${{ secrets.CF_ACCOUNT_ID_1 != '' }}
+        HAS_CF_API_TOKEN_1: ${{ secrets.CF_API_TOKEN_1 != '' }}
+        HAS_GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX != '' }}
+      run: bash scripts/report_optional_secrets.sh
+
+      # ── Generate a legacy-compatible report with actual step outcomes ────
     - name: Generate quality report
-      if: always()
+      if: ${{ always() && steps.quality_gate_tooling.outcome == 'success' }}
+      env:
+        PYTHON_SYNTAX_RESULT: ${{ steps.python_free_gate.outcome }}
+        YAML_LINT_RESULT: ${{ steps.yaml_lint.outcome }}
+        WORKFLOW_VALIDATION_RESULT: ${{ steps.workflow_validation.outcome }}
+        REQUIREMENTS_VALIDATION_RESULT: ${{ steps.requirements_validation.outcome }}
+        SECURITY_SCAN_RESULT: ${{ steps.security_scan.outcome }}
+        SECRET_PRESENCE_RESULT: ${{ steps.secret_presence.outputs.result || steps.secret_presence.outcome }}
+        QUALITY_GATE_RESULT: ${{ job.status }}
       run: cargo run --quiet --bin quality_gate -- report .
 
     - name: Upload quality report
@@ -309,7 +319,45 @@ jobs:
       run: cargo fmt --all -- --check
 
     - name: Clippy (all features, deny warnings)
+      id: clippy
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
+
+    # GitHub does not automatically turn rustc's JSON diagnostics into check
+    # annotations. Re-run only after a lint failure and publish each warning as
+    # an annotation so the exact file, line, and lint remain visible in Checks.
+    - name: Annotate Clippy diagnostics
+      if: ${{ failure() && steps.clippy.outcome == 'failure' }}
+      run: |
+        set -euo pipefail
+        diagnostic_log="$RUNNER_TEMP/clippy-diagnostics.jsonl"
+        set +e
+        cargo clippy --workspace --all-targets --all-features --message-format=json -- -D warnings >"$diagnostic_log" 2>&1
+        clippy_status=$?
+        set -e
+        if command -v jq >/dev/null 2>&1; then
+          set +e
+          jq -Rr '
+            fromjson?
+            | select(.reason == "compiler-message" and (.message.level == "warning" or .message.level == "error"))
+            | .message as $message
+            | ([ $message.spans[]? | select(.is_primary) ][0] // {}) as $span
+            | [($span.file_name // ""), ($span.line_start // 1 | tostring), ($span.line_end // ($span.line_start // 1) | tostring), ($message.code.code // "rustc"), $message.message]
+            | @tsv
+          ' "$diagnostic_log" | while IFS=$'\t' read -r file line end_line title message; do
+            [[ -n "$file" ]] || continue
+            file=${file//'%'/'%25'}
+            file=${file//','/'%2C'}
+            title=${title//'%'/'%25'}
+            title=${title//','/'%2C'}
+            title=${title//':'/'%3A'}
+            message=${message//'%'/'%25'}
+            message=${message//$'\r'/'%0D'}
+            message=${message//$'\n'/'%0A'}
+            printf '::error file=%s,line=%s,endLine=%s,title=%s::%s\n' "$file" "$line" "$end_line" "$title" "$message"
+          done
+          set -e
+        fi
+        echo "Clippy diagnostic replay exited with status $clippy_status; see the annotations above."
 
     - name: Full Rust test suite (all features)
       run: cargo test --workspace --all-targets --all-features
@@ -330,7 +378,10 @@ jobs:
     # artifact + workflow validation). rust-parity-tests stays an independent
     # gate: it still runs and any failure still fails the workflow, but it no
     # longer delays the ~1h collection pipeline behind a full fmt/clippy/test
-    # suite that shares no files with it.
+    # suite that shares no files with it. Collection is restricted to main so
+    # PR/non-main validation cannot deploy to production or consume live secrets.
+    # In `rerank_only` dispatch mode, the AI re-ranker uses committed input.
+    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.rerank_only != true)
     runs-on: ubuntu-latest
     needs: [quality-gate, build-rust]
     timeout-minutes: 90
@@ -594,16 +645,11 @@ jobs:
 
       # ── Stage 4-prep — Deploy probe relay Worker + smoke test ─────────────
       #
-      # BEFORE the 1447-bridge batch, we:
-      #   1. Deploy the probe-relay Cloudflare Worker (in case it drifted)
-      #      using the dedicated CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN
-      #      secrets (NEVER the CF_ACCOUNT_ID_1..11 / CF_API_TOKEN_1..11
-      #      slots, which belong to the AI Gateway provider rotation system).
-      #   2. Run a live smoke-test curl to confirm the Worker is alive and
-      #      returns 200 — fail loudly if it does not.
-      #   3. If CF_WORKER_ACCOUNT_ID or PROBE_RELAY_URL is unset, skip
-      #      Stage 4 cleanly (exit 0, logged as SKIPPED) rather than burning
-      #      10+ minutes on guaranteed HTTP 404s.
+      # Before the bridge batch, deploy only with the dedicated
+      # CF_WORKER_ACCOUNT_ID / CF_WORKER_API_TOKEN secrets (never the
+      # CF_ACCOUNT_ID_1..11 rotation slots), then require authenticated live
+      # content controls. Missing relay auth skips Stage 4; missing deploy auth
+      # skips deployment but still permits a secure smoke test of the live Worker.
     - name: Stage 4-prep — Deploy probe relay + live smoke test
       id: relay_prep
       env:
@@ -611,94 +657,36 @@ jobs:
         PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
         CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID }}
         CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
+        HAS_PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL != '' }}
+        HAS_PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN != '' }}
+        HAS_CF_WORKER_ACCOUNT_ID: ${{ secrets.CF_WORKER_ACCOUNT_ID != '' }}
+        HAS_CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN != '' }}
+        PROBE_RELAY_SMOKE_REPORT_PATH: ${{ runner.temp }}/probe-relay-smoke.json
+        PROBE_RELAY_SMOKE_EVIDENCE_LABEL: live_edge
       run: |
         set -euo pipefail
         echo "═══ Stage 4-prep: Probe Relay Deployment + Smoke Test ═══"
 
-        # ── Secret validation helper ───────────────────────────────
-        # Validates each secret with three distinct failure modes:
-        #   1. UNSET: the secret was never created (env var absent)
-        #   2. EMPTY: secret exists but value is empty string or whitespace
-        #   3. INVALID: secret set but fails format validation
-        #
-        # Outputs a clear, actionable error for each failure mode so the
-        # owner knows exactly what to fix — no more confusing "not set"
-        # messages when the secret exists but is blank.
-        validate_secret() {
-          local name="$1"
-          local raw_val="$2"
-          local format_check="${3:-}"
-
-          # Mode 1: secret variable does not exist at all
-          if [ -z "${raw_val+set}" ]; then
-            echo "::error::SECRET UNSET: '${name}' was never created. Go to GitHub → Settings → Secrets and variables → Actions → New repository secret, name it exactly '${name}'."
-            return 1
-          fi
-
-          # Mode 2: secret exists but value is empty or only whitespace
-          local trimmed
-          trimmed="$(printf '%s' "${raw_val}" | xargs)"
-          if [ -z "${trimmed}" ]; then
-            echo "::error::SECRET EMPTY: '${name}' exists in GitHub Secrets but its value is blank (empty string or whitespace only). Go to GitHub → Settings → Secrets and variables → Actions → edit '${name}' and set a real value."
-            return 1
-          fi
-
-          # Mode 3: format validation (optional, caller-specified)
-          if [ -n "${format_check}" ]; then
-            case "${format_check}" in
-              HTTPS_URL)
-                if ! printf '%s' "${trimmed}" | grep -qE '^https://[a-zA-Z0-9.-]+(\.[a-zA-Z]{2,})+(/.*)?$'; then
-                  echo "::error::SECRET INVALID: '${name}' is set to '${trimmed}' but does not look like a valid HTTPS URL (must start with https:// and contain a valid hostname). Update the secret value."
-                  return 1
-                fi
-                ;;
-              CF_ACCOUNT_ID)
-                if ! printf '%s' "${trimmed}" | grep -qE '^[a-f0-9]{32}$'; then
-                  echo "::error::SECRET INVALID: '${name}' is set but does not look like a Cloudflare Account ID (32 hex chars). Update the secret value."
-                  return 1
-                fi
-                ;;
-              CF_API_TOKEN)
-                if [ "${#trimmed}" -lt 20 ]; then
-                  echo "::error::SECRET INVALID: '${name}' is set but too short to be a valid Cloudflare API token (< 20 chars). Update the secret value."
-                  return 1
-                fi
-                ;;
-              NONEMPTY)
-                # Already validated by the empty check above
-                ;;
-            esac
-          fi
-
-          echo "  ✓ ${name} is valid (length=${#trimmed})"
-          return 0
-        }
-
-        # ── Validate all four Stage 4 secrets ─────────────────────
-        ERRORS=0
-        validate_secret "PROBE_RELAY_URL"     "${PROBE_RELAY_URL:-}"     "HTTPS_URL"      || ERRORS=$((ERRORS + 1))
-        validate_secret "PROBE_RELAY_TOKEN"   "${PROBE_RELAY_TOKEN:-}"   "NONEMPTY"       || ERRORS=$((ERRORS + 1))
-        validate_secret "CF_WORKER_ACCOUNT_ID" "${CF_WORKER_ACCOUNT_ID:-}" "CF_ACCOUNT_ID" || ERRORS=$((ERRORS + 1))
-        validate_secret "CF_WORKER_API_TOKEN" "${CF_WORKER_API_TOKEN:-}" "CF_API_TOKEN"   || ERRORS=$((ERRORS + 1))
-
-        if [ "$ERRORS" -gt 0 ]; then
-          echo ""
-          echo "::error::❌ ${ERRORS} Stage 4 secret(s) failed validation. Stage 4 will be skipped."
-          echo "::notice::Fix the secrets listed above, then re-run this workflow."
-          echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
+        # Validate explicit secret-presence booleans and formats without
+        # printing values. Relay endpoint/token are mandatory; deployment
+        # credentials are optional only for reusing an already-deployed Worker.
+        if ! bash scripts/validate_probe_relay_secrets.sh; then
+          echo "::error::Stage 4 secret validator failed unexpectedly."
+          exit 1
+        fi
+        if grep -Fqx 'PROBE_RELAY_SKIP=true' "${GITHUB_OUTPUT}"; then
+          mkdir -p data
+          printf '[]\n' > data/pt_results.json
+          echo "Relay skipped because required auth/config was invalid; discarded prior-run PT observations."
           exit 0
         fi
 
-        echo "Relay URL: ${PROBE_RELAY_URL}"
-
         # ── Version-safe deploy guard (additive, 2026-09-08) ──────────
-        # MEASURED PROBLEM: the relay's deployed version is not branch-pinned.
-        # Every run of this workflow deploys probe-relay from its own checkout,
-        # so a scheduled run on `main` silently overwrites whatever a PR branch
-        # had deployed — confirmed twice on 2026-09-08 with verbatim
-        # `wrangler deployments list` output (03:06:41Z run 34181559117 and
-        # 08:01:16Z run 34201083666, both redeployed main's pre-v2.6 relay over
-        # the branch's v2.6). An older commit must never clobber a newer deploy.
+        # Historical failure: main once overwrote a newer relay deployed from a
+        # PR branch (confirmed in Wrangler logs on 2026-09-08). Production
+        # deployments are now main-only at both the job and step levels; this
+        # version check additionally prevents a stale main checkout from
+        # replacing a newer deployment made outside this workflow.
         #
         # GUARD: the Worker (v2.8+) exposes its deploy identity additively on
         # the unauthenticated non-POST 405 path as
@@ -708,8 +696,7 @@ jobs:
         # Before deploying, compare the live version with the version THIS
         # checkout would deploy:
         #   * live reports no version (pre-v2.8 Worker or query failure)
-        #       → deploy (fail-open to the previous always-deploy behavior;
-        #         this is also the self-heal path after an external overwrite)
+        #       → deploy only when optional deployment credentials are valid
         #   * live sha == incoming sha → skip (identical code; smoke test
         #       still runs below)
         #   * live is strictly newer (incoming is an ancestor of live, or —
@@ -717,8 +704,8 @@ jobs:
         #       → SKIP with a warning: the older checkout must not overwrite
         #       the newer deployment
         #   * otherwise → deploy (incoming is newer or equal-lineage)
-        # Only this deploy decision is guarded; every other stage of this
-        # workflow (scrape, test, publish, commit) runs exactly as before.
+        # Defense in depth: even if the job-level main-branch condition is
+        # changed later, preview refs must never mutate the production Worker.
         RELAY_BASE_URL="${PROBE_RELAY_URL%/}"
         RELAY_BASE_URL="${RELAY_BASE_URL%/probe}"
         INCOMING_SHA="$(git log -1 --format=%H -- probe-relay/ 2>/dev/null || true)"
@@ -731,15 +718,35 @@ jobs:
         fi
         echo "Incoming relay version: sha=${INCOMING_SHA} ts=${INCOMING_TS} (last commit touching probe-relay/)"
 
-        LIVE_BODY="$(curl -s -m 15 -o /tmp/relay_live_version.json -w '%{http_code}' "${RELAY_BASE_URL}/" 2>/dev/null || echo "000")"
-        LIVE_SHA="$(jq -r '.version.git_sha // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
-        LIVE_TS="$(jq -r '.version.git_ts // empty' /tmp/relay_live_version.json 2>/dev/null || true)"
-        echo "Live relay version query: HTTP ${LIVE_BODY} sha=${LIVE_SHA:-<none>} ts=${LIVE_TS:-<none>}"
+        VERSION_TMP_DIR="$(mktemp -d)"
+        trap 'rm -rf "${VERSION_TMP_DIR}"' EXIT
+        VERSION_BODY="${VERSION_TMP_DIR}/live-version.json"
+        VERSION_CURL_CONFIG="${VERSION_TMP_DIR}/version.curl.conf"
+        printf 'url = "%s/"\n' "${RELAY_BASE_URL}" > "${VERSION_CURL_CONFIG}"
+        chmod 600 "${VERSION_CURL_CONFIG}"
+        LIVE_HTTP_CODE=000
+        if LIVE_HTTP_CODE="$(curl --config "${VERSION_CURL_CONFIG}" --silent --show-error --max-time 15 \
+            --output "${VERSION_BODY}" --write-out '%{http_code}' 2>/dev/null)"; then
+          :
+        else
+          LIVE_HTTP_CODE=000
+        fi
+        LIVE_SHA_RAW="$(jq -r '.version.git_sha // empty' "${VERSION_BODY}" 2>/dev/null || true)"
+        LIVE_TS_RAW="$(jq -r '.version.git_ts // empty' "${VERSION_BODY}" 2>/dev/null || true)"
+        LIVE_SHA=""
+        LIVE_TS=""
+        if [[ "$LIVE_SHA_RAW" =~ ^[0-9a-f]{40}$ ]]; then
+          LIVE_SHA="$LIVE_SHA_RAW"
+        fi
+        if [[ "$LIVE_TS_RAW" =~ ^[0-9]{1,12}$ ]]; then
+          LIVE_TS="$LIVE_TS_RAW"
+        fi
+        echo "Live relay version query: HTTP ${LIVE_HTTP_CODE} sha=${LIVE_SHA:-<none>} ts=${LIVE_TS:-<none>}"
 
         DEPLOY_RELAY=true
         SKIP_REASON=""
         if [ -z "${LIVE_SHA}" ]; then
-          echo "Live relay did not report a version (pre-v2.8 Worker or query failed) — will deploy (fail-open; also self-heals an external overwrite)"
+          echo "Live relay did not report a version; deployment will be attempted only if the optional deployment credentials are valid."
         elif [ "${LIVE_SHA}" = "${INCOMING_SHA}" ]; then
           DEPLOY_RELAY=false
           SKIP_REASON="live relay is already at the incoming version ${INCOMING_SHA}"
@@ -763,6 +770,15 @@ jobs:
             DEPLOY_RELAY=false
             SKIP_REASON="${LIVE_NEWER_BECAUSE}"
           fi
+        fi
+        if [ "${GITHUB_REF}" != "refs/heads/main" ] || [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
+          DEPLOY_RELAY=false
+          SKIP_REASON="production relay deployment is restricted to main-branch runs"
+          echo "::notice::non-main/PR run will smoke-test the live relay but cannot deploy or rotate its token"
+        fi
+        if grep -Fqx 'PROBE_RELAY_DEPLOY_SKIP=true' "${GITHUB_OUTPUT}"; then
+          DEPLOY_RELAY=false
+          SKIP_REASON="optional Cloudflare deployment credentials are missing or invalid"
         fi
         if [ "${DEPLOY_RELAY}" != "true" ]; then
           echo "::notice::relay deploy SKIPPED: ${SKIP_REASON}. The smoke test below still runs against the live (newer) deployment."
@@ -793,103 +809,58 @@ jobs:
           # the deploy when the version guard decides the live Worker is
           # already at this or a newer version (the live Worker's token
           # already matches this repo secret — verified by the smoke test).
-          if [ -n "${PROBE_RELAY_TOKEN:-}" ]; then
-            echo "Syncing PROBE_RELAY_TOKEN to Worker secret…"
-            echo "${PROBE_RELAY_TOKEN}" | npx wrangler@latest secret put PROBE_RELAY_TOKEN --config probe-relay/wrangler.toml 2>&1 || \
-              echo "::warning::wrangler secret put FAILED — Worker may reject probes with 401"
+          echo "Syncing required PROBE_RELAY_TOKEN to Worker secret…"
+          SECRET_SYNC_LOG="${VERSION_TMP_DIR}/secret-sync.log"
+          if printf '%s' "${PROBE_RELAY_TOKEN}" | npx wrangler@latest secret put PROBE_RELAY_TOKEN --config probe-relay/wrangler.toml >"${SECRET_SYNC_LOG}" 2>&1; then
+            echo "Worker authentication secret synchronized."
           else
-            echo "::notice::PROBE_RELAY_TOKEN not set — Worker will run in auth-less mode if its secret is also unset"
+            echo "::warning::wrangler secret put failed (details redacted); the authenticated smoke test will fail closed if the live Worker secret does not match."
           fi
 
           # v2.8: the deploy stamps the Worker with the relay-code version
           # (last commit touching probe-relay/) so future runs — including
           # scheduled runs on other branches — can compare before deploying.
+          DEPLOY_LOG="${VERSION_TMP_DIR}/deploy.log"
           if npx wrangler@latest deploy --config probe-relay/wrangler.toml \
                --var "RELAY_GIT_SHA:${INCOMING_SHA}" \
-               --var "RELAY_GIT_TS:${INCOMING_TS}" 2>&1; then
+               --var "RELAY_GIT_TS:${INCOMING_TS}" >"${DEPLOY_LOG}" 2>&1; then
             echo "✅ wrangler deploy succeeded (version ${INCOMING_SHA:0:10})"
           else
-            echo "::warning::wrangler deploy FAILED — proceeding with existing Worker deployment"
+            echo "::warning::wrangler deploy failed (details redacted); the authenticated smoke test will decide whether Stage 4 can proceed."
           fi
         fi
 
-        # ── Show the deployed Worker version (diagnostic) ───────────
-        if [ -n "${CF_WORKER_API_TOKEN:-}" ] && command -v npx >/dev/null 2>&1; then
-          export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
-          echo "--- wrangler whoami ---"
-          npx wrangler@latest whoami 2>&1 || true
-          echo "--- wrangler deployments list ---"
-          npx wrangler@latest deployments list --config probe-relay/wrangler.toml 2>&1 || true
-        fi
-
-        # ── Live smoke test: single curl before the 49-chunk batch ──
-        # Normalize URL: strip trailing slash, strip /probe suffix if
-        # owner accidentally included it, then append /probe.
-        # This makes the system format-tolerant so the owner can set:
-        #   https://foo.workers.dev       → /probe
-        #   https://foo.workers.dev/      → /probe
-        #   https://foo.workers.dev/probe → /probe (no doubling)
-        SMOKE_URL="${PROBE_RELAY_URL%/}"
-        SMOKE_URL="${SMOKE_URL%/probe}"
-        SMOKE_URL="${SMOKE_URL}/probe"
-        echo "Smoke-testing ${SMOKE_URL} …"
-        # The Worker expects {"host","port","transport"} — NOT "address".
-        # Schema validated at: probe-relay/src/index.ts "Each bridge must have host, port, and transport fields"
-        SMOKE_BODY='[{"host":"127.0.0.1","port":9999,"transport":"obfs4"}]'
-        SMOKE_CODE=$(curl -s -o /tmp/smoke_resp.json -w "%{http_code}" \
-          -X POST "$SMOKE_URL" \
-          -H "Content-Type: application/json" \
-          -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
-          -d "$SMOKE_BODY" \
-          --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
-        echo "Smoke test HTTP status: ${SMOKE_CODE}"
-        if [ -s /tmp/smoke_resp.json ]; then
-          echo "Smoke test response body (first 5 lines):"
-          head -5 /tmp/smoke_resp.json
-        fi
-        if [ "$SMOKE_CODE" != "200" ]; then
-          echo "::error::Probe relay smoke test FAILED — HTTP ${SMOKE_CODE} (expected 200)"
-          echo "::error::Check PROBE_RELAY_URL secret and Worker deployment status"
+        # ── Live smoke test: bounded, redacted gate ─────────────────
+        # The helper sends authenticated live-open/refused and repository-derived
+        # timeout-candidate controls. It requires a fresh Worker-vantage timeout,
+        # correlates every echoed target, and validates typed content while
+        # redacting endpoints, tokens, bodies, raw curl stderr, and bridge IDs.
+        if bash scripts/probe_relay_smoke.sh; then
+          echo "✅ Authenticated probe relay content controls passed — Stage 4 will proceed"
+          echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
+        else
+          echo "::notice::Required probe relay canary did not pass; Stage 4 is explicitly skipped for this run. Collection and publication continue."
           echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
+          mkdir -p data
+          printf '[]\n' > data/pt_results.json
+          echo "Prior-run PT observations discarded; no relay result is claimed for this run."
           exit 0
         fi
-        echo "✅ Probe relay smoke test passed (HTTP 200) — Stage 4 will proceed"
-        echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
 
-        # ── Dual-stack smoke probe (ADDITIVE, informational only) ──────────
-        # The IPv4 loopback canary above remains the SOLE proceed/fail gate.
-        # This second canary probes the IPv6 loopback equivalent (::1:9999)
-        # and only logs its own pass/fail/skip — it can never block the
-        # pipeline. If the runner reports no IPv6 loopback support the probe
-        # logs a clear skip notice instead of an error. 0.0.0.0 is NOT used:
-        # it is a wildcard bind address, not a connectable target.
-        echo ""
-        echo "═══ IPv6-loopback smoke probe (informational, additive) ═══"
-        IPV6_CAPABLE=true
-        if command -v ip >/dev/null 2>&1 && ! ip -6 addr show lo >/dev/null 2>&1; then
-          IPV6_CAPABLE=false
-        fi
-        if [ "$IPV6_CAPABLE" != "true" ]; then
-          echo "::notice::Runner lacks IPv6 loopback (::1) support — IPv6-loopback smoke probe skipped (informational only; the IPv4 gate above is unchanged)"
-        else
-          SMOKE6_BODY='[{"host":"::1","port":9999,"transport":"obfs4"}]'
-          SMOKE6_CODE=$(curl -s -o /tmp/smoke6_resp.json -w "%{http_code}" \
-            -X POST "$SMOKE_URL" \
-            -H "Content-Type: application/json" \
-            -H "X-Probe-Token: ${PROBE_RELAY_TOKEN:-}" \
-            -d "$SMOKE6_BODY" \
-            --connect-timeout 15 --max-time 30 2>/dev/null || echo "000")
-          echo "IPv6-loopback smoke test HTTP status: ${SMOKE6_CODE}"
-          if [ -s /tmp/smoke6_resp.json ]; then
-            echo "IPv6-loopback smoke response body (first 5 lines):"
-            head -5 /tmp/smoke6_resp.json
-          fi
-          if [ "$SMOKE6_CODE" = "200" ]; then
-            echo "✅ IPv6-loopback smoke probe delivered (HTTP 200) — informational only; the IPv4 gate above is unchanged"
-          else
-            echo "::warning::IPv6-loopback smoke probe returned HTTP ${SMOKE6_CODE} — informational only; the IPv4 gate above is unchanged and Stage 4 proceeds exactly as before"
-          fi
-        fi
+        # Loopback addresses are intentionally rejected by the public-target
+        # validator, so do not send ::1/127.0.0.1 to the deployed relay. IPv6
+        # bridge collection/probing remains covered by the normal public-target
+        # pipeline; this smoke gate is deliberately IPv4-only.
+
+    - name: Upload redacted live probe-relay canary evidence
+      if: always()
+      continue-on-error: true
+      uses: actions/upload-artifact@v6
+      with:
+        name: probe-relay-smoke-${{ github.run_id }}
+        path: ${{ runner.temp }}/probe-relay-smoke.json
+        if-no-files-found: ignore
+        retention-days: 14
 
       # Stage 4 — External Probe Relay (CI Egress Fix)
       #
@@ -915,47 +886,33 @@ jobs:
       env:
         PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
         PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
-        # Chunks are submitted concurrently (deterministic merge preserves the
-        # exact same result array/order as the old serial loop). 8 concurrent
-        # requests keeps the free-tier Cloudflare Worker busy without bursting
-        # it; the parent merges per-chunk results in chunk order afterwards.
-        #
-        # Truncation fix (2026-09-06): the per-chunk WALL-CLOCK throughput of
-        # the relay Worker was the real bottleneck that forced this step onto
-        # its 20-minute budget and silently dropped the un-finished chunks.
-        # probe-relay's internal probe concurrency was raised 5 -> 25 (see
-        # probe-relay/wrangler.toml [vars] MAX_CONCURRENT_PROBES and
-        # src/index.ts), so each 30-bridge chunk now probes in ~1-2 waves
-        # (~5-10s) instead of ~6 serial waves (~30s). The whole ~1500-bridge
-        # set therefore completes inside the budget instead of being cut at the
-        # deadline — raising the timeout alone would only have delayed the
-        # failure mode, so this fixes coverage rather than masking it. The
-        # 20-minute client cap below stays as a generous safety bound, and the
-        # explicit coverage accounting makes any future truncation loud.
+        # Six descriptors per invocation match the Worker's six-socket ceiling
+        # and keep each invocation to one bounded wave. Eight request-level
+        # workers preserve throughput; the client deterministically merges
+        # typed outcomes in input order. The measured per-source funnel records
+        # request counts for free-tier budget review.
+        PROBE_RELAY_CHUNK_SIZE: '6'
         PROBE_RELAY_PARALLELISM: '8'
       run: |
         set -euo pipefail
 
-        # The relay is supplementary and writes results after every completed
-        # chunk.  Bound the client *inside* the 25-minute Actions step so a
-        # slow/degraded Worker cannot let the platform kill the step and skip
-        # every downstream stage.  On timeout we preserve valid partial
-        # results; only an absent/invalid file is replaced with an empty array.
+        # Bound the authenticated client inside the 25-minute Actions step.
+        # On timeout, preserve complete typed chunk outcomes; no missing or
+        # invalid response is silently converted into a positive result.
         relay_status=0
         timeout --signal=TERM --kill-after=30s 20m \
           bash scripts/probe_relay.sh \
             bridge/bridge_list_for_testing.json \
             data/pt_results.json || relay_status=$?
 
-        # Explicit, non-silent truncation accounting: report how much of the
-        # candidate pool actually received a relay observation so an incomplete
-        # run can never silently shrink probe coverage again.
+        # Explicit truncation accounting distinguishes source candidates from
+        # typed outcome records (which can include relay-unavailable S0 entries).
         INPUT_COUNT=$(jq 'length' bridge/bridge_list_for_testing.json 2>/dev/null || echo 0)
         RESULT_COUNT=$(jq 'length' data/pt_results.json 2>/dev/null || echo 0)
 
         if [ "$relay_status" -eq 124 ] || [ "$relay_status" -eq 137 ]; then
           echo "::warning::Probe relay reached its 20-minute budget; continuing with partial results"
-          echo "::warning::Truncation check: ${RESULT_COUNT}/${INPUT_COUNT} candidates have relay observations (budget exhausted before all chunks finished)"
+          echo "::warning::Truncation check: ${RESULT_COUNT} typed outcome records for ${INPUT_COUNT} input candidates (budget exhausted before all chunks finished)"
         elif [ "$relay_status" -ne 0 ]; then
           echo "::warning::Probe relay exited with status ${relay_status}; continuing with available results"
         fi
@@ -966,7 +923,8 @@ jobs:
           RESULT_COUNT=0
         fi
 
-        echo "Stage 4 completed with ${RESULT_COUNT} relay observations (of ${INPUT_COUNT} input candidates)"
+        RESULT_S2PLUS=$(jq '[.[] | select(.status == "connected" and (.stage == "S2" or .stage == "S3" or .stage == "S4"))] | length' data/pt_results.json 2>/dev/null || echo 0)
+        echo "Stage 4 completed with ${RESULT_COUNT} typed outcome records from ${INPUT_COUNT} source candidates; S2+ transport/Tor evidence records=${RESULT_S2PLUS}"
 
       # WebTunnel-focused automation (strictly additive). Consumes
       # data/pt_results.json written by Stage 4 above and the bridge/
@@ -1708,6 +1666,11 @@ jobs:
     name: scrape-and-test (finalize)
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    # Defense-in-depth publication lock: never cancel a run while it is
+    # verifying or committing the bridge artifact.
+    concurrency:
+      group: ${{ github.workflow }}-publish-${{ github.ref }}
+      cancel-in-progress: false
     needs:
     - scrape-and-test
     - analytics-ml-zig
@@ -1818,7 +1781,7 @@ jobs:
 
       # Stage 8u (additive, 2026-09-08): drift & survivability advisories.
       # PURELY ADVISORY — writes only NEW files under data/ plus ::notice
-      # annotations; it can never gate CI, edit any of the 55 contracted
+      # annotations; it can never gate CI, edit any contracted
       # bridge/ files, or change a score/membership/ranking. Produces:
       #   data/bridge_drift_report.json        — per-bridge stale-positive
       #     cohort from the collector's existing EWMA health score (which
@@ -1849,7 +1812,7 @@ jobs:
       #     from retry_engine's backoff curve;
       #   * the evidence-driven webtunnel front-domain health advisory
       #     (built ONLY from live probe-relay observations).
-      # Advisory only: never gates CI, never edits the 55 contracted
+      # Advisory only: never gates CI, never edits contracted
       # bridge/ files, never changes a score or membership decision.
     - name: Stage 8v — Pipeline funnel advisory (additive, non-blocking)
       continue-on-error: true
@@ -1859,12 +1822,12 @@ jobs:
         cargo run --quiet --bin funnel_advisory
 
       # Dual persist, one verified payload: the Rust publisher atomically
-      # rewrites ALL 55 public bridge/ files, re-renders README.md from the
+      # rewrites every REQUIRED_FILES bridge/ output, re-renders README.md from the
       # verified snapshot, byte-verifies tor_bridges.zip, and then delivers
       # that exact ZIP to Telegram — GitHub and Telegram always store the
-      # same bytes. Delivery defaults to ON; the bash guard below degrades
-      # gracefully to repo-only persistence when secrets are absent or the
-      # run is a pull_request preview (Stage 11's commit is skipped there too).
+      # same bytes. This production stage is main-only (enforced on its parent
+      # job and again by the upload guard); PR/non-main runs execute validation
+      # jobs but never collect, deploy, publish, or deliver production data.
     - name: Stage 9 — Dual persist ALL bridge/ files + README.md + Telegram 
         archive
       timeout-minutes: 8
@@ -1884,6 +1847,11 @@ jobs:
         if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           echo "pull_request run — publication preview only; Telegram delivery deferred"
           echo "to the main-branch run (mirrors the skipped Stage 11 git commit)."
+          UPLOAD=false
+        fi
+        if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "non-main ref ${GITHUB_REF} — publication preview only; Telegram delivery deferred"
+          echo "to the main-branch run where Stage 11 can commit the same verified payload."
           UPLOAD=false
         fi
         if [ "$UPLOAD" = "true" ] && { [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_CHAT_ID:-}" ]; }; then
@@ -1907,11 +1875,11 @@ jobs:
         echo "═══ README.md re-rendered from the verified snapshot ═══"
         sed -n '1,8p' README.md
 
-      # Real self-test of the publication: re-validates all 55 required files,
+      # Real self-test of the publication: re-validates every required file,
       # the JSON shapes, every SHA-256 entry in telegram_manifest.json, and
       # byte-compare each tor_bridges.zip entry against its repository
       # counterpart. Any drift fails the run before anything is committed.
-    - name: Stage 9b — Verify publication contract (all 55 files, byte-identical
+    - name: Stage 9b — Verify publication contract (all files, byte-identical
         ZIP)
       timeout-minutes: 3
       run: |
@@ -1922,87 +1890,24 @@ jobs:
         echo "✅ Publication contract verified: every required file present,"
         echo "   manifest hashes match, archive contents byte-identical."
 
-      # Post-execution FAILSAFE — positioned immediately before Stage 10
-      # (per directive §4: FAILSAFE must run after every scraper/tester/export
-      # stage and right before publication). Two layers of guarantee:
-      #
-      #   1. The Rust failsafe_bridges engine force-populates every missing or
-      #      0-byte transport *.txt from the compiled-in static fallback lines
-      #      of its family, and re-initialises any empty *.json to a valid [].
-      #   2. The explicit audit loop below re-checks every projection that has
-      #      a valid static fallback. WebTunnel is intentionally omitted:
-      #      URL-only metadata cannot be converted into a client bridge, so its
-      #      projection may remain empty when no literal endpoint exists.
-      #      Empty JSON files are still repaired to valid [] documents.
-      #
-      #      Stage 10 permits an empty WebTunnel projection and reports it as
-      #      an advisory warning rather than fabricating a bridge line.
+      # Do not run the force-populating FAILSAFE after publication: empty
+      # *_tested.txt or *_72h*.txt files are truthful when no qualifying
+      # observation exists, and changing any file after Stage 9b would break
+      # the manifest hashes and verified ZIP. The pre-probe FAILSAFE above
+      # remains in place for collector inputs.
 
-    - name: FAILSAFE — post-execution pre-publication guarantee (Rust port)
+    - name: Stage 10 — Full bridge/ inventory (manifest contract)
       timeout-minutes: 3
       run: |
         set -euo pipefail
-        cargo run --quiet --bin failsafe_bridges
-        # ── Explicit audit + last-resort repopulation for valid fallbacks ──
-        mkdir -p bridge
-        FALLBACK_SRC="bridge/iran_likely_working_all.txt"
-        REPOP=0
-        for glob in 'bridge/obfs4*.txt' 'bridge/vanilla*.txt' \
-                    'bridge/conjure*.txt' 'bridge/meek*.txt' \
-                    'bridge/meek-azure*.txt' 'bridge/snowflake*.txt'; do
-          for f in $glob; do
-            [ -e "$f" ] || continue
-            if [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -eq 0 ]; then
-              echo "FAILSAFE: $f is 0 bytes — writing fallback line"
-              if [ -s "$FALLBACK_SRC" ]; then
-                cp "$FALLBACK_SRC" "$f"
-              else
-                echo "::error::Rust FAILSAFE produced no valid fallback source; refusing to invent a placeholder bridge"
-                exit 1
-              fi
-              REPOP=$((REPOP + 1))
-            fi
-          done
-        done
-        # Any empty *.json output is re-initialised to a valid empty array.
-        for f in bridge/*.json; do
-          [ -e "$f" ] || continue
-          if [ "$(stat -c %s "$f" 2>/dev/null || echo 0)" -eq 0 ]; then
-            echo "FAILSAFE: $f is 0 bytes — writing valid []"
-            printf '[]\n' > "$f"
-          fi
-        done
-        echo "✅ FAILSAFE complete: repopulated $REPOP transport .txt file(s); every *.json is a valid document."
-
-    - name: Stage 10 — Full bridge/ inventory (all 55 required files)
-      timeout-minutes: 3
-      run: |
-        set -euo pipefail
-        REQUIRED="bridge_history.json bridge_list_for_testing.json bridge_scores.json \
-          conjure.txt conjure_72h.txt conjure_tested.txt \
-          iran_blocked.txt iran_likely_working_all.txt iran_likely_working_nin.txt \
-          iran_likely_working_obfs4.txt iran_likely_working_snowflake.txt \
-          iran_likely_working_vanilla.txt iran_likely_working_webtunnel.txt \
-          iran_results.json \
-          meek-azure.txt meek-azure_72h.txt meek-azure_tested.txt \
-          meek_lite.txt meek_lite_72h.txt meek_lite_72h_ipv6.txt \
-          meek_lite_ipv6.txt meek_lite_ipv6_tested.txt meek_lite_tested.txt \
-          obfs4.txt obfs4_72h.txt obfs4_72h_ipv6.txt \
-          obfs4_ipv6.txt obfs4_ipv6_72h.txt obfs4_ipv6_tested.txt obfs4_tested.txt \
-          snowflake.txt snowflake_72h.txt snowflake_72h_ipv6.txt \
-          snowflake_ipv6.txt snowflake_ipv6_tested.txt snowflake_tested.txt \
-          telegram_manifest.json \
-          tested_global_obfs4.txt tested_global_vanilla.txt tested_global_webtunnel.txt \
-          tor_bridges.zip \
-          vanilla.txt vanilla_72h.txt vanilla_72h_ipv6.txt \
-          vanilla_ipv6.txt vanilla_ipv6_72h.txt vanilla_ipv6_tested.txt vanilla_tested.txt \
-          webtunnel.txt webtunnel_72h.txt webtunnel_72h_ipv6.txt \
-          webtunnel_ipv6.txt webtunnel_ipv6_72h.txt webtunnel_ipv6_tested.txt webtunnel_tested.txt"
-        echo "═══ Full bridge/ publication inventory ═══"
+        MANIFEST=bridge/telegram_manifest.json
+        test -s "$MANIFEST" || { echo "::error::Missing bridge publication manifest"; exit 1; }
+        jq -e '.required_files | type == "array" and length > 0' "$MANIFEST" >/dev/null
+        mapfile -t REQUIRED < <(jq -r '.required_files[]' "$MANIFEST")
+        echo "═══ Full bridge/ publication inventory (${#REQUIRED[@]} required files) ═══"
         MISSING=0
-        TOTAL=0
-        for name in $REQUIRED; do
-          TOTAL=$((TOTAL + 1))
+        TOTAL=${#REQUIRED[@]}
+        for name in "${REQUIRED[@]}"; do
           f="bridge/$name"
           if [ ! -f "$f" ]; then
             printf '❌ %-42s MISSING\n' "$name"
@@ -2011,7 +1916,7 @@ jobs:
           fi
           size=$(stat -c %s "$f")
           case "$name" in
-            *.txt)
+            *.txt|snowflake_ipv6_tested)
               count=$(grep -c . "$f" 2>/dev/null) || count=0
               count=${count//[$'\t\r\n ']/}
               count=${count:-0}
@@ -2019,6 +1924,7 @@ jobs:
               ;;
             *.json) printf '✅ %-42s   json   (%d bytes)\n' "$name" "$size" ;;
             *.zip)  printf '✅ %-42s   zip    (%d bytes)\n' "$name" "$size" ;;
+            *)      printf '✅ %-42s   text   (%d bytes)\n' "$name" "$size" ;;
           esac
         done
         echo "═══════════════════════════════════════════"
@@ -2049,7 +1955,7 @@ jobs:
         fi
 
     # Informational, additive: BEFORE/AFTER line counts for the low-supply
-    # files, comparing this run's output (after Stage 9/9b/FAILSAFE/Stage 10)
+    # files, comparing this run's output (after Stage 9/9b/Stage 10)
     # against the committed tree the job started from (git HEAD). Emitted as
     # workflow notices so the numbers are visible on the run page. Purely
     # report-only: never alters files and never fails the job on a delta.
@@ -2088,10 +1994,10 @@ jobs:
       # finalizer guarantees the published pack always carries the full
       # survivable candidate set. Deterministic; advisory (runner-side).
       #
-      # This MUST run after Stage 9 (dual-persist bridge/ files), Stage 9b
-      # and the FAILSAFE step: those stages rewrite the 55 committed bridge/
-      # projection files (including bridge/iran_likely_working_nin.txt) from
-      # the final verified snapshot. Running the finalizer before them
+      # This MUST run after Stage 9 (dual-persist bridge/ files) and Stage 9b:
+      # those stages rewrite the complete REQUIRED_FILES inventory (including
+      # bridge/iran_likely_working_nin.txt) from the final verified snapshot.
+      # Running the finalizer before them
       # published a cut-pack built from an intermediate bridge set, which the
       # invariant audit (C11 cutpack-freshness) then correctly rejected.
     - name: Stage 8p2 — NIN cut-pack finalizer (user-facing iran_cut_pack.txt)

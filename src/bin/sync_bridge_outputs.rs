@@ -15,6 +15,8 @@ use std::thread;
 use std::time::Duration;
 
 use torshield_ir_ultra::bridge_publication::{publish, verify_publication, PublishOptions};
+#[cfg(feature = "network")]
+use torshield_ir_ultra::network_safety::safe_reqwest_error_summary;
 use torshield_ir_ultra::publication_changelog::{append_entry, ChangelogEntry};
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -206,7 +208,10 @@ fn telegram_upload(
                 );
             }
             Err(error) => {
-                eprintln!("telegram delivery attempt {attempt}/{attempts} failed: {error}");
+                eprintln!(
+                    "telegram delivery attempt {attempt}/{attempts} failed ({})",
+                    safe_reqwest_error_summary(&error)
+                );
             }
         }
         if attempt < attempts {

@@ -11,10 +11,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 const WORKING_STATUSES: &[&str] = &["iran_likely_working"];
-const UNKNOWN_REACHABLE: &[&str] = &["iran_unknown"];
-const BLOCKED_STATUSES: &[&str] = &["iran_likely_blocked", "iran_frequently_blocked"];
+const BLOCKED_STATUSES: &[&str] = &["iran_likely_blocked", "iran_frequently_blocked", "iran_asn_blocked"];
 const WORKING_TRANSPORTS: &[&str] = &["obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite"];
 const GLOBAL_TRANSPORTS: &[&str] = &["obfs4", "webtunnel", "vanilla"];
 
@@ -140,79 +140,28 @@ pub fn load_iran_results(path: &Path) -> Result<Value, ResultsWriterError> {
     })
 }
 
-/// Returns true if the bridge is a domain-fronted WebTunnel bridge:
-/// transport=webtunnel, has a url= host that is a domain name (not an IP),
-/// and the bridge line lacks a routable [ip]:port field.
-///
-/// These bridges cannot be TCP-probed and are currently assigned
-/// tcp_unreachable by the Go iran_tester, but that status is meaningless
-/// for domain-fronting — TCP is the wrong probe for them. The Go parser
-/// leaves the `host` field empty for URL-only WebTunnel lines (the only
-/// endpoint it sees is the domain inside `url=`), so the front domain is
-/// derived from the bridge line's url= parameter first.
-fn is_domain_fronted_webtunnel(bridge: &Value) -> bool {
-    let transport = bridge
-        .get("transport")
-        .and_then(Value::as_str)
-        .unwrap_or("");
-    if transport != "webtunnel" {
-        return false;
-    }
-
-    let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
-    // Documentation-prefix IPv6 placeholders (RFC 3849, 2001:db8::/32) are
-    // BridgeDB anti-enumeration substitutes for a real IPv6 endpoint; the
-    // line carries a literal endpoint token and must not be treated as a
-    // domain-fronted URL-only bridge here.
-    if line.contains("2001:db8:") {
-        return false;
-    }
-
-    // Prefer the explicit `host` field when the tester populated it with a
-    // domain name (e.g. an FQDN:PORT endpoint).
-    let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
-    if !host.is_empty() {
-        // If host parses as an IP address, it has a routable endpoint — not
-        // domain-fronted. Domain-fronted bridges carry a domain name.
-        return host.parse::<std::net::IpAddr>().is_err();
-    }
-
-    // URL-only WebTunnel: extract the front host from the url= parameter.
-    // Accept only when it is a domain name (a bare IP url host implies a
-    // directly dialable endpoint, which is not domain-fronting).
-    for token in line.split_whitespace() {
-        if let Some(rest) = token.strip_prefix("url=") {
-            let after_scheme = rest
-                .strip_prefix("https://")
-                .or_else(|| rest.strip_prefix("http://"))
-                .unwrap_or(rest);
-            let authority = after_scheme
-                .split(['/', '?', '#'])
-                .next()
-                .unwrap_or(after_scheme);
-            let front_host = authority.rsplit_once('@').map_or(authority, |(_, h)| h);
-            let front_host = front_host.rsplit_once(':').map_or(front_host, |(h, _p)| h);
-            let front_host = front_host.trim_start_matches('[').trim_end_matches(']');
-            if !front_host.is_empty() && front_host.parse::<std::net::IpAddr>().is_err() {
-                return true;
-            }
-        }
-    }
-    false
-}
-
 /// Categorise bridges and write all `results_writer.py` bridge text outputs.
 ///
 /// Behavior traced to `results_writer.py::write_result_files`:
 /// * ignores bridges with blank or missing `line`;
 /// * writes lexicographically sorted, deduplicated files;
-/// * Tier 1 (`iran_likely_working`) wins over Tier 2 for each transport;
-/// * Tier 2 includes `iran_unknown` bridges when TCP-reachable, and always for
-///   `snowflake`/`webtunnel` because Python treats those transports specially;
-/// * blocked and global files are produced independently of working tiers.
+/// * Iran working files require a checked OONI `probe_cc=IR` assessment plus
+///   a typed, positive S2+ observation with an explicit technical vantage;
+/// * `iran_unknown` plus TCP/transport booleans never becomes working evidence;
+/// * global-tested files require the same S2+ evidence and vantage;
+/// * blocked files retain their separate explicit Iran assessment.
 pub fn write_result_files(
     bridge_dir: &Path,
     bridges: &[Value],
+) -> Result<BTreeMap<String, usize>, ResultsWriterError> {
+    write_result_files_at(bridge_dir, bridges, Utc::now())
+}
+
+/// Deterministic-clock variant of [`write_result_files`].
+pub fn write_result_files_at(
+    bridge_dir: &Path,
+    bridges: &[Value],
+    now: DateTime<Utc>,
 ) -> Result<BTreeMap<String, usize>, ResultsWriterError> {
     fs::create_dir_all(bridge_dir).map_err(|source| ResultsWriterError::CreateDir {
         path: bridge_dir.to_path_buf(),
@@ -220,8 +169,7 @@ pub fn write_result_files(
     })?;
 
     let mut stats = BTreeMap::new();
-    let mut t1_by_transport = empty_transport_map(WORKING_TRANSPORTS);
-    let mut t2_by_transport = empty_transport_map(WORKING_TRANSPORTS);
+    let mut working_by_transport = empty_transport_map(WORKING_TRANSPORTS);
     let mut blocked_lines: Vec<String> = Vec::new();
     let mut global_by_transport = empty_transport_map(GLOBAL_TRANSPORTS);
 
@@ -244,44 +192,23 @@ pub fn write_result_files(
             .get("iran_status")
             .and_then(Value::as_str)
             .unwrap_or("");
-        let tcp_ok = bridge
-            .get("tcp_reachable")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-
-        if WORKING_STATUSES.contains(&status) {
-            if let Some(bucket) = t1_by_transport.get_mut(transport) {
+        let verified_s2plus = crate::evidence_stamp::has_verified_s2plus_at(bridge, now);
+        let iran_specific_working =
+            crate::evidence_stamp::has_iran_specific_working_assessment_at(bridge, now);
+        if WORKING_STATUSES.contains(&status) && iran_specific_working && verified_s2plus {
+            if let Some(bucket) = working_by_transport.get_mut(transport) {
                 bucket.push(line.clone());
             }
         }
 
-        // v2.6.2: Domain-fronted WebTunnel bridges (url=, no routable IP)
-        // cannot be probed via raw TCP. The Go iran_tester correctly marks
-        // them tcp_unreachable, but that is the wrong signal for WebTunnel.
-        // Reclassify them as iran_unknown so that Tier 2's existing
-        // webtunnel special-case (bypasses tcp_ok) promotes them.
-        let effective_status = if status == "tcp_unreachable"
-            && transport == "webtunnel"
-            && is_domain_fronted_webtunnel(bridge)
+        if status == "iran_asn_blocked"
+            || (BLOCKED_STATUSES.contains(&status)
+                && crate::evidence_stamp::has_iran_specific_assessment_at(bridge, now))
         {
-            "iran_unknown"
-        } else {
-            status
-        };
-
-        if UNKNOWN_REACHABLE.contains(&effective_status)
-            && (tcp_ok || matches!(transport, "snowflake" | "webtunnel"))
-        {
-            if let Some(bucket) = t2_by_transport.get_mut(transport) {
-                bucket.push(line.clone());
-            }
-        }
-
-        if BLOCKED_STATUSES.contains(&status) {
             blocked_lines.push(line.clone());
         }
 
-        if (tcp_ok || transport == "snowflake") && global_by_transport.contains_key(transport) {
+        if verified_s2plus && global_by_transport.contains_key(transport) {
             if let Some(bucket) = global_by_transport.get_mut(transport) {
                 bucket.push(line);
             }
@@ -290,20 +217,11 @@ pub fn write_result_files(
 
     let mut all_working = Vec::new();
     for transport in WORKING_TRANSPORTS {
-        let t1_lines = t1_by_transport.remove(*transport).unwrap_or_default();
-        let t2_lines = t2_by_transport.remove(*transport).unwrap_or_default();
-        let combined = if !t1_lines.is_empty() {
-            t1_lines
-        } else {
-            t2_lines
-        };
-        if combined.is_empty() {
-            continue;
-        }
+        let lines = working_by_transport.remove(*transport).unwrap_or_default();
         let filename = format!("iran_likely_working_{transport}.txt");
-        let count = write_sorted_file(&bridge_dir.join(&filename), &combined)?;
+        let count = write_sorted_file(&bridge_dir.join(&filename), &lines)?;
         stats.insert(filename, count);
-        all_working.extend(combined);
+        all_working.extend(lines);
     }
 
     let all_path = bridge_dir.join("iran_likely_working_all.txt");

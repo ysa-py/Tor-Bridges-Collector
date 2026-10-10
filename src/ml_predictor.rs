@@ -144,13 +144,10 @@ pub fn transport_encoding() -> Vec<(&'static str, i64)> {
     ]
 }
 
-/// Iran-status strings that map to label `1` (blocked). Mirrors
-/// `BLOCKED_STATUSES`.
-pub const BLOCKED_STATUSES: &[&str] = &[
-    "iran_likely_blocked",
-    "iran_frequently_blocked",
-    "iran_asn_blocked",
-];
+/// Iran-status strings that map to label `1` (blocked). `iran_asn_blocked`
+/// is deliberately excluded: it is an ASN classification, not a measured
+/// Iran reachability outcome.
+pub const BLOCKED_STATUSES: &[&str] = &["iran_likely_blocked", "iran_frequently_blocked"];
 
 /// Iran-status strings that map to label `0` (working). Mirrors
 /// `WORKING_STATUSES`.
@@ -387,9 +384,10 @@ fn python_float_or(value: &Value, default: f64) -> f64 {
 ///
 /// Reads `iran_results.json` and `latest-results.json` (in that order),
 /// deduplicates by `line` (or `bridge_line`) key, and labels each record:
-/// * `1` (blocked) if `iran_status` is in [`BLOCKED_STATUSES`].
-/// * `0` (working) if `iran_status` is in [`WORKING_STATUSES`], or if
-///   `iran_status == "iran_unknown"` AND `tcp_reachable` is truthy.
+/// * `1` (blocked) for OONI blocking statuses with a checked Iranian vantage.
+///   `iran_asn_blocked` remains a separate network-classification signal.
+/// * `0` (working) only for `iran_likely_working` with checked OONI evidence
+///   from `probe_cc=IR`. Generic runner TCP never labels Iran reachability.
 /// * Skipped (not included) otherwise.
 ///
 /// Returns `(features, labels)` where `features` is a `Vec<Vec<f64>>` (one
@@ -430,25 +428,15 @@ pub fn load_labeled_data_with_paths(
                 seen.insert(line_key.clone());
 
                 let status = r.get("iran_status").and_then(|v| v.as_str()).unwrap_or("");
-                let label = if BLOCKED_STATUSES.contains(&status) {
+                let iran_evidence = crate::evidence_stamp::has_iran_specific_assessment_at(r, now);
+                let iran_working_evidence = crate::evidence_stamp::has_iran_specific_working_assessment_at(r, now);
+                let label = if BLOCKED_STATUSES.contains(&status) && iran_evidence {
                     Some(1)
-                } else if WORKING_STATUSES.contains(&status) {
+                } else if WORKING_STATUSES.contains(&status) && iran_working_evidence {
                     Some(0)
-                } else if status == "iran_unknown" {
-                    // Mirror Python: `r.get("tcp_reachable")` truthy → label 0
-                    let reachable = r.get("tcp_reachable");
-                    let is_truthy = match reachable {
-                        Some(Value::Bool(b)) => *b,
-                        Some(Value::Number(n)) => n.as_f64().map(|f| f != 0.0).unwrap_or(false),
-                        Some(Value::String(s)) => !s.is_empty() && s != "0" && s != "false",
-                        _ => false,
-                    };
-                    if is_truthy {
-                        Some(0)
-                    } else {
-                        None
-                    }
                 } else {
+                    // Unknown, legacy, and unproven status strings remain
+                    // unlabeled; generic runner TCP is not Iran evidence.
                     None
                 };
 

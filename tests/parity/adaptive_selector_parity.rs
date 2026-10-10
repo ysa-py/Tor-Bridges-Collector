@@ -21,6 +21,7 @@ use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::process::Command;
 
+use chrono::Utc;
 use serde_json::{json, Value};
 use torshield_ir_ultra::adaptive_selector::{
     is_cdn_good, AdaptiveBridgeSelector, AdaptiveConfig, AdaptiveSelectorError,
@@ -228,6 +229,21 @@ fn assert_score_parity(
 
 const LINE: &str = "obfs4 1.2.3.4:443 cert=abc";
 
+fn iran_assessment(status: &str) -> Value {
+    let observed_at = Utc::now().to_rfc3339();
+    json!({
+        "status": status,
+        "source": "ooni_measurements_api",
+        "checked": true,
+        "vantage": {"type":"ooni_probe", "country":"IR"},
+        "queried_at": observed_at.clone(),
+        "measurement_at": observed_at.clone(),
+        "measurement_window_days": 7,
+        "historical_measurement_at": observed_at,
+        "historical_window_days": 90
+    })
+}
+
 #[test]
 fn parity_score_empty_data_neutral_factors() {
     assert_score_parity(
@@ -256,9 +272,13 @@ fn parity_score_snowflake_tcp_boost() {
 
 #[test]
 fn parity_score_iran_likely_working() {
-    let iran = vec![
-        json!({"line": LINE, "iran_status": "iran_likely_working", "transport": "obfs4", "tcp_reachable": true}),
-    ];
+    let iran = vec![json!({
+        "line": LINE,
+        "iran_status": "iran_likely_working",
+        "iran_assessment": iran_assessment("iran_likely_working"),
+        "transport": "obfs4",
+        "tcp_reachable": true
+    })];
     assert_score_parity(
         "iran_working",
         &AdaptiveConfig::default(),
@@ -271,18 +291,23 @@ fn parity_score_iran_likely_working() {
 }
 
 #[test]
-fn parity_score_iran_asn_blocked() {
-    let iran =
-        vec![json!({"line": LINE, "iran_status": "iran_asn_blocked", "tcp_reachable": false})];
-    assert_score_parity(
-        "asn_blocked",
+fn iran_asn_classification_does_not_manufacture_ooni_blocking_evidence() {
+    let iran = vec![json!({
+        "line": LINE,
+        "iran_status": "iran_asn_blocked",
+        "tcp_reachable": false
+    })];
+    let result = rust_score(
         &AdaptiveConfig::default(),
-        iran,
-        vec![],
-        vec![],
+        &iran,
+        &[],
+        &[],
         LINE,
-        json!({}),
+        &json!({}),
     );
+    assert_eq!(result["meta"]["adaptive_signals"]["asn_cdn"], json!(0.0));
+    assert_eq!(result["meta"]["adaptive_signals"]["ooni"], json!(0.5));
+    assert_eq!(result["meta"]["adaptive_signals"]["failure_penalty"], json!(0.0));
 }
 
 #[test]
@@ -319,7 +344,7 @@ fn parity_score_domain_front_degraded_flag() {
 
 #[test]
 fn parity_score_ooni_factor_override() {
-    let latest = vec![json!({"line": LINE, "ooni_factor": 0.9})];
+    let latest = vec![json!({"line": LINE, "ooni_factor": 0.9, "ooni_measurements_ir": 1})];
     assert_score_parity(
         "ooni_override",
         &AdaptiveConfig::default(),
@@ -348,17 +373,19 @@ fn parity_score_ripe_tested_reachable() {
 }
 
 #[test]
-fn parity_score_pt_status_error_failure_penalty() {
+fn inconclusive_pt_status_error_does_not_penalize_rust_score() {
     let sched = vec![json!({"bridge_line": LINE, "pt_status": "error"})];
-    assert_score_parity(
-        "pt_error",
+    let result = rust_score(
         &AdaptiveConfig::default(),
-        vec![],
-        sched,
-        vec![],
+        &[],
+        &sched,
+        &[],
         LINE,
-        json!({}),
+        &json!({}),
     );
+    assert_eq!(result["meta"]["adaptive_signals"]["pt"], json!(0.5));
+    assert_eq!(result["meta"]["adaptive_signals"]["failure_penalty"], json!(0.0));
+    assert_eq!(result["score"], json!(0.5));
 }
 
 #[test]
@@ -409,6 +436,7 @@ fn parity_score_combined_full_record() {
     let iran = vec![json!({
         "line": LINE,
         "iran_status": "iran_likely_working",
+        "iran_assessment": iran_assessment("iran_likely_working"),
         "transport": "obfs4",
         "tcp_reachable": true,
         "asn_org": "Cloudflare",
@@ -420,7 +448,7 @@ fn parity_score_combined_full_record() {
         "ripe_reachable": true,
         "pt_status": "reachable"
     })];
-    let latest = vec![json!({"line": LINE, "ooni_factor": 0.8, "circuit_state": "open"})];
+    let latest = vec![json!({"line": LINE, "ooni_factor": 0.8, "ooni_measurements_ir": 1, "circuit_state": "open"})];
     let cfg = AdaptiveConfig {
         enabled: true,
         min_score: 0.0,
@@ -706,7 +734,10 @@ print(json.dumps(AdaptiveBridgeSelector._is_cdn_good(flags, asn_org)))
 #[test]
 fn rust_score_invalid_ooni_factor_returns_typed_error() {
     let mut latest = BTreeMap::new();
-    latest.insert(LINE.to_string(), json!({"ooni_factor": [1, 2, 3]}));
+    latest.insert(
+        LINE.to_string(),
+        json!({"ooni_factor": [1, 2, 3], "ooni_measurements_ir": 1}),
+    );
     let selector = AdaptiveBridgeSelector::with_data(
         AdaptiveConfig::default(),
         BTreeMap::new(),
@@ -726,7 +757,10 @@ fn rust_score_invalid_ooni_factor_returns_typed_error() {
 fn rust_score_string_ooni_factor_parses_like_python_float() {
     // Python float("0.7") = 0.7; Rust should match
     let mut latest = BTreeMap::new();
-    latest.insert(LINE.to_string(), json!({"ooni_factor": "0.7"}));
+    latest.insert(
+        LINE.to_string(),
+        json!({"ooni_factor": "0.7", "ooni_measurements_ir": 1}),
+    );
     let selector = AdaptiveBridgeSelector::with_data(
         AdaptiveConfig::default(),
         BTreeMap::new(),

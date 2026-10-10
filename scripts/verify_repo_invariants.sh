@@ -72,12 +72,24 @@ def c2_publication_contract():
     if not m:
         record("C2 publication-contract", False, "REQUIRED_FILES const not found")
         return
-    required = set(re.findall(r'"([^"]+)"', m.group(1)))
-    present = set(os.listdir(os.path.join(REPO, "bridge")))
+    names = re.findall(r'"([^"]+)"', m.group(1))
+    required = set(names)
+    bridge_dir = os.path.join(REPO, "bridge")
+    contract_ok = bool(names) and len(names) == len(required)
+    if not os.path.isdir(bridge_dir):
+        # A clean clone can be checked before the first successful collection
+        # has materialized canonical bridge inputs. The full pipeline's
+        # Stage 9b/10 remains the fail-closed publication gate in that case.
+        record("C2 publication-contract", contract_ok,
+               f"{len(required)} unique required paths; bridge/ not materialized yet")
+        return
+    present = set(os.listdir(bridge_dir))
     missing = sorted(required - present)
     extra = sorted(present - required)
-    ok = not missing and not extra
-    detail = f"{len(required)} required files"
+    ok = contract_ok and not missing and not extra
+    detail = f"{len(required)} required paths"
+    if not contract_ok:
+        detail += "; duplicate/empty REQUIRED_FILES inventory"
     if missing:
         detail += f"; missing={missing[:5]}"
     if extra:
@@ -138,7 +150,12 @@ def c4_stage_sync():
 
 # ── C5. Evidence stamps on every iran_results.json entry ────────────────────
 def c5_evidence_stamps():
-    p = os.path.join(REPO, "bridge", "iran_results.json")
+    bridge_dir = os.path.join(REPO, "bridge")
+    if not os.path.isdir(bridge_dir):
+        record("C5 evidence-stamps", True,
+               "bridge/ not materialized yet; runtime publication gate validates results")
+        return
+    p = os.path.join(bridge_dir, "iran_results.json")
     if not os.path.exists(p):
         record("C5 evidence-stamps", False, "bridge/iran_results.json missing")
         return
@@ -152,13 +169,18 @@ def c5_evidence_stamps():
 
 # ── C6. No duplicate bridge lines inside any single bridge/*.txt ────────────
 def c6_duplicate_lines():
+    bridge_dir = os.path.join(REPO, "bridge")
+    if not os.path.isdir(bridge_dir):
+        record("C6 no-dup-bridge-lines", True,
+               "bridge/ not materialized yet; runtime publication gate validates text outputs")
+        return
     dups = []
     total = 0
-    for f in sorted(os.listdir(os.path.join(REPO, "bridge"))):
+    for f in sorted(os.listdir(bridge_dir)):
         if not f.endswith(".txt"):
             continue
         seen = set()
-        for line in open(os.path.join(REPO, "bridge", f), encoding="utf-8", errors="replace"):
+        for line in open(os.path.join(bridge_dir, f), encoding="utf-8", errors="replace"):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
@@ -246,6 +268,10 @@ def c10_elite_count_consistency():
 # ── C11. User-facing iran_cut_pack.txt == fresh Stage 8p2 regeneration ──────
 def c11_cutpack_freshness():
     p = os.path.join(REPO, "export", "iran_cut_pack.txt")
+    if not os.path.isdir(os.path.join(REPO, "bridge")):
+        record("C11 cutpack-freshness", True,
+               "bridge/ not materialized yet; full pipeline finalizer validates cut pack")
+        return
     if not os.path.exists(p):
         record("C11 cutpack-freshness", False, "export/iran_cut_pack.txt missing")
         return
@@ -310,6 +336,97 @@ def c13_nin_recommended_freshness():
                else "committed manifest is stale vs regeneration")
 
 
+# ── C14. Hourly automation, rerank-only skip, and publication side-effect gates ──
+def c14_workflow_automation_gates():
+    path = os.path.join(REPO, ".github", "workflows", "torshield-ir.yml")
+    workflow = open(path, encoding="utf-8").read()
+    hourly = bool(
+        re.search(
+            r"(?m)^\s*-\s*cron:\s*['\"]?0 \* \* \* \*['\"]?\s*$",
+            workflow,
+        )
+    )
+
+    jobs_start = workflow.find("\njobs:")
+    scrape_start = workflow.find("\n  scrape-and-test:\n", jobs_start)
+    rerank_start = workflow.find("\n  ai-rerank:\n", scrape_start)
+    scrape_block = (
+        workflow[scrape_start:rerank_start]
+        if scrape_start >= 0 and rerank_start > scrape_start
+        else ""
+    )
+    collection_gate = re.search(r"(?m)^    if:\s*(.*?)\s*$", scrape_block)
+    expected_collection_gate = (
+        "github.ref == 'refs/heads/main' && "
+        "(github.event_name != 'workflow_dispatch' || inputs.rerank_only != true)"
+    )
+    main_only_collection = bool(collection_gate) and collection_gate.group(1) == expected_collection_gate
+
+    main_ci_path = os.path.join(REPO, ".github", "workflows", "main-ci.yml")
+    main_ci = open(main_ci_path, encoding="utf-8").read()
+    main_ci_pipeline_gate = bool(
+        re.search(
+            r"(?m)^      - name: Run pipeline \(--all\)\n"
+            r"        if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n"
+            r"        run: cargo run --release --bin pipeline -- --all$",
+            main_ci,
+        )
+    )
+
+    egress_path = os.path.join(REPO, ".github", "workflows", "egress-diagnostic.yml")
+    egress_workflow = open(egress_path, encoding="utf-8").read()
+    diagnostic_worker_main_only = bool(
+        re.search(
+            r"(?m)^  diagnose:\n"
+            r"    name: Isolate meek/conjure TLS timeout mechanism\n"
+            r"    if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n",
+            egress_workflow,
+        )
+    )
+
+    def guard_sets(header, assignment):
+        block = re.search(re.escape(header) + r"\n(.*?)^\s*fi\s*$", workflow, re.M | re.S)
+        return bool(block and re.search(rf"(?m)^\s*{re.escape(assignment)}\s*$", block.group(1)))
+
+    pull_request_upload_block = guard_sets(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then',
+        "UPLOAD=false",
+    )
+    non_main_upload_block = guard_sets(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then',
+        "UPLOAD=false",
+    )
+    non_main_deploy_block = guard_sets(
+        'if [ "${GITHUB_REF}" != "refs/heads/main" ] || [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then',
+        "DEPLOY_RELAY=false",
+    )
+    commit_main_only = (
+        "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
+        in workflow
+    )
+    publication_gates = (
+        pull_request_upload_block and non_main_upload_block and commit_main_only
+    )
+    production_mutations_main_only = main_only_collection and non_main_deploy_block
+    ok = (
+        hourly
+        and main_only_collection
+        and publication_gates
+        and production_mutations_main_only
+        and main_ci_pipeline_gate
+        and diagnostic_worker_main_only
+    )
+    record(
+        "C14 workflow-automation-gates",
+        ok,
+        f"hourly={hourly}, main-only_collection={main_only_collection}, "
+        f"main-only_dual-persist={publication_gates}, "
+        f"main-only_deploy={production_mutations_main_only}, "
+        f"main-ci-pipeline={main_ci_pipeline_gate}, "
+        f"main-only_diag-worker={diagnostic_worker_main_only}",
+    )
+
+
 def main():
     print("═══ verify_repo_invariants ═══")
     c1_json_parse()
@@ -325,6 +442,7 @@ def main():
     c11_cutpack_freshness()
     c12_pq_scores_freshness()
     c13_nin_recommended_freshness()
+    c14_workflow_automation_gates()
     print(f"═══ {len(CHECKS) - len(FAILURES)}/{len(CHECKS)} checks passed ═══")
     if FAILURES:
         for f in FAILURES:

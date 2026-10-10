@@ -18,6 +18,17 @@
 
 use std::env;
 
+#[cfg(feature = "network")]
+use crate::network_safety::safe_reqwest_error_summary;
+
+#[cfg(feature = "network")]
+fn safe_error_label(error: &reqwest::Error) -> String {
+    error
+        .status()
+        .map(|status| format!("HTTP {status}"))
+        .unwrap_or_else(|| safe_reqwest_error_summary(error).to_string())
+}
+
 /// True when a repository secret name is Vercel-related (case-insensitive
 /// containment, same as `"VERCEL" in s.upper()` in Python).
 pub fn is_vercel_secret(name: &str) -> bool {
@@ -43,7 +54,10 @@ pub fn run() -> i32 {
     {
         Ok(client) => client,
         Err(err) => {
-            println!("Cleanup: could not list secrets: {err}");
+            println!(
+                "Cleanup: could not list secrets ({})",
+                safe_error_label(&err)
+            );
             return 0;
         }
     };
@@ -58,12 +72,18 @@ pub fn run() -> i32 {
         Ok(ok) => match ok.json::<serde_json::Value>() {
             Ok(value) => value,
             Err(err) => {
-                println!("Cleanup: could not list secrets: {err}");
+                println!(
+                    "Cleanup: could not list secrets ({})",
+                    safe_error_label(&err)
+                );
                 return 0;
             }
         },
         Err(err) => {
-            println!("Cleanup: could not list secrets: {err}");
+            println!(
+                "Cleanup: could not list secrets ({})",
+                safe_error_label(&err)
+            );
             return 0;
         }
     };
@@ -93,7 +113,7 @@ pub fn run() -> i32 {
                 println!("Deleted Vercel secret: {name}");
             }
             Ok(resp) => println!("Could not delete {name}: HTTP {}", resp.status()),
-            Err(err) => println!("Could not delete {name}: {err}"),
+            Err(err) => println!("Could not delete {name}: {}", safe_error_label(&err)),
         }
     }
     if vercel.is_empty() {

@@ -300,6 +300,73 @@ fn parity_extract_features_full_and_edge_cases() {
 }
 
 #[test]
+fn rust_unknown_status_is_not_labeled_working_from_runner_tcp() {
+    let tmp = std::env::temp_dir().join(format!(
+        "ml_unknown_tcp_neutral_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    fs::create_dir_all(&tmp).unwrap();
+    let iran_path = tmp.join("iran_results.json");
+    let latest_path = tmp.join("latest-results.json");
+    fs::write(
+        &iran_path,
+        serde_json::to_vec(&json!({"bridges": [
+            {"line":"tcp-positive-unknown", "iran_status":"iran_unknown", "tcp_reachable":true},
+            {"line":"tcp-negative-unknown", "iran_status":"iran_unknown", "tcp_reachable":false}
+        ]})).unwrap(),
+    ).unwrap();
+    let (features, labels) = load_labeled_data_with_paths(&iran_path, &latest_path, fixed_now()).unwrap();
+    assert!(features.is_empty());
+    assert!(labels.is_empty());
+    let _ = fs::remove_dir_all(tmp);
+}
+
+#[test]
+fn rust_training_labels_require_iran_vantage_and_keep_asn_class_separate() {
+    static LOCK: Mutex<()> = Mutex::new(());
+    let _guard = LOCK.lock().unwrap();
+    let tmp = std::env::temp_dir().join(format!(
+        "ml_provenance_{}_{}",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    fs::create_dir_all(&tmp).unwrap();
+    let iran_path = tmp.join("iran_results.json");
+    let latest_path = tmp.join("latest-results.json");
+    let ir_assessment = |status: &str| json!({
+        "status": status,
+        "source": "ooni_measurements_api",
+        "checked": true,
+        "vantage": {"type":"ooni_probe", "country":"IR"},
+        "queried_at":"2026-06-15T12:00:00Z",
+        "measurement_at":"2026-06-15T12:00:00Z",
+        "measurement_window_days":7,
+        "historical_measurement_at":"2026-06-15T12:00:00Z",
+        "historical_window_days":90
+    });
+    let iran_results = json!({"bridges": [
+        {"line":"blocked-valid", "iran_status":"iran_likely_blocked", "iran_assessment":ir_assessment("iran_likely_blocked"), "tcp_reachable":false},
+        {"line":"working-valid", "iran_status":"iran_likely_working", "iran_assessment":ir_assessment("iran_likely_working"), "tcp_reachable":false},
+        {"line":"blocked-runner-only", "iran_status":"iran_likely_blocked", "tcp_reachable":false},
+        {"line":"working-runner-only", "iran_status":"iran_likely_working", "tcp_reachable":true},
+        {"line":"asn-only", "iran_status":"iran_asn_blocked", "tcp_reachable":false},
+        {"line":"wrong-vantage", "iran_status":"iran_likely_working", "iran_assessment":{"status":"iran_likely_working", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"DE"}, "queried_at":"2026-10-10T10:00:00Z"}}
+    ]});
+    fs::write(&iran_path, serde_json::to_vec(&iran_results).unwrap()).unwrap();
+    let (features, labels) = load_labeled_data_with_paths(&iran_path, &latest_path, fixed_now()).unwrap();
+    assert_eq!(labels, vec![1, 0]);
+    assert_eq!(features.len(), 2);
+    let _ = fs::remove_dir_all(tmp);
+}
+
+#[test]
 fn parity_load_labeled_data_dedup_and_labeling() {
     static LOCK: Mutex<()> = Mutex::new(());
     let _guard = LOCK.lock().unwrap();
@@ -320,9 +387,8 @@ fn parity_load_labeled_data_dedup_and_labeling() {
 
     let iran_records = json!({
         "bridges": [
-            {"line": "A", "iran_status": "iran_likely_blocked", "transport": "obfs4", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
-            {"line": "B", "iran_status": "iran_likely_working", "transport": "snowflake", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
-            {"line": "C", "iran_status": "iran_unknown", "tcp_reachable": true, "transport": "vanilla", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
+            {"line": "A", "iran_status": "iran_likely_blocked", "iran_assessment": {"status":"iran_likely_blocked", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":"2026-06-15T12:00:00Z", "measurement_at":"2026-06-15T12:00:00Z", "measurement_window_days":7, "historical_measurement_at":"2026-06-15T12:00:00Z", "historical_window_days":90}, "transport": "obfs4", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
+            {"line": "B", "iran_status": "iran_likely_working", "iran_assessment": {"status":"iran_likely_working", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":"2026-06-15T12:00:00Z", "measurement_at":"2026-06-15T12:00:00Z", "measurement_window_days":7, "historical_measurement_at":"2026-06-15T12:00:00Z", "historical_window_days":90}, "transport": "snowflake", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
             {"line": "D", "iran_status": "iran_unknown", "tcp_reachable": false, "transport": "vanilla", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
             {"line": "E", "iran_status": "something_else", "transport": "vanilla", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
             {"line": "A", "iran_status": "iran_likely_working", "transport": "snowflake", "port": 443, "first_seen": "2020-01-01T00:00:00Z"}
@@ -331,7 +397,7 @@ fn parity_load_labeled_data_dedup_and_labeling() {
     let latest_records = json!({
         "bridges": [
             {"line": "B", "iran_status": "iran_likely_blocked", "transport": "obfs4", "port": 443, "first_seen": "2020-01-01T00:00:00Z"},
-            {"line": "F", "iran_status": "iran_likely_working", "transport": "webtunnel", "port": 443, "first_seen": "2020-01-01T00:00:00Z"}
+            {"line": "F", "iran_status": "iran_likely_working", "iran_assessment": {"status":"iran_likely_working", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":"2026-06-15T12:00:00Z", "measurement_at":"2026-06-15T12:00:00Z", "measurement_window_days":7, "historical_measurement_at":"2026-06-15T12:00:00Z", "historical_window_days":90}, "transport": "webtunnel", "port": 443, "first_seen": "2020-01-01T00:00:00Z"}
         ]
     });
     fs::write(&iran_path, serde_json::to_string(&iran_records).unwrap()).unwrap();
@@ -381,6 +447,7 @@ fn parity_train_insufficient_data() {
         "bridges": (0..5).map(|i| json!({
             "line": format!("A{}", i),
             "iran_status": "iran_likely_blocked",
+            "iran_assessment": {"status":"iran_likely_blocked", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":"2026-06-15T12:00:00Z", "measurement_at":"2026-06-15T12:00:00Z", "measurement_window_days":7, "historical_measurement_at":"2026-06-15T12:00:00Z", "historical_window_days":90},
             "transport": "obfs4",
             "port": 443,
             "first_seen": "2020-01-01T00:00:00Z",
@@ -542,6 +609,7 @@ fn rust_train_sufficient_data_returns_sklearn_required() {
         bridges.push(json!({
             "line": format!("blocked_{}", i),
             "iran_status": "iran_likely_blocked",
+            "iran_assessment": {"status":"iran_likely_blocked", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":"2026-06-15T12:00:00Z", "measurement_at":"2026-06-15T12:00:00Z", "measurement_window_days":7, "historical_measurement_at":"2026-06-15T12:00:00Z", "historical_window_days":90},
             "transport": "obfs4",
             "port": 443,
             "first_seen": "2020-01-01T00:00:00Z",
@@ -551,6 +619,7 @@ fn rust_train_sufficient_data_returns_sklearn_required() {
         bridges.push(json!({
             "line": format!("working_{}", i),
             "iran_status": "iran_likely_working",
+            "iran_assessment": {"status":"iran_likely_working", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":"2026-06-15T12:00:00Z", "measurement_at":"2026-06-15T12:00:00Z", "measurement_window_days":7, "historical_measurement_at":"2026-06-15T12:00:00Z", "historical_window_days":90},
             "transport": "snowflake",
             "port": 443,
             "first_seen": "2020-01-01T00:00:00Z",

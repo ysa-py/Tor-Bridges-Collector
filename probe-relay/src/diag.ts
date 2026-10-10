@@ -1,399 +1,394 @@
 // @ts-ignore — cloudflare:sockets is an ambient Workers runtime module
 import { connect } from "cloudflare:sockets";
+import {
+  constantTimeTokenEqual,
+  normalizeAndValidatePublicHost,
+  readJsonRequestBody,
+} from "./security";
 
 /**
- * Egress Diagnostic Worker — temporary, evidence-gathering companion to the
- * probe relay (NOT part of the probe pipeline; deployed only on demand by
- * .github/workflows/egress-diagnostic.yml under the name
- * "tor-bridge-probe-relay-diag" and deleted at the end of the same run).
- *
- * Purpose (2026-09-08 session): isolate WHERE the meek_lite / conjure
- * TLS-connect timeouts observed in CI run 34172542990 actually happen —
- * DNS resolution, TCP connect (SYN), TLS handshake (ClientHello), or
- * "not at all / just slow" — by running ONE primitive network operation
- * per request from the real Cloudflare Workers edge and returning the
- * raw timing + verbatim error, with nothing else layered on top.
- *
- * The production relay's probe classes wrap connect() inside protocol
- * exchanges (meek POST, conjure POST), so their errors cannot split the
- * TCP and TLS phases. This worker exposes the primitives directly:
- *
- *   mode "dns"      — DoH A/AAAA lookups for `host` against 1.1.1.1 and
- *                     dns.google from inside the Workers runtime (the
- *                     closest observable proxy for the resolver connect()
- *                     uses; workerd does not expose connect()'s own
- *                     resolution result).
- *   mode "tcp"      — bare TCP connect (secureTransport "off"), no bytes
- *                     sent. Timeout = timeout_ms (default 10000).
- *   mode "tls"      — immediate-TLS connect (secureTransport "on"), the
- *                     exact call the production relay's safeTlsConnect
- *                     makes. Timeout = timeout_ms (default 15000).
- *   mode "starttls" — TCP connect first (timed), then startTls() upgrade
- *                     (timed separately). Splits the TCP and TLS phases.
- *   mode "http"     — bare TCP connect, then a plaintext "GET / HTTP/1.0"
- *                     over the insecure socket. Reports how many response
- *                     bytes (if any) the endpoint answers on :443 without
- *                     TLS — a healthy TLS-only server typically closes
- *                     with 0 bytes, so this distinguishes "something is
- *                     listening" from "connection blackholes".
- *   mode "fetch"    — plain fetch("https://<host>/") — Cloudflare's other
- *                    egress path (edge proxy) for comparison with the
- *                    connect() path.
- *
- * Auth: X-Diag-Token header must match env.DIAG_TOKEN (set per-deploy via
- * `wrangler deploy --var DIAG_TOKEN:...`; the diagnostic workflow
- * generates a fresh random token each run and the worker is deleted when
- * the run ends).
+ * Temporary egress-diagnostic Worker. It is deployed only by
+ * .github/workflows/egress-diagnostic.yml under a separate Worker name and is
+ * deleted at the end of that workflow. Every operation is authenticated,
+ * bounded, limited to validated public targets, and returns redacted details.
  */
 
+type DiagMode = "dns" | "tcp" | "tls" | "starttls" | "http" | "fetch";
 interface DiagRequest {
   host: string;
   port: number;
-  mode: "dns" | "tcp" | "tls" | "starttls" | "http" | "fetch";
+  mode: DiagMode;
   timeout_ms?: number;
 }
-
 interface DiagResult {
   input: DiagRequest;
   ok: boolean;
   ms: number;
   detail: string;
 }
-
 interface Env {
   DIAG_TOKEN?: string;
 }
-
-// Local socket interface matching cloudflare:sockets Socket at runtime.
 interface DiagSocket {
   readable: ReadableStream<Uint8Array>;
   writable: WritableStream<Uint8Array>;
   opened?: Promise<unknown>;
   startTls?(): unknown;
-  close(): void;
+  close(): void | Promise<void>;
 }
 
-function nowMs(): number {
-  return Date.now();
-}
+const MAX_BODY_BYTES = 4096;
+const BODY_TIMEOUT_MS = 5000;
+const REQUEST_DEADLINE_MS = 60000;
+const ALLOWED_MODES = new Set<DiagMode>(["dns", "tcp", "tls", "starttls", "http", "fetch"]);
+const ALLOWED_FIELDS = new Set(["host", "port", "mode", "timeout_ms"]);
 
-function errText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
-
-function closeSocket(socket: DiagSocket): void {
+function closeSocket(socket: DiagSocket | null | undefined): void {
   try {
-    socket.close();
-  } catch {
-    // already closed
+    if (socket) void Promise.resolve(socket.close()).catch(() => {});
+  } catch { /* best effort */ }
+}
+
+function socketHost(host: string): string {
+  return host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
+}
+
+function urlHost(host: string): string {
+  const bare = socketHost(host);
+  return bare.includes(":") ? `[${bare}]` : bare;
+}
+
+function classifyError(error: unknown): string {
+  const message = error instanceof Error ? error.message.toLowerCase() : "";
+  if (message.includes("timeout") || message.includes("timed out")) return "timed_out";
+  if (message.includes("refused") || message.includes("econnrefused")) return "connection_refused";
+  if (/(cloudflare|egress|private|reserved).*(block|deny|restrict|not allowed|unavailable)/i.test(message)) return "egress_policy";
+  if (message.includes("dns") || message.includes("enotfound") || message.includes("nxdomain")) return "dns_resolution_failed";
+  if (message.includes("tls") || message.includes("certificate") || message.includes("handshake")) return "tls_handshake_failed";
+  if (message === "caller_cancelled") return "caller_cancelled";
+  return "network_error";
+}
+
+function abortError(signal: AbortSignal): Error {
+  return signal.reason instanceof Error && signal.reason.message === "operation_timeout"
+    ? new Error("operation_timeout")
+    : new Error("caller_cancelled");
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(abortError(signal));
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => finish(() => reject(new Error("operation_timeout"))), timeoutMs);
+    const onAbort = () => finish(() => reject(abortError(signal)));
+    const finish = (action: () => void) => {
+      clearTimeout(timer);
+      signal.removeEventListener("abort", onAbort);
+      action();
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => finish(() => resolve(value)),
+      () => finish(() => reject(new Error("network_error"))),
+    );
+  });
+}
+
+function closeOnAbort(socket: DiagSocket, signal: AbortSignal): () => void {
+  const close = () => closeSocket(socket);
+  if (signal.aborted) close();
+  else signal.addEventListener("abort", close, { once: true });
+  return () => signal.removeEventListener("abort", close);
+}
+
+function makeSocket(host: string, port: number, secureTransport: "off" | "on" | "starttls"): DiagSocket {
+  return connect(
+    { hostname: socketHost(host), port },
+    { secureTransport } as any,
+  ) as unknown as DiagSocket;
+}
+
+async function waitForOpened(socket: DiagSocket, timeoutMs: number, signal: AbortSignal): Promise<void> {
+  if (!socket.opened || typeof socket.opened.then !== "function") {
+    throw new Error("socket_opened_unavailable");
   }
+  await withTimeout(socket.opened, timeoutMs, signal);
 }
 
-/** Race a promise against a deadline; rejects with `label ... timed out
- *  after Nms` on expiry. Used for every phase so a hang can never wedge a
- *  diagnostic request. */
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  return Promise.race([
-    promise,
-    new Promise<never>((_, reject) => {
-      timer = setTimeout(
-        () => reject(new Error(`${label} timed out after ${timeoutMs}ms`)),
-        timeoutMs,
-      );
-    }),
-  ]).finally(() => {
-    if (timer !== undefined) clearTimeout(timer);
-  }) as Promise<T>;
+function buildResult(req: DiagRequest, started: number, ok: boolean, detail: string): DiagResult {
+  return { input: req, ok, ms: Math.max(0, Date.now() - started), detail: detail.slice(0, 512) };
 }
 
-async function diagDns(req: DiagRequest): Promise<DiagResult> {
-  const t0 = nowMs();
-  const resolvers: Array<[string, string]> = [
-    ["cloudflare-1.1.1.1", `https://1.1.1.1/dns-query?name=${req.host}&type=A`],
-    ["google-dns.google", `https://dns.google/resolve?name=${req.host}&type=A`],
+async function diagDns(req: DiagRequest, signal: AbortSignal): Promise<DiagResult> {
+  const started = Date.now();
+  const targets: Array<[string, string]> = [
+    ["cloudflare-1.1.1.1", "https://1.1.1.1/dns-query"],
+    ["google-dns.google", "https://dns.google/resolve"],
   ];
-  const lines: string[] = [];
-  let allOk = true;
-  for (const [label, url] of resolvers) {
+  const results = await Promise.all(targets.map(async ([label, endpoint]) => {
+    const query = new URL(endpoint);
+    query.searchParams.set("name", req.host);
+    query.searchParams.set("type", "A");
+    let response: Response | null = null;
     try {
-      const r = await withTimeout(
-        fetch(url, { headers: { accept: "application/dns-json" } }),
-        10000,
-        `DoH ${label}`,
-      );
-      const body: any = await r.json();
-      const answers = (body.Answer ?? []).map((a: any) => `${a.type}:${a.data}`);
-      lines.push(
-        `${label} status=${body.Status ?? "?"} answers=[${answers.join(", ")}]`,
-      );
-      if (body.Status !== 0) allOk = allOk && true; // status itself is the finding
-    } catch (err) {
-      allOk = false;
-      lines.push(`${label} error=${errText(err)}`);
+      response = await withTimeout(fetch(query, {
+        headers: { accept: "application/dns-json" },
+        signal,
+      }), Math.min(req.timeout_ms ?? 10000, 10000), signal);
+      const body = await withTimeout(response.json() as Promise<Record<string, unknown>>, 3000, signal);
+      const status = Number.isInteger(body.Status) ? body.Status : null;
+      const answers = Array.isArray(body.Answer)
+        ? body.Answer.slice(0, 8).map((answer) => {
+          if (answer === null || typeof answer !== "object") return "invalid";
+          const record = answer as Record<string, unknown>;
+          const type = typeof record.type === "number" && Number.isInteger(record.type) ? record.type : "?";
+          const data = typeof record.data === "string" && /^[0-9a-fA-F:.]{1,64}$/.test(record.data) ? record.data : "non-address";
+          return `${type}:${data}`;
+        })
+        : [];
+      return { ok: response.ok, detail: `${label} http=${response.status} dns_status=${status ?? "unknown"} answers=[${answers.join(",")}]` };
+    } catch (error) {
+      try { void response?.body?.cancel().catch(() => {}); } catch { /* already consumed */ }
+      return { ok: false, detail: `${label} error=${classifyError(error)}` };
     }
-  }
-  return {
-    input: req,
-    ok: allOk,
-    ms: nowMs() - t0,
-    detail: lines.join(" | "),
-  };
+  }));
+  return buildResult(req, started, results.some((result) => result.ok), results.map((result) => result.detail).join(" | "));
 }
 
-async function diagTcp(req: DiagRequest, timeoutMs: number): Promise<DiagResult> {
-  const t0 = nowMs();
+async function diagTcp(req: DiagRequest, timeoutMs: number, signal: AbortSignal): Promise<DiagResult> {
+  const started = Date.now();
   let socket: DiagSocket | null = null;
+  let unlink = () => {};
   try {
-    socket = connect(
-      { hostname: req.host, port: req.port },
-      { secureTransport: "off" } as any,
-    ) as unknown as DiagSocket;
-    const opened: Promise<unknown> = socket.opened ?? Promise.resolve(undefined);
-    await withTimeout(opened, timeoutMs, `TCP connect to ${req.host}:${req.port}`);
+    socket = makeSocket(req.host, req.port, "off");
+    unlink = closeOnAbort(socket, signal);
+    await waitForOpened(socket, timeoutMs, signal);
+    return buildResult(req, started, true, "TCP connection established");
+  } catch (error) {
+    return buildResult(req, started, false, `TCP connect failed: ${classifyError(error)}`);
+  } finally {
+    unlink();
     closeSocket(socket);
-    return {
-      input: req,
-      ok: true,
-      ms: nowMs() - t0,
-      detail: `TCP connect established`,
-    };
-  } catch (err) {
-    if (socket) closeSocket(socket);
-    return {
-      input: req,
-      ok: false,
-      ms: nowMs() - t0,
-      detail: `TCP connect to ${req.host}:${req.port} failed: ${errText(err)}`,
-    };
   }
 }
 
-async function diagTls(req: DiagRequest, timeoutMs: number): Promise<DiagResult> {
-  const t0 = nowMs();
+async function diagTls(req: DiagRequest, timeoutMs: number, signal: AbortSignal): Promise<DiagResult> {
+  const started = Date.now();
   let socket: DiagSocket | null = null;
+  let unlink = () => {};
   try {
-    socket = connect(
-      { hostname: req.host, port: req.port },
-      { secureTransport: "on" } as any,
-    ) as unknown as DiagSocket;
-    const opened: Promise<unknown> = socket.opened ?? Promise.resolve(undefined);
-    await withTimeout(
-      opened,
-      timeoutMs,
-      `TLS connect to ${req.host}:${req.port}`,
-    );
+    socket = makeSocket(req.host, req.port, "on");
+    unlink = closeOnAbort(socket, signal);
+    await waitForOpened(socket, timeoutMs, signal);
+    return buildResult(req, started, true, 'TLS handshake completed (secureTransport "on")');
+  } catch (error) {
+    return buildResult(req, started, false, `TLS connect failed: ${classifyError(error)}`);
+  } finally {
+    unlink();
     closeSocket(socket);
-    return {
-      input: req,
-      ok: true,
-      ms: nowMs() - t0,
-      detail: `TLS handshake completed (secureTransport "on", same call as production safeTlsConnect)`,
-    };
-  } catch (err) {
-    if (socket) closeSocket(socket);
-    return {
-      input: req,
-      ok: false,
-      ms: nowMs() - t0,
-      detail: `TLS connect to ${req.host}:${req.port} failed: ${errText(err)}`,
-    };
   }
 }
 
-async function diagStarttls(req: DiagRequest, timeoutMs: number): Promise<DiagResult> {
-  const t0 = nowMs();
+async function diagStarttls(req: DiagRequest, timeoutMs: number, signal: AbortSignal): Promise<DiagResult> {
+  const started = Date.now();
   let socket: DiagSocket | null = null;
+  let upgradedSocket: DiagSocket | null = null;
+  let unlinkSocket = () => {};
+  let unlinkUpgrade = () => {};
   try {
-    socket = connect(
-      { hostname: req.host, port: req.port },
-      { secureTransport: "starttls" } as any,
-    ) as unknown as DiagSocket;
-    const opened: Promise<unknown> = socket.opened ?? Promise.resolve(undefined);
-    await withTimeout(opened, timeoutMs, `TCP connect to ${req.host}:${req.port}`);
-    const tcpMs = nowMs() - t0;
+    socket = makeSocket(req.host, req.port, "starttls");
+    unlinkSocket = closeOnAbort(socket, signal);
+    await waitForOpened(socket, timeoutMs, signal);
+    const tcpMs = Date.now() - started;
     if (typeof socket.startTls !== "function") {
-      closeSocket(socket);
-      return {
-        input: req,
-        ok: false,
-        ms: tcpMs,
-        detail: `TCP connected in ${tcpMs}ms but startTls() is not available on this runtime generation`,
-      };
+      return buildResult(req, started, false, `TCP connected in ${tcpMs}ms; startTls unavailable`);
     }
-    const upgraded: unknown = await withTimeout(
-      Promise.resolve(socket.startTls()),
-      timeoutMs,
-      `startTls() upgrade on ${req.host}:${req.port}`,
-    );
-    const up = upgraded as DiagSocket;
-    const upOpened: Promise<unknown> = up?.opened ?? Promise.resolve(undefined);
-    await withTimeout(upOpened, timeoutMs, `TLS handshake (startTls) on ${req.host}:${req.port}`);
-    const totalMs = nowMs() - t0;
-    if (up && up !== socket) closeSocket(up);
+    const upgraded = await withTimeout(Promise.resolve(socket.startTls()), timeoutMs, signal);
+    upgradedSocket = upgraded as DiagSocket;
+    if (!upgradedSocket || typeof upgradedSocket.close !== "function") {
+      return buildResult(req, started, false, "startTls returned an invalid socket");
+    }
+    unlinkUpgrade = closeOnAbort(upgradedSocket, signal);
+    await waitForOpened(upgradedSocket, timeoutMs, signal);
+    const totalMs = Date.now() - started;
+    return buildResult(req, started, true, `TCP ${tcpMs}ms + TLS ${totalMs - tcpMs}ms (startTls split)`);
+  } catch (error) {
+    return buildResult(req, started, false, `startTls failed: ${classifyError(error)}`);
+  } finally {
+    unlinkUpgrade();
+    unlinkSocket();
+    closeSocket(upgradedSocket);
     closeSocket(socket);
-    return {
-      input: req,
-      ok: true,
-      ms: totalMs,
-      detail: `TCP ${tcpMs}ms + TLS ${totalMs - tcpMs}ms (startTls split)`,
-    };
-  } catch (err) {
-    if (socket) closeSocket(socket);
-    return {
-      input: req,
-      ok: false,
-      ms: nowMs() - t0,
-      detail: `startTls diag on ${req.host}:${req.port} failed: ${errText(err)}`,
-    };
   }
 }
 
-async function diagHttp(req: DiagRequest, timeoutMs: number): Promise<DiagResult> {
-  const t0 = nowMs();
+async function diagHttp(req: DiagRequest, timeoutMs: number, signal: AbortSignal): Promise<DiagResult> {
+  const started = Date.now();
   let socket: DiagSocket | null = null;
+  let unlink = () => {};
+  let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+  let tcpMs = 0;
   try {
-    socket = connect(
-      { hostname: req.host, port: req.port },
-      { secureTransport: "off" } as any,
-    ) as unknown as DiagSocket;
-    const opened: Promise<unknown> = socket.opened ?? Promise.resolve(undefined);
-    await withTimeout(opened, timeoutMs, `TCP connect to ${req.host}:${req.port}`);
-    const tcpMs = nowMs() - t0;
+    socket = makeSocket(req.host, req.port, "off");
+    unlink = closeOnAbort(socket, signal);
+    await waitForOpened(socket, timeoutMs, signal);
+    tcpMs = Date.now() - started;
 
-    const writer = socket.writable.getWriter();
-    await writer.write(
-      new TextEncoder().encode(
-        `GET / HTTP/1.0\r\nHost: ${req.host}\r\n\r\n`,
-      ),
-    );
+    writer = socket.writable.getWriter();
+    const host = urlHost(req.host);
+    await withTimeout(writer.write(new TextEncoder().encode(
+      `GET / HTTP/1.0\r\nHost: ${hostHeader(host, req.port)}\r\n\r\n`,
+    )), timeoutMs, signal);
     writer.releaseLock();
+    writer = null;
 
     reader = socket.readable.getReader();
     let received = 0;
-    let firstChunk = "";
-    const deadline = nowMs() + timeoutMs;
+    let status = "no_status_line";
+    const deadline = Date.now() + timeoutMs;
     for (;;) {
-      const remaining = deadline - nowMs();
-      if (remaining <= 0) {
-        throw new Error(`plaintext read timed out after ${timeoutMs}ms`);
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) throw new Error("operation_timeout");
+      const result = await withTimeout(reader.read(), remaining, signal);
+      if (result.done) break;
+      received += result.value.byteLength;
+      if (status === "no_status_line") {
+        const prefix = new TextDecoder("latin1").decode(result.value.slice(0, 128));
+        const match = prefix.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})/);
+        if (match) status = `http_status=${match[1]}`;
       }
-      const { value, done } = await withTimeout(
-        reader.read(),
-        remaining,
-        `plaintext read`,
-      );
-      if (done) break;
-      received += value.length;
-      if (!firstChunk) {
-        firstChunk = new TextDecoder("latin1").decode(value.slice(0, 120));
-      }
-      if (received > 512) break;
+      if (received >= 512) break;
     }
-    try {
-      reader.releaseLock();
-    } catch {
-      // already released
+    return buildResult(req, started, true, `TCP ${tcpMs}ms; plaintext probe received ${received} bytes; ${status}`);
+  } catch (error) {
+    return buildResult(req, started, false, `plaintext probe failed: ${classifyError(error)}`);
+  } finally {
+    if (writer) {
+      try { writer.releaseLock(); } catch { /* already released */ }
     }
-    reader = null;
-    closeSocket(socket);
-    return {
-      input: req,
-      ok: true,
-      ms: nowMs() - t0,
-      detail: `TCP ${tcpMs}ms; plaintext GET over :443 received ${received} bytes${firstChunk ? ` first="${firstChunk.replace(/[\r\n]+/g, " | ")}"` : " (connection closed with no bytes — expected for a TLS-only listener)"}`,
-    };
-  } catch (err) {
     if (reader) {
-      try {
-        reader.releaseLock();
-      } catch {
-        // already released
-      }
+      try { await reader.cancel().catch(() => {}); } catch { /* socket already closed */ }
+      try { reader.releaseLock(); } catch { /* already released */ }
     }
-    if (socket) closeSocket(socket);
-    return {
-      input: req,
-      ok: false,
-      ms: nowMs() - t0,
-      detail: `plaintext-http diag on ${req.host}:${req.port} failed: ${errText(err)}`,
-    };
+    unlink();
+    closeSocket(socket);
   }
 }
 
-async function diagFetch(req: DiagRequest, timeoutMs: number): Promise<DiagResult> {
-  const t0 = nowMs();
+function hostHeader(host: string, port: number): string {
+  const formatted = urlHost(host);
+  return port === 443 ? formatted : `${formatted}:${port}`;
+}
+
+async function diagFetch(req: DiagRequest, timeoutMs: number, signal: AbortSignal): Promise<DiagResult> {
+  const started = Date.now();
+  let response: Response | null = null;
   try {
-    const r = await withTimeout(
-      fetch(`https://${req.host}:${req.port}/`, { redirect: "manual" }),
-      timeoutMs,
-      `fetch https://${req.host}/`,
-    );
-    return {
-      input: req,
-      ok: true,
-      ms: nowMs() - t0,
-      detail: `fetch() (edge-proxy egress path) HTTP ${r.status} ${r.statusText}`,
-    };
-  } catch (err) {
-    return {
-      input: req,
-      ok: false,
-      ms: nowMs() - t0,
-      detail: `fetch https://${req.host}/ failed: ${errText(err)}`,
-    };
+    const target = `https://${urlHost(req.host)}:${req.port}/`;
+    response = await withTimeout(fetch(target, { redirect: "manual", signal }), timeoutMs, signal);
+    const result = buildResult(req, started, true, `fetch egress returned HTTP ${response.status}`);
+    await response.body?.cancel().catch(() => {});
+    return result;
+  } catch (error) {
+    try { await response?.body?.cancel(); } catch { /* already canceled */ }
+    return buildResult(req, started, false, `fetch failed: ${classifyError(error)}`);
   }
+}
+
+function badRequest(error: string, status = 400): Response {
+  return Response.json({ error }, { status });
+}
+
+function normalizeDiagHost(value: unknown, mode: DiagMode): string | null {
+  const publicHost = normalizeAndValidatePublicHost(value);
+  if (publicHost) return publicHost;
+  // .invalid is a reserved DNS test suffix. Permit it only for DNS-over-HTTPS
+  // queries, which are sent to fixed public resolvers; never dial it as a target.
+  if (mode !== "dns" || typeof value !== "string" || value.length > 253 ||
+      value !== value.trim() || /[\\/@?#\s\u0000-\u001f\u007f]/.test(value)) return null;
+  const name = value.toLowerCase().replace(/\.$/, "");
+  const labels = name.split(".");
+  if (!name.endsWith(".invalid") || labels.length < 2 || labels.some((label) =>
+    label.length === 0 || label.length > 63 || !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label),
+  )) return null;
+  return name;
+}
+
+function validateDiagRequest(value: unknown): { ok: true; request: DiagRequest } | { ok: false; error: string } {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) return { ok: false, error: "request_must_be_object" };
+  const object = value as Record<string, unknown>;
+  if (Object.keys(object).some((key) => !ALLOWED_FIELDS.has(key))) return { ok: false, error: "unknown_request_field" };
+  if (typeof object.mode !== "string" || !ALLOWED_MODES.has(object.mode as DiagMode)) {
+    return { ok: false, error: "invalid_mode" };
+  }
+  const mode = object.mode as DiagMode;
+  const host = normalizeDiagHost(object.host, mode);
+  if (!host) return { ok: false, error: "invalid_or_non_public_host" };
+  if (!Number.isInteger(object.port) || (object.port as number) < 1 || (object.port as number) > 65535) {
+    return { ok: false, error: "invalid_port" };
+  }
+  const timeoutMs = object.timeout_ms ?? 10000;
+  if (!Number.isInteger(timeoutMs) || (timeoutMs as number) < 1000 || (timeoutMs as number) > REQUEST_DEADLINE_MS) {
+    return { ok: false, error: "invalid_timeout_ms" };
+  }
+  return {
+    ok: true,
+    request: {
+      host,
+      port: object.port as number,
+      mode: object.mode as DiagMode,
+      timeout_ms: timeoutMs as number,
+    },
+  };
 }
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method !== "POST") {
-      return Response.json({ error: "method_not_allowed" }, { status: 405 });
-    }
-    const url = new URL(request.url);
-    if (url.pathname !== "/diag") {
-      return Response.json({ error: "not_found" }, { status: 404 });
-    }
-    const expected = env.DIAG_TOKEN;
-    if (expected && request.headers.get("X-Diag-Token") !== expected) {
-      return Response.json({ error: "unauthorized" }, { status: 401 });
-    }
-
-    let req: DiagRequest;
     try {
-      req = (await request.json()) as DiagRequest;
-    } catch {
-      return Response.json({ error: "bad_json_body" }, { status: 400 });
-    }
-    if (!req || typeof req.host !== "string" || typeof req.port !== "number" || !req.mode) {
-      return Response.json({ error: "bad_request" }, { status: 400 });
-    }
-    const timeoutMs = Math.min(Math.max(req.timeout_ms ?? 10000, 1000), 60000);
+      if (request.method !== "POST") return badRequest("method_not_allowed", 405);
+      if (new URL(request.url).pathname !== "/diag") return badRequest("not_found", 404);
 
-    let result: DiagResult;
-    switch (req.mode) {
-      case "dns":
-        result = await diagDns(req);
-        break;
-      case "tcp":
-        result = await diagTcp(req, timeoutMs);
-        break;
-      case "tls":
-        result = await diagTls(req, timeoutMs);
-        break;
-      case "starttls":
-        result = await diagStarttls(req, timeoutMs);
-        break;
-      case "http":
-        result = await diagHttp(req, timeoutMs);
-        break;
-      case "fetch":
-        result = await diagFetch(req, timeoutMs);
-        break;
-      default:
-        return Response.json({ error: `unknown_mode_${req.mode}` }, { status: 400 });
+      const expected = env.DIAG_TOKEN;
+      if (typeof expected !== "string" || expected.trim() === "" || expected.length < 16 || expected.length > 1024 ||
+          /[\u0000-\u001f\u007f]/.test(expected)) {
+        return badRequest("service_unavailable", 503);
+      }
+      if (!constantTimeTokenEqual(request.headers.get("X-Diag-Token"), expected)) {
+        return badRequest("unauthorized", 401);
+      }
+      const mediaType = (request.headers.get("content-type") ?? "").split(";", 1)[0].trim().toLowerCase();
+      if (mediaType !== "application/json") return badRequest("unsupported_media_type", 415);
+
+      const body = await readJsonRequestBody(request, MAX_BODY_BYTES, BODY_TIMEOUT_MS);
+      if (!body.ok) return badRequest(body.error, body.status);
+      const checked = validateDiagRequest(body.value);
+      if (!checked.ok) return badRequest(checked.error);
+      const diagRequest = checked.request;
+      const timeoutMs = diagRequest.timeout_ms ?? 10000;
+
+      const controller = new AbortController();
+      const onCallerAbort = () => controller.abort(new Error("caller_cancelled"));
+      if (request.signal.aborted) onCallerAbort();
+      else request.signal.addEventListener("abort", onCallerAbort, { once: true });
+      const deadline = setTimeout(() => controller.abort(new Error("operation_timeout")), REQUEST_DEADLINE_MS);
+      try {
+        let result: DiagResult;
+        switch (diagRequest.mode) {
+          case "dns": result = await diagDns(diagRequest, controller.signal); break;
+          case "tcp": result = await diagTcp(diagRequest, timeoutMs, controller.signal); break;
+          case "tls": result = await diagTls(diagRequest, timeoutMs, controller.signal); break;
+          case "starttls": result = await diagStarttls(diagRequest, timeoutMs, controller.signal); break;
+          case "http": result = await diagHttp(diagRequest, timeoutMs, controller.signal); break;
+          case "fetch": result = await diagFetch(diagRequest, timeoutMs, controller.signal); break;
+        }
+        return Response.json(result);
+      } finally {
+        clearTimeout(deadline);
+        request.signal.removeEventListener("abort", onCallerAbort);
+      }
+    } catch {
+      // Do not serialize raw exceptions or peer-controlled strings.
+      return badRequest("internal_error", 500);
     }
-    return Response.json(result);
   },
 };

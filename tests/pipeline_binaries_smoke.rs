@@ -307,6 +307,31 @@ fn self_heal_reports_healthy_on_a_complete_tree() {
 }
 
 #[test]
+fn self_heal_accepts_fresh_checkout_before_pipeline_outputs_exist() {
+    let dir = scratch("selfheal-clean-checkout");
+    std::fs::remove_dir_all(dir.join("bridge")).unwrap();
+
+    let output = run(
+        env!("CARGO_BIN_EXE_self_heal"),
+        &dir,
+        &["--heal", "--strict"],
+    );
+    assert_success("self_heal on a fresh checkout", &output);
+
+    let report: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(dir.join("diagnostics/rust-self-heal.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(report["status"], "healthy");
+    assert_eq!(report["preflight"]["status"], "healthy");
+    assert_eq!(
+        report["preflight"]["pipeline_outputs_pending"],
+        serde_json::json!(["bridge/iran_results.json"])
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn self_heal_fails_loudly_when_required_files_are_missing() {
     let dir = scratch("selfheal-missing");
     std::fs::remove_file(dir.join("scripts/self_heal.sh")).unwrap();

@@ -35,6 +35,21 @@ use torshield_ir_ultra::adaptive_transport::{
     save_weights, select_transport_for_nin_cut, weights_to_scores, TransportStats,
 };
 
+fn current_iran_assessment(status: &str) -> Value {
+    let observed_at = Utc::now().to_rfc3339();
+    json!({
+        "status": status,
+        "source": "ooni_measurements_api",
+        "checked": true,
+        "vantage": {"type":"ooni_probe", "country":"IR"},
+        "queried_at": observed_at.clone(),
+        "measurement_at": observed_at.clone(),
+        "measurement_window_days": 7,
+        "historical_measurement_at": observed_at,
+        "historical_window_days": 90
+    })
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Python helper
 // ─────────────────────────────────────────────────────────────────────────────
@@ -291,14 +306,18 @@ fn scores_from_json_value(v: &Value) -> BTreeMap<String, i64> {
 
 #[test]
 fn parity_collect_transport_stats_mixed_records() {
+    let verified = json!({
+        "status":"connected", "stage":"S2",
+        "vantage":{"type":"probe_relay"}, "probe_type":"obfs4-handshake",
+        "observed_at": Utc::now().to_rfc3339()
+    });
     let records = json!([
-        {"transport": "obfs4", "iran_status": "iran_likely_working"},
-        {"transport": "obfs4", "iran_status": "iran_likely_blocked"},
-        {"transport": "obfs4", "iran_status": "iran_frequently_blocked"},
-        {"transport": "obfs4", "iran_status": "iran_asn_blocked"},
+        {"transport": "obfs4", "iran_status": "iran_likely_working", "iran_assessment":current_iran_assessment("iran_likely_working"), "verification":verified},
+        {"transport": "obfs4", "iran_status": "iran_likely_blocked", "iran_assessment":current_iran_assessment("iran_likely_blocked")},
+        {"transport": "obfs4", "iran_status": "iran_frequently_blocked", "iran_assessment":current_iran_assessment("iran_frequently_blocked")},
         {"transport": "obfs4", "iran_status": "unknown_status"},
-        {"transport": "snowflake", "iran_status": "iran_likely_working"},
-        {"iran_status": "iran_likely_working"},
+        {"transport": "snowflake", "iran_status": "iran_likely_working", "iran_assessment":current_iran_assessment("iran_likely_working"), "verification":verified},
+        {"iran_status": "iran_likely_working", "iran_assessment":current_iran_assessment("iran_likely_working"), "verification":verified},
         {"transport": "webtunnel"}
     ]);
     let records_arr = records.as_array().unwrap().clone();
@@ -309,6 +328,20 @@ fn parity_collect_transport_stats_mixed_records() {
     let rs_stats = collect_transport_stats(&records_arr);
     let rs = stats_to_json_value(&rs_stats);
     assert_eq!(py, rs, "collect_transport_stats parity failed");
+}
+
+#[test]
+fn rust_collect_transport_stats_requires_iran_provenance_and_s2_for_working() {
+    let records = json!([
+        {"transport":"obfs4", "iran_status":"iran_likely_working", "tcp_reachable":true},
+        {"transport":"obfs4", "iran_status":"iran_likely_blocked", "tcp_reachable":false},
+        {"transport":"obfs4", "iran_status":"iran_asn_blocked"}
+    ]);
+    let stats = collect_transport_stats(records.as_array().unwrap());
+    let obfs4 = stats.get("obfs4").unwrap();
+    assert_eq!(obfs4.working, 0);
+    assert_eq!(obfs4.blocked, 0);
+    assert_eq!(obfs4.unknown, 3);
 }
 
 #[test]
@@ -545,14 +578,19 @@ fn parity_main_with_bridge_records() {
     let history_path = dir.join("history.json");
     let best_path = dir.join("best.json");
 
+    let s2 = json!({
+        "status":"connected", "stage":"S2",
+        "vantage":{"type":"probe_relay"}, "probe_type":"snowflake-broker-handshake",
+        "observed_at": Utc::now().to_rfc3339()
+    });
     let iran_data = json!({
         "bridges": [
-            {"transport": "snowflake", "iran_status": "iran_likely_working"},
-            {"transport": "snowflake", "iran_status": "iran_likely_working"},
-            {"transport": "snowflake", "iran_status": "iran_likely_working"},
-            {"transport": "obfs4", "iran_status": "iran_likely_blocked"},
-            {"transport": "obfs4", "iran_status": "iran_likely_blocked"},
-            {"transport": "obfs4", "iran_status": "iran_likely_blocked"},
+            {"transport": "snowflake", "iran_status": "iran_likely_working", "iran_assessment":current_iran_assessment("iran_likely_working"), "verification":s2},
+            {"transport": "snowflake", "iran_status": "iran_likely_working", "iran_assessment":current_iran_assessment("iran_likely_working"), "verification":s2},
+            {"transport": "snowflake", "iran_status": "iran_likely_working", "iran_assessment":current_iran_assessment("iran_likely_working"), "verification":s2},
+            {"transport": "obfs4", "iran_status": "iran_likely_blocked", "iran_assessment":current_iran_assessment("iran_likely_blocked")},
+            {"transport": "obfs4", "iran_status": "iran_likely_blocked", "iran_assessment":current_iran_assessment("iran_likely_blocked")},
+            {"transport": "obfs4", "iran_status": "iran_likely_blocked", "iran_assessment":current_iran_assessment("iran_likely_blocked")},
         ]
     });
     fs::write(&iran_path, serde_json::to_string(&iran_data).unwrap()).unwrap();

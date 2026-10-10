@@ -1,7 +1,7 @@
 //! Stage 8u — Drift & survivability advisories (ADDITIVE, NON-BLOCKING).
 //!
 //! This binary produces three ADVISORY artifacts. It never gates CI, never
-//! edits any of the 55 contracted `bridge/` files, and never changes a score,
+//! edits any contracted `bridge/` file, and never changes a score,
 //! a membership decision, or a ranking. Its entire output is new files under
 //! `data/` plus `::notice` annotations in the run log.
 //!
@@ -24,15 +24,11 @@
 //!
 //! 2. Transport success-rate history (`data/transport_success_history.json`)
 //!    + run-over-run anomaly flags (advisory only).
-//!      Nothing in this repo accumulates a per-transport success-rate time
-//!      series (verified 2026-09-08: `bridge_history.json` has zero populated
-//!      `probes` logs; `transport_weight_history.json` scores are integer-flat;
-//!      `collector_yield_history.json` tracks supply, not success). This binary
-//!      APPENDS this run's per-transport working/total snapshot so the series
-//!      starts accumulating now, and compares the current rates against the
-//!      trailing baseline once enough entries exist. An "anomaly" is an
-//!      externally-observable reachability-rate drop — it is NOT a claim about
-//!      Iran's DPI mechanism (this repo has no visibility into filtering rules).
+//!      Nothing in this repo accumulates a per-transport measured-yield time
+//!      series. This binary appends only Iran-assessed outcomes; positive yield
+//!      additionally requires typed S2+ evidence. Unknown, runner-only, and
+//!      ASN-only records are excluded from the denominator. An "anomaly" is
+//!      an observed outcome-rate drop, not a claim about Iran's DPI mechanism.
 //!
 //! 3. Per-transport step-change scan over the accumulated series.
 //!    Same file, `step_changes` section: the largest mean-shift per transport
@@ -59,6 +55,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
+use torshield_ir_ultra::evidence_stamp;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paths (env-overridable so tests and local runs never touch production files)
@@ -89,6 +86,8 @@ const MIN_STEP_SERIES: usize = 20;
 
 /// Minimum segment length on both sides of a candidate step-change split.
 const MIN_STEP_SEGMENT: usize = 8;
+/// Versioned rate metric; old runner-reachability snapshots are not comparable.
+const TRANSPORT_RATE_METRIC: &str = "iran_assessed_s2plus_yield_v1";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Section 1: per-bridge drift (consumes the collector's existing EWMA health)
@@ -271,11 +270,22 @@ pub fn classify_line(line: &str) -> &'static str {
     }
 }
 
-/// This run's per-transport working/total snapshot from iran_results.json.
-/// "Working" mirrors `bridge_publication.rs::is_likely_working`: status is
-/// not blocked AND (tcp_reachable || transport_capable).
+/// This run's per-transport verified-yield/assessed-outcome snapshot.
+/// The tuple is `(working, assessed)`: only matching Iran-specific OONI
+/// classifications enter the denominator, and a working outcome also needs
+/// positive typed S2+ verification. Runner TCP booleans and ASN-only labels
+/// never create Iran reachability samples.
 pub fn current_transport_rates(iran_results: &Value) -> BTreeMap<String, (usize, usize)> {
-    let mut totals: BTreeMap<String, usize> = BTreeMap::new();
+    current_transport_rates_at(iran_results, Utc::now())
+}
+
+/// Injectable-clock variant used by the unattended report and deterministic
+/// tests; the latest report time is also the evidence-evaluation time.
+pub fn current_transport_rates_at(
+    iran_results: &Value,
+    now: DateTime<Utc>,
+) -> BTreeMap<String, (usize, usize)> {
+    let mut assessed: BTreeMap<String, usize> = BTreeMap::new();
     let mut working: BTreeMap<String, usize> = BTreeMap::new();
     let empty = Vec::new();
     let bridges = iran_results
@@ -288,37 +298,36 @@ pub fn current_transport_rates(iran_results: &Value) -> BTreeMap<String, (usize,
             continue;
         }
         let transport = classify_line(line).to_string();
-        *totals.entry(transport.clone()).or_default() += 1;
         let status = bridge
             .get("iran_status")
             .and_then(Value::as_str)
             .unwrap_or("");
-        let not_blocked = !matches!(
-            status,
-            "iran_likely_blocked" | "iran_frequently_blocked" | "iran_asn_blocked"
-        );
-        let reachable = bridge
-            .get("tcp_reachable")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-            || bridge
-                .get("transport_capable")
-                .and_then(Value::as_bool)
-                .unwrap_or(false);
-        if not_blocked && reachable {
+        let iran_outcome = evidence_stamp::has_iran_specific_assessment_at(bridge, now)
+            && matches!(
+                status,
+                "iran_likely_working" | "iran_likely_blocked" | "iran_frequently_blocked"
+            );
+        if !iran_outcome {
+            continue;
+        }
+        *assessed.entry(transport.clone()).or_default() += 1;
+        if evidence_stamp::has_iran_specific_working_assessment_at(bridge, now)
+            && evidence_stamp::has_verified_s2plus_at(bridge, now)
+        {
             *working.entry(transport).or_default() += 1;
         }
     }
-    totals
+    assessed
         .into_iter()
-        .map(|(transport, total)| {
+        .map(|(transport, count)| {
             let work = working.get(&transport).copied().unwrap_or(0);
-            (transport, (work, total))
+            (transport, (work, count))
         })
         .collect()
 }
 
-/// One appended history entry: `{"ts": ..., "rates": {transport: [working, total]}}`.
+/// One versioned history entry: `working/assessed` rates from Iran-specific
+/// measurements and S2+ verified positive outcomes.
 pub fn history_entry(now: &DateTime<Utc>, rates: &BTreeMap<String, (usize, usize)>) -> Value {
     let rates_json: BTreeMap<String, Value> = rates
         .iter()
@@ -326,6 +335,7 @@ pub fn history_entry(now: &DateTime<Utc>, rates: &BTreeMap<String, (usize, usize
         .collect();
     json!({
         "ts": now.to_rfc3339(),
+        "metric": TRANSPORT_RATE_METRIC,
         "rates": rates_json,
     })
 }
@@ -356,6 +366,7 @@ pub fn anomaly_rows(
         }
         let prior_rates: Vec<f64> = prior_entries
             .iter()
+            .filter(|entry| entry.get("metric").and_then(Value::as_str) == Some(TRANSPORT_RATE_METRIC))
             .filter_map(|entry| {
                 entry
                     .get("rates")?
@@ -472,6 +483,9 @@ pub fn detect_step_change(transport: &str, series: &[(String, f64)]) -> Option<S
 pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
     let mut by_transport: BTreeMap<String, Vec<(String, f64)>> = BTreeMap::new();
     for entry in prior_entries {
+        if entry.get("metric").and_then(Value::as_str) != Some(TRANSPORT_RATE_METRIC) {
+            continue;
+        }
         let Some(ts) = entry.get("ts").and_then(Value::as_str) else {
             continue;
         };
@@ -681,19 +695,18 @@ fn main() {
     // Sections 2+3: transport success-rate history + anomaly + step changes.
     let mut prior = load_success_history(&series_path);
     if let Some(iran) = read_json(&iran_path) {
-        let rates = current_transport_rates(&iran);
+        let rates = current_transport_rates_at(&iran, now);
         let rates_display: Vec<String> = rates
             .iter()
             .map(|(transport, (working, total))| format!("{transport}:{working}/{total}"))
             .collect();
         println!(
-            "  this run per-transport working/total: {}",
+            "  this run per-transport verified-working/IR-assessed: {}",
             rates_display.join(" ")
         );
+        let anomalies = anomaly_rows(&rates, &prior);
         let entry = history_entry(&now, &rates);
         prior.push(entry);
-
-        let anomalies = anomaly_rows(&rates, &prior);
         for row in &anomalies {
             if row["status"].as_str() == Some("anomaly_drop") {
                 println!(
@@ -851,20 +864,58 @@ mod tests {
     }
 
     #[test]
-    fn current_transport_rates_mirrors_is_likely_working_semantics() {
+    fn current_transport_rates_require_iran_assessment_and_s2plus_for_working() {
+        let now = Utc::now();
+        let ooni_measured_at = now.to_rfc3339();
+        let assessment = |status: &str| json!({
+            "status": status,
+            "source": "ooni_measurements_api",
+            "checked": true,
+            "vantage": {"type":"ooni_probe", "country":"IR"},
+            "queried_at":ooni_measured_at.clone(),
+            "measurement_at":ooni_measured_at.clone(),
+            "measurement_window_days":7,
+            "historical_measurement_at":ooni_measured_at.clone(),
+            "historical_window_days":90
+        });
+        let s1 = json!({
+            "status":"connected", "stage":"S1",
+            "vantage":{"type":"github_actions_runner"}, "probe_type":"tcp",
+            "observed_at": ooni_measured_at.clone()
+        });
+        let s2 = json!({
+            "status":"connected", "stage":"S2",
+            "vantage":{"type":"probe_relay"}, "probe_type":"obfs4-handshake",
+            "observed_at": ooni_measured_at.clone()
+        });
         let doc = json!({
             "bridges": [
                 {"line": "obfs4 1.1.1.1:1 f", "iran_status": "iran_unknown", "tcp_reachable": true},
-                {"line": "obfs4 2.2.2.2:2 f", "iran_status": "iran_likely_blocked", "tcp_reachable": true},
-                {"line": "obfs4 3.3.3.3:3 f", "iran_status": "iran_unknown", "tcp_reachable": false},
+                {"line": "obfs4 2.2.2.2:2 f", "iran_status": "iran_likely_blocked", "iran_assessment":assessment("iran_likely_blocked"), "tcp_reachable": true},
+                {"line": "obfs4 3.3.3.3:3 f", "iran_status": "iran_likely_working", "iran_assessment":assessment("iran_likely_working"), "verification":s1},
+                {"line": "obfs4 4.4.4.4:4 f", "iran_status": "iran_likely_working", "iran_assessment":assessment("iran_likely_working"), "verification":s2},
                 {"line": "webtunnel w url=https://x", "iran_status": "iran_unknown", "tcp_reachable": false, "transport_capable": true},
-                {"line": "Bridge 4.4.4.4:443 f", "iran_status": "iran_unknown", "tcp_reachable": false},
+                {"line": "Bridge 5.5.5.5:443 f", "iran_status": "iran_unknown", "tcp_reachable": false},
             ]
         });
-        let rates = current_transport_rates(&doc);
+        let rates = current_transport_rates_at(&doc, now);
         assert_eq!(rates["obfs4"], (1, 3));
-        assert_eq!(rates["webtunnel"], (1, 1));
-        assert_eq!(rates["vanilla"], (0, 1));
+        assert!(!rates.contains_key("webtunnel"));
+        assert!(!rates.contains_key("vanilla"));
+    }
+
+    #[test]
+    fn legacy_runner_rate_history_is_not_used_as_iran_yield_baseline() {
+        let mut current = BTreeMap::new();
+        current.insert("obfs4".to_string(), (1usize, 1usize));
+        let legacy: Vec<Value> = (0..10)
+            .map(|_| json!({"ts":"2026-09-01T00:00:00Z", "rates":{"obfs4":[100,100]}}))
+            .collect();
+        let rows = anomaly_rows(&current, &legacy);
+        let row = rows.iter().find(|r| r["transport"] == "obfs4").unwrap();
+        assert_eq!(row["status"], "insufficient_history");
+        assert_eq!(row["prior_observations"], json!(0));
+        assert!(step_changes(&legacy).is_empty());
     }
 
     #[test]
@@ -873,7 +924,7 @@ mod tests {
         current.insert("obfs4".to_string(), (10usize, 100usize));
         // Trailing baseline: stable ~50% rate over 6 runs.
         let prior: Vec<Value> = (0..6)
-            .map(|_| json!({"ts": "2026-09-01T00:00:00Z", "rates": {"obfs4": [50, 100]}}))
+            .map(|_| json!({"ts": "2026-09-01T00:00:00Z", "metric": TRANSPORT_RATE_METRIC, "rates": {"obfs4": [50, 100]}}))
             .collect();
         let rows = anomaly_rows(&current, &prior);
         let row = rows.iter().find(|r| r["transport"] == "obfs4").unwrap();
@@ -890,7 +941,7 @@ mod tests {
 
         // Too little history: reported as insufficient, never flagged.
         let short: Vec<Value> = (0..2)
-            .map(|_| json!({"ts": "t", "rates": {"obfs4": [50, 100]}}))
+            .map(|_| json!({"ts": "t", "metric": TRANSPORT_RATE_METRIC, "rates": {"obfs4": [50, 100]}}))
             .collect();
         let rows = anomaly_rows(&current, &short);
         let row = rows.iter().find(|r| r["transport"] == "obfs4").unwrap();
@@ -979,6 +1030,7 @@ mod tests {
         rates.insert("obfs4".to_string(), (158usize, 1144usize));
         let entry = history_entry(&now, &rates);
         assert_eq!(entry["ts"], "2026-09-08T12:00:00+00:00");
+        assert_eq!(entry["metric"], TRANSPORT_RATE_METRIC);
         assert_eq!(entry["rates"]["obfs4"], json!([158, 1144]));
     }
 }

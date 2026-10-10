@@ -32,9 +32,11 @@ use std::sync::OnceLock;
 use regex::Regex;
 
 /// Directories that never contain first-party secrets/code to gate on.
+///
+/// `.github` is intentionally not excluded: workflow YAML and action scripts
+/// are first-party code and must be covered by the credential scan.
 pub const SKIP_DIRS: &[&str] = &[
     ".git",
-    ".github",
     ".agents",
     ".refact",
     ".arena_logs",
@@ -141,7 +143,9 @@ fn py_repr(text: &str) -> String {
 }
 
 fn is_skipped_dir(name: &str) -> bool {
-    name.starts_with('.') || SKIP_DIRS.contains(&name)
+    // Hidden directories are generally tool state or local configuration, but
+    // `.github` is executable policy/configuration and must be security-scanned.
+    name != ".github" && (name.starts_with('.') || SKIP_DIRS.contains(&name))
 }
 
 /// Yield a directory's immediate children as `(dirs, files)`, both sorted by
@@ -485,12 +489,31 @@ mod tests {
     }
 
     #[test]
-    fn skip_dir_rules_match_python() {
+    fn skip_dir_rules_keep_github_workflows_in_security_scan() {
         assert!(is_skipped_dir(".git"));
         assert!(is_skipped_dir(".anything"));
         assert!(is_skipped_dir("target"));
         assert!(is_skipped_dir("vendor"));
+        assert!(!is_skipped_dir(".github"));
         assert!(!is_skipped_dir("src"));
+    }
+
+    #[test]
+    fn credential_scan_walk_descends_into_github_workflows() {
+        let root =
+            std::env::temp_dir().join(format!("security_scan_github_{}", std::process::id()));
+        let workflow = root.join(".github/workflows/ci.yml");
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(workflow.parent().expect("workflow parent")).expect("create workflow");
+        let synthetic_token = format!("ghp_{}", "A".repeat(36));
+        fs::write(&workflow, format!("token: {synthetic_token}\n")).expect("write workflow");
+
+        let mut visited = Vec::new();
+        collect_matching(&root, &mut |path| visited.push(path.to_path_buf()));
+        assert!(visited.contains(&workflow), ".github/workflows was pruned");
+        assert_eq!(scan_text_file(&workflow).len(), 1);
+
+        fs::remove_dir_all(&root).expect("remove temporary workflow tree");
     }
 
     #[test]

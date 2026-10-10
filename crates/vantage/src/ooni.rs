@@ -125,11 +125,42 @@ fn measurements_url(base_url: &str, country: &str, input: &str, limit: u32) -> S
 }
 
 /// Normalize OONI results into a `ProbeResult`.
+///
+/// Classification uses the newest measurement that still carries its original
+/// timestamp. Older confirmed/anomalous rows in the same query must not override
+/// a later clean result, and a query time is never substituted for a missing
+/// measurement time.
 fn normalize(response: &OoniResponse) -> ProbeResult {
-    let confirmed = response.results.iter().find(|result| result.confirmed);
-    let anomalous = response.results.iter().find(|result| result.anomaly);
+    let newest = response
+        .results
+        .iter()
+        .filter_map(|result| {
+            let timestamp = result.measurement_start_time.as_deref()?;
+            let parsed = DateTime::parse_from_rfc3339(timestamp).ok()?;
+            Some((result, parsed))
+        })
+        .max_by_key(|(_, timestamp)| timestamp.timestamp_millis());
 
-    let (verdict, error_class) = if let Some(result) = confirmed {
+    let Some((result, timestamp)) = newest else {
+        let error_class = if response.results.is_empty() {
+            "no_data"
+        } else {
+            // A query timestamp is not a substitute for the measurement's own
+            // timestamp. Without one, keep even confirmed/anomalous data
+            // inconclusive rather than publishing a current verdict.
+            "missing_measurement_timestamp"
+        };
+        return ProbeResult {
+            verdict: Verdict::Inconclusive,
+            rtt_ms: None,
+            error_class: Some(error_class.to_owned()),
+            raw_evidence: None,
+            measurement_ref: format!("ooni:count={}", response.results.len()),
+            measured_at: Utc::now(),
+        };
+    };
+
+    let (verdict, error_class) = if result.confirmed {
         (
             Verdict::Blocked {
                 evidence: result
@@ -139,41 +170,22 @@ fn normalize(response: &OoniResponse) -> ProbeResult {
             },
             Some("confirmed_blocked".to_owned()),
         )
-    } else if anomalous.is_some() {
+    } else if result.anomaly {
         (Verdict::Inconclusive, Some("ooni_anomaly".to_owned()))
-    } else if response.results.is_empty() {
-        (Verdict::Inconclusive, Some("no_data".to_owned()))
     } else {
         (Verdict::Reachable, None)
     };
-
-    let newest = response
-        .results
-        .iter()
-        .filter_map(|result| result.measurement_start_time.as_deref())
-        .filter_map(|timestamp| DateTime::parse_from_rfc3339(timestamp).ok())
-        .max();
 
     ProbeResult {
         verdict,
         rtt_ms: None,
         error_class,
-        raw_evidence: confirmed
-            .or(anomalous)
-            .and_then(|result| result.report_id.clone()),
-        measurement_ref: response
-            .results
-            .first()
-            .and_then(|result| result.report_id.clone())
-            .unwrap_or_else(|| {
-                format!(
-                    "ooni:{country_count}",
-                    country_count = response.results.len()
-                )
-            }),
-        measured_at: newest
-            .map(|timestamp| timestamp.with_timezone(&Utc))
-            .unwrap_or_else(Utc::now),
+        raw_evidence: result.report_id.clone(),
+        measurement_ref: result
+            .report_id
+            .clone()
+            .unwrap_or_else(|| format!("ooni:count={}", response.results.len())),
+        measured_at: timestamp.with_timezone(&Utc),
     }
 }
 
@@ -206,7 +218,7 @@ mod tests {
                 confirmed: false,
                 anomaly: true,
                 test_name: None,
-                measurement_start_time: None,
+                measurement_start_time: Some("2026-08-14T00:00:00Z".to_owned()),
                 report_id: None,
             }],
         };
@@ -232,11 +244,115 @@ mod tests {
     }
 
     #[test]
+    fn normalize_does_not_turn_missing_original_timestamp_into_a_block() {
+        let result = normalize(&OoniResponse {
+            results: vec![OoniMeasurement {
+                confirmed: true,
+                anomaly: false,
+                test_name: Some("web_connectivity".to_owned()),
+                measurement_start_time: None,
+                report_id: Some("historical-without-time".to_owned()),
+            }],
+        });
+        assert_eq!(result.verdict, Verdict::Inconclusive);
+        assert_eq!(
+            result.error_class.as_deref(),
+            Some("missing_measurement_timestamp")
+        );
+    }
+
+    #[test]
+    fn normalize_keeps_time_and_reference_from_the_newest_measurement() {
+        let response = OoniResponse {
+            results: vec![
+                OoniMeasurement {
+                    confirmed: false,
+                    anomaly: false,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: Some("2026-08-13T00:00:00Z".to_owned()),
+                    report_id: Some("older".to_owned()),
+                },
+                OoniMeasurement {
+                    confirmed: false,
+                    anomaly: false,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: Some("2026-08-14T00:00:00.125Z".to_owned()),
+                    report_id: Some("newest".to_owned()),
+                },
+            ],
+        };
+        let result = normalize(&response);
+        assert_eq!(result.measurement_ref, "newest");
+        assert_eq!(result.measured_at.to_rfc3339(), "2026-08-14T00:00:00.125+00:00");
+    }
+
+    #[test]
     fn normalize_no_results_is_inconclusive() {
         let result = normalize(&OoniResponse {
             results: Vec::new(),
         });
         assert_eq!(result.verdict, Verdict::Inconclusive);
         assert_eq!(result.error_class.as_deref(), Some("no_data"));
+    }
+
+    #[test]
+    fn normalize_classifies_from_newest_timestamped_measurement_only() {
+        let result = normalize(&OoniResponse {
+            results: vec![
+                OoniMeasurement {
+                    confirmed: true,
+                    anomaly: false,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: Some("2026-08-13T00:00:00Z".to_owned()),
+                    report_id: Some("older-block".to_owned()),
+                },
+                OoniMeasurement {
+                    confirmed: false,
+                    anomaly: false,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: Some("2026-08-14T00:00:00.125Z".to_owned()),
+                    report_id: Some("newest-clean".to_owned()),
+                },
+                OoniMeasurement {
+                    confirmed: true,
+                    anomaly: true,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: None,
+                    report_id: Some("untimestamped-block".to_owned()),
+                },
+            ],
+        });
+        assert_eq!(result.verdict, Verdict::Reachable);
+        assert_eq!(result.measurement_ref, "newest-clean");
+        assert_eq!(result.raw_evidence.as_deref(), Some("newest-clean"));
+        assert_eq!(
+            result.measured_at.to_rfc3339(),
+            "2026-08-14T00:00:00.125+00:00"
+        );
+    }
+
+    #[test]
+    fn normalize_newest_confirmed_block_beats_older_clean() {
+        let result = normalize(&OoniResponse {
+            results: vec![
+                OoniMeasurement {
+                    confirmed: false,
+                    anomaly: false,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: Some("2026-08-13T00:00:00Z".to_owned()),
+                    report_id: Some("older-clean".to_owned()),
+                },
+                OoniMeasurement {
+                    confirmed: true,
+                    anomaly: false,
+                    test_name: Some("web_connectivity".to_owned()),
+                    measurement_start_time: Some("2026-08-14T12:00:00Z".to_owned()),
+                    report_id: Some("newest-block".to_owned()),
+                },
+            ],
+        });
+        assert!(matches!(result.verdict, Verdict::Blocked { .. }));
+        assert_eq!(result.error_class.as_deref(), Some("confirmed_blocked"));
+        assert_eq!(result.measurement_ref, "newest-block");
     }
 }

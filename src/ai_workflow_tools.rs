@@ -26,6 +26,9 @@ use std::path::Path;
 use chrono::{SecondsFormat, Utc};
 use serde_json::{json, Map, Value};
 
+#[cfg(feature = "network")]
+use crate::network_safety::safe_reqwest_error_summary;
+
 // ────────────────────────────────────────────────────────────────────────────
 // health-summary
 // ────────────────────────────────────────────────────────────────────────────
@@ -600,16 +603,21 @@ fn fetch_parent_logs() -> String {
             .timeout(std::time::Duration::from_secs(30))
             .user_agent("torshield-ir-categorize")
             .build()
-            .map_err(|e| e.to_string())?;
+            .map_err(|error| safe_reqwest_error_summary(&error).to_string())?;
         let bytes = client
             .get(&url)
             .bearer_auth(&token)
             .header("Accept", "application/vnd.github+json")
             .send()
-            .and_then(|r| r.error_for_status())
-            .map_err(|e| e.to_string())?
+            .and_then(|response| response.error_for_status())
+            .map_err(|error| {
+                error
+                    .status()
+                    .map(|status| format!("GitHub API returned HTTP {status}"))
+                    .unwrap_or_else(|| safe_reqwest_error_summary(&error).to_string())
+            })?
             .bytes()
-            .map_err(|e| e.to_string())?
+            .map_err(|error| safe_reqwest_error_summary(&error).to_string())?
             .to_vec();
         Ok(bytes)
     })();

@@ -671,45 +671,29 @@ pub fn score_bridge(
         reasons.push("RIPE tested without definitive reachability".to_string());
     }
 
-    // PT status.
-    let pt_status_value = first_truthy_value(&merged, &["pt_status", "PTStatus"]);
-    let pt_status = match pt_status_value {
-        Some(Value::String(s)) => s.to_lowercase(),
-        Some(Value::Bool(b)) => {
-            if *b {
-                "true".to_string()
-            } else {
-                "false".to_string()
-            }
-        }
-        Some(Value::Number(n)) => n.to_string().to_lowercase(),
-        _ => String::new(),
-    };
-    let pt_positive = ["ok", "running", "reachable", "success"]
-        .iter()
-        .any(|x| *x == pt_status);
-    let pt_negative = ["failed", "blocked", "down", "error"]
-        .iter()
-        .any(|x| *x == pt_status);
-    if pt_positive {
-        score += 8.0;
-        reasons.push(format!("PT status positive ({})", pt_status));
-    } else if pt_negative {
-        score -= 10.0;
-        reasons.push(format!("PT status negative ({})", pt_status));
+    // Legacy PT strings have no stage, observer, or observation timestamp, so
+    // they cannot safely add a positive score or a failure penalty. The typed
+    // verification below is authoritative when present.
+    if first_truthy_value(&merged, &["pt_status", "PTStatus"]).is_some() {
+        reasons.push("legacy PT status ignored; typed verification is authoritative".to_string());
     }
 
-    // Probe outcome.
-    let test_pass_value = merged
-        .get("test_pass")
-        .or_else(|| merged.get("tcp_reachable"));
-    let test_pass = bool_value(test_pass_value);
-    if test_pass == Some(true) {
-        score += 12.0;
-        reasons.push("recent probe succeeded".to_string());
-    } else if test_pass == Some(false) {
-        score -= 18.0;
-        reasons.push("recent probe failed; penalized but retained".to_string());
+    // Probe outcome. Typed connected/refused results can affect the score;
+    // timeout, error, inconclusive, missing vantage, and legacy booleans are
+    // neutral because they do not establish bridge viability from an observer.
+    let merged_value = Value::Object(merged.clone());
+    if crate::evidence_stamp::verification(&merged_value).is_some() {
+        match crate::evidence_stamp::scoring_reachability_at(&merged_value, now) {
+            Some(true) => {
+                score += 12.0;
+                reasons.push("typed probe connected".to_string());
+            }
+            Some(false) => {
+                score -= 18.0;
+                reasons.push("typed probe explicitly refused; penalized but retained".to_string());
+            }
+            None => reasons.push("probe inconclusive or unobserved — no penalty".to_string()),
+        }
     }
 
     // Latency + freshness.
@@ -992,7 +976,12 @@ mod tests {
             "raw": "obfs4 198.51.100.11:9001 FINGERPRINT cert=x iat-mode=2",
             "transport": "obfs4",
             "port": 9001,
-            "test_pass": false,
+            "verification": {
+                "status": "refused", "stage": "S0",
+                "vantage": { "type": "cloudflare_worker" },
+                "probe_type": "tcp",
+                "observed_at": now.to_rfc3339()
+            },
             "latency_ms": 1400,
             "last_seen": stale,
             "RIPEReachable": false,
@@ -1006,7 +995,82 @@ mod tests {
         assert!(web_score > obfs_score);
         assert!(obfs_reasons
             .iter()
-            .any(|r| r.contains("penalized but retained")));
+            .any(|r| r.contains("explicitly refused; penalized but retained")));
+    }
+
+    #[test]
+    fn inconclusive_typed_probe_is_neutral_in_bridge_scoring() {
+        let now = now();
+        let common = json!({
+            "raw": "obfs4 198.51.100.12:443 FINGERPRINT cert=x iat-mode=2",
+            "transport": "obfs4",
+            "port": 443,
+            "tcp_reachable": false,
+            "last_seen": now.to_rfc3339()
+        });
+        let no_observation = common.clone();
+        let inconclusive = json!({
+            "raw": "obfs4 198.51.100.12:443 FINGERPRINT cert=x iat-mode=2",
+            "transport": "obfs4",
+            "port": 443,
+            "tcp_reachable": false,
+            "last_seen": now.to_rfc3339(),
+            "verification": {
+                "status": "timeout", "stage": "S0",
+                "vantage": { "type": "cloudflare_worker" },
+                "probe_type": "tcp",
+                "observed_at": now.to_rfc3339()
+            },
+            "pt_status": "failed"
+        });
+        let (baseline, _) = score_bridge(&no_observation, None, Some(now), None).unwrap();
+        let (timeout, reasons) = score_bridge(&inconclusive, None, Some(now), None).unwrap();
+        assert_eq!(timeout, baseline, "timeout evidence must not lower the score");
+        assert!(reasons.iter().any(|reason| reason.contains("no penalty")));
+
+        let refused = json!({
+            "raw": "obfs4 198.51.100.12:443 FINGERPRINT cert=x iat-mode=2",
+            "transport": "obfs4",
+            "port": 443,
+            "last_seen": now.to_rfc3339(),
+            "verification": {
+                "status": "refused", "stage": "S0",
+                "vantage": { "type": "cloudflare_worker" },
+                "probe_type": "tcp",
+                "observed_at": now.to_rfc3339()
+            }
+        });
+        let (refused_score, _) = score_bridge(&refused, None, Some(now), None).unwrap();
+        assert!(refused_score < baseline, "explicit refusal remains a negative result");
+    }
+
+    #[test]
+    fn legacy_probe_booleans_are_neutral_without_typed_stage_and_vantage() {
+        let now = now();
+        let base = json!({
+            "raw": "obfs4 198.51.100.13:443 FINGERPRINT cert=x iat-mode=2",
+            "transport": "obfs4",
+            "last_seen": now.to_rfc3339()
+        });
+        let (baseline, _) = score_bridge(&base, None, Some(now), None).unwrap();
+        for legacy in [
+            json!({"test_pass":true}),
+            json!({"test_pass":false}),
+            json!({"tcp_reachable":true}),
+            json!({"tcp_reachable":false}),
+            json!({"pt_status":"ok"}),
+            json!({"pt_status":"failed"}),
+            json!({"pt_status":"refused"}),
+            json!({"PTStatus":"success"}),
+        ] {
+            let mut record = base.clone();
+            let object = record.as_object_mut().unwrap();
+            for (key, value) in legacy.as_object().unwrap() {
+                object.insert(key.clone(), value.clone());
+            }
+            let (score, _) = score_bridge(&record, None, Some(now), None).unwrap();
+            assert_eq!(score, baseline, "untyped evidence changed the score: {legacy}");
+        }
     }
 
     #[test]

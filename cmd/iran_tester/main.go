@@ -1,7 +1,7 @@
 // Binary iran_tester implements the 8-layer TorShield-IR bridge classification
-// decision tree. It reads a JSON array of bridge strings, classifies each one
-// against Iran's censorship infrastructure using TCP probing, ASN filtering,
-// TLS fingerprint risk assessment, port risk assessment, OONI measurements,
+// decision tree. It reads a JSON array of bridge strings, records runner-side
+// TCP as typed S1 evidence, and uses Iran-specific OONI measurements plus ASN
+// filtering, TLS fingerprint risk assessment, and port risk assessment to
 // temporal blocking analysis, CDN front validation, and optional RIPE Atlas
 // confirmation, then writes a structured JSON report to the output file.
 //
@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -27,6 +28,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/ysa-py/MICAFP/internal/asn"
@@ -76,7 +78,58 @@ type BridgeResult struct {
 	ASNOrg         string     `json:"asn_org,omitempty"`
 	RIPEReachable  *bool      `json:"ripe_reachable,omitempty"`
 	Flags          []DPIFlag  `json:"flags,omitempty"`
-	CompositeScore float64    `json:"composite_score"`
+	CompositeScore float64         `json:"composite_score"`
+	Verification   Verification    `json:"verification"`
+	IranAssessment *IranAssessment `json:"iran_assessment,omitempty"`
+}
+
+// ProbeVantage identifies where a technical verification was observed.
+type ProbeVantage struct {
+	Type   string  `json:"type"`
+	Region *string `json:"region"`
+}
+
+// Verification is a typed, per-bridge technical probe observation. The Go
+// tester only performs TCP (S1); it never upgrades that result into a PT claim.
+type Verification struct {
+	Status     string        `json:"status"`
+	Stage      string        `json:"stage"`
+	Vantage    *ProbeVantage `json:"vantage"`
+	RTTMS      *float64      `json:"rtt_ms"`
+	ProbeType  string        `json:"probe_type"`
+	Detail     string        `json:"detail"`
+	ErrorClass string        `json:"error_class"`
+	ObservedAt string        `json:"observed_at"`
+}
+
+// IranAssessment records the independent Iran-specific evidence used for
+// iran_status. OONI measurements are queried with probe_cc=IR; this is not the
+// GitHub runner or relay vantage used for the technical verification stage.
+type IranAssessment struct {
+	Status                     IranStatus  `json:"status"`
+	Source                     string      `json:"source"`
+	Checked                    bool        `json:"checked"`
+	Vantage                    IranVantage `json:"vantage"`
+	QueriedAt                  string      `json:"queried_at"`
+	MeasurementAt              string      `json:"measurement_at,omitempty"`
+	MeasurementWindowDays      int         `json:"measurement_window_days,omitempty"`
+	HistoricalMeasurementAt    string      `json:"historical_measurement_at,omitempty"`
+	HistoricalWindowDays       int         `json:"historical_window_days,omitempty"`
+}
+
+type IranVantage struct {
+	Type    string `json:"type"`
+	Country string `json:"country"`
+}
+
+type TCPObservation struct {
+	Reachable  bool
+	Status     string
+	Stage      string
+	Vantage    *ProbeVantage
+	RTTMS      *float64
+	Detail     string
+	ErrorClass string
 }
 
 // Summary aggregates the full run statistics.
@@ -133,7 +186,9 @@ func dpiHighRisk(b *bridge.Transport) bool {
 //
 //	score = 0.35*tcp + 0.40*ooni_factor + 0.25*ripe_factor
 func compositeScore(tcpOK bool, iranStatus IranStatus, ripeReachable *bool, ripeTested bool) float64 {
-	tcp := 0.0
+	// Runner-side TCP failure is not Iran-specific evidence; keep its score
+	// contribution neutral rather than treating inconclusive reachability as 0.
+	tcp := 0.5
 	if tcpOK {
 		tcp = 1.0
 	}
@@ -166,18 +221,36 @@ func compositeScore(tcpOK bool, iranStatus IranStatus, ripeReachable *bool, ripe
 // Main logic
 // ─────────────────────────────────────────────────────────────────────────────
 
+type ipInfoLookup interface {
+	Lookup(context.Context, string) (*ipinfo.Response, error)
+}
+
+type ooniClassifier interface {
+	Classify(context.Context, string) (ooni.OONIStatus, float64, bool)
+	LatestRecentMeasurementAt(string) (string, bool)
+	LatestTemporalMeasurementAt(string) (string, bool)
+}
+
 func classifyBridge(
 	ctx context.Context,
 	rawLine string,
 	timeout time.Duration,
-	ipClient *ipinfo.Client,
-	ooniClient *ooni.Client,
+	ipClient ipInfoLookup,
+	ooniClient ooniClassifier,
 ) BridgeResult {
-	result := BridgeResult{Line: rawLine}
+	result := BridgeResult{
+		Line: rawLine,
+		Verification: Verification{
+			Status: "inconclusive", Stage: "S0", ProbeType: "tcp",
+			Detail: "probe was not performed", ObservedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		},
+	}
 
 	b, err := bridge.ParseLine(rawLine)
 	if err != nil {
-		result.IranStatus = StatusTCPUnreachable
+		result.IranStatus = StatusIranUnknown
+		result.Verification.Detail = "bridge line could not be parsed; no network probe was performed"
+		result.Verification.ErrorClass = "invalid_bridge_line"
 		return result
 	}
 	result.Host = b.Host
@@ -187,28 +260,25 @@ func classifyBridge(
 	// ── Step 1: TCP reachability ──────────────────────────────────────────
 	bridgeCtx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	tcpOK := tcpProbeWithContext(bridgeCtx, b, timeout)
+	tcpObservation := tcpProbeWithContext(bridgeCtx, b, timeout)
+	tcpOK := tcpObservation.Reachable
 	result.TCPReachable = tcpOK
-
-	// Domain-fronted transports (webtunnel, meek_lite) whose line carries
-	// only a `url=`/`front=` endpoint and no literal IP:PORT (Host == "")
-	// cannot be reached by raw TCP — the Go bridge parser leaves Host empty
-	// for URL-only lines. A failed/missing TCP dial means nothing for them;
-	// they are TLS/HTTP-front protocols whose real reachability is decided
-	// by the front-domain probe downstream (webtunnel_probe.rs TLS+WebSocket
-	// Upgrade) and by the classification switch below. Exempt them from the
-	// unreachable early-return, exactly as snowflake already is; bridges
-	// that DO have a literal endpoint still hard-return unreachable here.
-	frontedEndpointless := b.Host == "" && b.Port == 0 &&
-		(b.Type == "webtunnel" || b.Type == "meek_lite")
-	if !tcpOK && b.Type != "snowflake" && !frontedEndpointless {
-		result.IranStatus = StatusTCPUnreachable
-		result.CompositeScore = compositeScore(false, StatusTCPUnreachable, nil, false)
-		return result
+	result.Verification = Verification{
+		Status: tcpObservation.Status,
+		Stage: tcpObservation.Stage,
+		Vantage: tcpObservation.Vantage,
+		RTTMS: tcpObservation.RTTMS,
+		ProbeType: "tcp",
+		Detail: tcpObservation.Detail,
+		ErrorClass: tcpObservation.ErrorClass,
+		ObservedAt: time.Now().UTC().Format(time.RFC3339Nano),
 	}
 
+	// Runner TCP is a separate S1 observation, not an Iran assessment. Never
+	// let its failure suppress the independent ASN/OONI checks below.
+
 	// ── Step 2: ASN lookup and Iranian ISP filter ─────────────────────────
-	if b.Host != "" && b.Host != "snowflake-broker" && net.ParseIP(b.Host) != nil {
+	if ipClient != nil && b.Host != "" && b.Host != "snowflake-broker" && net.ParseIP(b.Host) != nil {
 		info, err := ipClient.Lookup(ctx, b.Host)
 		if err == nil && info != nil {
 			asnStr := info.ASN()
@@ -245,63 +315,75 @@ func classifyBridge(
 
 	// ── Steps 5 & 6: OONI measurements (7-day + 90-day temporal) ─────────
 	//
-	// WebTunnel classification note:
-	//   WebTunnel bridges carry a domain-fronted HTTPS URL.  The parser
-	//   extracts the CDN hostname (e.g. cdn.example.com) as b.Host.
-	//   net.ParseIP(b.Host) == nil for domain names, so OONI cannot be
-	//   queried by IP.  Instead, a TLS-reachable WebTunnel bridge is
-	//   classified as iran_likely_working — CDN-fronted HTTPS traffic is
-	//   the hardest transport for Iran's DPI to block without collateral
-	//   damage to legitimate HTTPS sites.
-	//
-	// No-OONI-data fallback (obfs4 / vanilla):
-	//   New bridges not yet measured by Iranian OONI probes return
-	//   StatusUnknown.  A TCP-reachable bridge with a non-Iranian ASN and
-	//   no OONI blocking evidence is classified iran_likely_working with a
-	//   reduced composite score (0.60 vs 0.85 for OONI-confirmed).
-	//   The results_writer.py Tier-2 bucket ensures these still appear in
-	//   iran_likely_working_*.txt files.
+	// Domain-fronted transports and Snowflake cannot be classified as
+	// Iran-working from a GitHub runner's TCP probe. They remain unknown
+	// until an Iran-specific measurement (for example OONI probe_cc=IR)
+	// supports a region-specific assessment. A non-Iranian runner-side TCP
+	// connection is only S1 evidence and never upgrades an unknown bridge.
 	var iranStatus IranStatus = StatusIranUnknown
 
 	switch {
 	case b.Type == "snowflake":
-		// Snowflake uses WebRTC via the broker; no IP to probe.
-		// It is the hardest transport to block and optimistically marked working.
-		iranStatus = StatusIranLikelyWorking
+		// Snowflake uses WebRTC via the broker; a generic TCP result cannot
+		// establish either PT capability or Iran reachability.
+		iranStatus = StatusIranUnknown
 
 	case b.Type == "webtunnel" || b.Type == "meek_lite":
-		// Domain-fronted transport: OONI cannot classify by domain name.
-		// TLS reachability from the runner is the best available signal.
-		if tcpOK {
-			iranStatus = StatusIranLikelyWorking
-		} else {
-			iranStatus = StatusIranUnknown
-		}
+		// A runner-side front/TCP response is not an Iran-specific measurement.
+		iranStatus = StatusIranUnknown
 
 	case b.Host != "" && net.ParseIP(b.Host) != nil:
-		// IP-addressed bridge (obfs4, vanilla): query OONI.
-		ooniStatus, recurrenceRate, checked := ooniClient.Classify(ctx, b.Host)
-		result.OONIChecked = checked
-		result.RecurrenceRate = recurrenceRate
+		// IP-addressed bridge (obfs4, vanilla): query OONI independently of
+		// whether the generic runner-side S1 TCP connect succeeded.
+		if ooniClient != nil {
+			ooniStatus, recurrenceRate, checked := ooniClient.Classify(ctx, b.Host)
+			result.OONIChecked = checked
+			result.RecurrenceRate = recurrenceRate
 
-		switch ooniStatus {
-		case ooni.StatusLikelyWorking:
-			iranStatus = StatusIranLikelyWorking
-		case ooni.StatusLikelyBlocked:
-			iranStatus = StatusIranLikelyBlocked
-		case ooni.StatusFreqBlocked:
-			iranStatus = StatusIranFreqBlocked
-		default:
-			// No OONI data for this IP.
-			// TCP-reachable + non-Iranian ASN → classify as iran_likely_working
-			// with a lower composite score.  This is the common case for new
-			// bridges not yet measured by Iranian probes.
-			if tcpOK {
-				iranStatus = StatusIranUnknown // kept unknown; Tier-2 in results_writer
-			} else {
-				iranStatus = StatusTCPUnreachable
+			recentAt, hasRecentMeasurement := ooniClient.LatestRecentMeasurementAt(b.Host)
+			historicalAt, hasHistoricalMeasurement := ooniClient.LatestTemporalMeasurementAt(b.Host)
+			if checked {
+				assessment := &IranAssessment{
+					Status: StatusIranUnknown,
+					Source: "ooni_measurements_api",
+					Checked: true,
+					Vantage: IranVantage{Type: "ooni_probe", Country: "IR"},
+					QueriedAt: time.Now().UTC().Format(time.RFC3339Nano),
+				}
+				if hasRecentMeasurement {
+					assessment.MeasurementAt = recentAt
+					assessment.MeasurementWindowDays = 7
+				}
+				if hasHistoricalMeasurement {
+					assessment.HistoricalMeasurementAt = historicalAt
+					assessment.HistoricalWindowDays = 90
+				}
+				result.IranAssessment = assessment
+			}
+
+			switch ooniStatus {
+			case ooni.StatusLikelyWorking:
+				if hasRecentMeasurement {
+					iranStatus = StatusIranLikelyWorking
+				}
+			case ooni.StatusLikelyBlocked:
+				if hasRecentMeasurement {
+					iranStatus = StatusIranLikelyBlocked
+				}
+			case ooni.StatusFreqBlocked:
+				if hasHistoricalMeasurement {
+					iranStatus = StatusIranFreqBlocked
+				}
+			default:
+				// No classifiable OONI result with an original measurement time
+				// is inconclusive, regardless of a generic runner-side TCP result.
+				iranStatus = StatusIranUnknown
 			}
 		}
+		if result.IranAssessment != nil {
+			result.IranAssessment.Status = iranStatus
+		}
+
 
 	default:
 		// Unresolvable or non-IP, non-domain host
@@ -345,19 +427,48 @@ func lineForTransport(b *bridge.Transport) string {
 	return net.JoinHostPort(b.Host, fmt.Sprintf("%d", b.Port))
 }
 
-// tcpProbeWithContext attempts a TCP connection to the bridge within the
-// given timeout. Returns true if the connection succeeds, false otherwise.
-func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.Duration) bool {
+// tcpProbeWithContext performs only an S1 TCP connect and records a typed
+// result. It deliberately does not infer transport capability or Iran reachability.
+func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.Duration) TCPObservation {
 	if b.Host == "" || b.Port == 0 {
-		return false
+		return TCPObservation{
+			Status: "inconclusive",
+			Stage: "S0",
+			Detail: "no literal TCP endpoint is available to this probe stage",
+			ErrorClass: "endpoint_unavailable",
+		}
 	}
+	started := time.Now()
+	vantage := &ProbeVantage{Type: "github_actions_runner"}
 	dialer := net.Dialer{Timeout: timeout}
 	conn, err := dialer.DialContext(ctx, "tcp", lineForTransport(b))
 	if err != nil {
-		return false
+		status := "error"
+		errorClass := "tcp_connect_error"
+		detail := "TCP connection failed"
+		var netErr net.Error
+		switch {
+		case errors.Is(err, syscall.ECONNREFUSED):
+			status, errorClass, detail = "refused", "connection_refused", "TCP connection was refused"
+		case errors.Is(err, context.DeadlineExceeded) || errors.As(err, &netErr) && netErr.Timeout():
+			status, errorClass, detail = "timeout", "tcp_connect_timeout", "TCP connection timed out"
+		case errors.Is(err, context.Canceled):
+			status, errorClass, detail = "inconclusive", "probe_cancelled", "TCP probe was cancelled"
+		}
+		// S1 is reached only after a successful TCP connect. A refusal,
+		// timeout, or error is an S0 attempt with an explicit runner vantage.
+		return TCPObservation{Status: status, Stage: "S0", Vantage: vantage, Detail: detail, ErrorClass: errorClass}
 	}
-	conn.Close()
-	return true
+	_ = conn.Close()
+	rtt := float64(time.Since(started).Microseconds()) / 1000.0
+	return TCPObservation{
+		Reachable: true,
+		Status: "connected",
+		Stage: "S1",
+		Vantage: vantage,
+		RTTMS: &rtt,
+		Detail: "TCP connection established; no transport handshake was performed",
+	}
 }
 
 func main() {

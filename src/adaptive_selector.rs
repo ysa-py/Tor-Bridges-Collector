@@ -31,6 +31,7 @@ use std::collections::BTreeMap;
 use std::env;
 use std::path::Path;
 
+use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
 
 use crate::generated_json_loader::load_generated_json;
@@ -281,12 +282,24 @@ impl AdaptiveBridgeSelector {
         is_cdn_good(flags, asn_org)
     }
 
-    /// Mirror of `AdaptiveBridgeSelector.score(line, record)`.
+    /// Mirror of `AdaptiveBridgeSelector.score(line, record)` using the current
+    /// wall clock. Prefer [`Self::score_at`] when a publisher already has a run
+    /// timestamp.
+    pub fn score(&self, line: &str, record: &Value) -> Result<(f64, Value), AdaptiveSelectorError> {
+        self.score_at(line, record, Utc::now())
+    }
+
+    /// Score `record` against typed evidence freshness at `now`.
     ///
     /// Returns `(score, meta)` where `score` is the clamped composite score
     /// in `[0, 1]` and `meta` is the
     /// `{"adaptive_score": round(score, 4), "adaptive_signals": {…}}` dict.
-    pub fn score(&self, line: &str, record: &Value) -> Result<(f64, Value), AdaptiveSelectorError> {
+    pub fn score_at(
+        &self,
+        line: &str,
+        record: &Value,
+        now: DateTime<Utc>,
+    ) -> Result<(f64, Value), AdaptiveSelectorError> {
         let empty = Value::Object(Map::new());
         let iran = self.iran_by_line.get(line).unwrap_or(&empty);
         let sched = self.scheduler_by_line.get(line).unwrap_or(&empty);
@@ -302,16 +315,22 @@ impl AdaptiveBridgeSelector {
         .unwrap_or_default()
         .to_lowercase();
 
-        // tcp = iran.get("tcp_reachable", record.get("tcp_reachable"))
-        let tcp = if iran.get("tcp_reachable").is_some() {
-            iran.get("tcp_reachable")
-        } else {
-            record.get("tcp_reachable")
-        };
-        let tcp_factor = if tcp == Some(&Value::Bool(true)) || transport == "snowflake" {
+        // Typed observations distinguish refusal, successful TCP prefilter, and
+        // timeout/error/no test. Prefer any explicit verification object over
+        // legacy booleans; those booleans lack stage and vantage and are neutral.
+        let typed_source = [iran, record, sched, latest]
+            .into_iter()
+            .find(|source| crate::evidence_stamp::verification(source).is_some());
+        let typed_reachability = typed_source
+            .and_then(|source| crate::evidence_stamp::scoring_reachability_at(source, now));
+        let tcp_factor = if typed_source.is_some() {
+            typed_reachability
+                .map(|reachable| if reachable { 1.0 } else { 0.0 })
+                .unwrap_or(0.5)
+        } else if transport == "snowflake" {
+            // Snowflake has no stable endpoint for a direct TCP prefilter.
+            // This is a transport-selection prior, not a working observation.
             1.0
-        } else if tcp == Some(&Value::Bool(false)) {
-            0.0
         } else {
             0.5
         };
@@ -329,9 +348,16 @@ impl AdaptiveBridgeSelector {
             .and_then(Value::as_str)
             .unwrap_or("");
 
-        let asn_factor = if iran_status == "iran_likely_working" {
+        let iran_specific_working =
+            crate::evidence_stamp::has_iran_specific_working_assessment_at(iran, now);
+        let iran_specific_assessment =
+            crate::evidence_stamp::has_iran_specific_assessment_at(iran, now);
+        let asn_factor = if iran_specific_working {
             1.0
-        } else if iran_status == "iran_asn_blocked" {
+        } else if iran_status == "iran_asn_blocked"
+            || (matches!(iran_status, "iran_likely_blocked" | "iran_frequently_blocked")
+                && iran_specific_assessment)
+        {
             0.0
         } else if is_cdn_good(
             &flags,
@@ -347,27 +373,33 @@ impl AdaptiveBridgeSelector {
             0.5
         };
 
-        // ooni_factor = latest.get("ooni_factor")
-        let ooni_factor: f64 = match latest.get("ooni_factor") {
-            None | Some(Value::Null) => {
-                if iran_status == "iran_likely_working" {
-                    1.0
-                } else if iran_status == "iran_likely_blocked"
-                    || iran_status == "iran_frequently_blocked"
-                {
-                    0.0
-                } else {
-                    0.5
-                }
+        // Use an enriched OONI factor only when its source record reports at
+        // least one Iran-query measurement. Otherwise fall back to a checked
+        // Iran-specific assessment or the neutral factor.
+        let latest_has_iran_measurements = latest
+            .get("ooni_measurements_ir")
+            .and_then(Value::as_u64)
+            .is_some_and(|count| count > 0);
+        let ooni_factor: f64 = if latest_has_iran_measurements {
+            match latest.get("ooni_factor") {
+                Some(v) if !v.is_null() => match python_float(v) {
+                    Some(f) => f,
+                    None => {
+                        return Err(AdaptiveSelectorError::InvalidOoniFactor {
+                            value: v.to_string(),
+                        });
+                    }
+                },
+                _ => 0.5,
             }
-            Some(v) => match python_float(v) {
-                Some(f) => f,
-                None => {
-                    return Err(AdaptiveSelectorError::InvalidOoniFactor {
-                        value: v.to_string(),
-                    });
-                }
-            },
+        } else if iran_specific_working {
+            1.0
+        } else if matches!(iran_status, "iran_likely_blocked" | "iran_frequently_blocked")
+            && iran_specific_assessment
+        {
+            0.0
+        } else {
+            0.5
         };
 
         // ripe_factor
@@ -381,23 +413,22 @@ impl AdaptiveBridgeSelector {
             0.5
         };
 
-        // pt_factor
-        let pt_status = match sched.get("pt_status") {
-            None => String::new(),
-            Some(v) => python_str(v),
-        }
-        .to_lowercase();
-        let pt_factor = match pt_status.as_str() {
-            "reachable" | "quic_reachable" => 1.0,
-            "timeout" | "refused" | "error" => 0.0,
-            _ => 0.5,
+        // PT credit requires a valid positive S2+ protocol observation. Legacy
+        // pt_status strings cannot establish either success or failure.
+        let pt_factor = if typed_source
+            .is_some_and(|source| crate::evidence_stamp::has_verified_s2plus_at(source, now))
+        {
+            1.0
+        } else {
+            0.5
         };
-
-        // failure_penalty
-        let failed = matches!(
-            iran_status,
-            "tcp_unreachable" | "iran_likely_blocked" | "iran_frequently_blocked"
-        ) || pt_factor == 0.0;
+        // Inconclusive or unproven Iran labels do not add a failure penalty.
+        // An explicit typed refusal may; timeouts/errors remain neutral.
+        let iran_blocked =
+            matches!(iran_status, "iran_likely_blocked" | "iran_frequently_blocked")
+                && iran_specific_assessment;
+        let typed_refused = typed_reachability == Some(false);
+        let failed = iran_blocked || typed_refused;
         let default_closed = Value::String("closed".to_string());
         let circuit_state_raw = first_truthy_value(&[
             record.get("circuit_state"),
@@ -460,12 +491,21 @@ impl AdaptiveBridgeSelector {
         &self,
         items: &[(String, Value)],
     ) -> Result<Vec<(String, Value)>, AdaptiveSelectorError> {
+        self.select_at(items, Utc::now())
+    }
+
+    /// Rank and filter `items` using evidence freshness at `now`.
+    pub fn select_at(
+        &self,
+        items: &[(String, Value)],
+        now: DateTime<Utc>,
+    ) -> Result<Vec<(String, Value)>, AdaptiveSelectorError> {
         if !self.config.enabled {
             return Ok(items.to_vec());
         }
         let mut scored: Vec<(f64, String, Value)> = Vec::new();
         for (line, record) in items {
-            let (score, meta) = self.score(line, record)?;
+            let (score, meta) = self.score_at(line, record, now)?;
             if score >= self.config.min_score {
                 let mut enriched = record.clone();
                 if let Some(obj) = enriched.as_object_mut() {
@@ -648,6 +688,129 @@ mod tests {
     }
 
     #[test]
+    fn typed_inconclusive_tcp_uses_neutral_factor() {
+        let line = "obfs4 192.0.2.1:443 FINGERPRINT";
+        let selector = AdaptiveBridgeSelector::with_data(
+            AdaptiveConfig::default(),
+            BTreeMap::from([(
+                line.to_string(),
+                json!({
+                    "iran_status": "iran_unknown",
+                    "tcp_reachable": false,
+                    "verification": {
+                        "status": "timeout", "stage": "S1",
+                        "vantage": { "type": "cloudflare_worker" },
+                        "probe_type": "tcp",
+                        "observed_at": Utc::now().to_rfc3339()
+                    }
+                }),
+            )]),
+            BTreeMap::new(),
+            BTreeMap::new(),
+        );
+        let (_, meta) = selector.score(line, &json!({ "transport": "obfs4" })).unwrap();
+        assert_eq!(meta["adaptive_signals"]["tcp"], json!(0.5));
+    }
+
+    #[test]
+    fn legacy_pt_status_is_ignored_without_typed_verification() {
+        let line = "obfs4 192.0.2.9:443 FINGERPRINT";
+        let baseline_selector = AdaptiveBridgeSelector::with_data(
+            AdaptiveConfig::default(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+        );
+        let record = json!({"transport":"obfs4"});
+        let (baseline, _) = baseline_selector.score(line, &record).unwrap();
+
+        for status in ["reachable", "success", "refused", "failed", "blocked", "timeout"] {
+            let selector = AdaptiveBridgeSelector::with_data(
+                AdaptiveConfig::default(),
+                BTreeMap::new(),
+                BTreeMap::from([(line.to_string(), json!({"pt_status": status}))]),
+                BTreeMap::new(),
+            );
+            let (score, meta) = selector.score(line, &record).unwrap();
+            assert_eq!(score, baseline, "legacy pt_status {status:?} changed score");
+            assert_eq!(meta["adaptive_signals"]["pt"], json!(0.5));
+            assert_eq!(meta["adaptive_signals"]["failure_penalty"], json!(0.0));
+        }
+    }
+
+    #[test]
+    fn adaptive_pt_credit_requires_typed_positive_s2_protocol_evidence() {
+        let selector = AdaptiveBridgeSelector::with_data(
+            AdaptiveConfig::default(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+        );
+        let line = "obfs4 192.0.2.10:443 FINGERPRINT";
+        let s1 = json!({
+            "transport":"obfs4",
+            "verification": {
+                "status":"connected", "stage":"S1",
+                "vantage":{"type":"github_actions_runner"}, "probe_type":"tcp",
+                "observed_at": Utc::now().to_rfc3339()
+            }
+        });
+        let (_, s1_meta) = selector.score(line, &s1).unwrap();
+        assert_eq!(s1_meta["adaptive_signals"]["tcp"], json!(1.0));
+        assert_eq!(s1_meta["adaptive_signals"]["pt"], json!(0.5));
+
+        let s2 = json!({
+            "transport":"obfs4",
+            "verification": {
+                "status":"connected", "stage":"S2",
+                "vantage":{"type":"cloudflare_worker"}, "probe_type":"websocket-101",
+                "observed_at": Utc::now().to_rfc3339()
+            }
+        });
+        let (_, s2_meta) = selector.score(line, &s2).unwrap();
+        assert_eq!(s2_meta["adaptive_signals"]["tcp"], json!(1.0));
+        assert_eq!(s2_meta["adaptive_signals"]["pt"], json!(1.0));
+    }
+
+    #[test]
+    fn typed_refusal_can_add_failure_penalty_but_timeout_cannot() {
+        let cfg = AdaptiveConfig {
+            recent_failure_penalty: 0.2,
+            ..AdaptiveConfig::default()
+        };
+        let selector = AdaptiveBridgeSelector::with_data(
+            cfg,
+            BTreeMap::new(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+        );
+        let line = "obfs4 192.0.2.11:443 FINGERPRINT";
+        let refusal = json!({
+            "transport":"obfs4",
+            "verification": {
+                "status":"refused", "stage":"S0",
+                "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp",
+                "observed_at": Utc::now().to_rfc3339()
+            }
+        });
+        let (_, refusal_meta) = selector.score(line, &refusal).unwrap();
+        assert_eq!(refusal_meta["adaptive_signals"]["tcp"], json!(0.0));
+        assert_eq!(refusal_meta["adaptive_signals"]["failure_penalty"], json!(0.2));
+
+        let timeout = json!({
+            "transport":"obfs4",
+            "verification": {
+                "status":"timeout", "stage":"S0",
+                "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp",
+                "observed_at": Utc::now().to_rfc3339()
+            }
+        });
+        let (_, timeout_meta) = selector.score(line, &timeout).unwrap();
+        assert_eq!(timeout_meta["adaptive_signals"]["tcp"], json!(0.5));
+        assert_eq!(timeout_meta["adaptive_signals"]["failure_penalty"], json!(0.0));
+    }
+
+    #[test]
     fn score_empty_data_returns_neutral_factors() {
         let selector = AdaptiveBridgeSelector::with_data(
             AdaptiveConfig::default(),
@@ -684,6 +847,48 @@ mod tests {
         // = 0.25*1 + 0.15*0.5 + 0.25*0.5 + 0.15*0.5 + 0.20*0.5
         // = 0.25 + 0.075 + 0.125 + 0.075 + 0.10 = 0.625
         assert!((score - 0.625).abs() < 1e-9);
+    }
+
+    #[test]
+    fn inconclusive_and_legacy_tcp_failures_do_not_penalize_rust_scoring() {
+        let cfg = AdaptiveConfig {
+            recent_failure_penalty: 0.2,
+            ..AdaptiveConfig::default()
+        };
+        let selector = AdaptiveBridgeSelector::with_data(
+            cfg,
+            BTreeMap::new(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+        );
+        let baseline = selector.score("baseline", &json!({})).unwrap();
+        let legacy_failure = selector
+            .score(
+                "legacy",
+                &json!({"iran_status":"tcp_unreachable", "tcp_reachable":false}),
+            )
+            .unwrap();
+        let typed_timeout = selector
+            .score(
+                "timeout",
+                &json!({
+                    "tcp_reachable": false,
+                    "verification": {
+                        "status":"timeout",
+                        "stage":"S1",
+                        "vantage":{"type":"github_actions_runner", "region":"DE"},
+                        "probe_type":"tcp",
+                        "observed_at": Utc::now().to_rfc3339()
+                    }
+                }),
+            )
+            .unwrap();
+
+        assert_eq!(legacy_failure.0, baseline.0);
+        assert_eq!(legacy_failure.1["adaptive_signals"]["failure_penalty"], json!(0.0));
+        assert_eq!(typed_timeout.0, baseline.0);
+        assert_eq!(typed_timeout.1["adaptive_signals"]["tcp"], json!(0.5));
+        assert_eq!(typed_timeout.1["adaptive_signals"]["failure_penalty"], json!(0.0));
     }
 
     #[test]
@@ -753,7 +958,10 @@ mod tests {
     #[test]
     fn score_invalid_ooni_factor_returns_typed_error() {
         let mut latest = BTreeMap::new();
-        latest.insert("line1".to_string(), json!({"ooni_factor": [1, 2, 3]}));
+        latest.insert(
+            "line1".to_string(),
+            json!({"ooni_factor": [1, 2, 3], "ooni_measurements_ir": 1}),
+        );
         let selector = AdaptiveBridgeSelector::with_data(
             AdaptiveConfig::default(),
             BTreeMap::new(),
@@ -767,5 +975,42 @@ mod tests {
             err,
             AdaptiveSelectorError::InvalidOoniFactor { .. }
         ));
+    }
+
+    #[test]
+    fn score_at_treats_stale_typed_evidence_as_neutral() {
+        let selector = AdaptiveBridgeSelector::with_data(
+            AdaptiveConfig::default(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+            BTreeMap::new(),
+        );
+        let now = DateTime::parse_from_rfc3339("2026-10-10T12:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc);
+        let stale_observed = (now - chrono::Duration::seconds(11 * 60)).to_rfc3339();
+        let fresh_observed = (now - chrono::Duration::seconds(30)).to_rfc3339();
+        let record = |observed: String| {
+            json!({
+                "verification": {
+                    "status": "connected",
+                    "stage": "S2",
+                    "vantage": {"type": "cloudflare_worker", "colo": "FRA"},
+                    "probe_type": "webtunnel",
+                    "observed_at": observed
+                }
+            })
+        };
+        let stale = selector
+            .score_at("stale", &record(stale_observed), now)
+            .unwrap();
+        let fresh = selector
+            .score_at("fresh", &record(fresh_observed), now)
+            .unwrap();
+        assert_eq!(stale.1["adaptive_signals"]["tcp"], json!(0.5));
+        assert_eq!(stale.1["adaptive_signals"]["pt"], json!(0.5));
+        assert_eq!(fresh.1["adaptive_signals"]["tcp"], json!(1.0));
+        assert_eq!(fresh.1["adaptive_signals"]["pt"], json!(1.0));
+        assert!(fresh.0 > stale.0);
     }
 }

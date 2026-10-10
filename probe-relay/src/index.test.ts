@@ -108,19 +108,37 @@ describe("probeOneWithTimeout", () => {
     vi.useRealTimers();
   });
 
-  it("returns error result when probe times out", async () => {
-    // The neverResolve socket simulates a hung bridge.
-    // probeOneWithTimeout now uses a simple setTimeout-based timeout
-    // pattern that resolves (not rejects) on timeout for clean test handling.
+  it("treats an opened TCP socket with a silent readable stream as connected (H1 regression)", async () => {
+    // `opened` resolves immediately, but the peer sends no bytes and keeps
+    // the readable side open. The old reader.closed implementation waited
+    // for stream closure and falsely timed this live TCP connection out.
     vi.useRealTimers();
     mockConnect.mockReturnValue(makeFakeSocket(0, false, true));
+
+    const bridge = makeBridge("h1-silent", "vanilla", "93.184.216.34", 80);
+    const result = await probeOneWithTimeout(bridge, 100);
+
+    expect(result.success).toBe(true);
+    expect(result.status).toBe("connected");
+    expect(result.stage).toBe("S1");
+    expect(result.vantage.type).toBe("cloudflare_worker");
+    expect(result.observed_at).toMatch(/^\d{4}-\d{2}-\d{2}T.+Z$/);
+    expect(result.error).toBeNull();
+    expect(result.rtt_ms).toEqual(expect.any(Number));
+
+    vi.useFakeTimers();
+  });
+
+  it("returns a timeout result when socket.opened never settles", async () => {
+    vi.useRealTimers();
+    const socket = makeFakeSocket(0, false, true);
+    socket.opened = new Promise(() => {});
+    mockConnect.mockReturnValue(socket);
 
     const bridge = makeBridge("t1", "vanilla", "10.255.255.1", 443);
     const result = await probeOneWithTimeout(bridge, 100);
 
-    // Should have failed — the bridge never responded
     expect(result.success).toBe(false);
-    // Error message should indicate timeout
     expect(result.error).toContain("timed out");
 
     vi.useFakeTimers();
@@ -145,6 +163,15 @@ describe("probeOneWithTimeout", () => {
 function lastConnectArgs(): { address: any; options: any } {
   const last = mockConnect.mock.calls[mockConnect.mock.calls.length - 1];
   return { address: last[0], options: last[1] };
+}
+
+async function validWebSocketResponse(request: string): Promise<string> {
+  const key = request.match(/^Sec-WebSocket-Key: ([^\r\n]+)/m)?.[1];
+  if (!key) throw new Error("test request omitted Sec-WebSocket-Key");
+  const input = new TextEncoder().encode(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`);
+  const digest = await crypto.subtle.digest("SHA-1", input);
+  const accept = btoa(String.fromCharCode(...new Uint8Array(digest)));
+  return `HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ${accept}\r\n\r\n`;
 }
 
 describe("isDocumentationIpv6 (v2.5 fast-path skip predicate)", () => {
@@ -242,9 +269,11 @@ describe("httpsFrontProbe (tls class, raw-socket v2.5)", () => {
       host: "registration.refraction.network",
       port: 443,
     };
-    await expect(httpsFrontProbe(bridge, 5000)).rejects.toThrow(
-      /failed: TLS connect to registration\.refraction\.network:443 failed: TLS handshake failed/,
-    );
+    await expect(httpsFrontProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "error",
+      errorClass: "probe_error",
+      stage: "S0",
+    });
   });
 
   it("times out when the front accepts the request but never responds", async () => {
@@ -258,9 +287,11 @@ describe("httpsFrontProbe (tls class, raw-socket v2.5)", () => {
       port: 443,
       sni: "ajax.aspnetcdn.com",
     };
-    await expect(httpsFrontProbe(bridge, 200)).rejects.toThrow(
-      /timed out after 200ms waiting for response head/,
-    );
+    await expect(httpsFrontProbe(bridge, 200)).rejects.toMatchObject({
+      status: "timeout",
+      errorClass: "response_timeout",
+      stage: "S1",
+    });
   });
 
   it("skips documentation-prefix IPv6 placeholders without any network I/O", async () => {
@@ -289,9 +320,9 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
   it("succeeds only on HTTP 101 and sends the full upgrade request with Host = the true host", async () => {
     let writtenRequest = "";
     mockConnect.mockImplementation(() =>
-      makeFakeSocket(0, false, false, (req) => {
+      makeFakeSocket(0, false, false, async (req) => {
         writtenRequest = req;
-        return "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n";
+        return validWebSocketResponse(req);
       }),
     );
     const bridge = {
@@ -316,9 +347,9 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
   it("upgrades against the url= token path when the descriptor carries one", async () => {
     let writtenRequest = "";
     mockConnect.mockImplementation(() =>
-      makeFakeSocket(0, false, false, (req) => {
+      makeFakeSocket(0, false, false, async (req) => {
         writtenRequest = req;
-        return "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n";
+        return validWebSocketResponse(req);
       }),
     );
     const bridge = {
@@ -335,6 +366,88 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
     expect(writtenRequest).toContain("Host: jochenkessler.de\r\n");
   });
 
+  it("keeps a generic HTTP 101 at S1 without a valid accept signature", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n",
+      ),
+    );
+    await expect(
+      wsUpgradeFrontProbe({ id: "w-nosig", transport: "webtunnel", host: "front.example", port: 443 }, 5000),
+    ).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_signature_invalid",
+      stage: "S1",
+      httpStatus: 101,
+    });
+  });
+
+  it("rejects a wrong Sec-WebSocket-Accept even when the status is 101", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, () =>
+        "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: wrong\r\n\r\n",
+      ),
+    );
+    await expect(
+      wsUpgradeFrontProbe({ id: "w-badsig", transport: "webtunnel", host: "front.example", port: 443 }, 5000),
+    ).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_signature_invalid",
+      stage: "S1",
+    });
+  });
+
+  it("rejects duplicate Sec-WebSocket-Accept headers instead of picking first or last", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, async (req) => {
+        const valid = await validWebSocketResponse(req);
+        return valid.replace(
+          "\r\n\r\n",
+          "\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n",
+        );
+      }),
+    );
+    await expect(
+      wsUpgradeFrontProbe({ id: "w-dup", transport: "webtunnel", host: "front.example", port: 443 }, 5000),
+    ).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_signature_invalid",
+      stage: "S1",
+    });
+  });
+
+  it("rejects duplicate Upgrade headers instead of picking first or last", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, async (req) => {
+        const valid = await validWebSocketResponse(req);
+        return valid.replace("Upgrade: websocket\r\n", "Upgrade: websocket\r\nUpgrade: websocket\r\n");
+      }),
+    );
+    await expect(
+      wsUpgradeFrontProbe({ id: "w-dup-up", transport: "webtunnel", host: "front.example", port: 443 }, 5000),
+    ).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_signature_invalid",
+      stage: "S1",
+    });
+  });
+
+  it("does not treat HTTP/1.0 101 as a WebSocket transport handshake", async () => {
+    mockConnect.mockImplementation(() =>
+      makeFakeSocket(0, false, false, async (req) => {
+        const valid = await validWebSocketResponse(req);
+        return valid.replace("HTTP/1.1 101", "HTTP/1.0 101");
+      }),
+    );
+    await expect(
+      wsUpgradeFrontProbe({ id: "w-http10", transport: "webtunnel", host: "front.example", port: 443 }, 5000),
+    ).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_upgrade_rejected",
+      stage: "S1",
+    });
+  });
+
   it("rejects a non-101 HTTP response with the status line in the error", async () => {
     mockConnect.mockImplementation(() =>
       makeFakeSocket(0, false, false, () => "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n"),
@@ -345,9 +458,12 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
       host: "coellen.xyz",
       port: 443,
     };
-    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
-      /WebSocket upgrade rejected: HTTP\/1\.1 200 OK/,
-    );
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_upgrade_rejected",
+      stage: "S1",
+      httpStatus: 200,
+    });
   });
 
   it("reports the front's error status line verbatim (e.g. Cloudflare 521/525)", async () => {
@@ -360,9 +476,12 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
       host: "coellen.xyz",
       port: 443,
     };
-    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
-      /WebSocket upgrade rejected: HTTP\/1\.1 521 Web Server Is Down/,
-    );
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "websocket_upgrade_rejected",
+      stage: "S1",
+      httpStatus: 521,
+    });
   });
 
   it("throws a descriptive error on TLS connect failure", async () => {
@@ -375,9 +494,11 @@ describe("wsUpgradeFrontProbe (websocket-101 class, raw-socket v2.5)", () => {
       host: "vault.005184.xyz",
       port: 443,
     };
-    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toThrow(
-      /TLS front probe vault\.005184\.xyz:443\/ .* failed: TLS connect to vault\.005184\.xyz:443 failed: TLS handshake failed/,
-    );
+    await expect(wsUpgradeFrontProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "error",
+      errorClass: "probe_error",
+      stage: "S0",
+    });
   });
 
   it("skips documentation-prefix IPv6 placeholders without any network I/O", async () => {
@@ -469,9 +590,12 @@ describe("meekPostProbe (meek-post class, v2.6)", () => {
       port: 443,
       sni: "ajax.aspnetcdn.com",
     };
-    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
-      /meek POST \/ got HTTP\/1\.1 200 OK \(200 without meek's application\/octet-stream transact signature/,
-    );
+    await expect(meekPostProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "meek_signature_unverified",
+      stage: "S1",
+      httpStatus: 200,
+    });
   });
 
   it("surfaces non-200 statuses verbatim (meek-server 400 session-id layer, 500 ORPort layer)", async () => {
@@ -486,9 +610,11 @@ describe("meekPostProbe (meek-post class, v2.6)", () => {
       host: "meek.azureedge.net",
       port: 443,
     };
-    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
-      /meek POST \/ got HTTP\/1\.1 400 Bad Request/,
-    );
+    await expect(meekPostProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "meek_signature_unverified",
+      httpStatus: 400,
+    });
 
     mockConnect.mockReset();
     mockConnect.mockImplementation(() =>
@@ -496,9 +622,11 @@ describe("meekPostProbe (meek-post class, v2.6)", () => {
         "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\n\r\n",
       ),
     );
-    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
-      /meek POST \/ got HTTP\/1\.1 500 Internal Server Error/,
-    );
+    await expect(meekPostProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "meek_signature_unverified",
+      httpStatus: 500,
+    });
   });
 
   it("accepts the octet-stream signature case-insensitively (RFC 7230 field/value casing)", async () => {
@@ -527,9 +655,11 @@ describe("meekPostProbe (meek-post class, v2.6)", () => {
       port: 443,
       sni: "ajax.aspnetcdn.com",
     };
-    await expect(meekPostProbe(bridge, 5000)).rejects.toThrow(
-      /TLS front probe ajax\.aspnetcdn\.com:443\/ \(SNI=ajax\.aspnetcdn\.com, Host=meek\.azureedge\.net\) failed: TLS connect to ajax\.aspnetcdn\.com:443 failed: TLS connect timed out after 15000ms/,
-    );
+    await expect(meekPostProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "timeout",
+      errorClass: "probe_timeout",
+      stage: "S0",
+    });
   });
 
   it("skips documentation-prefix IPv6 placeholders without any network I/O", async () => {
@@ -683,9 +813,12 @@ describe("conjureRegistrationProbe (conjure-registration class, v2.6)", () => {
       sni: "cdn.sstatic.net",
       path: "/api",
     };
-    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toThrow(
-      /conjure registration POST \/api\/register-bidirectional got HTTP\/1\.1 404 Not Found/,
-    );
+    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "inconclusive",
+      errorClass: "conjure_signature_unverified",
+      stage: "S1",
+      httpStatus: 404,
+    });
   });
 
   it("throws the labeled error when the TLS connect times out (CI 34168134475 signature)", async () => {
@@ -698,9 +831,11 @@ describe("conjureRegistrationProbe (conjure-registration class, v2.6)", () => {
       host: "registration.refraction.network",
       port: 443,
     };
-    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toThrow(
-      /TLS front probe registration\.refraction\.network:443\/api\/register-bidirectional \(SNI=registration\.refraction\.network, Host=registration\.refraction\.network\) failed: TLS connect to registration\.refraction\.network:443 failed: TLS connect timed out after 15000ms/,
-    );
+    await expect(conjureRegistrationProbe(bridge, 5000)).rejects.toMatchObject({
+      status: "timeout",
+      errorClass: "probe_timeout",
+      stage: "S0",
+    });
   });
 
   it("skips documentation-prefix IPv6 placeholders without any network I/O", async () => {
@@ -746,7 +881,8 @@ describe("runHttpsEgressControls (v2.3 diagnostics)", () => {
     const controls = await runHttpsEgressControls(5000);
     expect(controls).toHaveLength(2);
     expect(controls.every((c) => !c.ok && c.http_status === null)).toBe(true);
-    expect(controls[0].error).toContain("socket hang up");
+    expect(controls[0].error).toBe("fetch_failed");
+    expect(JSON.stringify(controls)).not.toContain("socket hang up");
   });
 });
 
@@ -892,6 +1028,93 @@ describe("probeBridgesWithConcurrency", () => {
     expect(dialOrder.slice(0, 3)).toEqual(["10.0.0.1", "10.0.0.2", "10.0.0.3"]);
     // …and every bridge is dialed exactly once.
     expect([...dialOrder].sort()).toEqual(bridges.map((b) => b.host).sort());
+  });
+});
+
+describe("protected /probe handler", () => {
+  beforeEach(() => mockConnect.mockReset());
+
+  function makeRequest(body: string, token?: string, contentType = "application/json", extraHeaders: Record<string, string> = {}) {
+    const headers: Record<string, string> = { "Content-Type": contentType, ...extraHeaders };
+    if (token !== undefined) headers["X-Probe-Token"] = token;
+    return new Request("https://relay.example/probe", { method: "POST", headers, body });
+  }
+
+  it("fails closed with 503 when the relay secret is missing or blank", async () => {
+    const missing = await worker.fetch(makeRequest("[]", "attempt"), {});
+    expect(missing.status).toBe(503);
+    expect(await missing.json()).toMatchObject({ error: "service_unavailable" });
+    const blank = await worker.fetch(makeRequest("[]"), { PROBE_RELAY_TOKEN: "   " });
+    expect(blank.status).toBe(503);
+  });
+
+  it("rejects missing and incorrect tokens with 401 when configured", async () => {
+    for (const token of [undefined, "wrong-token"]) {
+      const response = await worker.fetch(
+        makeRequest("[]", token),
+        { PROBE_RELAY_TOKEN: "test-relay-secret" },
+      );
+      expect(response.status).toBe(401);
+      expect(await response.json()).toMatchObject({ error: "unauthorized" });
+    }
+    expect(mockConnect).not.toHaveBeenCalled();
+  });
+
+  it("validates media type, JSON shape, bridge fields and public target before connect()", async () => {
+    const invalidCases = [
+      ["[]", "text/plain"],
+      ["{", "application/json"],
+      [JSON.stringify([{ host: "127.0.0.1", port: 443, transport: "obfs4" }]), "application/json"],
+      [JSON.stringify([{ host: "example.com", port: 443, transport: "unsupported" }]), "application/json"],
+      [JSON.stringify([{ host: "example.com\r\nHost: evil", port: 443, transport: "obfs4" }]), "application/json"],
+    ] as const;
+    for (const [body, contentType] of invalidCases) {
+      const response = await worker.fetch(
+        makeRequest(body, "test-relay-secret", contentType),
+        { PROBE_RELAY_TOKEN: "test-relay-secret" },
+      );
+      expect(response.status).toBeGreaterThanOrEqual(400);
+      expect(response.status).toBeLessThan(500);
+      expect(await response.json()).toHaveProperty("error");
+    }
+    expect(mockConnect).not.toHaveBeenCalled();
+  });
+
+  it("rejects declared oversize bodies and invalid runtime limits before network activity", async () => {
+    const tooLarge = await worker.fetch(
+      makeRequest("[]", "test-relay-secret", "application/json", { "Content-Length": "65537" }),
+      { PROBE_RELAY_TOKEN: "test-relay-secret" },
+    );
+    expect(tooLarge.status).toBe(413);
+    const badConfig = await worker.fetch(
+      makeRequest("[]", "test-relay-secret"),
+      { PROBE_RELAY_TOKEN: "test-relay-secret", MAX_CONCURRENT_PROBES: "7" },
+    );
+    expect(badConfig.status).toBe(503);
+    expect(await badConfig.json()).toMatchObject({ error: "invalid_worker_configuration" });
+    expect(mockConnect).not.toHaveBeenCalled();
+  });
+
+  it("returns typed S1 evidence for a silent-live TCP target and emits no wildcard CORS", async () => {
+    mockConnect.mockReturnValue(makeFakeSocket(0, false, true));
+    const response = await worker.fetch(
+      makeRequest(JSON.stringify([{ id: "silent", host: "example.com", port: 443, transport: "vanilla" }]), "test-relay-secret"),
+      { PROBE_RELAY_TOKEN: "test-relay-secret" },
+    );
+    expect(response.status).toBe(200);
+    expect(response.headers.get("Access-Control-Allow-Origin")).toBeNull();
+    const body: any = await response.json();
+    expect(body.results).toHaveLength(1);
+    expect(body.results[0]).toMatchObject({
+      id: "silent",
+      success: true,
+      status: "connected",
+      stage: "S1",
+      vantage: { type: "cloudflare_worker", colo: null },
+      detail: "TCP connection established",
+      observed_at: expect.stringMatching(/^\d{4}-\d{2}-\d{2}T.+Z$/),
+    });
+    expect(body.results[0].rtt_ms).toEqual(expect.any(Number));
   });
 });
 
