@@ -1985,15 +1985,28 @@ jobs:
         # export/nin_cut_bridges.txt, data/nin_eligible.json) are authoritative.\n\
         cp -a analytics/nin/. . || true\necho \"Merge complete\"\n"
     - name: Stage 8s — Iran Anti-DPI Elite fusion (AI-consensus pack)
-      continue-on-error: true
       timeout-minutes: 5
       env:
         AI_ANTI_DPI_TOP_N: ${{ vars.AI_ANTI_DPI_TOP_N }}
       run: |
         set -euo pipefail
         bash scripts/build_iran_anti_dpi_elite.sh
-        test -s export/iran_anti_dpi_elite.txt || { echo "::error::Stage 8s produced no elite pack"; exit 1; }
-        echo "✅ Iran Anti-DPI Elite pack: $(wc -l < export/iran_anti_dpi_elite.txt) bridges"
+        # An empty pack is a truthful zero-yield result (no surviving
+        # PHANTOM/STEALTH/COVERT bridges this run). Require the file, not
+        # a non-zero byte count — `test -s` previously emitted ::error::
+        # on valid empty output.
+        test -f export/iran_anti_dpi_elite.txt || {
+          echo "::error::Stage 8s produced no elite pack file"
+          exit 1
+        }
+        elite_count=0
+        if [ -s export/iran_anti_dpi_elite.txt ]; then
+          set +e
+          elite_count=$(grep -c '^[^[:space:]#]' export/iran_anti_dpi_elite.txt)
+          set -e
+          elite_count=${elite_count:-0}
+        fi
+        echo "Iran Anti-DPI Elite pack: ${elite_count} bridges"
 
       # Stage 8t produces the two auxiliary manifests the
       # bridge-intelligence-report upload has always advertised but no stage
