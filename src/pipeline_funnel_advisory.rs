@@ -525,9 +525,7 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
 /// Emit GitHub Actions `::notice` annotations for the headline numbers.
 pub fn emit_notices(report: &Value) {
     if report.get("live_collection").and_then(Value::as_bool) == Some(false) {
-        println!(
-            "::notice title=FUNNEL::live_collection=false this_run_observation_counts=0"
-        );
+        println!("::notice title=FUNNEL::live_collection=false this_run_observation_counts=0");
     }
     if let Some(stages) = report.get("funnel").and_then(Value::as_array) {
         let parts: Vec<String> = stages

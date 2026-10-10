@@ -28,9 +28,7 @@ fn main() -> ExitCode {
                 reason = args.next().unwrap_or_default();
             }
             "--help" | "-h" => {
-                eprintln!(
-                    "Usage: this_run_snapshot --mode live|validation_noop [--reason TEXT]"
-                );
+                eprintln!("Usage: this_run_snapshot --mode live|validation_noop [--reason TEXT]");
                 return ExitCode::SUCCESS;
             }
             unknown => {

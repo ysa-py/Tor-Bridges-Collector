@@ -113,7 +113,11 @@ fn mode_document(mode: CollectionMode, reason: &str) -> String {
 
 /// Write the collection-mode stamp. Live mode does **not** wipe observation
 /// files — later stages own those paths.
-pub fn write_collection_mode(repo_root: &Path, mode: CollectionMode, reason: &str) -> io::Result<()> {
+pub fn write_collection_mode(
+    repo_root: &Path,
+    mode: CollectionMode,
+    reason: &str,
+) -> io::Result<()> {
     atomic_write(
         &repo_root.join(COLLECTION_MODE_PATH),
         &mode_document(mode, reason),
@@ -188,9 +192,10 @@ mod tests {
         )
         .unwrap();
 
-        let iran: Value =
-            serde_json::from_str(&fs::read_to_string(root.join("bridge/iran_results.json")).unwrap())
-                .unwrap();
+        let iran: Value = serde_json::from_str(
+            &fs::read_to_string(root.join("bridge/iran_results.json")).unwrap(),
+        )
+        .unwrap();
         assert_eq!(iran["bridges"].as_array().unwrap().len(), 0);
         assert_eq!(iran["summary"]["count"], 0);
 
@@ -206,15 +211,13 @@ mod tests {
         .unwrap();
         assert_eq!(testing.as_array().unwrap().len(), 0);
 
-        let pt: Value =
-            serde_json::from_str(&fs::read_to_string(root.join("data/pt_results.json")).unwrap())
-                .unwrap();
+        let pt: Value = serde_json::from_str(
+            &fs::read_to_string(root.join("data/pt_results.json")).unwrap(),
+        )
+        .unwrap();
         assert_eq!(pt.as_array().unwrap().len(), 0);
 
-        assert_eq!(
-            read_collection_mode(&root),
-            CollectionMode::ValidationNoop
-        );
+        assert_eq!(read_collection_mode(&root), CollectionMode::ValidationNoop);
         let _ = fs::remove_dir_all(&root);
     }
 
