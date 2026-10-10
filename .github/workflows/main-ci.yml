@@ -46,7 +46,20 @@ jobs:
           restore-keys: ${{ runner.os }}-cargo-gate-debug-
       - name: Build quality-gate tooling (Rust)
         id: quality_gate_tooling
-        run: cargo build --bin quality_gate --bin security_scan --bin validate_workflows
+        run: |
+          set -o pipefail
+          if ! cargo build --bin quality_gate --bin security_scan --bin validate_workflows 2>&1 | tee "${RUNNER_TEMP}/cargo-gate.log"; then
+            python3 - <<'PY'
+          from pathlib import Path
+          import os
+          log = Path(os.environ["RUNNER_TEMP"]) / "cargo-gate.log"
+          text = log.read_text(errors="replace") if log.exists() else ""
+          for line in text.splitlines():
+              if line.startswith("error") or "error[" in line or line.startswith("error:"):
+                  print(f"::error::{line[:900]}")
+          PY
+            exit 101
+          fi
       - name: Python-free gate (py-check)
         id: python_free_gate
         run: ./target/debug/quality_gate py-check .
