@@ -203,7 +203,7 @@ jobs:
 
     - name: Upload quality report
       if: always()
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: quality-report-${{ github.run_id }}
         path: data/quality_report.json
@@ -276,7 +276,7 @@ jobs:
         fi
         cp bridge-probe/Cargo.lock artifact-bin/Cargo.lock
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: bridge-probe-bin
         path: artifact-bin/
@@ -1019,7 +1019,7 @@ jobs:
     - name: Upload redacted live probe-relay canary evidence
       if: always()
       continue-on-error: true
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: probe-relay-smoke-${{ github.run_id }}
         path: ${{ runner.temp }}/probe-relay-smoke.json
@@ -1170,7 +1170,7 @@ jobs:
         set -euo pipefail
         cargo run --locked --quiet --bin pipeline -- --stage results --report data/stage6b_export_report.json
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: bridge-snapshot
         path: "bridge/\ndata/\nexport/\ndocs/\ndiagnostics/"
@@ -1263,7 +1263,7 @@ jobs:
         fi
 
     - name: Upload AI-Ranked Bridges
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: ai-iran-ranked-bridges-${{ github.run_id }}
         path: bridge/bridges_ai_iran_ranked.json
@@ -1313,7 +1313,7 @@ jobs:
         echo "Archive size: $(du -sh dist/*.tar.gz | cut -f1)"
 
     - name: Upload Final Package
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: TorShield-IR-Final-Package-${{ github.run_id }}
         path: 
@@ -1464,7 +1464,7 @@ jobs:
 
       # Stage 8r scores every bridge against Iran's 8-layer SIAM DPI pipeline
       # and outputs PHANTOM + STEALTH tier bridges for maximum evasion.
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: analytics-ml-zig
         path: "data/model_metadata.json\ndata/blocking_model.pkl\ndata/transport_weights.json\n\
@@ -1572,7 +1572,7 @@ jobs:
       # priority-ordered pack. Deterministic and advisory (runner-side
       # evidence). Emits the whole surviving pool unless the
       # AI_ANTI_DPI_TOP_N repository variable caps it — dynamic by default.
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: analytics-scoring
         path: "data/dpi_intelligence.json\ndata/ja3_rotation_plan.json\ndata/ja3_pipeline_report.json\n\
@@ -1629,7 +1629,7 @@ jobs:
       timeout-minutes: 20
       run: cargo run --locked --quiet --bin ech_fingerprint_evasion
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: analytics-ech
         path: "data/ech_report.json\nexport/ech_top_bridges.txt"
@@ -1683,7 +1683,7 @@ jobs:
       run: cargo run --locked --quiet --bin pipeline -- --stage nin-advanced --report 
         data/nin_advanced_pipeline_report.json
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: analytics-nin-advanced
         path: "data/nin_advanced_report.json\ndata/nin_advanced_pipeline_report.json\n\
@@ -1767,7 +1767,7 @@ jobs:
       #
       # Cache the pinned toolchain under RUNNER_TEMP so unchanged runs reuse
       # the extracted ~40 MB download instead of re-fetching it every cron.
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: analytics-nin
         path: "data/nin_eligible.json\ndata/nin_analysis.json\nexport/iran_nin_pack.txt\n\
@@ -1854,7 +1854,7 @@ jobs:
       run: cargo run --locked --quiet --bin pipeline -- --stage ct --report 
         data/ct_pipeline_report.json
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       with:
         name: analytics-static
         path: "data/next_gen_bridges.json\ndata/nextgen_pipeline_report.json\ndata/quantum_safe_report.json\n\
@@ -2351,7 +2351,7 @@ jobs:
           git push
         fi
 
-    - uses: actions/upload-artifact@v6
+    - uses: actions/upload-artifact@v7
       if: always()
       with:
         name: bridge-intelligence-report

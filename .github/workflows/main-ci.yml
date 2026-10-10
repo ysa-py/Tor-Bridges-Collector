@@ -117,7 +117,7 @@ jobs:
         run: ./target/debug/quality_gate report .
       - name: Upload quality report
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: quality-report
           path: data/quality_report.json
@@ -330,12 +330,12 @@ jobs:
           tar -czf TorShield-IR-Final-Package.tar.gz --exclude='*.tar.gz' dist/ bridge/ export/ data/
           mv TorShield-IR-Final-Package.tar.gz dist/
       - name: Upload final package
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: TorShield-IR-Final-Package-${{ github.run_id }}
           path: dist/TorShield-IR-Final-Package.tar.gz
       - name: Upload bridge-probe binary
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: bridge-probe-bin
           path: dist/bridge-probe
