@@ -745,7 +745,8 @@ mod tests {
         assert_eq!(report["collection_mode"], "validation_noop");
         let stages = report["funnel"].as_array().expect("funnel stages");
         for stage in stages {
-            assert_eq!(stage["count"], 0, "stage {} must be a this-run zero", stage["stage"]);
+            let name = stage["stage"].as_str().unwrap_or("?");
+            assert_eq!(stage["count"], 0, "{name}");
         }
         assert_eq!(report["relay_coverage"]["relay_observations"], 0);
         assert_eq!(report["relay_coverage"]["unobserved_candidates"], 0);

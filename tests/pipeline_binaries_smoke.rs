@@ -412,28 +412,20 @@ fn this_run_snapshot_validation_noop_writes_readable_empty_schemas() {
     );
     assert_success("this_run_snapshot --mode validation_noop", &output);
 
-    let iran: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(dir.join("bridge/iran_results.json")).unwrap(),
-    )
-    .expect("iran_results.json must parse");
+    let iran_text = std::fs::read_to_string(dir.join("bridge/iran_results.json")).unwrap();
+    let iran: serde_json::Value = serde_json::from_str(&iran_text).unwrap();
     assert_eq!(iran["bridges"].as_array().unwrap().len(), 0);
 
-    let history: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(dir.join("bridge/bridge_history.json")).unwrap(),
-    )
-    .expect("bridge_history.json must parse");
+    let history_text = std::fs::read_to_string(dir.join("bridge/bridge_history.json")).unwrap();
+    let history: serde_json::Value = serde_json::from_str(&history_text).unwrap();
     assert!(history.as_object().unwrap().is_empty());
 
-    let pt: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(dir.join("data/pt_results.json")).unwrap(),
-    )
-    .expect("pt_results.json must parse");
+    let pt_text = std::fs::read_to_string(dir.join("data/pt_results.json")).unwrap();
+    let pt: serde_json::Value = serde_json::from_str(&pt_text).unwrap();
     assert_eq!(pt.as_array().unwrap().len(), 0);
 
-    let mode: serde_json::Value = serde_json::from_str(
-        &std::fs::read_to_string(dir.join("data/collection_mode.json")).unwrap(),
-    )
-    .unwrap();
+    let mode_text = std::fs::read_to_string(dir.join("data/collection_mode.json")).unwrap();
+    let mode: serde_json::Value = serde_json::from_str(&mode_text).unwrap();
     assert_eq!(mode["mode"], "validation_noop");
     let _ = std::fs::remove_dir_all(&dir);
 }
