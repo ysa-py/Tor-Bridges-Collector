@@ -27,7 +27,7 @@ name: AI Ultra-Pro Cleanup
       dry_run:
         required: false
         type: boolean
-        default: false
+        default: true
 
 permissions:
   actions: write
@@ -44,7 +44,7 @@ concurrency:
 jobs:
   cleanup:
     name: Cleanup old workflow runs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - name: Checkout

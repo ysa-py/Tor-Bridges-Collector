@@ -116,7 +116,7 @@ jobs:
     # the rust-parity-tests job below are the strict superset of those gates.
     name: "Quality Gate"
     if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15
 
     steps:
@@ -215,7 +215,7 @@ jobs:
   build-rust:
     # Builds the bridge-probe pluggable-transport prober (unchanged).
     if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
     - uses: actions/checkout@v5
@@ -289,7 +289,7 @@ jobs:
     # (686+ module tests and all integration contracts). The Python originals
     # are retired, so no Python runtime is needed here any more.
     if: github.event_name != 'workflow_dispatch' || inputs.rerank_only != true
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 25
     steps:
     - uses: actions/checkout@v5
@@ -387,7 +387,7 @@ jobs:
     # PR/non-main validation cannot deploy to production or consume live secrets.
     # In `rerank_only` dispatch mode, the AI re-ranker uses committed input.
     if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.rerank_only != true)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate, build-rust]
     timeout-minutes: 90
     name: scrape-and-test (core)
@@ -1005,7 +1005,7 @@ jobs:
     needs:
     - scrape-and-test-finalize
     if: always()
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
 
     steps:
@@ -1092,7 +1092,7 @@ jobs:
     needs:
     - scrape-and-test-finalize
     - ai-rerank
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: always()
 
     steps:
@@ -1158,7 +1158,7 @@ jobs:
       dry_run: true
   analytics-ml-zig:
     name: analytics-ml-zig
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs:
     - scrape-and-test
@@ -1281,7 +1281,7 @@ jobs:
         if-no-files-found: ignore
   analytics-scoring:
     name: analytics-scoring
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 35
     needs:
     - scrape-and-test
@@ -1390,7 +1390,7 @@ jobs:
         if-no-files-found: ignore
   analytics-ech:
     name: analytics-ech
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs:
     - scrape-and-test
@@ -1442,7 +1442,7 @@ jobs:
         if-no-files-found: ignore
   analytics-nin-advanced:
     name: analytics-nin-advanced
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs:
     - scrape-and-test
@@ -1496,7 +1496,7 @@ jobs:
         if-no-files-found: ignore
   analytics-nin:
     name: analytics-nin
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     needs:
     - scrape-and-test
@@ -1581,7 +1581,7 @@ jobs:
         if-no-files-found: ignore
   analytics-static:
     name: analytics-static
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     needs:
     - scrape-and-test
@@ -1669,7 +1669,7 @@ jobs:
         if-no-files-found: ignore
   scrape-and-test-finalize:
     name: scrape-and-test (finalize)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     # Defense-in-depth publication lock: never cancel a run while it is
     # verifying or committing the bridge artifact.

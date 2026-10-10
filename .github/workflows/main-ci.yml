@@ -24,7 +24,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   quality-gate:
     name: Quality Gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -129,7 +129,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   build-rust:
     name: build-rust
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 30
     steps:
@@ -176,7 +176,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   rust-parity-tests:
     name: rust-parity-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [build-rust]
     timeout-minutes: 45
     steps:
@@ -217,7 +217,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   probe-relay-vitest:
     name: probe-relay-vitest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
       - name: Checkout
@@ -240,7 +240,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   scrape-and-test:
     name: scrape-and-test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 30
     steps:
@@ -269,7 +269,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   ai-bridge-reranker-iran:
     name: AI Bridge Re-Ranker (Iran)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [scrape-and-test]
     timeout-minutes: 20
     steps:
@@ -302,7 +302,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   package-final-artifact:
     name: Package Final Artifact
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [ai-bridge-reranker-iran]
     timeout-minutes: 15
     steps:
@@ -345,7 +345,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   ai-ultra-pro-cleanup:
     name: AI Ultra-Pro Cleanup
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [package-final-artifact]
     timeout-minutes: 10
     continue-on-error: true
@@ -360,7 +360,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   cross-compile-armv7:
     name: cross-compile-armv7
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 20
     steps:
@@ -378,14 +378,14 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   build-musl-x86_64:
     name: build-musl-x86_64
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Install musl tools
-        run: bash scripts/retry_cmd.sh sudo apt-get update && bash scripts/retry_cmd.sh sudo apt-get install -y musl-tools
+        run: bash scripts/retry_cmd.sh sudo apt-get update && bash scripts/retry_cmd.sh sudo apt-get install -y --no-install-recommends musl-tools
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Add x86_64 musl target
@@ -407,14 +407,14 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   shell-check:
     name: shell-check
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v5
       - name: Run ShellCheck
-        uses: ludeeus/action-shellcheck@master
+        uses: ludeeus/action-shellcheck@2.0.0
         with:
           severity: warning
           scandir: "./scripts"
@@ -430,7 +430,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   invariant-audit:
     name: invariant-audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 5
     steps:
@@ -444,7 +444,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   go-quality-gate:
     name: go-quality-gate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 10
     steps:
@@ -462,7 +462,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   security-audit:
     name: security-audit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 15
     steps:
@@ -480,7 +480,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   python-tests:
     name: python-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [quality-gate]
     timeout-minutes: 20
     continue-on-error: true
@@ -505,7 +505,7 @@ jobs:
   # ──────────────────────────────────────────────────────────────────────
   autonomous-sentinel-validation:
     name: autonomous-sentinel-validation
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     needs: [scrape-and-test, rust-parity-tests, go-quality-gate]
     timeout-minutes: 30
     # Preserve job-level override — never cancel sentinel validation
