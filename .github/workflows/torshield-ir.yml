@@ -110,7 +110,7 @@ jobs:
 
   # ────────────────────────────────────────────────────────────────────────────
   quality-gate:
-    # Skips on a rerank_only dispatch (see workflow_dispatch.inputs above).
+    # Documented skip: rerank_only dispatch (see workflow_dispatch.inputs).
     # Python tooling (py_compile / PyYAML lint / mypy / ruff / pytest) is
     # retired: the tree is 100% Rust now, and `cargo fmt`/`clippy`/`test` in
     # the rust-parity-tests job below are the strict superset of those gates.
@@ -322,10 +322,11 @@ jobs:
       run: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
     # GitHub does not automatically turn rustc's JSON diagnostics into check
-    # annotations. Re-run only after a lint failure and publish each warning as
-    # an annotation so the exact file, line, and lint remain visible in Checks.
+    # annotations. Replay clippy JSON whenever this job was not cancelled and
+    # publish each warning/error as an annotation. A clean replay still writes
+    # a visible summary (0 diagnostics) so the step is never a silent skip.
     - name: Annotate Clippy diagnostics
-      if: ${{ failure() && steps.clippy.outcome == 'failure' }}
+      if: ${{ !cancelled() }}
       run: |
         set -euo pipefail
         diagnostic_log="$RUNNER_TEMP/clippy-diagnostics.jsonl"
@@ -356,8 +357,29 @@ jobs:
           done
           set -e
         fi
-        echo "Clippy diagnostic replay exited with status $clippy_status; see the annotations above."
-        bash scripts/annotate_cargo_log.sh "$diagnostic_log"
+        diagnostic_count=0
+        if command -v jq >/dev/null 2>&1; then
+          diagnostic_count=$(jq -R -s '
+            split("\n")
+            | map(fromjson? | select(.reason == "compiler-message" and (.message.level == "warning" or .message.level == "error")))
+            | length
+          ' "$diagnostic_log")
+        fi
+        {
+          echo "### Clippy diagnostics"
+          echo "- replay_exit: \`${clippy_status}\`"
+          echo "- annotated_diagnostics: \`${diagnostic_count}\`"
+          if [ "${diagnostic_count}" = "0" ]; then
+            echo "- clean: no warning or error diagnostics to annotate"
+          fi
+        } >> "${GITHUB_STEP_SUMMARY}"
+        echo "Clippy diagnostic replay exited with status $clippy_status; annotated ${diagnostic_count} diagnostics."
+        # annotate_cargo_log.sh always emits an error-level log tail. Only
+        # invoke it when clippy actually failed so a clean run stays at 0
+        # check annotations.
+        if [ "$clippy_status" -ne 0 ]; then
+          bash scripts/annotate_cargo_log.sh "$diagnostic_log"
+        fi
 
     - name: Full Rust test suite (all features)
       run: |
@@ -383,10 +405,13 @@ jobs:
     # artifact + workflow validation). rust-parity-tests stays an independent
     # gate: it still runs and any failure still fails the workflow, but it no
     # longer delays the ~1h collection pipeline behind a full fmt/clippy/test
-    # suite that shares no files with it. Collection is restricted to main so
-    # PR/non-main validation cannot deploy to production or consume live secrets.
-    # In `rerank_only` dispatch mode, the AI re-ranker uses committed input.
-    if: github.ref == 'refs/heads/main' && (github.event_name != 'workflow_dispatch' || inputs.rerank_only != true)
+    # suite that shares no files with it. Live collection, Worker deploy, and
+    # Telegram stay main-only inside the job (self no-op on other refs) so
+    # PR/non-main validation cannot deploy or consume live secrets, but the
+    # job still runs and uploads the committed snapshot. Analytics then execute
+    # instead of cascade-skipping. In `rerank_only` dispatch mode this job
+    # remains a documented skip and the AI re-ranker uses committed input.
+    if: ${{ !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.rerank_only != true) }}
     runs-on: ubuntu-26.04
     needs: [quality-gate, build-rust]
     timeout-minutes: 90
@@ -422,12 +447,48 @@ jobs:
           ${{ runner.os }}-cargo-pipeline-
           ${{ runner.os }}-cargo-
 
+    # Live collection, Worker deploy, Telegram, and secret-backed probes stay
+    # on the default branch. Pull requests and other refs still run this job
+    # as a validation no-op: they upload the committed snapshot so analytics
+    # execute instead of cascade-skipping.
+    - name: Decide live collection
+      id: collection
+      run: |
+        set -euo pipefail
+        collect=false
+        reason='not the default branch; live collection, Telegram, and Worker deploy stay on main'
+        if [ "${GITHUB_EVENT_NAME}" != "pull_request" ] && [ "${GITHUB_REF}" = "refs/heads/main" ]; then
+          collect=true
+          reason='main-branch live collection'
+        fi
+        echo "collect=${collect}" >> "${GITHUB_OUTPUT}"
+        echo "reason=${reason}" >> "${GITHUB_OUTPUT}"
+        {
+          echo "### scrape-and-test collection mode"
+          echo "- live_collection: \`${collect}\`"
+          echo "- ${reason}"
+        } >> "${GITHUB_STEP_SUMMARY}"
+        echo "live_collection=${collect} (${reason})"
+        echo "Snapshot directories:"
+        for d in bridge data export docs diagnostics; do
+          if [ -d "$d" ]; then
+            echo "present: $d"
+          else
+            echo "absent: $d"
+          fi
+        done
+
     - name: Remove Vercel secrets (cleanup — additive step, Rust port)
       env:
         GH_PAT_AUTOFIX: ${{ secrets.GH_PAT_AUTOFIX }}
         GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
         GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
-      run: cargo run --quiet --features network --bin vercel_cleanup
+      run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
+        cargo run --quiet --features network --bin vercel_cleanup
 
       # IPv4 obfs4 verification is protocol-level: the collector starts this
       # client and confirms SOCKS CONNECT after the obfs4 layer. Package names
@@ -435,6 +496,10 @@ jobs:
       # collector applies its OBFS4_VERIFY_MIN_FRACTION TCP fallback.
     - name: Install obfs4proxy / lyrebird for protocol verification
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         sudo apt-get update
         sudo apt-get install -y obfs4proxy || true
@@ -444,7 +509,12 @@ jobs:
         fi
 
     - name: Build unified collector (release)
-      run: cargo build --release --bin tor-bridges-collector
+      run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
+        cargo build --release --bin tor-bridges-collector
 
     - name: Stage 00 — Autonomous self-heal pipeline diagnostics
       timeout-minutes: 5
@@ -453,8 +523,13 @@ jobs:
         PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
         CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: cargo run --quiet --bin self_heal -- --heal --strict --output 
-        diagnostics/torshield_ir_self_heal.json
+      run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
+        cargo run --quiet --bin self_heal -- --heal --strict --output \
+          diagnostics/torshield_ir_self_heal.json
 
     - uses: actions/download-artifact@v8
       with:
@@ -463,12 +538,20 @@ jobs:
 
     - name: Restore bridge-probe artifact
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         mkdir -p bridge-probe/target/release
         cp downloaded-bin/bridge-probe bridge-probe/target/release/bridge-probe
 
     - name: Set executable permissions
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         for file in \
           bridge-probe/target/release/bridge-probe; do
@@ -504,6 +587,10 @@ jobs:
         # pre-2026-09-09 unguarded merge (fallback path preserved).
         SEED_STRICT_IP_GUARD: ${{ vars.SEED_STRICT_IP_GUARD || 'true' }}
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         bash scripts/refresh_bridge_seed.sh
         echo "✅ Seeded the high-volume real-bridge pool into bridge_history.json"
@@ -524,13 +611,22 @@ jobs:
         COMMUNITY_MIRRORS: ${{ vars.COMMUNITY_MIRRORS || 'center2055/OnionHop-Bridges-Collector' }}
         COMMUNITY_MIRRORS_MERGE: ${{ vars.COMMUNITY_MIRRORS_MERGE || 'false' }}
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --features network --bin community_mirrors
 
     - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --features network --bin scraper
+      run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
+        cargo run --quiet --features network --bin scraper
 
       # One Rust entry point merges OnionHop.py's source/protocol behavior and
       # vip.py's history/README/ZIP/Telegram behavior. No Python collector is
@@ -560,6 +656,10 @@ jobs:
         # partial-result fallback fires as designed.
         STAGE_DEADLINE_SECS: '820'
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         DETECTED_WORKERS=$(( $(getconf _NPROCESSORS_ONLN 2>/dev/null || echo 4) * 8 ))
         [ "$DETECTED_WORKERS" -lt 16 ] && DETECTED_WORKERS=16
@@ -574,11 +674,20 @@ jobs:
     - name: Stage 0c — Broad source enrichment scraper
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --quiet --bin scraper
+      run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
+        cargo run --quiet --bin scraper
 
     - name: Stage 1 — Scraper (all sources)
       timeout-minutes: 10
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --features network --bin scraper
 
@@ -594,12 +703,20 @@ jobs:
         # single-transport payloads; docs/SUPPLY_EXPANSION.md section 7).
         MOAT_VARIANT_ROUNDS: '1'
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --features network --bin supply_extender
 
     - name: FAILSAFE — ensure bridge files always have content (Rust port)
       timeout-minutes: 3
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --bin failsafe_bridges
 
@@ -615,6 +732,10 @@ jobs:
 
     - name: Build iran_tester and probe_scheduler from source
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         CGO_ENABLED=0 GOOS=linux go build -o iran_tester ./cmd/iran_tester/
         CGO_ENABLED=0 GOOS=linux go build -o probe_scheduler ./cmd/probe_scheduler/
@@ -623,6 +744,10 @@ jobs:
     - name: Stage 2 — iran_tester (TCP/ASN/OONI/CDN analysis)
       timeout-minutes: 12
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         ./iran_tester \
           --input  bridge/bridge_list_for_testing.json \
@@ -639,6 +764,10 @@ jobs:
       env:
         RIPE_ATLAS_API_KEY: ${{ secrets.RIPE_ATLAS_API_KEY }}
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         timeout 300 ./probe_scheduler \
           --bridges data/iran_bridges.json \
           --port 8742 &
@@ -669,6 +798,10 @@ jobs:
         PROBE_RELAY_SMOKE_REPORT_PATH: ${{ runner.temp }}/probe-relay-smoke.json
         PROBE_RELAY_SMOKE_EVIDENCE_LABEL: live_edge
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         echo "═══ Stage 4-prep: Probe Relay Deployment + Smoke Test ═══"
 
@@ -899,6 +1032,10 @@ jobs:
         PROBE_RELAY_CHUNK_SIZE: '6'
         PROBE_RELAY_PARALLELISM: '8'
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
 
         # Bound the authenticated client inside the 25-minute Actions step.
@@ -950,6 +1087,10 @@ jobs:
         WEBTUNNEL_EXTRA_DRAWS: '1'
         WEBTUNNEL_DOCS_AUDIT: 'true'
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --features network --bin webtunnel_supply_advanced
 
@@ -958,6 +1099,10 @@ jobs:
     - name: Stage 4 cleanup — kill probe_scheduler
       if: always()
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         if [ -f /tmp/probe_sched.pid ]; then
           PID=$(cat /tmp/probe_sched.pid)
           echo "Terminating probe_scheduler PID=$PID"
@@ -972,17 +1117,30 @@ jobs:
     - name: Stage 5 — OONI correlator
       continue-on-error: true
       timeout-minutes: 8
-      run: cargo run --quiet --features network --bin ooni_correlator
+      run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
+        cargo run --quiet --features network --bin ooni_correlator
 
     - name: Stage 6a — Score bridges
       timeout-minutes: 8
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --bin pipeline -- --stage ml --stage rotation --report data/stage6a_score_report.json
 
     - name: Stage 6b — Export bridge files
       timeout-minutes: 5
       run: |
+        if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
+          echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          exit 0
+        fi
         set -euo pipefail
         cargo run --quiet --bin pipeline -- --stage results --report data/stage6b_export_report.json
 
@@ -1158,6 +1316,7 @@ jobs:
       dry_run: true
   analytics-ml-zig:
     name: analytics-ml-zig
+    if: ${{ !cancelled() && needs.scrape-and-test.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs:
@@ -1281,6 +1440,7 @@ jobs:
         if-no-files-found: ignore
   analytics-scoring:
     name: analytics-scoring
+    if: ${{ !cancelled() && needs.scrape-and-test.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 35
     needs:
@@ -1390,6 +1550,7 @@ jobs:
         if-no-files-found: ignore
   analytics-ech:
     name: analytics-ech
+    if: ${{ !cancelled() && needs.scrape-and-test.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs:
@@ -1442,6 +1603,7 @@ jobs:
         if-no-files-found: ignore
   analytics-nin-advanced:
     name: analytics-nin-advanced
+    if: ${{ !cancelled() && needs.scrape-and-test.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 30
     needs:
@@ -1496,6 +1658,7 @@ jobs:
         if-no-files-found: ignore
   analytics-nin:
     name: analytics-nin
+    if: ${{ !cancelled() && needs.scrape-and-test.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     needs:
@@ -1581,6 +1744,7 @@ jobs:
         if-no-files-found: ignore
   analytics-static:
     name: analytics-static
+    if: ${{ !cancelled() && needs.scrape-and-test.result == 'success' }}
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     needs:
@@ -1669,6 +1833,7 @@ jobs:
         if-no-files-found: ignore
   scrape-and-test-finalize:
     name: scrape-and-test (finalize)
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-26.04
     timeout-minutes: 60
     # Defense-in-depth publication lock: never cancel a run while it is
@@ -1685,6 +1850,52 @@ jobs:
     - analytics-nin
     - analytics-static
     steps:
+    - name: Require collection and analytics
+      env:
+        RERANK_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.rerank_only == true }}
+        SCRAPE: ${{ needs.scrape-and-test.result }}
+        ML_ZIG: ${{ needs.analytics-ml-zig.result }}
+        SCORING: ${{ needs.analytics-scoring.result }}
+        ECH: ${{ needs.analytics-ech.result }}
+        NIN_ADV: ${{ needs.analytics-nin-advanced.result }}
+        NIN: ${{ needs.analytics-nin.result }}
+        STATIC: ${{ needs.analytics-static.result }}
+      run: |
+        set -euo pipefail
+        {
+          echo "### finalize contract"
+          echo "- rerank_only: \`${RERANK_ONLY}\`"
+          echo "- scrape-and-test: \`${SCRAPE}\`"
+          echo "- analytics-ml-zig: \`${ML_ZIG}\`"
+          echo "- analytics-scoring: \`${SCORING}\`"
+          echo "- analytics-ech: \`${ECH}\`"
+          echo "- analytics-nin-advanced: \`${NIN_ADV}\`"
+          echo "- analytics-nin: \`${NIN}\`"
+          echo "- analytics-static: \`${STATIC}\`"
+        } >> "${GITHUB_STEP_SUMMARY}"
+        if [ "${RERANK_ONLY}" = "true" ]; then
+          echo "self no-op: rerank_only dispatch does not collect"
+          exit 0
+        fi
+        fail=0
+        check() {
+          name="$1"
+          result="$2"
+          echo "${name}=${result}"
+          if [ "${result}" != "success" ]; then
+            echo "::error::${name} result is ${result} (expected success)"
+            fail=1
+          fi
+        }
+        check scrape-and-test "${SCRAPE}"
+        check analytics-ml-zig "${ML_ZIG}"
+        check analytics-scoring "${SCORING}"
+        check analytics-ech "${ECH}"
+        check analytics-nin-advanced "${NIN_ADV}"
+        check analytics-nin "${NIN}"
+        check analytics-static "${STATIC}"
+        exit "${fail}"
+
     - uses: actions/checkout@v5
       with:
         fetch-depth: 0
@@ -1851,7 +2062,7 @@ jobs:
         UPLOAD="$(printf '%s' "${TELEGRAM_INPUT:-${TELEGRAM_REPO_VAR:-true}}" | tr '[:upper:]' '[:lower:]')"
         if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then
           echo "pull_request run — publication preview only; Telegram delivery deferred"
-          echo "to the main-branch run (mirrors the skipped Stage 11 git commit)."
+          echo "to the main-branch run (mirrors the Stage 11 publication no-op)."
           UPLOAD=false
         fi
         if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then
@@ -2013,14 +2224,23 @@ jobs:
         bash scripts/build_iran_cut_pack.sh
         echo "✅ Iran internet-cut pack: $(grep -c '^[^#]' export/iran_cut_pack.txt) bridges"
 
-      # Commits are only possible from first-party push/schedule/dispatch
-      # runs on the default branch — pull requests (especially forks) have a
-      # read-only token and a detached HEAD, so the step is skipped there.
+      # Publication commits stay on the default branch (read-only PR tokens /
+      # detached HEAD cannot push). The step still runs and self-no-ops so it
+      # is not recorded as a skipped step.
     - name: Stage 11 — Commit and push
-      if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
       timeout-minutes: 5
       run: |
         set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: Stage 11 publication commits stay on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          {
+            echo "### Stage 11"
+            echo "- publication_commit: self no-op (main-only)"
+            echo "- event: \`${GITHUB_EVENT_NAME}\`"
+            echo "- ref: \`${GITHUB_REF}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 0
+        fi
         git config --global user.name  "github-actions[bot]"
         git config --global user.email "github-actions[bot]@users.noreply.github.com"
         git pull origin main --rebase --autostash
@@ -2101,3 +2321,102 @@ jobs:
         if-no-files-found: ignore
 
   # ────────────────────────────────────────────────────────────────────────────
+
+  # Independent join: Quality Gate does not inspect later jobs. This job runs
+  # unless the workflow was cancelled and fails on unexpected skipped / failed /
+  # cancelled required jobs. rerank_only dispatch is a documented skip of the
+  # collection graph; only ai-rerank / package / cleanup are required then.
+  ci-contract:
+    name: CI contract
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    needs:
+    - quality-gate
+    - build-rust
+    - rust-parity-tests
+    - scrape-and-test
+    - analytics-ml-zig
+    - analytics-scoring
+    - analytics-ech
+    - analytics-nin-advanced
+    - analytics-nin
+    - analytics-static
+    - scrape-and-test-finalize
+    - ai-rerank
+    - package-final-artifact
+    - cleanup
+    steps:
+    - name: Require expected job results
+      env:
+        RERANK_ONLY: ${{ github.event_name == 'workflow_dispatch' && inputs.rerank_only == true }}
+        QUALITY_GATE: ${{ needs.quality-gate.result }}
+        BUILD_RUST: ${{ needs.build-rust.result }}
+        RUST_PARITY: ${{ needs.rust-parity-tests.result }}
+        SCRAPE: ${{ needs.scrape-and-test.result }}
+        ML_ZIG: ${{ needs.analytics-ml-zig.result }}
+        SCORING: ${{ needs.analytics-scoring.result }}
+        ECH: ${{ needs.analytics-ech.result }}
+        NIN_ADV: ${{ needs.analytics-nin-advanced.result }}
+        NIN: ${{ needs.analytics-nin.result }}
+        STATIC: ${{ needs.analytics-static.result }}
+        FINALIZE: ${{ needs.scrape-and-test-finalize.result }}
+        RERANK: ${{ needs.ai-rerank.result }}
+        PACKAGE: ${{ needs.package-final-artifact.result }}
+        CLEANUP: ${{ needs.cleanup.result }}
+      run: |
+        set -euo pipefail
+        fail=0
+        check() {
+          name="$1"
+          result="$2"
+          expected="$3"
+          echo "${name}=${result} (expected ${expected})"
+          if [ "${result}" != "${expected}" ]; then
+            echo "::error::${name} result is ${result} (expected ${expected})"
+            fail=1
+          fi
+        }
+        {
+          echo "### CI contract"
+          echo "- rerank_only: \`${RERANK_ONLY}\`"
+          echo "- quality-gate: \`${QUALITY_GATE}\`"
+          echo "- build-rust: \`${BUILD_RUST}\`"
+          echo "- rust-parity-tests: \`${RUST_PARITY}\`"
+          echo "- scrape-and-test: \`${SCRAPE}\`"
+          echo "- analytics-ml-zig: \`${ML_ZIG}\`"
+          echo "- analytics-scoring: \`${SCORING}\`"
+          echo "- analytics-ech: \`${ECH}\`"
+          echo "- analytics-nin-advanced: \`${NIN_ADV}\`"
+          echo "- analytics-nin: \`${NIN}\`"
+          echo "- analytics-static: \`${STATIC}\`"
+          echo "- scrape-and-test-finalize: \`${FINALIZE}\`"
+          echo "- ai-rerank: \`${RERANK}\`"
+          echo "- package-final-artifact: \`${PACKAGE}\`"
+          echo "- cleanup: \`${CLEANUP}\`"
+        } >> "${GITHUB_STEP_SUMMARY}"
+        if [ "${RERANK_ONLY}" = "true" ]; then
+          check ai-rerank "${RERANK}" success
+          check package-final-artifact "${PACKAGE}" success
+          check cleanup "${CLEANUP}" success
+        else
+          check quality-gate "${QUALITY_GATE}" success
+          check build-rust "${BUILD_RUST}" success
+          check rust-parity-tests "${RUST_PARITY}" success
+          check scrape-and-test "${SCRAPE}" success
+          check analytics-ml-zig "${ML_ZIG}" success
+          check analytics-scoring "${SCORING}" success
+          check analytics-ech "${ECH}" success
+          check analytics-nin-advanced "${NIN_ADV}" success
+          check analytics-nin "${NIN}" success
+          check analytics-static "${STATIC}" success
+          check scrape-and-test-finalize "${FINALIZE}" success
+          check ai-rerank "${RERANK}" success
+          check package-final-artifact "${PACKAGE}" success
+          check cleanup "${CLEANUP}" success
+        fi
+        if [ "${fail}" -ne 0 ]; then
+          echo "::error::CI contract failed: unexpected skipped/cancelled/failed required job"
+          exit 1
+        fi
+        echo "CI contract satisfied."
