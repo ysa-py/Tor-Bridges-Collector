@@ -427,6 +427,40 @@ def c14_workflow_automation_gates():
     )
 
 
+def c15_no_floating_runner_latest():
+    """Fail if any workflow still uses a floating *-latest GitHub-hosted runner.
+
+    GitHub migrates ubuntu-latest to Ubuntu 26.04 from 2026-10-19
+    (https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
+    Jobs must pin ubuntu-26.04 (or another explicit image) so the image cannot
+    change under a green pipeline.
+    """
+    wf_dir = os.path.join(REPO, ".github", "workflows")
+    pattern = re.compile(
+        r"^\s*runs-on:\s*(?P<label>[A-Za-z0-9._-]*-latest)\s*$"
+    )
+    bad = []
+    pinned = 0
+    for name in sorted(os.listdir(wf_dir)):
+        if not name.endswith((".yml", ".yaml")):
+            continue
+        path = os.path.join(wf_dir, name)
+        for lineno, line in enumerate(open(path, encoding="utf-8"), 1):
+            stripped = line.lstrip()
+            if stripped.startswith("#") or not stripped.startswith("runs-on:"):
+                continue
+            match = pattern.match(line)
+            if match:
+                bad.append(f"{name}:{lineno}:{match.group('label')}")
+            else:
+                pinned += 1
+    record(
+        "C15 no-floating-runner-latest",
+        not bad and pinned > 0,
+        f"{pinned} pinned runs-on" if not bad else "; ".join(bad[:12]),
+    )
+
+
 def main():
     print("═══ verify_repo_invariants ═══")
     c1_json_parse()
@@ -443,6 +477,7 @@ def main():
     c12_pq_scores_freshness()
     c13_nin_recommended_freshness()
     c14_workflow_automation_gates()
+    c15_no_floating_runner_latest()
     print(f"═══ {len(CHECKS) - len(FAILURES)}/{len(CHECKS)} checks passed ═══")
     if FAILURES:
         for f in FAILURES:
