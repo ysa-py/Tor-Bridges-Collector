@@ -435,4 +435,22 @@ mod tests {
         assert_eq!(TRANSPORT_DPI_PROFILE.len(), 5);
         assert_eq!(NEXT_GEN_TRANSPORTS.len(), 4);
     }
+
+    #[test]
+    fn update_dpi_report_empty_records_writes_valid_report() {
+        let dir = std::env::temp_dir().join(format!(
+            "dpi_empty_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out = dir.join("dpi_intelligence.json");
+        let report = update_dpi_report(&[], "2026-10-10T00:00:00+00:00", &out).unwrap();
+        assert!(out.exists());
+        assert!(report.is_object());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

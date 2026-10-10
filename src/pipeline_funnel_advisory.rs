@@ -31,6 +31,8 @@ use std::path::Path;
 
 use serde_json::{json, Value};
 
+use crate::this_run_snapshot::{read_collection_mode, CollectionMode};
+
 /// Advisory report path (new file; nothing existing is overwritten).
 pub const REPORT_FILE: &str = "data/funnel_advisory.json";
 
@@ -359,6 +361,8 @@ pub fn published_counts(bridge_dir: &Path) -> Value {
 /// Build the complete funnel report for a repository checkout.
 #[must_use]
 pub fn build_funnel_report(repo_root: &Path) -> Value {
+    let collection_mode = read_collection_mode(repo_root);
+    let live = collection_mode.live_collection();
     let history = read_json_file(&repo_root.join("bridge/bridge_history.json"));
     let testing_lines = read_bridge_lines(&repo_root.join("bridge/bridge_list_for_testing.json"));
     let relay = read_json_file(&repo_root.join("data/pt_results.json"))
@@ -403,10 +407,18 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
         })
         .count();
 
-    let coverage = relay_coverage(&testing_lines, &relay);
-    let census = history
-        .as_ref()
-        .map_or_else(|| non_routable_census(&Value::Null), non_routable_census);
+    let coverage = if collection_mode == CollectionMode::ValidationNoop {
+        relay_coverage(&[], &[])
+    } else {
+        relay_coverage(&testing_lines, &relay)
+    };
+    let census = if collection_mode == CollectionMode::ValidationNoop {
+        non_routable_census(&json!({}))
+    } else {
+        history
+            .as_ref()
+            .map_or_else(|| non_routable_census(&Value::Null), non_routable_census)
+    };
     let webtunnel_lines: Vec<String> = testing_lines
         .iter()
         .filter(|line| line.trim_start_matches("Bridge ").starts_with("webtunnel"))
@@ -418,7 +430,7 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
         .and_then(Value::as_u64)
         .unwrap_or(0) as usize;
 
-    let stages = [
+    let mut stages = [
         FunnelStage {
             name: "sources_fetched_lines",
             count: supply
@@ -472,10 +484,26 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
         },
     ];
 
+    // A validation no-op must not treat leftover committed observation files
+    // (especially data/pt_results.json) as this run's funnel. Zero every
+    // this-run count and record the reason; FUNNEL notices stay, with honest 0s.
+    if collection_mode == CollectionMode::ValidationNoop {
+        for stage in &mut stages {
+            stage.count = 0;
+        }
+    }
+
     json!({
         "generated_at": chrono::Utc::now().to_rfc3339(),
         "module": "pipeline_funnel_advisory",
         "advisory_only": true,
+        "live_collection": live,
+        "collection_mode": collection_mode.as_str(),
+        "this_run_zero_reason": if live {
+            Value::Null
+        } else {
+            json!("live collection did not run on this ref; observation counts are this-run zeros, not prior-run leftovers")
+        },
         "funnel": stages.iter().map(FunnelStage::to_json).collect::<Vec<_>>(),
         "sources": source_yield(supply.as_ref(), community.as_ref()),
         "non_routable_census": census,
@@ -496,6 +524,11 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
 
 /// Emit GitHub Actions `::notice` annotations for the headline numbers.
 pub fn emit_notices(report: &Value) {
+    if report.get("live_collection").and_then(Value::as_bool) == Some(false) {
+        println!(
+            "::notice title=FUNNEL::live_collection=false this_run_observation_counts=0"
+        );
+    }
     if let Some(stages) = report.get("funnel").and_then(Value::as_array) {
         let parts: Vec<String> = stages
             .iter()
@@ -675,6 +708,55 @@ mod tests {
             false
         );
         emit_notices(&report); // must not panic
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn validation_noop_zeros_stale_this_run_observations() {
+        use crate::this_run_snapshot::{apply, CollectionMode};
+
+        let dir = std::env::temp_dir().join(format!(
+            "funnel_noop_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(dir.join("bridge")).unwrap();
+        std::fs::create_dir_all(dir.join("data")).unwrap();
+        std::fs::write(
+            dir.join("data/pt_results.json"),
+            r#"[{"host":"1.2.3.4","port":443,"success":true}]"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("data/supply_diagnostics.json"),
+            r#"{"sources":[{"source":"moat_builtin","fetched_lines":23}]}"#,
+        )
+        .unwrap();
+        apply(
+            &dir,
+            CollectionMode::ValidationNoop,
+            "not the default branch",
+        )
+        .unwrap();
+
+        let report = build_funnel_report(&dir);
+        assert_eq!(report["live_collection"], false);
+        assert_eq!(report["collection_mode"], "validation_noop");
+        let stages = report["funnel"].as_array().expect("funnel stages");
+        for stage in stages {
+            assert_eq!(
+                stage["count"],
+                0,
+                "stage {} must be a this-run zero",
+                stage["stage"]
+            );
+        }
+        assert_eq!(report["relay_coverage"]["relay_observations"], 0);
+        assert_eq!(report["relay_coverage"]["unobserved_candidates"], 0);
+        emit_notices(&report);
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

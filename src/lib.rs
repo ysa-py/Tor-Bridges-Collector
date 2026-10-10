@@ -95,6 +95,7 @@ pub mod supply_extension_v2;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
+pub mod this_run_snapshot;
 /// Production-grade unified collector for the legacy OnionHop.py and vip.py
 /// bridge-list workflows. It is excluded only from the CI-only ARMv7-musl
 /// type-check because that target has no native TLS C toolchain; ARM GNU and

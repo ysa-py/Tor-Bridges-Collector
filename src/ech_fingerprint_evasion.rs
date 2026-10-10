@@ -824,6 +824,18 @@ mod tests {
     }
 
     #[test]
+    fn run_pipeline_empty_array_writes_empty_report() {
+        let tmp = tempfile_dir();
+        let bridge_json = tmp.join("bridge_list_for_testing.json");
+        let report = tmp.join("ech_report.json");
+        let export = tmp.join("ech_top_bridges.txt");
+        std::fs::write(&bridge_json, "[]\n").unwrap();
+        run_pipeline(&bridge_json, &report, &export, &NoProbe).unwrap();
+        let rep: Value = serde_json::from_str(&std::fs::read_to_string(&report).unwrap()).unwrap();
+        assert_eq!(rep["bridges"].as_array().unwrap().len(), 0);
+    }
+
+    #[test]
     fn run_pipeline_missing_input_returns_io_error() {
         let tmp = tempfile_dir();
         let err = run_pipeline(

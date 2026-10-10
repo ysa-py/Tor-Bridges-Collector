@@ -469,12 +469,27 @@ jobs:
           echo "- ${reason}"
         } >> "${GITHUB_STEP_SUMMARY}"
         echo "live_collection=${collect} (${reason})"
+        if [ "${collect}" = "true" ]; then
+          cargo run --quiet --bin this_run_snapshot -- --mode live --reason "${reason}"
+        else
+          # Valid empty this-run schemas (zero bridges, not fabricated rows)
+          # so analytics do not exit 1 on missing JSON and FUNNEL cannot
+          # count a prior live run's data/pt_results.json as this run.
+          cargo run --quiet --bin this_run_snapshot -- --mode validation_noop --reason "${reason}"
+        fi
         echo "Snapshot directories:"
         for d in bridge data export docs diagnostics; do
           if [ -d "$d" ]; then
             echo "present: $d"
           else
             echo "absent: $d"
+          fi
+        done
+        for f in bridge/iran_results.json bridge/bridge_history.json bridge/bridge_list_for_testing.json data/pt_results.json data/collection_mode.json; do
+          if [ -f "$f" ]; then
+            echo "present: $f"
+          else
+            echo "absent: $f"
           fi
         done
 
