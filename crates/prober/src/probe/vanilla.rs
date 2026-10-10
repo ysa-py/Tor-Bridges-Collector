@@ -128,7 +128,7 @@ mod tests {
 
     #[test]
     fn supported_versions_are_non_empty_and_sorted() {
-        assert!(SUPPORTED_VERSIONS.first().is_some());
+        assert_eq!(SUPPORTED_VERSIONS, [3, 4, 5]);
         assert!(SUPPORTED_VERSIONS.windows(2).all(|w| w[0] < w[1]));
     }
 }
