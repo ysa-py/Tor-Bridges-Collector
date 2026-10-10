@@ -20,6 +20,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use chrono::Utc;
+
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use base64::Engine;
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
@@ -146,13 +148,13 @@ fn snowflake_capability_result(line: String) -> Value {
         "host": null,
         "port": null,
         "tcp_reachable": false,
-        "transport_capable": true,
-        "probe_status": "transport_capability",
-        "probe_method": "snowflake-webRTC-capability",
+        "transport_capable": false,
+        "probe_status": "inconclusive",
+        "probe_method": "none",
         "latency_ms": null,
         "iran_status": "iran_unknown",
-        "evidence_scope": "Transport capability only; no TCP socket or Iran-vantage assertion was made.",
-        "composite_score": 0.55,
+        "evidence_scope": "Snowflake requires a broker/WebRTC protocol probe; no test was performed and no capability is asserted.",
+        "composite_score": 0.5,
     })
 }
 
@@ -224,8 +226,8 @@ mod tls_probe {
     }
 
     /// Probe a WebTunnel bridge by performing TLS + HTTP WebSocket Upgrade to
-    /// the front domain extracted from the `url=` parameter. Returns
-    /// `transport_capable: true` when the front responds with HTTP 101.
+    /// the front domain extracted from the `url=` parameter. A transport
+    /// signature is recorded only after validating the full RFC 6455 response.
     pub async fn probe_webtunnel_front(line: String, timeout_duration: Duration) -> Value {
         let https_re = Regex::new(r"(?i)https?://([^/:\s]+)(?::(\d+))?").unwrap();
         let (host, port) = match https_re.captures(&line) {
@@ -250,7 +252,7 @@ mod tls_probe {
                     "latency_ms": null,
                     "iran_status": "iran_unknown",
                     "evidence_scope": "WebTunnel line has no url= front domain; cannot probe.",
-                    "composite_score": 0.0,
+                    "composite_score": 0.5,
                 });
             }
         };
@@ -271,8 +273,8 @@ mod tls_probe {
                     "probe_status": "refused",
                     "probe_method": "websocket-upgrade",
                     "latency_ms": started.elapsed().as_millis(),
-                    "iran_status": "tcp_unreachable",
-                    "evidence_scope": "TCP connect to WebTunnel front domain failed (refused).",
+                    "iran_status": "iran_unknown",
+                    "evidence_scope": "TCP connect from the runner to the WebTunnel front domain was refused; no Iran-vantage result was obtained.",
                     "composite_score": 0.0,
                 });
             }
@@ -287,9 +289,9 @@ mod tls_probe {
                     "probe_status": "timeout",
                     "probe_method": "websocket-upgrade",
                     "latency_ms": started.elapsed().as_millis(),
-                    "iran_status": "tcp_unreachable",
-                    "evidence_scope": "TCP connect to WebTunnel front domain timed out.",
-                    "composite_score": 0.0,
+                    "iran_status": "iran_unknown",
+                    "evidence_scope": "TCP connect from the runner to the WebTunnel front domain timed out; no Iran-vantage result was obtained.",
+                    "composite_score": 0.5,
                 });
             }
         };
@@ -310,7 +312,7 @@ mod tls_probe {
                     "latency_ms": started.elapsed().as_millis(),
                     "iran_status": "iran_unknown",
                     "evidence_scope": "WebTunnel front domain is not a valid TLS server name.",
-                    "composite_score": 0.3,
+                    "composite_score": 0.5,
                 });
             }
         };
@@ -333,7 +335,7 @@ mod tls_probe {
                     "latency_ms": started.elapsed().as_millis(),
                     "iran_status": "iran_unknown",
                     "evidence_scope": "TLS handshake to WebTunnel front domain failed.",
-                    "composite_score": 0.3,
+                    "composite_score": 0.5,
                 });
             }
         };
@@ -360,7 +362,7 @@ mod tls_probe {
                 "latency_ms": started.elapsed().as_millis(),
                 "iran_status": "iran_unknown",
                 "evidence_scope": "TLS to WebTunnel front succeeded but upgrade request write failed.",
-                "composite_score": 0.4,
+                "composite_score": 0.5,
             });
         }
 
@@ -380,13 +382,22 @@ mod tls_probe {
                     "latency_ms": started.elapsed().as_millis(),
                     "iran_status": "iran_unknown",
                     "evidence_scope": "TLS to WebTunnel front succeeded but no HTTP response received.",
-                    "composite_score": 0.4,
+                    "composite_score": 0.5,
                 });
             }
         };
 
         let response_text = String::from_utf8_lossy(&response[..n]);
-        let has_101 = response_text.contains("101");
+        let signature_verified =
+            torshield_ir_ultra::websocket_signature::has_valid_upgrade_signature(
+                &response_text,
+                &key,
+            );
+        let status_line = response_text.split("\r\n").next().unwrap_or_default();
+        let returned_101 = status_line
+            .split_ascii_whitespace()
+            .nth(1)
+            .is_some_and(|status| status == "101");
         let elapsed = started.elapsed().as_millis();
 
         json!({
@@ -395,20 +406,23 @@ mod tls_probe {
             "host": host,
             "port": port,
             "tcp_reachable": true,
-            "transport_capable": has_101,
-            "probe_status": if has_101 { "websocket_101" } else { "http_response" },
+            "transport_capable": signature_verified,
+            "websocket_signature_verified": signature_verified,
+            "probe_status": if signature_verified { "websocket_101" } else { "http_response" },
             "probe_method": "websocket-upgrade",
             "latency_ms": elapsed,
             "iran_status": "iran_unknown",
             "evidence_scope": format!(
                 "TLS+WebSocket Upgrade probe to WebTunnel front domain. {}",
-                if has_101 {
-                    "Front returned 101 Switching Protocols — WebTunnel handshake succeeded."
+                if signature_verified {
+                    "HTTP 101 and the RFC 6455 WebSocket accept signature were verified; no bridge-specific Tor handshake was performed."
+                } else if returned_101 {
+                    "Front returned HTTP 101 but the WebSocket upgrade signature was missing or invalid; kept at S1."
                 } else {
-                    "Front responded but did not return 101. CDN front is alive but bridge may be offline."
+                    "Front returned a generic HTTP response; the front is reachable but no transport handshake was verified."
                 }
             ),
-            "composite_score": if has_101 { 0.7 } else { 0.45 },
+            "composite_score": if signature_verified { 0.7 } else { 0.45 },
         })
     }
 } // mod tls_probe
@@ -446,11 +460,104 @@ async fn probe_webtunnel_front(line: String, _timeout_duration: Duration) -> Val
         "latency_ms": null,
         "iran_status": "iran_unknown",
         "evidence_scope": "ARMv7-musl is a CI-only type-check target — WebTunnel TLS probe not available on this platform.",
-        "composite_score": 0.0,
+        "composite_score": 0.5,
     })
 }
 
 async fn probe_one(line: String, timeout_duration: Duration) -> Value {
+    let result = probe_one_unstamped(line, timeout_duration).await;
+    stamp_probe_evidence(result)
+}
+
+fn stamp_probe_evidence(mut result: Value) -> Value {
+    let method = result
+        .get("probe_method")
+        .and_then(Value::as_str)
+        .unwrap_or("none");
+    let probe_status = result
+        .get("probe_status")
+        .and_then(Value::as_str)
+        .unwrap_or("inconclusive");
+    let (status, stage, probe_type) = match method {
+        "tcp-connect" => match probe_status {
+            "reachable" => ("connected", "S1", "tcp"),
+            "refused" => ("refused", "S0", "tcp"),
+            "timeout" => ("timeout", "S0", "tcp"),
+            "error" => ("error", "S0", "tcp"),
+            _ => ("inconclusive", "S0", "tcp"),
+        },
+        "websocket-upgrade" => match probe_status {
+            "refused" => ("refused", "S0", "tcp"),
+            "timeout" => ("timeout", "S0", "tcp"),
+            "websocket_101"
+                if result
+                    .get("websocket_signature_verified")
+                    .and_then(Value::as_bool)
+                    == Some(true) =>
+            {
+                ("connected", "S2", "websocket-101")
+            }
+            "websocket_101" | "http_response" => {
+                // Without a validated RFC 6455 accept signature, even an HTTP
+                // 101 is only a reachable front response (S1).
+                ("connected", "S1", "websocket-front-check")
+            }
+            "tls_invalid_name" => ("connected", "S1", "tcp"),
+            "tls_reachable" => ("connected", "S1", "tls"),
+            "tls_handshake_failed" => ("error", "S1", "tls"),
+            _ => ("inconclusive", "S0", "none"),
+        },
+        _ => ("inconclusive", "S0", "none"),
+    };
+    let observed_at = Utc::now().to_rfc3339();
+    let rtt_ms = result
+        .get("latency_ms")
+        .and_then(Value::as_u64)
+        .map(|millis| json!(millis as f64))
+        .unwrap_or(Value::Null);
+    let observed_attempt = matches!(
+        (method, probe_status),
+        ("tcp-connect", "reachable" | "refused" | "timeout" | "error")
+            | (
+                "websocket-upgrade",
+                "refused"
+                    | "timeout"
+                    | "tls_invalid_name"
+                    | "tls_handshake_failed"
+                    | "tls_reachable"
+                    | "websocket_101"
+                    | "http_response"
+            )
+    );
+    let vantage = if observed_attempt {
+        json!({"type": "github_actions_runner", "region": null})
+    } else {
+        Value::Null
+    };
+    let detail = result
+        .get("evidence_scope")
+        .and_then(Value::as_str)
+        .unwrap_or("No probe detail was recorded.");
+    let error_class = match status {
+        "timeout" => Some("timeout"),
+        "error" => Some(probe_status),
+        _ => None,
+    };
+    result["verification"] = json!({
+        "status": status,
+        "stage": stage,
+        "vantage": vantage,
+        "rtt_ms": rtt_ms,
+        "probe_type": probe_type,
+        "detail": detail,
+        "error_class": error_class,
+        "observed_at": observed_at,
+        "source": "bridge_tester",
+    });
+    result
+}
+
+async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value {
     // Reject documentation-range/reserved IP addresses BEFORE any TCP attempt.
     // This covers RFC 3849 (2001:db8::/32), RFC 5737 (TEST-NET), RFC 1918,
     // link-local, loopback, and multicast — none are ever routable.
@@ -495,7 +602,7 @@ async fn probe_one(line: String, timeout_duration: Duration) -> Value {
             "latency_ms": null,
             "iran_status": "iran_unknown",
             "evidence_scope": "No endpoint could be parsed; no reachability claim was made.",
-            "composite_score": 0.0,
+            "composite_score": 0.5,
         });
     };
     let Some(port) = port else {
@@ -511,7 +618,7 @@ async fn probe_one(line: String, timeout_duration: Duration) -> Value {
             "latency_ms": null,
             "iran_status": "iran_unknown",
             "evidence_scope": "No endpoint could be parsed; no reachability claim was made.",
-            "composite_score": 0.0,
+            "composite_score": 0.5,
         });
     };
 
@@ -524,7 +631,12 @@ async fn probe_one(line: String, timeout_duration: Duration) -> Value {
         Err(_) => (false, "timeout"),
     };
     let latency = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);
-    let composite_score = if tcp_reachable { 0.6 } else { 0.0 };
+    let composite_score = match probe_status {
+        "reachable" => 0.6,
+        "refused" => 0.0,
+        "timeout" | "error" => 0.5,
+        _ => 0.5,
+    };
     json!({
         "line": line,
         "transport": transport,
@@ -535,7 +647,7 @@ async fn probe_one(line: String, timeout_duration: Duration) -> Value {
         "probe_status": probe_status,
         "probe_method": "tcp-connect",
         "latency_ms": latency,
-        "iran_status": if tcp_reachable { "iran_unknown" } else { "tcp_unreachable" },
+        "iran_status": "iran_unknown",
         "evidence_scope": "TCP connect from the CI runner only; this is not an Iran-vantage or full Tor-circuit test.",
         "composite_score": composite_score,
     })
@@ -677,11 +789,152 @@ mod tests {
     use super::*;
 
     #[test]
-    fn snowflake_is_explicitly_capability_checked_not_falsely_tcp_tested() {
-        let result = snowflake_capability_result("snowflake example".to_string());
+    fn unprobed_snowflake_is_not_reported_as_transport_capable() {
+        let result =
+            stamp_probe_evidence(snowflake_capability_result("snowflake example".to_string()));
         assert_eq!(result["tcp_reachable"], false);
-        assert_eq!(result["transport_capable"], true);
+        assert_eq!(result["transport_capable"], false);
         assert_eq!(result["iran_status"], "iran_unknown");
+        assert_eq!(result["verification"]["status"], "inconclusive");
+        assert_eq!(result["verification"]["stage"], "S0");
+        assert!(result["verification"]["vantage"].is_null());
+        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &result
+        ));
+    }
+
+    #[test]
+    fn unverified_http_101_stays_s1_and_is_not_a_transport_handshake() {
+        let result = stamp_probe_evidence(json!({
+            "iran_status":"iran_unknown",
+            "probe_method":"websocket-upgrade",
+            "probe_status":"websocket_101",
+            "websocket_signature_verified":false,
+            "transport_capable":false,
+            "latency_ms":20,
+            "evidence_scope":"HTTP 101 from the shared front endpoint without a valid accept signature"
+        }));
+        assert_eq!(result["verification"]["status"], "connected");
+        assert_eq!(result["verification"]["stage"], "S1");
+        assert_eq!(
+            result["verification"]["probe_type"],
+            "websocket-front-check"
+        );
+        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &result
+        ));
+    }
+
+    #[test]
+    fn validated_websocket_101_is_s2_with_a_websocket_specific_probe_type() {
+        let result = stamp_probe_evidence(json!({
+            "iran_status":"iran_unknown",
+            "probe_method":"websocket-upgrade",
+            "probe_status":"websocket_101",
+            "websocket_signature_verified":true,
+            "transport_capable":true,
+            "latency_ms":20,
+            "evidence_scope":"RFC 6455 upgrade signature verified"
+        }));
+        assert_eq!(result["verification"]["status"], "connected");
+        assert_eq!(result["verification"]["stage"], "S2");
+        assert_eq!(result["verification"]["probe_type"], "websocket-101");
+        assert_eq!(
+            result["verification"]["vantage"]["type"],
+            "github_actions_runner"
+        );
+        assert!(torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &result
+        ));
+        assert_eq!(result["iran_status"], "iran_unknown");
+    }
+
+    #[test]
+    fn generic_tcp_refusal_is_s0_runner_evidence_not_an_iran_claim() {
+        let result = stamp_probe_evidence(json!({
+            "iran_status":"iran_unknown",
+            "probe_method":"tcp-connect",
+            "probe_status":"refused",
+            "latency_ms":12,
+            "evidence_scope":"runner TCP refusal"
+        }));
+        assert_eq!(result["verification"]["status"], "refused");
+        assert_eq!(result["verification"]["stage"], "S0");
+        assert_eq!(
+            result["verification"]["vantage"]["type"],
+            "github_actions_runner"
+        );
+        assert_eq!(result["iran_status"], "iran_unknown");
+        assert_eq!(
+            torshield_ir_ultra::evidence_stamp::scoring_reachability(&result),
+            Some(false)
+        );
+
+        let run_timestamp = result["verification"]["observed_at"]
+            .as_str()
+            .expect("probe stamps observed_at")
+            .to_string();
+        let mut stamped = result;
+        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut stamped, &run_timestamp);
+        assert_eq!(stamped["test_tier"], "tier_0_attempt");
+        assert_eq!(stamped["test_result"], "tested_failing");
+    }
+
+    #[test]
+    fn tcp_timeout_is_s0_neutral_and_does_not_gain_a_working_result() {
+        let mut result = stamp_probe_evidence(json!({
+            "iran_status":"iran_unknown",
+            "probe_method":"tcp-connect",
+            "probe_status":"timeout",
+            "latency_ms":5000,
+            "evidence_scope":"runner TCP timeout"
+        }));
+        assert_eq!(result["verification"]["status"], "timeout");
+        assert_eq!(result["verification"]["stage"], "S0");
+        assert_eq!(
+            result["verification"]["vantage"]["type"],
+            "github_actions_runner"
+        );
+        assert_eq!(
+            torshield_ir_ultra::evidence_stamp::scoring_reachability(&result),
+            None
+        );
+        let run_timestamp = result["verification"]["observed_at"]
+            .as_str()
+            .expect("probe stamps observed_at")
+            .to_string();
+        torshield_ir_ultra::evidence_stamp::stamp_entry(&mut result, &run_timestamp);
+        assert_eq!(result["test_tier"], "tier_0_attempt");
+        assert_eq!(result["test_result"], "untested (rate-limited)");
+    }
+
+    #[test]
+    fn tls_reachability_is_s1_and_failed_pre_tcp_websocket_attempts_are_s0() {
+        let tls_reachable = stamp_probe_evidence(json!({
+            "probe_method":"websocket-upgrade",
+            "probe_status":"tls_reachable",
+            "evidence_scope":"TLS connected but no HTTP response"
+        }));
+        assert_eq!(tls_reachable["verification"]["status"], "connected");
+        assert_eq!(tls_reachable["verification"]["stage"], "S1");
+        assert_eq!(tls_reachable["verification"]["probe_type"], "tls");
+        assert!(!torshield_ir_ultra::evidence_stamp::has_verified_s2plus(
+            &tls_reachable
+        ));
+
+        for (probe_status, expected_status) in [("refused", "refused"), ("timeout", "timeout")] {
+            let result = stamp_probe_evidence(json!({
+                "probe_method":"websocket-upgrade",
+                "probe_status":probe_status,
+                "evidence_scope":"front connection did not open"
+            }));
+            assert_eq!(result["verification"]["status"], expected_status);
+            assert_eq!(result["verification"]["stage"], "S0");
+            assert_eq!(
+                result["verification"]["vantage"]["type"],
+                "github_actions_runner"
+            );
+        }
     }
 
     #[test]

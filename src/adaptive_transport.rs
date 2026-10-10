@@ -73,11 +73,7 @@ pub const MIN_SCORE: i64 = 3;
 pub const MAX_SCORE: i64 = 30;
 
 pub const WORKING_STATUSES: &[&str] = &["iran_likely_working"];
-pub const BLOCKED_STATUSES: &[&str] = &[
-    "iran_likely_blocked",
-    "iran_frequently_blocked",
-    "iran_asn_blocked",
-];
+pub const BLOCKED_STATUSES: &[&str] = &["iran_likely_blocked", "iran_frequently_blocked"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Errors
@@ -141,39 +137,57 @@ pub fn stats_to_json(stats: &BTreeMap<String, TransportStats>) -> Value {
 // Analysis (mirror _collect_transport_stats, compute_weights, weights_to_scores)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Count working vs total bridges per transport. Mirrors
-/// `_collect_transport_stats(records)`.
+/// Count Iran-assessed working/blocked outcomes and unclassified records per
+/// transport. Positive yield requires OONI `probe_cc=IR` provenance plus typed
+/// S2+ evidence; inconclusive and ASN-only records stay unknown.
 pub fn collect_transport_stats(records: &[Value]) -> BTreeMap<String, TransportStats> {
+    collect_transport_stats_at(records, Utc::now())
+}
+
+/// Injectable-clock variant of [`collect_transport_stats`].
+pub fn collect_transport_stats_at(
+    records: &[Value],
+    now: DateTime<Utc>,
+) -> BTreeMap<String, TransportStats> {
     let mut stats: BTreeMap<String, TransportStats> = BTreeMap::new();
     for r in records {
         let t = transport_key(r.get("transport"));
         let entry = stats.entry(t).or_default();
         entry.total += 1;
         let status = r.get("iran_status").and_then(Value::as_str).unwrap_or("");
-        if WORKING_STATUSES.contains(&status) {
+        let verified_working =
+            crate::evidence_stamp::has_iran_specific_working_assessment_at(r, now)
+                && crate::evidence_stamp::has_verified_s2plus_at(r, now);
+        let verified_blocked = BLOCKED_STATUSES.contains(&status)
+            && crate::evidence_stamp::has_iran_specific_assessment_at(r, now);
+        if WORKING_STATUSES.contains(&status) && verified_working {
             entry.working += 1;
-        } else if BLOCKED_STATUSES.contains(&status) {
+        } else if verified_blocked {
             entry.blocked += 1;
         } else {
+            // ASN-only, legacy, unknown, and unverified statuses are not
+            // training labels; their count stays visible but does not reduce
+            // the success-rate denominator in compute_weights.
             entry.unknown += 1;
         }
     }
     stats
 }
 
-/// Compute normalized success-rate weights for each transport. Mirrors
-/// `compute_weights(stats, min_samples=3)`. Transports with fewer than
-/// `min_samples` data points keep a neutral weight of `0.5`.
+/// Compute normalized success-rate weights from classified outcomes only.
+/// Unknown/inconclusive records do not enter the denominator; transports with
+/// fewer than `min_samples` assessed outcomes keep a neutral weight of `0.5`.
 pub fn compute_weights(
     stats: &BTreeMap<String, TransportStats>,
     min_samples: i64,
 ) -> BTreeMap<String, f64> {
     let mut raw: BTreeMap<String, f64> = BTreeMap::new();
     for (t, s) in stats {
-        if s.total < min_samples {
+        let assessed = s.working + s.blocked;
+        if assessed < min_samples {
             raw.insert(t.clone(), 0.5);
         } else {
-            raw.insert(t.clone(), s.working as f64 / s.total as f64);
+            raw.insert(t.clone(), s.working as f64 / assessed as f64);
         }
     }
     let total: f64 = raw.values().sum();
@@ -693,11 +707,23 @@ mod tests {
 
     #[test]
     fn collect_transport_stats_counts_per_transport() {
+        let ooni_observed_at = Utc::now().to_rfc3339();
         let records = json!([
-            {"transport": "obfs4", "iran_status": "iran_likely_working"},
-            {"transport": "obfs4", "iran_status": "iran_likely_blocked"},
+            {
+                "transport": "obfs4", "iran_status": "iran_likely_working",
+                "iran_assessment": {"status":"iran_likely_working", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":ooni_observed_at.clone(), "measurement_at":ooni_observed_at.clone(), "measurement_window_days":7},
+                "verification": {"status":"connected", "stage":"S2", "vantage":{"type":"probe_relay"}, "probe_type":"obfs4-handshake", "observed_at":ooni_observed_at.clone()}
+            },
+            {
+                "transport": "obfs4", "iran_status": "iran_likely_blocked",
+                "iran_assessment": {"status":"iran_likely_blocked", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":ooni_observed_at.clone(), "measurement_at":ooni_observed_at.clone(), "measurement_window_days":7}
+            },
             {"transport": "obfs4", "iran_status": "unknown_status"},
-            {"transport": "snowflake", "iran_status": "iran_likely_working"},
+            {
+                "transport": "snowflake", "iran_status": "iran_likely_working",
+                "iran_assessment": {"status":"iran_likely_working", "source":"ooni_measurements_api", "checked":true, "vantage":{"type":"ooni_probe", "country":"IR"}, "queried_at":ooni_observed_at.clone(), "measurement_at":ooni_observed_at.clone(), "measurement_window_days":7},
+                "verification": {"status":"connected", "stage":"S2", "vantage":{"type":"probe_relay"}, "probe_type":"snowflake-broker-handshake", "observed_at":ooni_observed_at.clone()}
+            },
             {"iran_status": "iran_likely_working"},
         ]);
         let records = records.as_array().unwrap();
@@ -708,6 +734,20 @@ mod tests {
         assert_eq!(stats.get("obfs4").unwrap().unknown, 1);
         assert_eq!(stats.get("snowflake").unwrap().total, 1);
         assert_eq!(stats.get("unknown").unwrap().total, 1);
+    }
+
+    #[test]
+    fn unverified_labels_are_unknown_not_transport_yield() {
+        let records = json!([
+            {"transport":"obfs4", "iran_status":"iran_likely_working", "tcp_reachable":true},
+            {"transport":"obfs4", "iran_status":"iran_likely_blocked", "tcp_reachable":false},
+            {"transport":"obfs4", "iran_status":"iran_asn_blocked"}
+        ]);
+        let stats = collect_transport_stats(records.as_array().unwrap());
+        let obfs4 = stats.get("obfs4").unwrap();
+        assert_eq!(obfs4.working, 0);
+        assert_eq!(obfs4.blocked, 0);
+        assert_eq!(obfs4.unknown, 3);
     }
 
     #[test]
@@ -758,6 +798,7 @@ mod tests {
             "obfs4".to_string(),
             TransportStats {
                 working: 3,
+                blocked: 1,
                 total: 4,
                 ..Default::default()
             },
@@ -766,6 +807,7 @@ mod tests {
             "snowflake".to_string(),
             TransportStats {
                 working: 1,
+                blocked: 3,
                 total: 4,
                 ..Default::default()
             },
@@ -774,6 +816,32 @@ mod tests {
         // raw: 0.75, 0.25 → total 1.0 → 0.75, 0.25
         assert!((weights.get("obfs4").unwrap() - 0.75).abs() < 1e-9);
         assert!((weights.get("snowflake").unwrap() - 0.25).abs() < 1e-9);
+    }
+
+    #[test]
+    fn unclassified_samples_do_not_dilute_transport_yield_weights() {
+        let mut stats = BTreeMap::new();
+        stats.insert(
+            "obfs4".to_string(),
+            TransportStats {
+                working: 2,
+                blocked: 1,
+                unknown: 97,
+                total: 100,
+            },
+        );
+        stats.insert(
+            "snowflake".to_string(),
+            TransportStats {
+                working: 1,
+                blocked: 2,
+                total: 3,
+                ..Default::default()
+            },
+        );
+        let weights = compute_weights(&stats, 3);
+        assert!((weights.get("obfs4").unwrap() - 2.0 / 3.0).abs() < 1e-9);
+        assert!((weights.get("snowflake").unwrap() - 1.0 / 3.0).abs() < 1e-9);
     }
 
     #[test]

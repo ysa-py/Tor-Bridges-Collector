@@ -22,27 +22,26 @@
 //! `BTreeMap` key order instead of JSON file order; this only affects the
 //! line ordering of *fallback rewrites*, never which bridges are written.
 //!
-//! Hardening added on top of the Python original (strict zero-error
-//! publication contract):
+//! Hardening added on top of the Python original (strict publication
+//! contract):
 //!
-//!   5. **Force-populate supported protocol projections.** Any `bridge/*.txt`
-//!      protocol/advisory file (all `_72h` / `_ipv6` / `_tested` variants,
-//!      `iran_likely_working_*`, `tested_global_*`, `conjure*`, `meek-azure*`)
-//!      that is missing or 0 bytes is written from the compiled-in static
-//!      fallback lines of its transport family. A projection is left empty
-//!      when its family has no complete static client bridge lines; this is
-//!      required for URL-only WebTunnel metadata because an endpoint must not
-//!      be fabricated. `iran_blocked.txt` is also intentionally allowed to be
-//!      empty: an empty blocked list is truthful evidence.
+//!   5. **Inventory-only force-population.** Missing or 0-byte unqualified
+//!      family inventory files may use complete compiled-in static bridge
+//!      lines. Freshness (`_72h`), tested (`_tested`/`tested_global_*`), and
+//!      Iran-working projections never receive static fallbacks and remain
+//!      empty until the evidence-bearing publisher supplies measurements.
+//!      IPv6 inventories also require an IPv6 literal. `iran_blocked.txt` is
+//!      intentionally allowed to be empty: an empty blocked list is truthful.
 //!   6. **Empty JSON repair.** Any 0-byte `bridge/*.json` file is rewritten
 //!      as a valid empty JSON array `[]` so downstream parsers never fail.
 //!
-//! The workflow runs this FAILSAFE twice: once right after the scrapers
-//! (historical placement) and once more after every scraper/tester/export
-//! stage finishes, immediately before publication.
+//! The workflow runs this FAILSAFE before the probe stages to prepare collector
+//! inputs. The final publisher later rebuilds and verifies the output contract;
+//! it does not run this force-populator after manifest/ZIP verification.
 
 use std::collections::BTreeSet;
 use std::fs;
+use std::net::IpAddr;
 use std::path::{Path, PathBuf};
 
 use serde_json::Value;
@@ -230,10 +229,10 @@ pub fn transport_for_filename(name: &str) -> Option<&'static str> {
     }
 }
 
-/// Every `bridge/` `.txt` name eligible for static force-population, derived
-/// from the transport families and advisory projections of the publication
-/// contract (`src/bridge_publication.rs::REQUIRED_FILES`). Families without
-/// complete static client bridge lines may still remain empty.
+/// Every contracted `bridge/` `.txt` name tracked by the failsafe. Static
+/// writes are restricted separately to unqualified family inventories; files
+/// claiming freshness, testing, Iran reachability, or measured global success
+/// remain empty unless their real publication pipeline populates them.
 pub fn required_protocol_txt_names() -> Vec<String> {
     let mut names = Vec::new();
     for (transport, stem) in [
@@ -278,31 +277,81 @@ pub fn required_protocol_txt_names() -> Vec<String> {
     names
 }
 
-/// Static fallback lines for one protocol `.txt` projection.
-///
-/// * `iran_likely_working_all.txt` — every transport's fallback lines;
-/// * `iran_likely_working_nin.txt` — the NIN-appropriate transports
-///   (snowflake + webtunnel), mirroring the publisher's cut-mode priority;
-/// * everything else — the fallback lines of the inferred transport family.
-fn fallback_lines_for_name(name: &str) -> Vec<String> {
-    let lines: Vec<&'static str> = if name == "iran_likely_working_all.txt" {
-        static_bridges::fallback_all()
-    } else if name == "iran_likely_working_nin.txt" {
-        let mut lines = static_bridges::fallback_lines("snowflake");
-        lines.extend(static_bridges::fallback_lines("webtunnel"));
-        lines
-    } else {
-        match transport_for_filename(name) {
-            Some(transport) => static_bridges::fallback_lines(transport),
-            None => Vec::new(),
-        }
-    };
-    lines.into_iter().map(str::to_string).collect()
+/// Return true only for inventory projections that make no freshness,
+/// testing, or Iran-reachability claim. Static bridge lines must never be
+/// copied into an evidence-qualified filename.
+fn static_fallback_allowed(name: &str) -> bool {
+    const ALLOWED: &[&str] = &[
+        "obfs4.txt",
+        "obfs4_ipv6.txt",
+        "vanilla.txt",
+        "vanilla_ipv6.txt",
+        "webtunnel.txt",
+        "webtunnel_ipv6.txt",
+        "snowflake.txt",
+        "snowflake_ipv6.txt",
+        "meek_lite.txt",
+        "meek_lite_ipv6.txt",
+        "conjure.txt",
+        "meek-azure.txt",
+    ];
+    ALLOWED.contains(&name)
 }
 
-/// Force-populate every missing or 0-byte protocol `.txt` file in
-/// `bridge_dir` from static fallback lines. Returns the number of lines
-/// written. `iran_blocked.txt` is intentionally left untouched.
+/// Static fallback lines for a non-evidence-qualified protocol inventory.
+/// Freshness (`_72h`), test (`_tested`/`tested_global_`), Iran-working, and
+/// blocked projections deliberately return no fallback lines.
+fn static_line_ip_version(line: &str) -> Option<bool> {
+    for token in line.split_whitespace() {
+        if token.contains('=') {
+            continue;
+        }
+        if token.starts_with('[') {
+            if let Some(close) = token.find(']') {
+                if let Ok(address) = token[1..close].parse::<IpAddr>() {
+                    return Some(address.is_ipv6());
+                }
+            }
+            continue;
+        }
+        let host = token
+            .rsplit_once(':')
+            .map(|(host, _port)| host)
+            .unwrap_or(token);
+        if let Ok(address) = host.parse::<IpAddr>() {
+            return Some(address.is_ipv6());
+        }
+    }
+    None
+}
+
+fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
+    static_bridges::fallback_lines(transport)
+        .into_iter()
+        .map(str::to_string)
+        .filter(|line| {
+            ipv6.map_or(true, |wanted_ipv6| {
+                static_line_ip_version(line) == Some(wanted_ipv6)
+            })
+        })
+        .collect()
+}
+
+fn fallback_lines_for_name(name: &str) -> Vec<String> {
+    if !static_fallback_allowed(name) {
+        return Vec::new();
+    }
+    let ipv6 = name.ends_with("_ipv6.txt");
+    let Some(transport) = transport_for_filename(name) else {
+        return Vec::new();
+    };
+    fallback_family_lines(transport, ipv6.then_some(true))
+}
+
+/// Force-populate missing or 0-byte unqualified family inventory files from
+/// static fallback lines. Freshness, tested, Iran-working, and tested-global
+/// projections remain untouched and therefore cannot claim unverified yield.
+/// Returns the number of inventory lines written.
 pub fn force_populate_empty_txt(bridge_dir: &Path) -> u64 {
     let mut written = 0_u64;
 
@@ -404,10 +453,9 @@ pub fn run(bridge_dir: &Path) -> i32 {
         }
     }
 
-    // 2) Force-populate any missing or 0-byte protocol/advisory .txt file
-    //    (all _72h / _ipv6 / _tested variants and transports absent from
-    //    history) when that family has complete static fallback lines. Do
-    //    not turn URL-only metadata into a client bridge line.
+    // 2) Force-populate only missing or 0-byte unqualified family inventory
+    //    files when complete static bridge lines exist. Freshness, tested,
+    //    Iran-working, and tested-global projections are never static-filled.
     total += force_populate_empty_txt(bridge_dir);
 
     // 3) Any 0-byte .json file is rewritten as a valid empty JSON array so
@@ -596,6 +644,22 @@ mod tests {
     }
 
     #[test]
+    fn static_fallback_is_disallowed_for_evidence_qualified_outputs() {
+        for name in required_protocol_txt_names()
+            .into_iter()
+            .filter(|name| !static_fallback_allowed(name))
+            .chain(["iran_blocked.txt".to_string()])
+        {
+            assert!(
+                fallback_lines_for_name(&name).is_empty(),
+                "{name} must not use static fallback"
+            );
+        }
+        assert!(static_fallback_allowed("obfs4.txt"));
+        assert!(!fallback_lines_for_name("obfs4.txt").is_empty());
+    }
+
+    #[test]
     fn required_protocol_names_cover_all_family_variants() {
         let names = required_protocol_txt_names();
         for expected in [
@@ -630,71 +694,61 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fb_variants_{}", std::process::id()));
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
-        // Empty history + deliberately empty supported protocol projections
-        // + a 0-byte JSON file: the failsafe must force-populate every
-        // projection for which a complete static fallback exists. URL-only
-        // WebTunnel projections must remain empty rather than fabricate an
-        // endpoint.
+        // Empty history + deliberately empty protocol projections + a 0-byte
+        // JSON file: only unqualified inventories may receive static lines.
+        // Freshness/test/working projections stay empty rather than making
+        // unsupported claims, and URL-only WebTunnel metadata is not fabricated.
         std::fs::write(bridge_dir.join("bridge_history.json"), "{}").expect("history");
-        for name in [
-            "obfs4.txt",
-            "obfs4_72h.txt",
-            "obfs4_ipv6.txt",
-            "obfs4_tested.txt",
-            "vanilla.txt",
-            "vanilla_72h.txt",
-            "vanilla_ipv6.txt",
-            "vanilla_tested.txt",
-            "webtunnel.txt",
-            "webtunnel_72h.txt",
-            "webtunnel_ipv6.txt",
-            "webtunnel_tested.txt",
-            "iran_likely_working_webtunnel.txt",
-            "conjure.txt",
-            "meek-azure.txt",
-            "iran_likely_working_obfs4.txt",
-            "tested_global_obfs4.txt",
-            "bridge_scores.json",
-        ] {
+        for name in required_protocol_txt_names() {
+            std::fs::write(bridge_dir.join(name), "").expect("empty projection fixture");
+        }
+        for name in ["iran_blocked.txt", "bridge_scores.json"] {
             std::fs::write(bridge_dir.join(name), "").expect("empty fixture");
         }
 
         assert_eq!(run(&bridge_dir), 0);
         for name in [
             "obfs4.txt",
-            "obfs4_72h.txt",
-            "obfs4_ipv6.txt",
-            "obfs4_tested.txt",
             "vanilla.txt",
-            "vanilla_72h.txt",
-            "vanilla_ipv6.txt",
-            "vanilla_tested.txt",
+            "snowflake.txt",
+            "meek_lite.txt",
             "conjure.txt",
             "meek-azure.txt",
-            "iran_likely_working_obfs4.txt",
-            "tested_global_obfs4.txt",
         ] {
             let path = bridge_dir.join(name);
-            let body = std::fs::read_to_string(&path).expect("populated file");
+            let body = std::fs::read_to_string(&path).expect("inventory file");
             assert!(
                 body.lines().count() > 0,
-                "{name} must be force-populated ({} bytes)",
-                body.len()
+                "{name} may use a static inventory fallback"
+            );
+        }
+        for name in required_protocol_txt_names()
+            .into_iter()
+            .filter(|name| !static_fallback_allowed(name))
+            .chain(["iran_blocked.txt".to_string()])
+        {
+            assert_eq!(
+                std::fs::metadata(bridge_dir.join(&name))
+                    .expect("evidence-qualified projection")
+                    .len(),
+                0,
+                "{name} must stay empty without measured evidence"
             );
         }
         for name in [
             "webtunnel.txt",
-            "webtunnel_72h.txt",
+            "obfs4_ipv6.txt",
+            "vanilla_ipv6.txt",
             "webtunnel_ipv6.txt",
-            "webtunnel_tested.txt",
-            "iran_likely_working_webtunnel.txt",
+            "snowflake_ipv6.txt",
+            "meek_lite_ipv6.txt",
         ] {
             assert_eq!(
                 std::fs::metadata(bridge_dir.join(name))
-                    .expect("webtunnel projection")
+                    .expect("unavailable inventory fallback")
                     .len(),
                 0,
-                "{name} must stay empty when only URL metadata is available"
+                "{name} needs a complete fallback matching the output projection"
             );
         }
         let scores = std::fs::read_to_string(bridge_dir.join("bridge_scores.json")).expect("json");

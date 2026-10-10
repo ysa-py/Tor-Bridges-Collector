@@ -175,10 +175,26 @@ fn stage_results(input: &Path) -> StageResult {
             input.display()
         )));
     };
+    // Join the authenticated Worker observations back to their source bridge
+    // lines before any transport-specific result writer runs. The relay client
+    // keeps this mapping local (the Worker never receives fingerprints or
+    // other bridge-line material). Missing/invalid relay artifacts are neutral.
+    let relay_results = std::fs::read_to_string("data/pt_results.json")
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    let now = Utc::now();
+    let relay_evidence = evidence_stamp::merge_relay_results_at(&mut bridges, &relay_results, now);
+    if relay_evidence["relay_observations"].as_u64().unwrap_or(0) > 0 {
+        println!("results-stage: relay verification joined: {relay_evidence}");
+    }
+
     // v2.6.2: Probe domain-fronted WebTunnel bridges via TLS+WebSocket
     // Upgrade before classification. Domain-fronted bridges have no
-    // routable IP and the Go iran_tester correctly marks them
-    // tcp_unreachable, but TCP is the wrong probe for WebTunnel.
+    // routable IP for the runner's generic TCP probe, so iran_tester keeps
+    // their Iran status unknown. The front probe adds runner-vantage evidence
+    // only; it never claims Iran reachability.
     let (probed, ws_ok, ws_fail) = webtunnel_probe::probe_all_webtunnel_bridges(
         &mut bridges,
         std::time::Duration::from_secs(6),
@@ -186,7 +202,7 @@ fn stage_results(input: &Path) -> StageResult {
     if probed > 0 {
         println!("webtunnel-probe: probed={probed} ws_101={ws_ok} ws_fail={ws_fail}");
     }
-    let stats = results_writer::write_result_files(Path::new("bridge"), &bridges)?;
+    let stats = results_writer::write_result_files_at(Path::new("bridge"), &bridges, now)?;
     // v2.6.3: Persist webtunnel probe results back to iran_results.json
     // so downstream stages (bridge_publication.rs) read the updated
     // tcp_reachable / iran_status fields. Without this, publication
@@ -196,7 +212,7 @@ fn stage_results(input: &Path) -> StageResult {
     // evidence (tested_at / test_tier / test_result) derived from the
     // recorded observations, so published entries carry a timestamp, a
     // result tag, and the tier of test that produced it.
-    let fallback_now = Utc::now().to_rfc3339();
+    let fallback_now = now.to_rfc3339();
     let mut stamp = evidence_stamp::StampSummary {
         stamped: 0,
         tiers: BTreeMap::new(),
@@ -205,18 +221,22 @@ fn stage_results(input: &Path) -> StageResult {
     match std::fs::read_to_string(input) {
         Ok(text) => {
             if let Ok(mut root) = serde_json::from_str::<Value>(&text) {
-                let webtunnel_working = bridges
+                let webtunnel_ws_probed = bridges
                     .iter()
                     .filter(|b| {
                         b.get("transport").and_then(Value::as_str) == Some("webtunnel")
-                            && b.get("iran_status").and_then(Value::as_str) == Some("iran_unknown")
+                            && b.get("probe_method").and_then(Value::as_str)
+                                == Some("websocket-upgrade")
                     })
                     .count();
                 let bridge_count = bridges.len();
                 if let Some(obj) = root.as_object_mut() {
                     obj.insert("bridges".to_string(), json!(bridges));
                     if let Some(summary) = obj.get_mut("summary").and_then(|s| s.as_object_mut()) {
-                        summary.insert("webtunnel_ws_probed".to_string(), json!(webtunnel_working));
+                        summary.insert(
+                            "webtunnel_ws_probed".to_string(),
+                            json!(webtunnel_ws_probed),
+                        );
                     }
                 }
                 stamp = evidence_stamp::stamp_results(&mut root, &fallback_now);
@@ -237,9 +257,9 @@ fn stage_results(input: &Path) -> StageResult {
                     );
                 } else {
                     println!(
-                        "results-stage: persisted {} stamped bridges ({} webtunnel working) to {}",
+                        "results-stage: persisted {} stamped bridges ({} webtunnel ws-probed) to {}",
                         bridge_count,
-                        webtunnel_working,
+                        webtunnel_ws_probed,
                         input.display()
                     );
                 }
@@ -252,7 +272,7 @@ fn stage_results(input: &Path) -> StageResult {
             );
         }
     }
-    let mut detail = json!({ "files": stats, "evidence": stamp });
+    let mut detail = json!({ "files": stats, "evidence": stamp, "relay_evidence": relay_evidence });
     if probed > 0 {
         detail["webtunnel_probe"] = json!({
             "probed": probed,

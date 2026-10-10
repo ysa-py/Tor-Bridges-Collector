@@ -1,5 +1,12 @@
 // @ts-ignore — cloudflare:sockets is an ambient Workers runtime module
 import { connect } from "cloudflare:sockets";
+import {
+  MAX_BRIDGES_PER_REQUEST,
+  constantTimeTokenEqual,
+  configuredInteger,
+  readJsonRequestBody,
+  validateBridgeList,
+} from "./security";
 
 // Local socket interface matching cloudflare:sockets Socket at runtime.
 // Avoids import() type resolution issues in local tsc while preserving
@@ -238,12 +245,18 @@ interface BridgeDescriptor {
   port: number;
   sni?: string;
   url?: string;
-  /** v2.4: request path carried over from the bridge line's url= (e.g. a
-   *  webtunnel per-bridge token path). Defaults to "/" when absent. */
   path?: string;
   cert?: string;
   iat_mode?: string;
   fingerprint?: string;
+}
+
+type ProbeStatus = "connected" | "refused" | "timeout" | "inconclusive" | "error";
+type VerificationStage = "S0" | "S1" | "S2" | "S3" | "S4";
+
+interface ProbeVantage {
+  type: "cloudflare_worker";
+  colo: string | null;
 }
 
 interface ProbeResult {
@@ -251,14 +264,20 @@ interface ProbeResult {
   transport: string;
   host: string;
   port: number;
+  /** Compatibility summary only; stage/status are the authoritative evidence. */
   success: boolean;
+  status: ProbeStatus;
+  stage: VerificationStage;
+  vantage: ProbeVantage;
+  observed_at: string;
+  rtt_ms: number | null;
   latency_ms: number | null;
   probe_type: string;
-  /** SNI / dial-target host actually used by fetch-based probes, when the
-   *  descriptor carried a front distinct from its host field. */
   sni?: string | null;
-  /** HTTP status received from a fetch-based (tls/websocket-101) probe. */
   http_status?: number | null;
+  detail: string;
+  error_class: string | null;
+  /** Redacted, machine-readable summary retained for legacy clients. */
   error: string | null;
 }
 
@@ -285,6 +304,9 @@ const DEFAULT_PROBE_TIMEOUT_MS = 5000;
 // the fronted transports timing out at exactly the 5s TCP cap while the same
 // fronts answered the runner-side probe seconds later in the same run.
 const FETCH_PROBE_TIMEOUT_MS = 15000;
+const WORKER_REQUEST_DEADLINE_MS = 22000;
+const EGRESS_CONTROL_TIMEOUT_MS = 2500;
+const MAX_OUTBOUND_SUBREQUESTS = 50;
 // v2.7: 25 -> 6. The Workers runtime allows only 6 simultaneous outgoing
 // connections per invocation and QUEUES excess connect() calls — and a
 // probe's own deadline starts at admission (when this code calls
@@ -304,123 +326,132 @@ const USER_AGENT = "TorShield-IR-ProbeRelay/2.0";
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    if (request.method === "OPTIONS") {
-      return corsResponse(new Response(null, { status: 204 }));
-    }
-
-    if (request.method !== "POST") {
-      return jsonResponse(405, {
-        error: "method_not_allowed",
-        detail: "Only POST /probe is supported",
-        // v2.8 (additive): deploy-version identity on the unauthenticated
-        // 405 path so any CI run (or human) can query which relay version is
-        // live BEFORE deploying. The version-safe deploy guard in
-        // torshield-ir.yml Stage 4-prep reads exactly this field; pre-v2.8
-        // deployments simply omit it (null) and the guard fails open to the
-        // previous always-deploy behavior. POST /probe responses are
-        // byte-identical to v2.7 — this field exists only here.
-        version: {
-          service: "tor-bridge-probe-relay",
-          git_sha: env.RELAY_GIT_SHA ?? null,
-          git_ts: env.RELAY_GIT_TS ?? null,
-        },
-      });
-    }
-
-    const url = new URL(request.url);
-    if (url.pathname !== "/probe") {
-      return jsonResponse(404, {
-        error: "not_found",
-        detail: "Only /probe endpoint exists",
-      });
-    }
-
-    // Auth
-    const token = request.headers.get("X-Probe-Token");
-    const expectedToken = env.PROBE_RELAY_TOKEN;
-    if (expectedToken && token !== expectedToken) {
-      return jsonResponse(401, {
-        error: "unauthorized",
-        detail: "Invalid or missing X-Probe-Token header",
-      });
-    }
-
-    // Parse body
-    let bridges: BridgeDescriptor[];
     try {
-      bridges = await request.json() as BridgeDescriptor[];
-    } catch {
-      return jsonResponse(400, {
-        error: "bad_request",
-        detail: "Request body must be a JSON array of bridge descriptors",
-      });
-    }
-
-    if (!Array.isArray(bridges) || bridges.length === 0) {
-      return jsonResponse(400, {
-        error: "bad_request",
-        detail: "Request body must be a non-empty JSON array",
-      });
-    }
-
-    const maxBridges = parseInt(env.MAX_BRIDGES_PER_REQUEST || "50", 10);
-    if (bridges.length > maxBridges) {
-      return jsonResponse(413, {
-        error: "too_many_bridges",
-        detail: `Maximum ${maxBridges} bridges per request; got ${bridges.length}. Split into smaller chunks.`,
-      });
-    }
-
-    // Validate schema
-    for (const bridge of bridges) {
-      if (!bridge.host || !bridge.port || !bridge.transport) {
-        return jsonResponse(400, {
-          error: "bad_request",
-          detail: `Each bridge must have host, port, and transport fields. Offending: ${JSON.stringify(bridge)}`,
+      if (request.method !== "POST") {
+        return jsonResponse(405, {
+          error: "method_not_allowed",
+          detail: "Only POST /probe is supported",
+          version: {
+            service: "tor-bridge-probe-relay",
+            git_sha: env.RELAY_GIT_SHA ?? null,
+            git_ts: env.RELAY_GIT_TS ?? null,
+          },
         });
       }
+
+      const url = new URL(request.url);
+      if (url.pathname !== "/probe") {
+        return jsonResponse(404, { error: "not_found" });
+      }
+
+      const expectedToken = env.PROBE_RELAY_TOKEN;
+      if (typeof expectedToken !== "string" || expectedToken.trim() === "" ||
+          expectedToken.length < 16 || expectedToken.length > 1024 ||
+          /[\u0000-\u001f\u007f]/.test(expectedToken)) {
+        return jsonResponse(503, {
+          error: "service_unavailable",
+          detail: "probe authentication is not configured or invalid",
+        });
+      }
+      if (!constantTimeTokenEqual(request.headers.get("X-Probe-Token"), expectedToken)) {
+        return jsonResponse(401, { error: "unauthorized" });
+      }
+
+      const mediaType = (request.headers.get("content-type") ?? "")
+        .split(";", 1)[0]
+        .trim()
+        .toLowerCase();
+      if (mediaType !== "application/json") {
+        return jsonResponse(415, { error: "unsupported_media_type" });
+      }
+
+      const body = await readJsonRequestBody(request);
+      if (!body.ok) return jsonResponse(body.status, { error: body.error });
+
+      const maxBridges = configuredInteger(
+        env.MAX_BRIDGES_PER_REQUEST,
+        MAX_BRIDGES_PER_REQUEST,
+        1,
+        MAX_BRIDGES_PER_REQUEST,
+      );
+      const maxConcurrent = configuredInteger(
+        env.MAX_CONCURRENT_PROBES,
+        DEFAULT_MAX_CONCURRENT_PROBES,
+        1,
+        DEFAULT_MAX_CONCURRENT_PROBES,
+      );
+      const probeTimeoutSecs = configuredInteger(
+        env.PROBE_TIMEOUT_SECS,
+        DEFAULT_PROBE_TIMEOUT_MS / 1000,
+        1,
+        30,
+      );
+      if (maxBridges === null || maxConcurrent === null || probeTimeoutSecs === null) {
+        return jsonResponse(503, { error: "invalid_worker_configuration" });
+      }
+
+      const checked = validateBridgeList(body.value, maxBridges);
+      if (!checked.ok) {
+        return jsonResponse(checked.status, {
+          error: checked.error,
+          ...(checked.index !== undefined ? { index: checked.index } : {}),
+        });
+      }
+      const bridges = checked.bridges;
+      const probeTimeoutMs = probeTimeoutSecs * 1000;
+      const vantage = workerVantage(request);
+      const batchController = new AbortController();
+      const unlinkRequestSignal = linkAbortSignal(request.signal, batchController);
+      const requestDeadline = setTimeout(
+        () => batchController.abort(new ProbeFailure(
+          "timeout",
+          "request_deadline",
+          "S0",
+          "Worker request deadline reached",
+        )),
+        WORKER_REQUEST_DEADLINE_MS,
+      );
+
+      try {
+        console.log(
+          `[probe-relay] batch_start bridges=${bridges.length} max_concurrent=${maxConcurrent} timeout_ms=${probeTimeoutMs}`,
+        );
+
+        const { results, stats } = await probeBridgesWithConcurrency(
+          bridges,
+          maxConcurrent,
+          probeTimeoutMs,
+          batchController.signal,
+          vantage,
+        );
+
+        // Keep the two diagnostic HTTPS checks bounded and within the 50
+        // subrequest/invocation ceiling. They run only after the six-socket
+        // bridge wave has closed, and each has a short, explicit deadline.
+        const hasNonTcp = bridges.some((bridge) => classifyProbe(bridge) !== "tcp");
+        if (hasNonTcp && bridges.length + 2 <= MAX_OUTBOUND_SUBREQUESTS && !batchController.signal.aborted) {
+          stats.https_controls = await runHttpsEgressControls(
+            EGRESS_CONTROL_TIMEOUT_MS,
+            batchController.signal,
+          );
+        }
+
+        console.log(
+          `[probe-relay] batch_done attempted=${stats.attempted} completed=${stats.completed} ` +
+            `connected=${stats.connected} refused=${stats.refused} timed_out=${stats.timedOut} ` +
+            `inconclusive=${stats.inconclusive} errored=${stats.errored}`,
+        );
+        return jsonResponse(200, { results, stats });
+      } finally {
+        clearTimeout(requestDeadline);
+        unlinkRequestSignal();
+      }
+    } catch {
+      // Do not serialize raw exceptions: socket and HTTP clients can include
+      // credential-bearing URLs or peer-controlled data in their messages.
+      console.error("[probe-relay] request_failed error_class=internal");
+      return jsonResponse(500, { error: "internal_error" });
     }
-
-    const maxConcurrent = parseInt(
-      env.MAX_CONCURRENT_PROBES || String(DEFAULT_MAX_CONCURRENT_PROBES),
-      10,
-    );
-    const probeTimeoutMs = parseInt(
-      env.PROBE_TIMEOUT_SECS || String(DEFAULT_PROBE_TIMEOUT_MS / 1000),
-      10,
-    ) * 1000;
-
-    console.log(
-      `[probe-relay] batch_start bridges=${bridges.length} max_concurrent=${maxConcurrent} timeout_ms=${probeTimeoutMs}`,
-    );
-
-    const { results, stats } = await probeBridgesWithConcurrency(
-      bridges,
-      maxConcurrent,
-      probeTimeoutMs,
-    );
-
-    // v2.3: when a batch contains any fetch()-probed (non-tcp) descriptor,
-    // probe two known-good public HTTPS endpoints through the same runtime
-    // TLS path and attach the outcomes to stats. CI prints the chunk stats
-    // verbatim, so a run where every fronted-transport probe times out can
-    // be distinguished as "Worker fetch egress down/slow" (controls also
-    // fail) versus "these particular fronts unreachable from Cloudflare"
-    // (controls succeed). Diagnostics only — never counted as successes.
-    const hasNonTcp = bridges.some((b) => classifyProbe(b) !== "tcp");
-    if (hasNonTcp) {
-      stats.https_controls = await runHttpsEgressControls();
-    }
-
-    console.log(
-      `[probe-relay] batch_done attempted=${stats.attempted} completed=${stats.completed} ` +
-        `timed_out=${stats.timedOut} errored=${stats.errored} success=${stats.success}` +
-        (stats.https_controls
-          ? ` controls=${JSON.stringify(stats.https_controls)}`
-          : ""),
-    );
-
-    return corsResponse(jsonResponse(200, { results, stats }));
   },
 };
 
@@ -429,11 +460,13 @@ export default {
 interface ProbeStats {
   attempted: number;
   completed: number;
+  connected: number;
+  refused: number;
   timedOut: number;
+  inconclusive: number;
   errored: number;
+  /** Backward-compatible alias for connected outcomes; stage is authoritative. */
   success: number;
-  /** v2.3: outcomes of known-good HTTPS egress controls, populated only
-   *  when the batch contained fetch()-probed (non-tcp) descriptors. */
   https_controls?: HttpsControl[];
 }
 
@@ -444,261 +477,306 @@ interface HttpsControl {
   error: string | null;
 }
 
-/** v2.3: fetch()-based egress controls against known-good public HTTPS
- *  endpoints. Returns one outcome per target; never throws. */
+class ProbeFailure extends Error {
+  constructor(
+    readonly status: Exclude<ProbeStatus, "connected">,
+    readonly errorClass: string,
+    readonly stage: VerificationStage,
+    readonly safeDetail: string,
+    readonly httpStatus?: number | null,
+  ) {
+    super(safeDetail);
+    this.name = "ProbeFailure";
+  }
+}
+
+function workerVantage(request: Request): ProbeVantage {
+  const cf = (request as Request & { cf?: { colo?: unknown } }).cf;
+  return {
+    type: "cloudflare_worker",
+    colo: typeof cf?.colo === "string" ? cf.colo : null,
+  };
+}
+
+function abortFailure(signal?: AbortSignal): ProbeFailure {
+  const reason = signal?.reason;
+  if (reason instanceof ProbeFailure) return reason;
+  return new ProbeFailure("inconclusive", "caller_cancelled", "S0", "probe cancelled by caller");
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortFailure(signal);
+}
+
+function linkAbortSignal(parent: AbortSignal | undefined, controller: AbortController): () => void {
+  if (!parent) return () => {};
+  const onAbort = () => controller.abort(parent.reason);
+  if (parent.aborted) onAbort();
+  else parent.addEventListener("abort", onAbort, { once: true });
+  return () => parent.removeEventListener("abort", onAbort);
+}
+
+function raceWithSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) return Promise.reject(abortFailure(signal));
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => {
+      cleanup();
+      reject(abortFailure(signal));
+    };
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    signal.addEventListener("abort", onAbort, { once: true });
+    promise.then(
+      (value) => { cleanup(); resolve(value); },
+      (error: unknown) => { cleanup(); reject(error); },
+    );
+  });
+}
+
+function closeOnAbort(socket: WorkersSocket, signal?: AbortSignal): () => void {
+  if (!signal) return () => {};
+  const close = () => closeSocket(socket);
+  if (signal.aborted) close();
+  else signal.addEventListener("abort", close, { once: true });
+  return () => signal.removeEventListener("abort", close);
+}
+
+function classifyFailure(error: unknown): ProbeFailure {
+  if (error instanceof ProbeFailure) return error;
+  const message = error instanceof Error ? error.message : String(error);
+  const lower = message.toLowerCase();
+  if (lower.includes("timed out") || lower.includes("timeout")) {
+    return new ProbeFailure("timeout", "probe_timeout", "S0", "probe timed out");
+  }
+  if (lower.includes("econnrefused") || lower.includes("connection refused") || lower.includes("refused")) {
+    return new ProbeFailure("refused", "connection_refused", "S0", "connection refused");
+  }
+  if (/(cloudflare|egress|private|reserved).*(block|deny|not allowed|unavailable)/i.test(message)) {
+    return new ProbeFailure("error", "egress_policy", "S0", "egress policy prevented the probe");
+  }
+  if (/http|response|upgrade|protocol|signature/i.test(message)) {
+    return new ProbeFailure("inconclusive", "protocol_response_unverified", "S1", "connection reached the endpoint but its protocol signature was not verified");
+  }
+  return new ProbeFailure("error", "probe_error", "S0", "probe failed before a positive connection stage was recorded");
+}
+
+function makeProbeResult(
+  bridge: BridgeDescriptor,
+  probeType: string,
+  vantage: ProbeVantage,
+  elapsedMs: number,
+  outcome: {
+    status: ProbeStatus;
+    stage: VerificationStage;
+    detail: string;
+    errorClass?: string | null;
+    httpStatus?: number | null;
+  },
+): ProbeResult {
+  const connected = outcome.status === "connected";
+  return {
+    id: bridge.id,
+    transport: bridge.transport,
+    host: bridge.host,
+    port: bridge.port,
+    success: connected,
+    status: outcome.status,
+    stage: outcome.stage,
+    vantage,
+    observed_at: new Date().toISOString(),
+    rtt_ms: elapsedMs,
+    latency_ms: elapsedMs,
+    probe_type: probeType,
+    sni: bridge.sni ?? null,
+    http_status: outcome.httpStatus ?? null,
+    detail: outcome.detail,
+    error_class: outcome.errorClass ?? null,
+    error: connected ? null : outcome.detail,
+  };
+}
+
+function cancelledResult(bridge: BridgeDescriptor, vantage: ProbeVantage): ProbeResult {
+  return makeProbeResult(bridge, classifyProbe(bridge), vantage, 0, {
+    status: "inconclusive",
+    stage: "S0",
+    detail: "probe cancelled by caller before network activity",
+    errorClass: "caller_cancelled",
+  });
+}
+
+/** Supplementary known-good HTTPS controls; outcomes are diagnostic only. */
 export async function runHttpsEgressControls(
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+  parentSignal?: AbortSignal,
 ): Promise<HttpsControl[]> {
   const targets = ["https://example.com/", "https://1.1.1.1/"];
-  const controls: HttpsControl[] = [];
-  for (const target of targets) {
+  return Promise.all(targets.map(async (target): Promise<HttpsControl> => {
+    if (parentSignal?.aborted) {
+      return { target, ok: false, http_status: null, error: "caller_cancelled" };
+    }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const unlink = linkAbortSignal(parentSignal, controller);
+    const timer = setTimeout(
+      () => controller.abort(new ProbeFailure("timeout", "control_timeout", "S0", "control timed out")),
+      timeoutMs,
+    );
     try {
-      const res = await fetch(target, {
+      const response = await fetch(target, {
         method: "GET",
         redirect: "manual",
         signal: controller.signal,
         headers: { "User-Agent": USER_AGENT, Accept: "*/*" },
       });
-      controls.push({ target, ok: true, http_status: res.status, error: null });
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      controls.push({
+      await response.body?.cancel();
+      return { target, ok: true, http_status: response.status, error: null };
+    } catch {
+      const failure = controller.signal.aborted ? abortFailure(controller.signal) : null;
+      return {
         target,
         ok: false,
         http_status: null,
-        error: controller.signal.aborted
-          ? `timed out after ${timeoutMs}ms`
-          : reason,
-      });
+        error: failure?.errorClass === "caller_cancelled" ? "caller_cancelled" :
+          failure?.status === "timeout" ? "timed_out" : "fetch_failed",
+      };
     } finally {
       clearTimeout(timer);
+      unlink();
     }
-  }
-  return controls;
+  }));
 }
 
-// Exported for unit testing — not part of the Worker's public API.
+/** Exported for hermetic Vitest coverage; preserves input result order. */
 export async function probeBridgesWithConcurrency(
   bridges: BridgeDescriptor[],
   maxConcurrent: number,
   timeoutMs: number,
+  signal?: AbortSignal,
+  vantage: ProbeVantage = { type: "cloudflare_worker", colo: null },
 ): Promise<{ results: ProbeResult[]; stats: ProbeStats }> {
   const results: ProbeResult[] = new Array(bridges.length);
   const stats: ProbeStats = {
-    attempted: bridges.length,
+    attempted: 0,
     completed: 0,
+    connected: 0,
+    refused: 0,
     timedOut: 0,
+    inconclusive: 0,
     errored: 0,
     success: 0,
   };
 
-  // v2.7: admission order — fronted (non-tcp) probe classes first, then
-  // tcp-class probes, each stable in input order. The Workers runtime
-  // queues connect() calls beyond 6 simultaneous connections per
-  // invocation, and a probe's deadline starts at admission, so a fronted
-  // probe admitted behind a wave of 5s-hanging dead-bridge tcp connects
-  // can spend its whole 15s budget in the runtime queue (the exact CI
-  // failure proven in egress-diagnostic runs 34177070080/34177799271:
-  // 7-first ⇒ 8-485ms incl. conjure HTTP 400; same 30 descriptors with
-  // 23 hangers first ⇒ all seven exactly 15000ms). Admitting fronted
-  // classes first is the measured-green configuration. tcp-class probes
-  // are outcome-invariant to admission order (a dead bridge fails either
-  // way). results[] stays indexed by ORIGINAL input position, so the
-  // response array is byte-identical to the previous admission order.
+  // Preserve measured fronted-first admission and stable order within each class.
   const frontedFirst: number[] = [];
   const tcpLast: number[] = [];
-  for (let i = 0; i < bridges.length; i++) {
-    if (classifyProbe(bridges[i]) === "tcp") {
-      tcpLast.push(i);
-    } else {
-      frontedFirst.push(i);
-    }
+  for (let index = 0; index < bridges.length; index++) {
+    (classifyProbe(bridges[index]) === "tcp" ? tcpLast : frontedFirst).push(index);
   }
   const order = [...frontedFirst, ...tcpLast];
-
   let nextIndex = 0;
 
-  // Worker function that pulls the next bridge from the queue
   async function worker(): Promise<void> {
     while (nextIndex < order.length) {
-      const idx = order[nextIndex++];
-      if (idx >= bridges.length) break;
-
-      const bridge = bridges[idx];
-      stats.attempted = Math.max(stats.attempted, idx + 1);
-
-      try {
-        const result = await probeOneWithTimeout(bridge, timeoutMs);
-        results[idx] = result;
+      const index = order[nextIndex++];
+      const bridge = bridges[index];
+      if (signal?.aborted) {
+        results[index] = cancelledResult(bridge, vantage);
         stats.completed++;
-        if (result.success) stats.success++;
-      } catch (err) {
-        const isTimeout =
-          err instanceof Error &&
-          (err.message.includes("timed out") || err.name === "TimeoutError");
-        if (isTimeout) {
-          stats.timedOut++;
-        } else {
-          stats.errored++;
-        }
-        results[idx] = {
-          id: bridge.id,
-          transport: bridge.transport,
-          host: bridge.host,
-          port: bridge.port,
-          success: false,
-          latency_ms: null,
-          probe_type: classifyProbe(bridge),
-          error: isTimeout ? "probe_timeout" : (err instanceof Error ? err.message : String(err)),
-        };
+        stats.inconclusive++;
+        continue;
+      }
+
+      stats.attempted++;
+      const result = await probeOneWithTimeout(bridge, timeoutMs, signal, vantage);
+      results[index] = result;
+      stats.completed++;
+      switch (result.status) {
+        case "connected": stats.connected++; stats.success++; break;
+        case "refused": stats.refused++; break;
+        case "timeout": stats.timedOut++; break;
+        case "inconclusive": stats.inconclusive++; break;
+        case "error": stats.errored++; break;
       }
     }
   }
 
-  // Launch maxConcurrent workers
-  const workerCount = Math.min(maxConcurrent, bridges.length);
-  const workers: Promise<void>[] = [];
-  for (let i = 0; i < workerCount; i++) {
-    workers.push(worker());
-  }
-  await Promise.all(workers);
-
+  const workerCount = Math.min(Math.max(1, Math.min(maxConcurrent, 6)), bridges.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
   return { results, stats };
 }
 
-// ─── Timeout-Wrapped Probe ──────────────────────────────────────────
-
-// Exported for unit testing.
+/** Exported for the handler's deterministic regression tests. */
 export async function probeOneWithTimeout(
   bridge: BridgeDescriptor,
   timeoutMs: number,
+  parentSignal?: AbortSignal,
+  vantage: ProbeVantage = { type: "cloudflare_worker", colo: null },
 ): Promise<ProbeResult> {
-  // Race the probe against a timeout using a simple setTimeout pattern.
-  // This avoids AbortController event-listener promise patterns that
-  // can produce unhandled rejections in test environments.
-  let timeoutId: ReturnType<typeof setTimeout> | undefined;
-
-  // v2.3: fetch()-based classes carry their own longer internal deadline
-  // (FETCH_PROBE_TIMEOUT_MS) and produce results with full diagnostics
-  // (sni / http_status / error). The outer race must outlast the inner
-  // deadline so the inner result — not this generic fallback — wins.
+  const started = Date.now();
   const probeType = classifyProbe(bridge);
-  const raceMs =
-    probeType === "tcp" ? timeoutMs : FETCH_PROBE_TIMEOUT_MS + 1000;
-
-  const timeoutPromise = new Promise<ProbeResult>((resolve) => {
-    timeoutId = setTimeout(() => {
-      resolve({
-        id: bridge.id,
-        transport: bridge.transport,
-        host: bridge.host,
-        port: bridge.port,
-        success: false,
-        latency_ms: null,
-        probe_type: classifyProbe(bridge),
-        error: `probe timed out after ${raceMs}ms`,
-      });
-    }, raceMs);
-  });
+  const operationTimeout = probeType === "tcp" ? timeoutMs : FETCH_PROBE_TIMEOUT_MS;
+  const controller = new AbortController();
+  const unlink = linkAbortSignal(parentSignal, controller);
+  const timer = setTimeout(
+    () => controller.abort(new ProbeFailure("timeout", "probe_timeout", "S0", "probe timed out")),
+    operationTimeout + 250,
+  );
 
   try {
-    const result = await Promise.race([
-      probeOne(bridge),
-      timeoutPromise,
-    ]);
-    return result;
+    const outcome = await raceWithSignal(probeOne(bridge, operationTimeout, controller.signal), controller.signal);
+    return makeProbeResult(bridge, probeType, vantage, Date.now() - started, outcome);
+  } catch (error) {
+    const failure = classifyFailure(error);
+    return makeProbeResult(bridge, probeType, vantage, Date.now() - started, {
+      status: failure.status,
+      stage: failure.stage,
+      detail: failure.safeDetail,
+      errorClass: failure.errorClass,
+      httpStatus: failure.httpStatus,
+    });
   } finally {
-    if (timeoutId !== undefined) {
-      clearTimeout(timeoutId);
-    }
+    clearTimeout(timer);
+    unlink();
   }
 }
 
-// ─── Per-Bridge Probe ───────────────────────────────────────────────
-
-async function probeOne(bridge: BridgeDescriptor): Promise<ProbeResult> {
-  const start = Date.now();
+async function probeOne(
+  bridge: BridgeDescriptor,
+  timeoutMs: number,
+  signal: AbortSignal,
+): Promise<{
+  status: "connected";
+  stage: "S1" | "S2";
+  detail: string;
+  httpStatus?: number | null;
+}> {
   const probeType = classifyProbe(bridge);
-  const port = bridge.port;
-  let httpStatus: number | null = null;
-
-  try {
-    switch (probeType) {
-      case "tcp":
-        await safeTcpProbe(bridge.host, port);
-        break;
-
-      case "tls":
-        // v2.5: raw-socket domain-fronted HTTPS GET (real TLS with SNI =
-        // the advertised front, Host = the descriptor's true host). The
-        // fetch()-based v2.2 probe sent SNI = Host = front and could
-        // never reach the bridge behind the CDN; the connect({
-        // secureTransport: "start" }) path before that was rejected by
-        // the deployed runtime before any network I/O.
-        httpStatus = await httpsFrontProbe(bridge);
-        break;
-
-      case "websocket-101":
-        // v2.5: raw-socket domain-fronted WebSocket Upgrade over
-        // TLS/HTTP-1.1 (SNI = front/host, Host = the descriptor's true
-        // host); only HTTP 101 counts as success.
-        httpStatus = await wsUpgradeFrontProbe(bridge);
-        break;
-
-      case "meek-post":
-        // v2.6: protocol-correct meek round-trip — POST with
-        // X-Session-Id over fronted TLS (SNI = front, Host = the
-        // descriptor's url= host); success requires the meek-server
-        // transact signature (200 + application/octet-stream).
-        httpStatus = await meekPostProbe(bridge);
-        break;
-
-      case "conjure-registration":
-        // v2.6: conjure registrar reachability — POST to the
-        // register-bidirectional endpoint over fronted TLS (SNI = front,
-        // Host = the registrar); success = the regserver's 400
-        // payload-validation signature (or a 2xx).
-        httpStatus = await conjureRegistrationProbe(bridge);
-        break;
-
-      default:
-        await safeTcpProbe(bridge.host, port);
+  throwIfAborted(signal);
+  switch (probeType) {
+    case "tcp":
+      await safeTcpProbe(bridge.host, bridge.port, timeoutMs, signal);
+      return { status: "connected", stage: "S1", detail: "TCP connection established" };
+    case "tls": {
+      const httpStatus = await httpsFrontProbe(bridge, timeoutMs, signal);
+      return { status: "connected", stage: "S1", detail: "TLS connection returned an HTTP response", httpStatus };
     }
-
-    const latencyMs = Date.now() - start;
-    return {
-      id: bridge.id,
-      transport: bridge.transport,
-      host: bridge.host,
-      port: bridge.port,
-      sni: bridge.sni ?? null,
-      success: true,
-      latency_ms: latencyMs,
-      probe_type: probeType,
-      http_status: httpStatus,
-      error: null,
-    };
-  } catch (err) {
-    const latencyMs = Date.now() - start;
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    return {
-      id: bridge.id,
-      transport: bridge.transport,
-      host: bridge.host,
-      port: bridge.port,
-      sni: bridge.sni ?? null,
-      success: false,
-      latency_ms: latencyMs,
-      probe_type: probeType,
-      http_status: httpStatus,
-      error: errorMsg,
-    };
+    case "websocket-101": {
+      const httpStatus = await wsUpgradeFrontProbe(bridge, timeoutMs, signal);
+      return { status: "connected", stage: "S2", detail: "WebTunnel WebSocket upgrade signature verified", httpStatus };
+    }
+    case "meek-post": {
+      const httpStatus = await meekPostProbe(bridge, timeoutMs, signal);
+      return { status: "connected", stage: "S2", detail: "meek transact response signature verified", httpStatus };
+    }
+    case "conjure-registration": {
+      const httpStatus = await conjureRegistrationProbe(bridge, timeoutMs, signal);
+      return { status: "connected", stage: "S2", detail: "conjure registrar validation signature verified", httpStatus };
+    }
+    default:
+      await safeTcpProbe(bridge.host, bridge.port, timeoutMs, signal);
+      return { status: "connected", stage: "S1", detail: "TCP connection established" };
   }
 }
 
-// Exported for unit testing.
 export function classifyProbe(bridge: BridgeDescriptor): string {
   const t = bridge.transport.toLowerCase();
 
@@ -770,86 +848,67 @@ async function safeConnect(
   port: number,
   options: ConnectOptions,
   timeoutMs: number,
+  signal?: AbortSignal,
 ): Promise<WorkersSocket> {
+  throwIfAborted(signal);
   // @ts-ignore — cloudflare:sockets types are ambient in Workers
   const socket = connect(
-    { hostname: host, port },
-    {
-      secureTransport: options.secureTransport,
-    } as any,
-  );
-
-  let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+    { hostname: toSocketHost(host), port },
+    { secureTransport: options.secureTransport } as any,
+  ) as unknown as WorkersSocket;
+  const removeAbort = closeOnAbort(socket, signal);
+  let timer: ReturnType<typeof setTimeout> | undefined;
 
   try {
-    // Acquire reader to detect connection establishment.
-    // The `.closed` promise resolves when the connection succeeds or
-    // the remote closes. We MUST release the lock after the race.
-    reader = socket.readable.getReader();
-
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(
-        () => reject(new Error(`TCP connect timed out after ${timeoutMs}ms`)),
-        timeoutMs,
-      );
-    });
-
-    await Promise.race([reader.closed, timeoutPromise]);
-  } catch (err) {
-    closeSocket(socket);
-    throw err;
-  } finally {
-    // ALWAYS release the reader lock — this is the fix for the
-    // "stalled HTTP response was canceled" bug.
-    if (reader) {
-      try {
-        reader.releaseLock();
-      } catch {
-        // Best-effort; reader may already be released or stream closed
-      }
+    // `socket.opened` is the documented connection-establishment signal.
+    // A quiet readable stream is not evidence of a failed TCP connection.
+    if (!socket.opened || typeof socket.opened.then !== "function") {
+      throw new ProbeFailure("error", "socket_opened_unavailable", "S0", "socket.opened is unavailable");
     }
+    await raceWithSignal(Promise.race([
+      socket.opened,
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(
+          () => reject(new ProbeFailure("timeout", "tcp_connect_timeout", "S0", "TCP connection timed out")),
+          timeoutMs,
+        );
+      }),
+    ]), signal);
+    return socket;
+  } catch (error) {
+    closeSocket(socket);
+    throw classifyFailure(error);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+    removeAbort();
   }
-
-  return socket;
 }
 
-async function safeTcpProbe(host: string, port: number): Promise<void> {
-  const socket = await safeConnect(host, port, { secureTransport: "off" }, DEFAULT_PROBE_TIMEOUT_MS);
-  // Connection established — success. Explicitly consume any pending data
-  // then close to ensure the runtime sees a fully-consumed response.
-  await drainAndClose(socket);
+async function safeTcpProbe(
+  host: string,
+  port: number,
+  timeoutMs: number,
+  signal: AbortSignal,
+): Promise<void> {
+  const socket = await safeConnect(host, port, { secureTransport: "off" }, timeoutMs, signal);
+  // For a TCP liveness check, connection establishment is the full claim.
+  // Do not wait for peer data or stream closure; close promptly and release
+  // the runtime's outbound-connection slot.
+  closeSocket(socket);
 }
 
-async function safeTlsProbe(host: string, port: number, sni: string): Promise<void> {
-  // v2.5 FIX: this helper previously dialed with secureTransport "start"
-  // (rejected verbatim by the deployed runtime: "Unsupported value in
-  // secureTransport socket option: start") and passed a non-existent
-  // `alpn` connect() option (silently ignored — the connect() options
-  // only accept secureTransport and allowHalfOpen). It now performs a
-  // real immediate-TLS connection (secureTransport "on") via
-  // safeTlsConnect, dialing the SNI host with the documented
-  // socket.opened handshake signal, then drains and closes.
-  const dialHost = sni || host;
-  const socket = await safeTlsConnect(dialHost, port, DEFAULT_PROBE_TIMEOUT_MS);
-  // TLS handshake completed. Consume any server greeting data then close.
-  await drainAndClose(socket);
+async function safeTlsProbe(
+  host: string,
+  port: number,
+  sni: string,
+  signal: AbortSignal = new AbortController().signal,
+): Promise<void> {
+  const socket = await safeTlsConnect(sni || host, port, DEFAULT_PROBE_TIMEOUT_MS, signal);
+  closeSocket(socket);
 }
 
 async function safeWebsocketProbe(bridge: BridgeDescriptor): Promise<void> {
-  // v2.5 FIX (legacy raw-socket WebSocket probe, previously dead in
-  // production): it dialed with secureTransport "start" — rejected
-  // verbatim by the deployed runtime before any network I/O — and sent
-  // `Host: ${sni}` (the FRONT) instead of the true backend host, so even
-  // where it ran it probed the front's own default vhost. It is now a
-  // thin wrapper over the corrected raw-socket upgrade path used by
-  // wsUpgradeFrontProbe: TLS with SNI = the advertised front and a raw
-  // HTTP/1.1 WebSocket-Upgrade request whose Host header is the
-  // descriptor's true host. Same name, same descriptor-in / void-out
-  // shape (it was and remains an internal helper, not exported).
-  const { status } = await rawTlsHttpProbe(bridge, true, DEFAULT_PROBE_TIMEOUT_MS);
-  if (status !== 101) {
-    throw new Error(`WebSocket upgrade rejected: HTTP ${status}`);
-  }
+  await wsUpgradeFrontProbe(bridge, DEFAULT_PROBE_TIMEOUT_MS, new AbortController().signal);
 }
 
 // ─── Raw-socket domain-fronted TLS probes (v2.5) ─────────────────────
@@ -942,8 +1001,14 @@ function frontDialTarget(bridge: BridgeDescriptor): {
 /** Host header value: the bare hostname on the default TLS port,
  *  host:port otherwise (what PT clients and the previous fetch() probes
  *  put on the wire). */
+function toSocketHost(host: string): string {
+  return host.startsWith("[") && host.endsWith("]") ? host.slice(1, -1) : host;
+}
+
 function hostHeaderValue(host: string, port: number): string {
-  return port === 443 ? host : `${host}:${port}`;
+  const bareHost = toSocketHost(host);
+  const headerHost = bareHost.includes(":") ? `[${bareHost}]` : bareHost;
+  return port === 443 ? headerHost : `${headerHost}:${port}`;
 }
 
 /** v2.5: TLS connect for the fronted probe classes. Unlike safeConnect()
@@ -958,39 +1023,36 @@ async function safeTlsConnect(
   dialHost: string,
   port: number,
   timeoutMs: number,
+  signal: AbortSignal,
 ): Promise<WorkersSocket> {
+  throwIfAborted(signal);
   // @ts-ignore — cloudflare:sockets types are ambient in Workers
   const socket = connect(
-    { hostname: dialHost, port },
+    { hostname: toSocketHost(dialHost), port },
     { secureTransport: "on" } as any,
-  );
-
+  ) as unknown as WorkersSocket;
+  const removeAbort = closeOnAbort(socket, signal);
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const opened: Promise<unknown> = socket.opened ?? Promise.resolve(undefined);
-    await Promise.race([
-      opened,
+    if (!socket.opened || typeof socket.opened.then !== "function") {
+      throw new ProbeFailure("error", "socket_opened_unavailable", "S0", "socket.opened is unavailable");
+    }
+    await raceWithSignal(Promise.race([
+      socket.opened,
       new Promise<never>((_, reject) => {
         timer = setTimeout(
-          () =>
-            reject(
-              new Error(
-                `TLS connect to ${dialHost}:${port} timed out after ${timeoutMs}ms`,
-              ),
-            ),
+          () => reject(new ProbeFailure("timeout", "tls_connect_timeout", "S0", "TLS connection timed out")),
           timeoutMs,
         );
       }),
-    ]);
+    ]), signal);
     return socket;
-  } catch (err) {
+  } catch (error) {
     closeSocket(socket);
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(`TLS connect to ${dialHost}:${port} failed: ${reason}`);
+    throw classifyFailure(error);
   } finally {
-    if (timer !== undefined) {
-      clearTimeout(timer);
-    }
+    if (timer !== undefined) clearTimeout(timer);
+    removeAbort();
   }
 }
 
@@ -1009,31 +1071,26 @@ async function rawTlsExchange(
   path: string,
   extraHeaders: string[],
   timeoutMs: number,
-): Promise<{ status: number; statusLine: string; headText: string }> {
-  // Fast-path skip: BridgeDB documentation-prefix IPv6 placeholders are
-  // unroutable by design; probing them only burns the chunk's wall-clock
-  // budget (251 of the 255 webtunnel lines in a typical CI input are
-  // these). Mirrors the SkipDocIpv6 decision in webtunnel_probe.rs — the
-  // runner-side probe skips them for the same reason.
+  signal: AbortSignal,
+  minimumBodyBytes = 0,
+): Promise<{ status: number; statusLine: string; headText: string; bodyText: string }> {
   if (isDocumentationIpv6(bridge.host)) {
-    throw new Error(
-      `skipped: documentation-prefix IPv6 endpoint ${bridge.host} ` +
-        `(BridgeDB anti-enumeration placeholder, not a routable bridge address)`,
-    );
+    throw new ProbeFailure("inconclusive", "placeholder_target", "S0", "skipped: documentation-prefix IPv6 endpoint placeholder was not probed");
   }
 
+  const started = Date.now();
+  const deadline = started + timeoutMs;
   const { dialHost, hostHeader } = frontDialTarget(bridge);
   const port = bridge.port || 443;
-  const label =
-    `TLS front probe ${dialHost}:${port}${path} ` +
-    `(SNI=${dialHost}, Host=${hostHeaderValue(hostHeader, port)})`;
-
   let socket: WorkersSocket | null = null;
+  let connectionEstablished = false;
+  let removeAbort = () => {};
   let writer: WritableStreamDefaultWriter<Uint8Array> | null = null;
   let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
-  let responseTimer: ReturnType<typeof setTimeout> | undefined;
   try {
-    socket = await safeTlsConnect(dialHost, port, timeoutMs);
+    socket = await safeTlsConnect(dialHost, port, timeoutMs, signal);
+    connectionEstablished = true;
+    removeAbort = closeOnAbort(socket, signal);
     writer = socket.writable.getWriter();
     reader = socket.readable.getReader();
 
@@ -1042,62 +1099,90 @@ async function rawTlsExchange(
       `Host: ${hostHeaderValue(hostHeader, port)}`,
       `User-Agent: ${USER_AGENT}`,
       `Accept: */*`,
+      ...extraHeaders,
     ];
-    requestLines.push(...extraHeaders);
     const request = `${requestLines.join("\r\n")}\r\n\r\n`;
-    await writer.write(new TextEncoder().encode(request));
+    await raceWithSignal(writer.write(new TextEncoder().encode(request)), signal);
 
-    // Read the response head, racing the overall deadline so a server
-    // that accepts the request but never responds cannot hold the probe
-    // (the read loop itself would otherwise await forever).
-    const responsePromise = (async () => {
-      let response = "";
-      for (;;) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        response += new TextDecoder().decode(value);
-        if (response.includes("\r\n\r\n")) break;
-        if (response.length > 4096) break;
+    let response = "";
+    for (;;) {
+      throwIfAborted(signal);
+      const headerEnd = response.indexOf("\r\n\r\n");
+      if (headerEnd >= 0) {
+        const bodyText = response.slice(headerEnd + 4);
+        const headerText = response.slice(0, headerEnd);
+        const statusCode = Number.parseInt((headerText.split("\r\n")[0] || "").match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})/i)?.[1] ?? "0", 10);
+        const lengthMatch = headerText.match(/(?:^|\r\n)content-length\s*:\s*(\d+)/i);
+        const contentLength = lengthMatch ? Number(lengthMatch[1]) : null;
+        const needConjureErrorBody = minimumBodyBytes > 0 && statusCode === 400;
+        if (!needConjureErrorBody || bodyText.length >= minimumBodyBytes ||
+            (contentLength !== null && bodyText.length >= contentLength)) {
+          break;
+        }
       }
-      return response;
-    })();
-    const deadlinePromise = new Promise<"__probe_deadline__">((resolve) => {
-      responseTimer = setTimeout(() => resolve("__probe_deadline__"), timeoutMs);
-    });
-    const response = await Promise.race([responsePromise, deadlinePromise]);
-    if (response === "__probe_deadline__") {
-      throw new Error(`timed out after ${timeoutMs}ms waiting for response head`);
+      if (response.length >= 4608) break;
+      const remaining = deadline - Date.now();
+      if (remaining <= 0) {
+        throw new ProbeFailure("timeout", "response_timeout", "S1", "connected endpoint did not complete its response before the deadline");
+      }
+      let readTimer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const read = reader.read();
+        const result = await raceWithSignal(Promise.race([
+          read,
+          new Promise<never>((_, reject) => {
+            readTimer = setTimeout(
+              () => reject(new ProbeFailure("timeout", "response_timeout", "S1", "connected endpoint did not complete its response before the deadline")),
+              remaining,
+            );
+          }),
+        ]), signal);
+        if (result.done) break;
+        response += new TextDecoder("latin1").decode(result.value);
+      } finally {
+        if (readTimer !== undefined) clearTimeout(readTimer);
+      }
     }
 
-    const statusLine = (response.split("\r\n")[0] || "").trim();
+    const boundary = response.indexOf("\r\n\r\n");
+    if (boundary < 0) {
+      throw new ProbeFailure("inconclusive", "http_response_missing", "S1", "connection reached the endpoint but no complete HTTP response head was received");
+    }
+    const headerText = response.slice(0, boundary);
+    const statusLine = (headerText.split("\r\n")[0] || "").trim();
     const match = statusLine.match(/^HTTP\/\d(?:\.\d)?\s+(\d{3})/i);
     if (!match) {
-      throw new Error(
-        statusLine
-          ? `no HTTP status line in response (first line: ${statusLine})`
-          : `no response (connection closed before a status line was received)`,
+      throw new ProbeFailure("inconclusive", "http_status_missing", "S1", "connection reached the endpoint but no valid HTTP status was received");
+    }
+    return {
+      status: Number.parseInt(match[1], 10),
+      statusLine,
+      headText: `${headerText}\r\n\r\n`,
+      bodyText: response.slice(boundary + 4),
+    };
+  } catch (error) {
+    const failure = classifyFailure(error);
+    // Preserve the positive TCP-connect stage if cancellation/timeout occurs
+    // after socket.opened resolved but before a protocol response completed.
+    if (connectionEstablished && failure.stage === "S0") {
+      throw new ProbeFailure(
+        failure.status,
+        failure.errorClass,
+        "S1",
+        failure.safeDetail,
+        failure.httpStatus,
       );
     }
-    return { status: parseInt(match[1], 10), statusLine, headText: response };
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(`${label} failed: ${reason}`);
+    throw failure;
   } finally {
-    if (responseTimer !== undefined) {
-      clearTimeout(responseTimer);
-    }
-    // Always release writer and reader locks, then close the socket —
-    // no dangling locks regardless of which code path (success, error,
-    // timeout) triggers the cleanup.
+    removeAbort();
     if (writer) {
       try { writer.releaseLock(); } catch { /* best-effort */ }
     }
     if (reader) {
       try { reader.releaseLock(); } catch { /* best-effort */ }
     }
-    if (socket) {
-      closeSocket(socket);
-    }
+    if (socket) closeSocket(socket);
   }
 }
 
@@ -1110,43 +1195,70 @@ async function rawTlsHttpProbe(
   bridge: BridgeDescriptor,
   websocketUpgrade: boolean,
   timeoutMs: number,
-): Promise<{ status: number; statusLine: string; headText: string }> {
+  signal: AbortSignal,
+  websocketKey?: string,
+): Promise<{ status: number; statusLine: string; headText: string; bodyText: string }> {
   const extraHeaders: string[] = [];
-  if (websocketUpgrade) {
+  if (websocketUpgrade && websocketKey) {
     extraHeaders.push(
-      `Connection: Upgrade`,
-      `Upgrade: websocket`,
-      `Sec-WebSocket-Key: ${generateWebSocketKey()}`,
-      `Sec-WebSocket-Version: 13`,
+      "Connection: Upgrade",
+      "Upgrade: websocket",
+      `Sec-WebSocket-Key: ${websocketKey}`,
+      "Sec-WebSocket-Version: 13",
     );
   }
-  return rawTlsExchange(bridge, "GET", frontProbePath(bridge), extraHeaders, timeoutMs);
+  return rawTlsExchange(bridge, "GET", frontProbePath(bridge), extraHeaders, timeoutMs, signal);
 }
 
-/** HTTPS GET probe (tls class). Resolves to the HTTP status of any
- *  response; throws on DNS/TLS/connection errors or timeout. v2.5:
- *  domain-fronted via raw TLS socket (SNI = advertised front, Host =
- *  the descriptor's true host) — see the section header above. */
+function responseHeaders(headText: string, name: string): string[] {
+  const prefix = `${name.toLowerCase()}:`;
+  const values: string[] = [];
+  for (const line of headText.split("\r\n").slice(1)) {
+    if (line.toLowerCase().startsWith(prefix)) values.push(line.slice(prefix.length).trim());
+  }
+  return values;
+}
+
+function uniqueResponseHeader(headText: string, name: string): string | null {
+  const values = responseHeaders(headText, name);
+  return values.length === 1 ? values[0] : null;
+}
+
+async function websocketAcceptForKey(key: string): Promise<string> {
+  const input = new TextEncoder().encode(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`);
+  const digest = await crypto.subtle.digest("SHA-1", input);
+  return btoa(String.fromCharCode(...new Uint8Array(digest)));
+}
+
+/** HTTPS GET is connection/TLS reachability only (S1), never a transport handshake. */
 export async function httpsFrontProbe(
   bridge: BridgeDescriptor,
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+  signal: AbortSignal = new AbortController().signal,
 ): Promise<number> {
-  const { status } = await rawTlsHttpProbe(bridge, false, timeoutMs);
+  const { status } = await rawTlsHttpProbe(bridge, false, timeoutMs, signal);
   return status;
 }
 
-/** WebSocket-Upgrade probe (websocket-101 class). Resolves to 101 when
- *  the front completes the upgrade; throws otherwise (including for
- *  non-101 HTTP responses, mirroring the webtunnel_probe.rs bar).
- *  v2.5: domain-fronted via raw TLS socket over HTTP/1.1 (SNI =
- *  advertised front, Host = the descriptor's true host). */
+/** Verify a complete WebSocket upgrade signature, not just a generic 101. */
 export async function wsUpgradeFrontProbe(
   bridge: BridgeDescriptor,
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+  signal: AbortSignal = new AbortController().signal,
 ): Promise<number> {
-  const { status, statusLine } = await rawTlsHttpProbe(bridge, true, timeoutMs);
-  if (status !== 101) {
-    throw new Error(`WebSocket upgrade rejected: ${statusLine || `HTTP ${status}`}`);
+  const key = generateWebSocketKey();
+  const { status, statusLine, headText } = await rawTlsHttpProbe(bridge, true, timeoutMs, signal, key);
+  // RFC 6455 opening handshake is HTTP/1.1 101 plus a unique accept signature.
+  if (!/^HTTP\/1\.1\s+101\b/i.test(statusLine) || status !== 101) {
+    throw new ProbeFailure("inconclusive", "websocket_upgrade_rejected", "S1", "WebTunnel endpoint did not return HTTP 101", status);
+  }
+  const upgrade = uniqueResponseHeader(headText, "upgrade")?.toLowerCase();
+  const connection = uniqueResponseHeader(headText, "connection")?.toLowerCase()
+    .split(",").map((value) => value.trim()) ?? [];
+  const receivedAccept = uniqueResponseHeader(headText, "sec-websocket-accept");
+  const expectedAccept = await websocketAcceptForKey(key);
+  if (upgrade !== "websocket" || !connection.includes("upgrade") || receivedAccept !== expectedAccept) {
+    throw new ProbeFailure("inconclusive", "websocket_signature_invalid", "S1", "HTTP 101 was returned without a valid WebSocket upgrade signature", status);
   }
   return status;
 }
@@ -1217,24 +1329,25 @@ function headHasHeaderValue(headText: string, name: string, valuePrefix: string)
 export async function meekPostProbe(
   bridge: BridgeDescriptor,
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+  signal: AbortSignal = new AbortController().signal,
 ): Promise<number> {
-  const path = frontProbePath(bridge);
-  const { status, statusLine, headText } = await rawTlsExchange(
+  const { status, headText } = await rawTlsExchange(
     bridge,
     "POST",
-    path,
-    [`X-Session-Id: ${generateMeekSessionId()}`, `Content-Length: 0`],
+    frontProbePath(bridge),
+    [`X-Session-Id: ${generateMeekSessionId()}`, "Content-Length: 0"],
     timeoutMs,
+    signal,
   );
   if (status === 200 && headHasHeaderValue(headText, "Content-Type", "application/octet-stream")) {
     return status;
   }
-  const hasOctetStream = headHasHeaderValue(headText, "Content-Type", "application/octet-stream");
-  throw new Error(
-    `meek POST ${path} got ${statusLine}` +
-      (status === 200 && !hasOctetStream
-        ? ` (200 without meek's application/octet-stream transact signature — likely the front's default vhost, not the meek backend)`
-        : ` (see meek-server.go status semantics: 400 = session-id validation, 500 = ORPort dial failure, 4xx = front edge)`),
+  throw new ProbeFailure(
+    "inconclusive",
+    "meek_signature_unverified",
+    "S1",
+    "meek transact response signature was not verified",
+    status,
   );
 }
 
@@ -1285,22 +1398,26 @@ function conjureRegistrationPath(bridge: BridgeDescriptor): string {
 export async function conjureRegistrationProbe(
   bridge: BridgeDescriptor,
   timeoutMs: number = FETCH_PROBE_TIMEOUT_MS,
+  signal: AbortSignal = new AbortController().signal,
 ): Promise<number> {
-  const path = conjureRegistrationPath(bridge);
-  const { status, statusLine } = await rawTlsExchange(
+  const { status, bodyText } = await rawTlsExchange(
     bridge,
     "POST",
-    path,
-    [`Content-Length: 0`],
+    conjureRegistrationPath(bridge),
+    ["Content-Length: 0"],
     timeoutMs,
+    signal,
+    17,
   );
-  if ((status >= 200 && status < 300) || status === 400) {
+  if ((status >= 200 && status < 300) || (status === 400 && /payload too small/i.test(bodyText))) {
     return status;
   }
-  throw new Error(
-    `conjure registration POST ${path} got ${statusLine}` +
-      ` (expected the 400 payload-validation signature or 2xx; 404 = front default vhost or wrong path)` +
-      (status === 405 ? `; 405 is still method validation by the regserver itself` : ``),
+  throw new ProbeFailure(
+    "inconclusive",
+    "conjure_signature_unverified",
+    "S1",
+    "conjure registrar validation signature was not verified",
+    status,
   );
 }
 
@@ -1378,18 +1495,6 @@ function generateWebSocketKey(): string {
 function jsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Methods": "POST, OPTIONS",
-      "Access-Control-Allow-Headers": "Content-Type, X-Probe-Token",
-    },
+    headers: { "Content-Type": "application/json; charset=utf-8" },
   });
-}
-
-function corsResponse(response: Response): Response {
-  response.headers.set("Access-Control-Allow-Origin", "*");
-  response.headers.set("Access-Control-Allow-Methods", "POST, OPTIONS");
-  response.headers.set("Access-Control-Allow-Headers", "Content-Type, X-Probe-Token");
-  return response;
 }

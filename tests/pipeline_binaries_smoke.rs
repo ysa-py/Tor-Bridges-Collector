@@ -307,6 +307,31 @@ fn self_heal_reports_healthy_on_a_complete_tree() {
 }
 
 #[test]
+fn self_heal_accepts_fresh_checkout_before_pipeline_outputs_exist() {
+    let dir = scratch("selfheal-clean-checkout");
+    std::fs::remove_dir_all(dir.join("bridge")).unwrap();
+
+    let output = run(
+        env!("CARGO_BIN_EXE_self_heal"),
+        &dir,
+        &["--heal", "--strict"],
+    );
+    assert_success("self_heal on a fresh checkout", &output);
+
+    let report: serde_json::Value = serde_json::from_slice(
+        &std::fs::read(dir.join("diagnostics/rust-self-heal.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(report["status"], "healthy");
+    assert_eq!(report["preflight"]["status"], "healthy");
+    assert_eq!(
+        report["preflight"]["pipeline_outputs_pending"],
+        serde_json::json!(["bridge/iran_results.json"])
+    );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
 fn self_heal_fails_loudly_when_required_files_are_missing() {
     let dir = scratch("selfheal-missing");
     std::fs::remove_file(dir.join("scripts/self_heal.sh")).unwrap();
@@ -362,5 +387,61 @@ fn bridge_intelligence_produces_the_iran_reports() {
     ] {
         assert!(dir.join(expected).is_file(), "missing output: {expected}");
     }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Validation no-ops must write schema-valid empty observation files so
+/// analytics do not `exit 1` and Stage 8u does not emit "unreadable" notices.
+#[test]
+fn this_run_snapshot_validation_noop_writes_readable_empty_schemas() {
+    let dir = scratch("this-run-noop");
+    std::fs::write(
+        dir.join("data/pt_results.json"),
+        r#"[{"host":"1.2.3.4","port":443,"success":true}]"#,
+    )
+    .unwrap();
+    let output = run(
+        env!("CARGO_BIN_EXE_this_run_snapshot"),
+        &dir,
+        &[
+            "--mode",
+            "validation_noop",
+            "--reason",
+            "not the default branch",
+        ],
+    );
+    assert_success("this_run_snapshot --mode validation_noop", &output);
+
+    let iran_text = std::fs::read_to_string(dir.join("bridge/iran_results.json")).unwrap();
+    let iran: serde_json::Value = serde_json::from_str(&iran_text).unwrap();
+    assert_eq!(iran["bridges"].as_array().unwrap().len(), 0);
+
+    let history_text = std::fs::read_to_string(dir.join("bridge/bridge_history.json")).unwrap();
+    let history: serde_json::Value = serde_json::from_str(&history_text).unwrap();
+    assert!(history.as_object().unwrap().is_empty());
+
+    let pt_text = std::fs::read_to_string(dir.join("data/pt_results.json")).unwrap();
+    let pt: serde_json::Value = serde_json::from_str(&pt_text).unwrap();
+    assert_eq!(pt.as_array().unwrap().len(), 0);
+
+    let mode_text = std::fs::read_to_string(dir.join("data/collection_mode.json")).unwrap();
+    let mode: serde_json::Value = serde_json::from_str(&mode_text).unwrap();
+    assert_eq!(mode["mode"], "validation_noop");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// A truthful zero-yield elite pack is an empty file, not a missing file.
+/// Stage 8s used `test -s` which treated that as ::error::.
+#[test]
+fn empty_elite_pack_file_is_a_valid_zero_yield() {
+    let dir = scratch("elite-empty");
+    let path = dir.join("export/iran_anti_dpi_elite.txt");
+    std::fs::write(&path, "").unwrap();
+    assert!(path.is_file(), "elite pack file must exist");
+    assert_eq!(
+        std::fs::metadata(&path).unwrap().len(),
+        0,
+        "zero-yield pack is empty, not fabricated"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }

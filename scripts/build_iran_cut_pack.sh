@@ -12,8 +12,8 @@
 #                                        CDN/DTLS eligibility; often 0 because
 #                                        the CI runner cannot reach them)
 #   2. bridge/iran_likely_working_nin.txt Stage 8p  (nin_internet_cut_classifier
-#                                        combined output; also in the 55-file
-#                                        bridge/ publication contract)
+#                                        combined output; also in the
+#                                        manifest-defined bridge/ contract)
 #   3. export/nin_cut_bridges.txt        Stage 8p  (classifier GREEN pack)
 #   4. export/iran_nin_pack.txt          Stage 8d2 (iran_nin_bypass NIN pack)
 #   5. export/nin_cut_survivable.txt     Stage 8k  (nin_cut_tester — probe-based

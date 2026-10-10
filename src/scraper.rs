@@ -52,6 +52,9 @@ use thiserror::Error;
 
 use crate::adaptive_selector::AdaptiveBridgeSelector;
 use crate::dt_utils;
+#[cfg(feature = "network")]
+use crate::network_safety::safe_reqwest_error_summary;
+use crate::network_safety::safe_url_origin;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (mirrors module-level constants in scraper.py)
@@ -196,7 +199,7 @@ pub trait HttpFetch: Send + Sync {
     /// real HEAD.
     fn head(&self, url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
         Err(ScraperError::Http {
-            url: url.to_string(),
+            url: safe_url_origin(url),
             message: "HEAD requests are not supported by this HttpFetch implementation".to_string(),
         })
     }
@@ -882,7 +885,7 @@ fn moat_post_with_retry(
         match client.post_json(url, payload, headers, timeout) {
             Ok(response) if response.status == 429 || response.status >= 500 => {
                 last_error = Some(ScraperError::Http {
-                    url: url.to_string(),
+                    url: safe_url_origin(url),
                     message: format!("HTTP {}", response.status),
                 });
             }
@@ -903,7 +906,7 @@ fn moat_post_with_retry(
         }
     }
     Err(last_error.unwrap_or_else(|| ScraperError::Http {
-        url: url.to_string(),
+        url: safe_url_origin(url),
         message: "MOAT request failed without a response".to_string(),
     }))
 }
@@ -1790,13 +1793,13 @@ impl HttpFetch for ReqwestHttpFetch {
             .timeout(timeout)
             .send()
             .map_err(|err| ScraperError::Http {
-                url: url.to_string(),
-                message: err.to_string(),
+                url: safe_url_origin(url),
+                message: safe_reqwest_error_summary(&err).to_string(),
             })?;
         let status = resp.status().as_u16();
         let headers = response_headers(resp.headers());
         let text = resp.text().map_err(|_| ScraperError::HttpNotUtf8 {
-            url: url.to_string(),
+            url: safe_url_origin(url),
         })?;
         Ok(HttpResponse {
             status,
@@ -1817,26 +1820,27 @@ impl HttpFetch for ReqwestHttpFetch {
         for (name, value) in headers {
             let name_parsed =
                 name.parse::<reqwest::header::HeaderName>()
-                    .map_err(|err| ScraperError::Http {
-                        url: url.to_string(),
-                        message: format!("invalid header name {name:?}: {err}"),
+                    .map_err(|_| ScraperError::Http {
+                        url: safe_url_origin(url),
+                        message: "invalid header name".to_string(),
                     })?;
-            let value_parsed = value
-                .parse::<reqwest::header::HeaderValue>()
-                .map_err(|err| ScraperError::Http {
-                    url: url.to_string(),
-                    message: format!("invalid header value {value:?}: {err}"),
-                })?;
+            let value_parsed =
+                value
+                    .parse::<reqwest::header::HeaderValue>()
+                    .map_err(|_| ScraperError::Http {
+                        url: safe_url_origin(url),
+                        message: "invalid header value".to_string(),
+                    })?;
             req = req.header(name_parsed, value_parsed);
         }
         let resp = req.send().map_err(|err| ScraperError::Http {
-            url: url.to_string(),
-            message: err.to_string(),
+            url: safe_url_origin(url),
+            message: safe_reqwest_error_summary(&err).to_string(),
         })?;
         let status = resp.status().as_u16();
         let headers = response_headers(resp.headers());
         let text = resp.text().map_err(|_| ScraperError::HttpNotUtf8 {
-            url: url.to_string(),
+            url: safe_url_origin(url),
         })?;
         Ok(HttpResponse {
             status,
@@ -1854,8 +1858,8 @@ impl HttpFetch for ReqwestHttpFetch {
             .timeout(timeout)
             .send()
             .map_err(|err| ScraperError::Http {
-                url: url.to_string(),
-                message: err.to_string(),
+                url: safe_url_origin(url),
+                message: safe_reqwest_error_summary(&err).to_string(),
             })?;
         let status = resp.status().as_u16();
         let headers = response_headers(resp.headers());
@@ -1877,26 +1881,27 @@ impl HttpFetch for ReqwestHttpFetch {
         for (name, value) in headers {
             let name_parsed =
                 name.parse::<reqwest::header::HeaderName>()
-                    .map_err(|err| ScraperError::Http {
-                        url: url.to_string(),
-                        message: format!("invalid header name {name:?}: {err}"),
+                    .map_err(|_| ScraperError::Http {
+                        url: safe_url_origin(url),
+                        message: "invalid header name".to_string(),
                     })?;
-            let value_parsed = value
-                .parse::<reqwest::header::HeaderValue>()
-                .map_err(|err| ScraperError::Http {
-                    url: url.to_string(),
-                    message: format!("invalid header value {value:?}: {err}"),
-                })?;
+            let value_parsed =
+                value
+                    .parse::<reqwest::header::HeaderValue>()
+                    .map_err(|_| ScraperError::Http {
+                        url: safe_url_origin(url),
+                        message: "invalid header value".to_string(),
+                    })?;
             req = req.header(name_parsed, value_parsed);
         }
         let resp = req.send().map_err(|err| ScraperError::Http {
-            url: url.to_string(),
-            message: err.to_string(),
+            url: safe_url_origin(url),
+            message: safe_reqwest_error_summary(&err).to_string(),
         })?;
         let status = resp.status().as_u16();
         let headers = response_headers(resp.headers());
         let text = resp.text().map_err(|_| ScraperError::HttpNotUtf8 {
-            url: url.to_string(),
+            url: safe_url_origin(url),
         })?;
         Ok(HttpResponse {
             status,
@@ -1937,6 +1942,46 @@ fn type_name_of_value(value: &Value) -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "network")]
+    #[test]
+    fn reqwest_error_diagnostics_redact_urls_and_header_values() {
+        let client = ReqwestHttpFetch::default();
+        let secret_url = "https://alice:sample-secret@example.invalid/private?token=query-secret";
+        let invalid_header = vec![("x-test".to_string(), "header-secret\n".to_string())];
+        let header_error = client
+            .get_with_headers(secret_url, &invalid_header, Duration::from_secs(1))
+            .unwrap_err()
+            .to_string();
+        assert_eq!(
+            header_error,
+            "scraper HTTP error for https://example.invalid: invalid header value"
+        );
+        assert!(!header_error.contains("sample-secret"));
+        assert!(!header_error.contains("query-secret"));
+        assert!(!header_error.contains("header-secret"));
+
+        let post_error = client
+            .post_json(
+                secret_url,
+                &json!({}),
+                &invalid_header,
+                Duration::from_secs(1),
+            )
+            .unwrap_err()
+            .to_string();
+        assert_eq!(post_error, header_error);
+
+        let invalid_url =
+            "https://alice:sample-secret@example.invalid:invalid/private?token=query-secret";
+        let request_error = client
+            .get(invalid_url, Duration::from_secs(1))
+            .unwrap_err()
+            .to_string();
+        assert!(request_error.starts_with("scraper HTTP error for invalid URL:"));
+        assert!(!request_error.contains("sample-secret"));
+        assert!(!request_error.contains("query-secret"));
+    }
 
     #[test]
     fn normalize_for_history_vanilla_is_idempotent() {

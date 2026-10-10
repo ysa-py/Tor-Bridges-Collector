@@ -64,7 +64,7 @@ ndarray = "=0.15.6"
 # Use Rustls' ring provider explicitly. Disabling default features prevents an
 # ambiguous aws-lc/ring process-wide provider when the collector builds its
 # controlled TLS ClientHello profiles.
-rustls = { version = "=0.23.41", default-features = false, features = ["ring", "std", "tls12"] }
+rustls = { version = "=0.23.45", default-features = false, features = ["ring", "std", "tls12"] }
 pqcrypto-kyber = "=0.8.1"
 pqcrypto-mlkem = "=0.1.1"
 hickory-dns = "=0.25.2"
@@ -113,6 +113,9 @@ tracing = { workspace = true }
 scraper = { workspace = true }
 anyhow = "=1.0.103"
 base64 = "=0.22.1"
+# RFC 6455 opening-handshake validation uses SHA-1 exactly as specified for
+# Sec-WebSocket-Accept; this version is already present transitively in the lock.
+sha1 = "=0.10.7"
 rand = "=0.8.6"
 url = "=2.5.8"
 socket2 = "=0.5.10"

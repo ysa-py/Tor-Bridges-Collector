@@ -309,13 +309,13 @@ mod tests {
     // ── CIDR table integrity ──────────────────────────────────────────
 
     #[test]
-    fn cidr_v4_table_is_non_empty() {
-        assert!(!RESERVED_CIDR_V4.is_empty());
+    fn cidr_v4_table_starts_with_this_network() {
+        assert_eq!(RESERVED_CIDR_V4[0].label, "CURRENT_NETWORK_RFC1122");
     }
 
     #[test]
-    fn cidr_v6_table_is_non_empty() {
-        assert!(!RESERVED_CIDR_V6.is_empty());
+    fn cidr_v6_table_starts_with_unspecified() {
+        assert_eq!(RESERVED_CIDR_V6[0].label, "UNSPECIFIED");
     }
 
     #[test]

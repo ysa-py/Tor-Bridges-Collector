@@ -58,6 +58,7 @@ pub mod ml_predictor;
 pub mod monitoring;
 pub mod monitoring_structured_logger;
 pub mod multi_vantage;
+pub mod network_safety;
 pub mod nin_advanced_bypass;
 pub mod nin_cut_tester;
 pub mod nin_internet_cut_classifier;
@@ -94,6 +95,7 @@ pub mod supply_extension_v2;
 pub mod telemetry_watcher;
 pub mod temporal_analyzer;
 pub mod tester;
+pub mod this_run_snapshot;
 /// Production-grade unified collector for the legacy OnionHop.py and vip.py
 /// bridge-list workflows. It is excluded only from the CI-only ARMv7-musl
 /// type-check because that target has no native TLS C toolchain; ARM GNU and
@@ -104,6 +106,7 @@ pub mod torshield_ai_gateway;
 pub mod transport_plugin;
 pub mod validate_workflows;
 pub mod vercel_cleanup;
+pub mod websocket_signature;
 pub mod webtunnel_probe;
 pub mod webtunnel_supply_advanced;
 pub mod webtunnel_v2;

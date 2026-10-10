@@ -72,12 +72,24 @@ def c2_publication_contract():
     if not m:
         record("C2 publication-contract", False, "REQUIRED_FILES const not found")
         return
-    required = set(re.findall(r'"([^"]+)"', m.group(1)))
-    present = set(os.listdir(os.path.join(REPO, "bridge")))
+    names = re.findall(r'"([^"]+)"', m.group(1))
+    required = set(names)
+    bridge_dir = os.path.join(REPO, "bridge")
+    contract_ok = bool(names) and len(names) == len(required)
+    if not os.path.isdir(bridge_dir):
+        # A clean clone can be checked before the first successful collection
+        # has materialized canonical bridge inputs. The full pipeline's
+        # Stage 9b/10 remains the fail-closed publication gate in that case.
+        record("C2 publication-contract", contract_ok,
+               f"{len(required)} unique required paths; bridge/ not materialized yet")
+        return
+    present = set(os.listdir(bridge_dir))
     missing = sorted(required - present)
     extra = sorted(present - required)
-    ok = not missing and not extra
-    detail = f"{len(required)} required files"
+    ok = contract_ok and not missing and not extra
+    detail = f"{len(required)} required paths"
+    if not contract_ok:
+        detail += "; duplicate/empty REQUIRED_FILES inventory"
     if missing:
         detail += f"; missing={missing[:5]}"
     if extra:
@@ -138,7 +150,12 @@ def c4_stage_sync():
 
 # ── C5. Evidence stamps on every iran_results.json entry ────────────────────
 def c5_evidence_stamps():
-    p = os.path.join(REPO, "bridge", "iran_results.json")
+    bridge_dir = os.path.join(REPO, "bridge")
+    if not os.path.isdir(bridge_dir):
+        record("C5 evidence-stamps", True,
+               "bridge/ not materialized yet; runtime publication gate validates results")
+        return
+    p = os.path.join(bridge_dir, "iran_results.json")
     if not os.path.exists(p):
         record("C5 evidence-stamps", False, "bridge/iran_results.json missing")
         return
@@ -152,13 +169,18 @@ def c5_evidence_stamps():
 
 # ── C6. No duplicate bridge lines inside any single bridge/*.txt ────────────
 def c6_duplicate_lines():
+    bridge_dir = os.path.join(REPO, "bridge")
+    if not os.path.isdir(bridge_dir):
+        record("C6 no-dup-bridge-lines", True,
+               "bridge/ not materialized yet; runtime publication gate validates text outputs")
+        return
     dups = []
     total = 0
-    for f in sorted(os.listdir(os.path.join(REPO, "bridge"))):
+    for f in sorted(os.listdir(bridge_dir)):
         if not f.endswith(".txt"):
             continue
         seen = set()
-        for line in open(os.path.join(REPO, "bridge", f), encoding="utf-8", errors="replace"):
+        for line in open(os.path.join(bridge_dir, f), encoding="utf-8", errors="replace"):
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
@@ -246,6 +268,10 @@ def c10_elite_count_consistency():
 # ── C11. User-facing iran_cut_pack.txt == fresh Stage 8p2 regeneration ──────
 def c11_cutpack_freshness():
     p = os.path.join(REPO, "export", "iran_cut_pack.txt")
+    if not os.path.isdir(os.path.join(REPO, "bridge")):
+        record("C11 cutpack-freshness", True,
+               "bridge/ not materialized yet; full pipeline finalizer validates cut pack")
+        return
     if not os.path.exists(p):
         record("C11 cutpack-freshness", False, "export/iran_cut_pack.txt missing")
         return
@@ -310,6 +336,141 @@ def c13_nin_recommended_freshness():
                else "committed manifest is stale vs regeneration")
 
 
+# ── C14. Hourly automation, rerank-only skip, and publication side-effect gates ──
+def c14_workflow_automation_gates():
+    path = os.path.join(REPO, ".github", "workflows", "torshield-ir.yml")
+    workflow = open(path, encoding="utf-8").read()
+    hourly = bool(
+        re.search(
+            r"(?m)^\s*-\s*cron:\s*['\"]?0 \* \* \* \*['\"]?\s*$",
+            workflow,
+        )
+    )
+
+    jobs_start = workflow.find("\njobs:")
+    scrape_start = workflow.find("\n  scrape-and-test:\n", jobs_start)
+    rerank_start = workflow.find("\n  ai-rerank:\n", scrape_start)
+    scrape_block = (
+        workflow[scrape_start:rerank_start]
+        if scrape_start >= 0 and rerank_start > scrape_start
+        else ""
+    )
+    collect_main_only = (
+        'if [ "${GITHUB_EVENT_NAME}" != "pull_request" ] && '
+        '[ "${GITHUB_REF}" = "refs/heads/main" ]; then' in scrape_block
+        and "collect=true" in scrape_block
+        and scrape_block.count(
+            "self no-op: live collection, Worker deploy, and Telegram stay on main"
+        )
+        >= 20
+    )
+    rerank_skip = (
+        "!cancelled() && (github.event_name != 'workflow_dispatch' || "
+        "inputs.rerank_only != true)" in scrape_block
+    )
+    main_only_collection = collect_main_only and rerank_skip
+
+    main_ci_path = os.path.join(REPO, ".github", "workflows", "main-ci.yml")
+    main_ci = open(main_ci_path, encoding="utf-8").read()
+    main_ci_pipeline_gate = bool(
+        re.search(
+            r"(?m)^      - name: Run pipeline \(--all\)\n"
+            r"        if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n"
+            r"        run: cargo run --locked --release --bin pipeline -- --all$",
+            main_ci,
+        )
+    )
+
+    egress_path = os.path.join(REPO, ".github", "workflows", "egress-diagnostic.yml")
+    egress_workflow = open(egress_path, encoding="utf-8").read()
+    diagnostic_worker_main_only = bool(
+        re.search(
+            r"(?m)^  diagnose:\n"
+            r"    name: Isolate meek/conjure TLS timeout mechanism\n"
+            r"    if: github\.event_name != 'pull_request' && github\.ref == 'refs/heads/main'\n",
+            egress_workflow,
+        )
+    )
+
+    def guard_sets(header, assignment):
+        block = re.search(re.escape(header) + r"\n(.*?)^\s*fi\s*$", workflow, re.M | re.S)
+        return bool(block and re.search(rf"(?m)^\s*{re.escape(assignment)}\s*$", block.group(1)))
+
+    pull_request_upload_block = guard_sets(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then',
+        "UPLOAD=false",
+    )
+    non_main_upload_block = guard_sets(
+        'if [ "$UPLOAD" = "true" ] && [ "${GITHUB_REF}" != "refs/heads/main" ]; then',
+        "UPLOAD=false",
+    )
+    non_main_deploy_block = guard_sets(
+        'if [ "${GITHUB_REF}" != "refs/heads/main" ] || [ "${GITHUB_EVENT_NAME}" = "pull_request" ]; then',
+        "DEPLOY_RELAY=false",
+    )
+    commit_main_only = (
+        "self no-op: Stage 11 publication commits stay on main" in workflow
+        and "git push" in workflow
+        and 'if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || '
+        '[ "${GITHUB_REF}" != "refs/heads/main" ]; then' in workflow
+    )
+    publication_gates = (
+        pull_request_upload_block and non_main_upload_block and commit_main_only
+    )
+    production_mutations_main_only = main_only_collection and non_main_deploy_block
+    ok = (
+        hourly
+        and main_only_collection
+        and publication_gates
+        and production_mutations_main_only
+        and main_ci_pipeline_gate
+        and diagnostic_worker_main_only
+    )
+    record(
+        "C14 workflow-automation-gates",
+        ok,
+        f"hourly={hourly}, main-only_collection={main_only_collection}, "
+        f"main-only_dual-persist={publication_gates}, "
+        f"main-only_deploy={production_mutations_main_only}, "
+        f"main-ci-pipeline={main_ci_pipeline_gate}, "
+        f"main-only_diag-worker={diagnostic_worker_main_only}",
+    )
+
+
+def c15_no_floating_runner_latest():
+    """Fail if any workflow still uses a floating *-latest GitHub-hosted runner.
+
+    GitHub migrates ubuntu-latest to Ubuntu 26.04 from 2026-10-19
+    (https://github.blog/changelog/2026-09-17-ubuntu-26-generally-available-and-latest-migration/).
+    Jobs must pin ubuntu-26.04 (or another explicit image) so the image cannot
+    change under a green pipeline.
+    """
+    wf_dir = os.path.join(REPO, ".github", "workflows")
+    pattern = re.compile(
+        r"^\s*runs-on:\s*(?P<label>[A-Za-z0-9._-]*-latest)\s*$"
+    )
+    bad = []
+    pinned = 0
+    for name in sorted(os.listdir(wf_dir)):
+        if not name.endswith((".yml", ".yaml")):
+            continue
+        path = os.path.join(wf_dir, name)
+        for lineno, line in enumerate(open(path, encoding="utf-8"), 1):
+            stripped = line.lstrip()
+            if stripped.startswith("#") or not stripped.startswith("runs-on:"):
+                continue
+            match = pattern.match(line)
+            if match:
+                bad.append(f"{name}:{lineno}:{match.group('label')}")
+            else:
+                pinned += 1
+    record(
+        "C15 no-floating-runner-latest",
+        not bad and pinned > 0,
+        f"{pinned} pinned runs-on" if not bad else "; ".join(bad[:12]),
+    )
+
+
 def main():
     print("═══ verify_repo_invariants ═══")
     c1_json_parse()
@@ -325,6 +486,8 @@ def main():
     c11_cutpack_freshness()
     c12_pq_scores_freshness()
     c13_nin_recommended_freshness()
+    c14_workflow_automation_gates()
+    c15_no_floating_runner_latest()
     print(f"═══ {len(CHECKS) - len(FAILURES)}/{len(CHECKS)} checks passed ═══")
     if FAILURES:
         for f in FAILURES:

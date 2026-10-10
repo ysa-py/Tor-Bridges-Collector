@@ -44,7 +44,7 @@ export function makeFakeSocket(
   delayMs: number = 0,
   shouldError: boolean = false,
   neverResolve: boolean = false,
-  httpResponder?: (request: string) => string,
+  httpResponder?: (request: string) => string | Promise<string>,
   openedRejectsWith?: string,
 ) {
   let enqueueAfterDelay: ReturnType<typeof setTimeout> | null = null;
@@ -98,13 +98,11 @@ export function makeFakeSocket(
   };
 
   const writable = new WritableStream<Uint8Array>({
-    write(chunk) {
+    async write(chunk) {
       if (httpResponder && pushChunk) {
         const request = new TextDecoder().decode(chunk);
-        const response = httpResponder(request);
-        if (response) {
-          pushChunk(new TextEncoder().encode(response));
-        }
+        const response = await httpResponder(request);
+        if (response) pushChunk(new TextEncoder().encode(response));
       }
       /* else: discard written data (raw TCP probes never read responses) */
     },

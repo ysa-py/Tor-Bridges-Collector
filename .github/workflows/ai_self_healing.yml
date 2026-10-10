@@ -54,7 +54,6 @@ concurrency:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  NODE_NO_WARNINGS: '1'
 
 'on':
   workflow_run:
@@ -82,7 +81,7 @@ jobs:
     # this job — its steps read github.event.workflow_run.* throughout,
     # which is empty on schedule/push events.
     if: (github.event_name == 'workflow_run' && github.event.workflow_run.name != github.workflow) || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     outputs:
       failure_category: ${{ steps.categorize-failure.outputs.category }}
@@ -273,7 +272,7 @@ jobs:
     # always run on schedule/push; on workflow_run, only when the upstream
     # workflow actually failed.
     if: (github.event_name != 'workflow_run' || github.event.workflow_run.name != github.workflow)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -286,7 +285,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          toolchain: 'stable'
+          toolchain: '1.90.0'
           components: rustfmt, clippy
 
       # FIX (was: hardcoded `powershell` on ubuntu-latest — `powershell` is

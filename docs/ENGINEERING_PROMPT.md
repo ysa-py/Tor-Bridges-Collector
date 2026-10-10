@@ -403,3 +403,81 @@ git diff --stat tmp-nonwf <branch>
 | Reporting success while work is blocked | Destroys trust and hides required follow-up |
 | Committing build artefacts | Bloats history, breaks reproducibility |
 | One shim binary per retired script | Multiplies build time and maintenance surface |
+
+---
+
+## ADDENDUM — VERIFIED BRIDGE YIELD, RELAY CORRECTNESS, AND AUTOMATION
+
+For bridge-collection, probe-relay, or bridge-publication work, also follow
+[`docs/DIRECTIVE_v1.md`](DIRECTIVE_v1.md). Its priorities are measurement
+correctness, genuine verified yield, intelligence, automation, then hardening.
+It supplements rather than replaces the repository-wide engineering gates
+above.
+
+### Evidence discipline
+
+- A TCP connect is S1 reachability only. Do not label it as a working bridge
+  or as Iran-reachable. Each observation must retain its typed status, actual
+  highest positive stage, timestamp, RTT, and observing vantage. Never infer
+  country from a runner or Cloudflare edge.
+- Use S0 candidate, S1 TCP connected, S2 transport verified, S3 Tor protocol
+  verified, and S4 successful Tor-level service/bootstrap from a verified
+  in-country vantage. Missing evidence is S0, not a guessed stage.
+- `inconclusive` and infrastructure `error` are neutral and must not lower
+  scores, confidence, or working counts. Refusal/timeout remain scoped to the
+  particular vantage, endpoint, and time.
+- Keep static/fallback material in candidate inputs only. Never put an
+  unverified fallback into an `iran_likely_working_*` projection. Preserve
+  every existing filename, Stage 10 manifest/ZIP contract, publisher-input
+  safeguard, and COUNT_DELTA check.
+
+### Probe-relay invariants
+
+- Raw TCP connection establishment awaits Cloudflare `socket.opened`, never
+  `reader.closed`. Test a socket that opens while its readable stream stays
+  silent; also run a deployed-edge silent-live, refused-port, and known-dead
+  bridge control. E2E must assert result JSON content, not just HTTP 200.
+- Missing/blank relay or diagnostic secret returns 503; invalid/missing token
+  returns 401. Do not compare tokens with early-exit content comparison, and
+  remove every auth-less deployment/workflow branch. Do not log secrets, raw
+  credential-bearing URLs, HTTP error bodies, or unsanitized curl stderr.
+- Validate request size, target count, object/string types, numeric ranges,
+  transport allowlist, CR/LF, and private/reserved targets before network I/O.
+  Convert bad inputs to structured responses, not Worker error 1101. Bound and
+  cancel sockets, reads, writes, and per-probe work. Remove or narrowly allowlist
+  CORS; wildcard CORS is not acceptable.
+- Preserve independent TLS SNI and HTTP Host, meek/conjure framing, the
+  six-socket cap and fronted-first admission, deploy-version guard/version
+  endpoint, and all existing transports/capabilities.
+
+### Measurement, limits, and automation
+
+- Report the funnel by transport **and source** before and after: candidates,
+  parsed, probed, each typed status, and unique S0–S4 counts. Compare the same
+  input window and bridge identities; an unavailable post-change live run is
+  an explicit gap, never a simulated success.
+- Use only legitimate source yield and measured intelligence. Keep historical
+  observations historical. Never claim Iran reachability from foreign vantages.
+- Keep the hourly collect→verify→score→publish path unattended and main-only
+  for production/deployment. Add a least-privilege keepalive and dead-man check;
+  explain that a schedule cannot certify its own continued execution and use
+  only plain fast-forward pushes.
+- Re-check official Cloudflare limits before changing concurrency. Current
+  documented Free limits include six simultaneous outgoing connections, 50
+  subrequests per invocation, and 100,000 requests/day. GitHub documents
+  default-branch-only scheduled runs, possible schedule delay/drop near the
+  top of an hour, and automatic schedule deactivation in public repositories
+  after 60 days without repository activity. Do not claim cron runs alone
+  prevent deactivation.
+
+### Additional completion gates
+
+Do not call this bridge directive complete without: an H1 regression test that
+is demonstrably red before and green after; fail-closed auth and validation
+coverage; deployed-edge control results; measured before/after unique S2+
+counts by transport/source/vantage; two consecutive unattended scheduled main
+runs; green Rust fmt/Clippy/tests, Vitest, TypeScript, real CI E2E, Stage 9,
+Stage 10, and COUNT_DELTA checks; and a report that separates local/mock/live
+results and lists every negative result and unimplemented item. If a secret,
+toolchain, permission, deployed run, or log is inaccessible, document that
+exact blocker rather than inferring success.

@@ -702,10 +702,10 @@ fn parity_correlate_end_to_end_with_mocked_ooni() {
 
     let iran_data = json!({
         "bridges": [
-            {"host": "1.2.3.4", "line": "a:1", "port": 1, "transport": "obfs4", "tcp_reachable": true, "existing_field": "hello"},
-            {"host": "5.6.7.8", "line": "b:2", "port": 2, "transport": "snowflake", "tcp_reachable": false, "composite_score": 0.99},
-            {"host": "", "line": "c:3", "port": 3, "transport": "vanilla", "tcp_reachable": true},
-            {"host": "9.10.11.12", "line": "d:4", "port": 4, "transport": "webtunnel", "tcp_reachable": true}
+            {"host": "1.2.3.4", "line": "a:1", "port": 1, "transport": "obfs4", "tcp_reachable": true, "verification":{"status":"connected", "stage":"S1", "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp"}, "existing_field": "hello"},
+            {"host": "5.6.7.8", "line": "b:2", "port": 2, "transport": "snowflake", "tcp_reachable": false, "verification":{"status":"refused", "stage":"S1", "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp"}, "composite_score": 0.99},
+            {"host": "", "line": "c:3", "port": 3, "transport": "vanilla", "tcp_reachable": true, "verification":{"status":"connected", "stage":"S1", "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp"}},
+            {"host": "9.10.11.12", "line": "d:4", "port": 4, "transport": "webtunnel", "tcp_reachable": true, "verification":{"status":"connected", "stage":"S1", "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp"}}
         ]
     });
     let sched_data = json!({
@@ -964,6 +964,12 @@ fn rust_run_pipeline_quality_gate_decision() {
             "port": 9001,
             "transport": "vanilla",
             "tcp_reachable": score > 0.5,
+            "verification": {
+                "status": if score > 0.5 { "connected" } else { "refused" },
+                "stage": "S1",
+                "vantage": {"type":"github_actions_runner", "region":"DE"},
+                "probe_type": "tcp"
+            },
             "composite_score": score
         }));
     }
@@ -997,9 +1003,9 @@ fn rust_run_pipeline_quality_gate_decision() {
     )
     .unwrap();
 
-    // The records get re-scored by compute_composite:
-    // - tcp_reachable=true, no OONI, no RIPE → 0.35*1 + 0.40*0.5 + 0.25*0.5 = 0.675
-    // - tcp_reachable=false, no OONI, no RIPE → 0.35*0 + 0.40*0.5 + 0.25*0.5 = 0.325
+    // The records get re-scored by compute_composite using explicit typed S1:
+    // - connected, no OONI, no RIPE → 0.35*1 + 0.40*0.5 + 0.25*0.5 = 0.675
+    // - refused, no OONI, no RIPE → 0.35*0 + 0.40*0.5 + 0.25*0.5 = 0.325
     // So 3 bridges score 0.675 (>0.5) and 7 score 0.325 (<0.5).
     // pass_rate = 3/10 = 0.3 → exactly at threshold → PASS.
     assert_eq!(outcome.total, 10);
@@ -1112,6 +1118,23 @@ fn rust_correlate_enriched_quarantined_overrides_existing_composite_score() {
 }
 
 #[test]
+fn untyped_tcp_booleans_are_neutral_in_enriched_scores() {
+    let iran_data = json!({"bridges": [
+        {"host":"1.2.3.4", "line":"legacy-false", "tcp_reachable":false},
+        {"host":"5.6.7.8", "line":"legacy-true", "tcp_reachable":true}
+    ]});
+    let records = correlate_enriched(
+        &iran_data,
+        &BTreeMap::new(),
+        &[],
+        &std::collections::BTreeSet::new(),
+    );
+    assert_eq!(records.len(), 2);
+    assert_eq!(records[0]["composite_score"], json!(0.5));
+    assert_eq!(records[1]["composite_score"], json!(0.5));
+}
+
+#[test]
 fn rust_correlate_enriched_ooni_lookup_falls_back_to_line() {
     // Verify the `ooni_by_ip.get(host, []) or ooni_by_ip.get(line, [])` fallback:
     // when the host key is missing or has an empty list, fall back to line key.
@@ -1122,7 +1145,8 @@ fn rust_correlate_enriched_ooni_lookup_falls_back_to_line() {
                 "line": "obfs4 1.2.3.4:443 abc",
                 "port": 443,
                 "transport": "obfs4",
-                "tcp_reachable": true
+                "tcp_reachable": true,
+                "verification":{"status":"connected", "stage":"S1", "vantage":{"type":"github_actions_runner", "region":"DE"}, "probe_type":"tcp"}
             }
         ]
     });

@@ -9,7 +9,7 @@
 //! (which excludes ring/rustls).
 
 use std::collections::HashSet;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use regex::Regex;
 use serde_json::{json, Value};
@@ -25,6 +25,7 @@ use std::thread::sleep;
 const MAX_PROBE_RETRIES: u32 = 3;
 /// Base backoff between retries (milliseconds), doubled each attempt.
 const RETRY_BASE_MS: u64 = 500;
+const WS_PROBE_KEY: &str = "dGhlIHNhbXBsZSBub25jZQ==";
 
 /// Check whether an IPv6 address string is in the RFC 3849 documentation
 /// prefix `2001:db8::/32`. BridgeDB intentionally substitutes these for
@@ -149,13 +150,13 @@ mod tls_ws {
     }
 
     /// Synchronous TLS+WebSocket Upgrade probe for a single WebTunnel
-    /// front domain. Returns (raw HTTP status line, resolved IP) on success,
-    /// or an error string describing the failure mode.
+    /// front domain. Returns the raw HTTP response, resolved IP, and whether
+    /// the RFC 6455 opening-handshake signature validated.
     pub fn probe_sync(
         host: &str,
         port: u16,
         timeout: Duration,
-    ) -> Result<(String, String), String> {
+    ) -> Result<(String, String, bool), String> {
         // 1. DNS + TCP connect
         let addr = format!("{host}:{port}");
         let socket_addr = addr
@@ -188,7 +189,7 @@ mod tls_ws {
              Host: {host}\r\n\
              Connection: Upgrade\r\n\
              Upgrade: websocket\r\n\
-             Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\
+             Sec-WebSocket-Key: {WS_PROBE_KEY}\r\n\
              Sec-WebSocket-Version: 13\r\n\
              \r\n"
         );
@@ -203,7 +204,9 @@ mod tls_ws {
             .read(&mut buf)
             .map_err(|e| format!("read response: {e}"))?;
         let response = String::from_utf8_lossy(&buf[..n]).to_string();
-        Ok((response, resolved_ip))
+        let signature_verified =
+            crate::websocket_signature::has_valid_upgrade_signature(&response, WS_PROBE_KEY);
+        Ok((response, resolved_ip, signature_verified))
     }
 }
 
@@ -211,7 +214,11 @@ mod tls_ws {
 pub(crate) use tls_ws::probe_sync;
 
 #[cfg(all(target_arch = "arm", target_env = "musl"))]
-fn probe_sync(_host: &str, _port: u16, _timeout: Duration) -> Result<(String, String), String> {
+fn probe_sync(
+    _host: &str,
+    _port: u16,
+    _timeout: Duration,
+) -> Result<(String, String, bool), String> {
     // ARMv7-musl CI-only type-check target — no ring/rustls available
     Err("unsupported_target: ARMv7-musl CI-only".to_string())
 }
@@ -230,8 +237,10 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
         }
     };
 
-    // Retry with exponential backoff for transient failures
-    let mut last_result: Option<Result<(String, String), String>> = None;
+    // Retry with exponential backoff for transient failures. RTT covers the
+    // complete operation, including any bounded retry delays.
+    let probe_started = Instant::now();
+    let mut last_result: Option<Result<(String, String, bool), String>> = None;
     for attempt in 0..MAX_PROBE_RETRIES {
         if attempt > 0 {
             let delay_ms = RETRY_BASE_MS * (1u64 << (attempt - 1));
@@ -268,16 +277,24 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
     }
 
     match last_result.unwrap_or(Err("probe did not execute".to_string())) {
-        Ok((response, resolved_ip)) => {
-            let has_101 = response.contains("101");
+        Ok((response, resolved_ip, signature_verified)) => {
+            let status_line = response.split("\r\n").next().unwrap_or_default();
+            let returned_101 = status_line
+                .split_ascii_whitespace()
+                .nth(1)
+                .is_some_and(|status| status == "101");
             let mut result = bridge.clone();
             if let Some(obj) = result.as_object_mut() {
                 obj.insert("iran_status".to_string(), json!("iran_unknown"));
                 obj.insert("tcp_reachable".to_string(), json!(true));
-                obj.insert("transport_capable".to_string(), json!(has_101));
+                obj.insert("transport_capable".to_string(), json!(signature_verified));
+                obj.insert(
+                    "websocket_signature_verified".to_string(),
+                    json!(signature_verified),
+                );
                 obj.insert(
                     "probe_status".to_string(),
-                    json!(if has_101 {
+                    json!(if signature_verified {
                         "websocket_101"
                     } else {
                         "http_response"
@@ -290,16 +307,18 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                         "TLS+WebSocket Upgrade probe to webtunnel front domain {}:{}. {}",
                         &host,
                         port,
-                        if has_101 {
-                            "Front returned 101 Switching Protocols."
+                        if signature_verified {
+                            "HTTP 101 and the RFC 6455 WebSocket accept signature were validated."
+                        } else if returned_101 {
+                            "HTTP 101 was returned without a valid WebSocket accept signature; kept at S1."
                         } else {
-                            "Front responded but no 101 — CDN alive, bridge may be offline."
+                            "Generic HTTP response received; no transport handshake was verified."
                         }
                     )),
                 );
                 obj.insert(
                     "composite_score".to_string(),
-                    json!(if has_101 { 0.7 } else { 0.45 }),
+                    json!(if signature_verified { 0.7 } else { 0.45 }),
                 );
                 // Rebuild the bridge line to include the resolved IP:PORT.
                 // Domain-fronted webtunnel bridges from upstream lack the
@@ -329,14 +348,45 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                     }
                 }
             }
+            let rtt_ms = probe_started.elapsed().as_secs_f64() * 1000.0;
+            let detail = result
+                .get("evidence_scope")
+                .and_then(Value::as_str)
+                .unwrap_or(
+                    "WebTunnel front response received; bridge-specific handshake not performed.",
+                )
+                .to_string();
+            let (stage, probe_type) = if signature_verified {
+                ("S2", "websocket-101")
+            } else {
+                ("S1", "websocket-front-check")
+            };
+            crate::evidence_stamp::merge_verification_observation(
+                &mut result,
+                json!({
+                    "status": "connected",
+                    "stage": stage,
+                    "vantage": {"type":"github_actions_runner", "region":null},
+                    "rtt_ms": rtt_ms,
+                    "probe_type": probe_type,
+                    "detail": detail,
+                    "error_class": null,
+                    "observed_at": chrono::Utc::now().to_rfc3339(),
+                    "source": "webtunnel_front_probe"
+                }),
+            );
             result
         }
         Err(error) => {
-            // Probe failed — leave status as-is but record the attempt
+            // Probe failed — retain Iran status and record only the actual
+            // runner-side observation; timeout/error never means Iran-blocked.
             let mut result = bridge.clone();
             if let Some(obj) = result.as_object_mut() {
                 obj.insert("probe_status".to_string(), json!("websocket_failed"));
                 obj.insert("probe_method".to_string(), json!("websocket-upgrade"));
+                obj.insert("tcp_reachable".to_string(), json!(false));
+                obj.insert("transport_capable".to_string(), json!(false));
+                obj.insert("websocket_signature_verified".to_string(), json!(false));
                 obj.insert(
                     "evidence_scope".to_string(),
                     json!(format!(
@@ -345,6 +395,48 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                     )),
                 );
             }
+            let error_lower = error.to_ascii_lowercase();
+            let no_attempt = error_lower.contains("unsupported_target")
+                || error_lower.contains("probe did not execute");
+            let failed_before_tcp = error.starts_with("DNS resolve")
+                || error.starts_with("DNS returned no addresses")
+                || error.starts_with("TCP connect failed:");
+            let status = if no_attempt {
+                "inconclusive"
+            } else if error_lower.contains("timed out") || error_lower.contains("timeout") {
+                "timeout"
+            } else if error_lower.contains("connection refused") {
+                "refused"
+            } else {
+                "error"
+            };
+            let stage = if no_attempt || failed_before_tcp {
+                "S0"
+            } else {
+                "S1"
+            };
+            let vantage = if no_attempt {
+                Value::Null
+            } else {
+                json!({"type":"github_actions_runner", "region":null})
+            };
+            if let Some(object) = result.as_object_mut() {
+                object.insert("tcp_reachable".to_string(), json!(stage == "S1"));
+            }
+            crate::evidence_stamp::merge_verification_observation(
+                &mut result,
+                json!({
+                    "status": status,
+                    "stage": stage,
+                    "vantage": vantage,
+                    "rtt_ms": probe_started.elapsed().as_secs_f64() * 1000.0,
+                    "probe_type": if no_attempt { "none" } else { "tcp" },
+                    "detail": error,
+                    "error_class": if matches!(status, "timeout" | "error") { Some(status) } else { None },
+                    "observed_at": if no_attempt { Value::Null } else { json!(chrono::Utc::now().to_rfc3339()) },
+                    "source": "webtunnel_front_probe"
+                }),
+            );
             result
         }
     }
@@ -522,9 +614,9 @@ pub fn probe_all_webtunnel_bridges(
             .get("evidence_scope")
             .and_then(Value::as_str)
             .unwrap_or("");
-        if updated.get("iran_status").and_then(Value::as_str) == Some("iran_unknown") {
+        if probe_status == "websocket_101" {
             succeeded += 1;
-            println!("webtunnel-probe: {front_host}:{front_port} => {probe_status} 101");
+            println!("webtunnel-probe: {front_host}:{front_port} => HTTP 101 (front check only)");
         } else {
             failed += 1;
             println!("webtunnel-probe: {front_host}:{front_port} => {probe_status}: {evidence}");

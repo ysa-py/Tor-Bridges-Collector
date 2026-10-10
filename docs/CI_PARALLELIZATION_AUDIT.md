@@ -1,15 +1,29 @@
 # CI Parallelization Audit — `TorShield-IR Bridge Intelligence` / `scrape-and-test`
 
 Date: 2026-09-05
-Scope: `.github/workflows/torshield-ir.yml`, job `scrape-and-test` (the 40+-stage
-pipeline shown in the run screenshots). This is a **pure performance/architecture
-audit** — no stage is to be removed, disabled, merged, or renamed.
+Scope (original 2026-09-05 audit): `.github/workflows/torshield-ir.yml`, job
+`scrape-and-test` (the 40+-stage pipeline shown in the run screenshots). That
+work was a **pure performance/architecture audit**; at that time, no stage was
+to be removed, disabled, merged, or renamed. Later publication-contract changes
+are recorded below.
 
 > STATUS (2026-09-05): **Item 1 (Option A — safe caching/build-reuse) is
 > applied** to `.github/workflows/torshield-ir.yml` in the `scrape-and-test`
 > job only. **Item 2 (the structural job split) is deliberately analysis-only
 > and NOT applied** — see §5.0 below for the exact rationale and the one
 > architectural blocker.
+
+## Current publication follow-up (2026-10-09)
+
+- The flagship workflow is scheduled at `0 * * * *` (hourly UTC). Runs targeting
+  the same branch share a non-cancelling workflow concurrency group; because
+  GitHub allows only one pending run per group, long runs may delay or coalesce
+  refreshes rather than publish overlapping snapshots.
+- Stage 9 rebuilds the publisher's complete 79-path contract; Stage 9b verifies
+  it, and Stage 10 inventories directly from the verified manifest.
+- The duplicate post-Stage-9b force-populating FAILSAFE was removed: it could
+  rewrite evidence-only `*_tested`/`*_72h` files after hashes and ZIP contents
+  were verified. The pre-probe FAILSAFE remains to prepare collector inputs.
 
 ---
 
@@ -77,13 +91,13 @@ data, never the freshly-collected pipeline state.
 | Stage 8t PQ + NIN recommended | **`data/quantum_safe_report.json` (8e)** + NIN artifacts | `data/pq_bridge_scores.json`, `export/nin_recommended_transport.json` | YES (needs 8e) |
 | Stage 9 dual persist | bridge/, data/, export/, docs/, README | **rewrites all bridge/**, README, `tor_bridges.zip`, Telegram | YES |
 | Stage 9b verify | all bridge/ + zip | – | YES |
-| FAILSAFE post | bridge/ | bridge/* non-empty, JSON valid | YES |
-| Stage 10 inventory | bridge/ (55 files) | – | YES |
+| FAILSAFE pre-probe | bridge/ | collector input projections | YES |
+| Stage 10 inventory | bridge/ (manifest-defined inventory) | – | YES |
 | Stage 8p2 cut-pack finalizer | `bridge/iran_likely_working_nin.txt` + NIN artifacts | `export/iran_cut_pack.txt` | YES |
 | Stage 11 commit/push | whole tree | git commit/push | YES |
 
 ### Hard chain (cannot be reordered/parallelized without changing output)
-- `0s→0/0b/0c/1→FAILSAFE→2→3/4→5→6a→6b→7/8→… →9→9b→FAILSAFE→10→8p2→11`
+- `0s→0/0b/0c/1→FAILSAFE→2→3/4→5→6a→6b→7/8→… →9→9b→10→8p2→11`
   because Stages 0–2 and 6b **mutate the same `bridge/` files repeatedly**, and
   Stages 9/9b/10 must run on the **final** `bridge/` tree.
 - `8b→8j` (8j reads `dpi_intelligence.json`).
@@ -127,7 +141,7 @@ artifact upload).
 - Making the main job `needs` the static job would **add the static job's
   checkout/rust/cargo setup (~5–10 min) to the critical path**, likely negating
   most of the wall-clock gain.
-- Moving Stage 9/9b/FAILSAFE/10/8p2/11 into a separate `publish` job that
+- Moving Stage 9/9b/10/8p2/11 into a separate `publish` job that
   `needs` both the core pipeline and the static job changes the workspace
   hand-off (full `bridge/`+`data/`+`export/`+`docs/` artifact + re-checkout for
   the Stage 11 `git commit/push`), which is a much larger behavior surface and
@@ -171,7 +185,7 @@ Item 2 (structural split / matrix jobs) is **NOT** applied. Steps in one
 Actions job cannot run in parallel, and a real job split forces either (a)
 artifact hand-off that is only ordering-safe when the publisher `needs` the
 producers — which adds the producer's setup/build time to the critical path —
-or (b) moving Stage 9/9b/FAILSAFE/10/8p2/11 into a `publish` job that must
+or (b) moving Stage 9/9b/10/8p2/11 into a `publish` job that must
 transmit the whole `bridge/`+`data/`+`export/`+`docs/` tree and re-use git
 history for the Stage 11 commit/push. Neither is safe to apply on an
 assumption, so it is left for a confirmed follow-up.
@@ -204,11 +218,12 @@ immediately and safely; Option B/C should be confirmed first.
 ## 6. APPLIED (2026-09-05, follow-up) — Structural job split
 
 The full 40+-step `scrape-and-test` pipeline was split into a **core** job,
-**parallel analytics jobs**, and a **finalize** job. This is a pure execution
-architecture change: **all 43 `Stage *` steps still exist exactly once, in the
-same step name/identity and with the same commands/env/outputs.** No stage was
-deleted, merged, or disabled; FAILSAFE, `Stage 9b` verification, self-heal,
-and every output contract are preserved.
+**parallel analytics jobs**, and a **finalize** job. At the time of this
+2026-09-05 audit, all 43 `Stage *` steps existed exactly once. In the later
+2026-10-09 publication update, the duplicate post-Stage-9b force-populating
+FAILSAFE was removed because it could invalidate the verified hashes/ZIP; the
+pre-probe FAILSAFE, `Stage 9b` verification, self-heal, and complete output
+contract remain.
 
 ### New dependency graph
 
@@ -228,7 +243,7 @@ quality-gate / build-rust / rust-parity-tests
         +----------------+----------+------------+----------+------------+
         |                                                         |
         v                                                         v
-   scrape-and-test-finalize  [merge outputs -> 8s,8t,9,9b,FAILSAFE,10,8p2,11,upload]
+   scrape-and-test-finalize  [merge outputs -> 8s,8t,9,9b,10,8p2,11,upload]
         |
         v
    ai-rerank -> package-final-artifact -> cleanup
@@ -252,8 +267,9 @@ quality-gate / build-rust / rust-parity-tests
   pipeline state (verified in `root_modules.rs` / `stage_*` functions). 8e is
   consumed by 8t; the rest are artifact-only.
 - **finalize**: consumes all merged outputs and runs the consumer /
-  publication order that must stay sequential: 8s, 8t, 9, 9b, FAILSAFE, 10,
-  8p2, 11.
+  publication order that must stay sequential: 8s, 8t, 9, 9b, 10, 8p2, 11.
+  The later publication update removes the post-verification FAILSAFE; the
+  pre-probe FAILSAFE remains in the core job.
 
 ### Merge precedence (deterministic)
 

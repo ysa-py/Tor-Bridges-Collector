@@ -188,38 +188,56 @@ print(json.dumps(report))
 "##;
 
 #[test]
-fn update_dpi_report_matches_python_with_mixed_records() {
+fn update_dpi_report_counts_only_provenanced_iran_outcomes() {
     let dir =
         std::env::temp_dir().join(format!("dpi-evasion-advanced-test-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let output_path = dir.join("dpi_intelligence.json");
 
-    let records = json!([
-        {"transport": "snowflake", "port": 443, "iran_status": "iran_likely_working", "flags": ["domain_front_cdn_ok"]},
-        {"transport": "obfs4", "port": 9001, "iran_status": "iran_likely_blocked", "flags": ["iran_dpi_high_risk"]},
-        {"transport": "obfs4", "port": 443, "iran_status": "iran_likely_working"},
-        {"transport": "vanilla", "port": 9050, "iran_status": "iran_frequently_blocked", "flags": ["iran_dpi_high_risk"]},
-    ]);
-    let generated_at = "2026-07-11T12:00:00+00:00";
-
-    let payload = json!({
-        "records": records,
-        "generated_at": generated_at,
-        "output_path": output_path.to_string_lossy(),
+    let assessment = |status: &str| json!({
+        "status": status,
+        "source": "ooni_measurements_api",
+        "checked": true,
+        "vantage": {"type":"ooni_probe", "country":"IR"},
+        "queried_at":"2026-10-10T10:00:00Z",
+        "measurement_at":"2026-10-10T10:00:00Z",
+        "measurement_window_days":7,
+        "historical_measurement_at":"2026-10-10T10:00:00Z",
+        "historical_window_days":90
     });
-    let py = run_python_json(UPDATE_REPORT_SCRIPT, &payload);
-
+    let s2 = json!({
+        "status":"connected", "stage":"S2",
+        "vantage":{"type":"probe_relay"}, "probe_type":"obfs4-handshake",
+        "observed_at":"2026-10-10T10:00:00Z"
+    });
+    let s1 = json!({
+        "status":"connected", "stage":"S1",
+        "vantage":{"type":"github_actions_runner"}, "probe_type":"tcp",
+        "observed_at":"2026-10-10T10:00:00Z"
+    });
+    let records = json!([
+        {"transport": "snowflake", "port": 443, "iran_status": "iran_likely_working", "iran_assessment":assessment("iran_likely_working"), "verification":s2, "flags": ["domain_front_cdn_ok"]},
+        {"transport": "obfs4", "port": 9001, "iran_status": "iran_likely_blocked", "iran_assessment":assessment("iran_likely_blocked"), "flags": ["iran_dpi_high_risk"]},
+        {"transport": "obfs4", "port": 443, "iran_status": "iran_likely_working", "iran_assessment":assessment("iran_likely_working"), "verification":s1},
+        {"transport": "vanilla", "port": 9050, "iran_status": "iran_frequently_blocked", "iran_assessment":assessment("iran_frequently_blocked"), "flags": ["iran_dpi_high_risk"]},
+        {"transport": "webtunnel", "port": 443, "iran_status": "iran_likely_working", "tcp_reachable": true}
+    ]);
+    let generated_at = "2026-10-10T10:00:00+00:00";
     let records_vec: Vec<Value> = records.as_array().unwrap().clone();
     let rs = update_dpi_report(&records_vec, generated_at, &output_path).unwrap();
 
-    assert_eq!(py, rs);
+    assert_eq!(rs["empirical_stats"]["snowflake"]["working"], json!(1));
+    assert_eq!(rs["empirical_stats"]["snowflake"]["iran_assessed"], json!(1));
+    assert_eq!(rs["empirical_stats"]["obfs4"]["working"], json!(0));
+    assert_eq!(rs["empirical_stats"]["obfs4"]["blocked"], json!(1));
+    assert_eq!(rs["empirical_stats"]["obfs4"]["iran_assessed"], json!(2));
+    assert_eq!(rs["empirical_stats"]["webtunnel"]["iran_assessed"], json!(0));
+    assert_eq!(rs["empirical_stats"]["webtunnel"]["observed_block_rate"], Value::Null);
 
-    // Confirm the report was genuinely written to disk, not just returned.
     let on_disk: Value =
         serde_json::from_str(&std::fs::read_to_string(&output_path).unwrap()).unwrap();
     assert_eq!(on_disk, rs);
-
     let _ = std::fs::remove_dir_all(&dir);
 }
 

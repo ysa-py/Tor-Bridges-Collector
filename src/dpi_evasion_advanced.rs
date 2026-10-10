@@ -28,6 +28,7 @@
 //! is that other file's problem, not this one's — reviewed and confirmed
 //! separately rather than assumed clean by association.
 
+use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
 
 struct TransportProfile {
@@ -242,6 +243,7 @@ pub fn dpi_score(record: &Value) -> f64 {
 
 struct TransportStats {
     tested: u64,
+    iran_assessed: u64,
     working: u64,
     blocked: u64,
     dpi_risk_flags: u64,
@@ -273,6 +275,13 @@ pub fn update_dpi_report(
     generated_at: &str,
     output_path: &std::path::Path,
 ) -> std::io::Result<Value> {
+    // The supplied report time is also the evidence-evaluation clock. Invalid
+    // report timestamps fail closed: records are still reported as tested, but
+    // no time-sensitive Iran assessment is counted.
+    let evidence_now = DateTime::parse_from_rfc3339(generated_at)
+        .ok()
+        .map(|timestamp| timestamp.with_timezone(&Utc));
+
     // Per-transport empirical stats, first-seen order (mirrors Python
     // regular-dict insertion order for `transport_stats`).
     let mut order: Vec<String> = Vec::new();
@@ -291,6 +300,7 @@ pub fn update_dpi_report(
                 transport.clone(),
                 TransportStats {
                     tested: 0,
+                    iran_assessed: 0,
                     working: 0,
                     blocked: 0,
                     dpi_risk_flags: 0,
@@ -302,13 +312,22 @@ pub fn update_dpi_report(
         let s = stats.get_mut(&transport).expect("just inserted above");
         s.tested += 1;
         let status = r.get("iran_status").and_then(Value::as_str).unwrap_or("");
-        if status == "iran_likely_working" {
-            s.working += 1;
-        } else if matches!(
-            status,
-            "iran_likely_blocked" | "iran_frequently_blocked" | "iran_asn_blocked"
-        ) {
-            s.blocked += 1;
+        let iran_assessed = evidence_now
+            .is_some_and(|now| crate::evidence_stamp::has_iran_specific_assessment_at(r, now));
+        if iran_assessed {
+            s.iran_assessed += 1;
+            match status {
+                "iran_likely_working"
+                    if evidence_now.is_some_and(|now| {
+                        crate::evidence_stamp::has_iran_specific_working_assessment_at(r, now)
+                            && crate::evidence_stamp::has_verified_s2plus_at(r, now)
+                    }) =>
+                {
+                    s.working += 1;
+                }
+                "iran_likely_blocked" | "iran_frequently_blocked" => s.blocked += 1,
+                _ => {}
+            }
         }
         let flags: Vec<&str> = r
             .get("flags")
@@ -325,7 +344,9 @@ pub fn update_dpi_report(
         let s = stats.get_mut(t).expect("key from order must exist");
         if s.tested > 0 {
             s.avg_dpi_score = python_round_4(s.avg_dpi_score / s.tested as f64);
-            s.observed_block_rate = Some(python_round_4(s.blocked as f64 / s.tested as f64));
+        }
+        if s.iran_assessed > 0 {
+            s.observed_block_rate = Some(python_round_4(s.blocked as f64 / s.iran_assessed as f64));
         }
     }
 
@@ -337,6 +358,7 @@ pub fn update_dpi_report(
                 t.clone(),
                 json!({
                     "tested": s.tested,
+                    "iran_assessed": s.iran_assessed,
                     "working": s.working,
                     "blocked": s.blocked,
                     "dpi_risk_flags": s.dpi_risk_flags,
@@ -412,5 +434,23 @@ mod tests {
     fn transport_profile_and_next_gen_tables_have_expected_sizes() {
         assert_eq!(TRANSPORT_DPI_PROFILE.len(), 5);
         assert_eq!(NEXT_GEN_TRANSPORTS.len(), 4);
+    }
+
+    #[test]
+    fn update_dpi_report_empty_records_writes_valid_report() {
+        let dir = std::env::temp_dir().join(format!(
+            "dpi_empty_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        let out = dir.join("dpi_intelligence.json");
+        let report = update_dpi_report(&[], "2026-10-10T00:00:00+00:00", &out).unwrap();
+        assert!(out.exists());
+        assert!(report.is_object());
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

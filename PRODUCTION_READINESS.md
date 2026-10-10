@@ -1,13 +1,16 @@
 # PRODUCTION_READINESS
 
-## Ready (verified by real runs in this session or by upstream green CI)
+## Existing verified capabilities and current-branch status
 
-1. **Deterministic publication contract.** 54 bridge files + `tor_bridges.zip`
-   + `telegram_manifest.json` rebuild, byte-verify, SHA-256 inventory, and
-   `--verify-only` gate — exercised end-to-end on the real dataset.
+1. **Deterministic publication contract.** This branch expands the publisher
+   to a 79-path `bridge/` inventory (78 ZIP entries plus the archive itself),
+   with manifest/hash/ZIP verification and `--verify-only` coverage. The
+   expanded contract has not yet had a fresh end-to-end run in this sandbox.
 2. **Rust quality gates.** fmt/clippy/`-D warnings`/1269+69 tests all green.
-3. **Scheduled collection.** `torshield-ir.yml` runs every 3 h (schedule +
-   push + dispatch), with a 90-minute budget for the full pipeline.
+3. **Scheduled collection.** `torshield-ir.yml` has an hourly UTC schedule
+   (plus push + dispatch) and same-branch non-cancelling run locks. The full
+   pipeline has a 90-minute budget, so completion can be delayed/coalesced and
+   is not guaranteed exactly once per hour.
 4. **Runner-side Tier-1 testing.** Real TCP probes recorded per bridge with
    timestamps; per-entry `tested_at`/`test_tier`/`test_result` stamps now
    produced every run.
@@ -34,9 +37,9 @@
 5. **AI/ML framing** (GAP-8) — "ML" modules are deterministic scoring; anyone
    consuming them as learned models would be misled. README is honest; stage
    names are not.
-6. **Fresh-cadence ambition** (GAP-9) — sub-hourly source cadences from
-   v50/v60 are not implemented; the 3 h cadence matches the pipeline's real
-   runtime.
+6. **Fresh-cadence ambition** (GAP-9) — hourly full-pipeline triggers are
+   configured, but a run may exceed an hour and GitHub scheduling is best-
+   effort. Sub-hourly per-source cadences from v50/v60 are not implemented.
 
 ## Owner actions required for full readiness
 
@@ -46,4 +49,5 @@
 - Optionally configure `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` for dual
   persistence.
 - Push/PR this session's changes and confirm a full green run on GitHub Actions
-  (CI is the source of truth per v37 §5).
+  (CI is the source of truth per v37 §5); the first green run must verify the
+  expanded publisher contract and actual `bridge/` artifacts.

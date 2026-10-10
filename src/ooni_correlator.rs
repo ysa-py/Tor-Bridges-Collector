@@ -59,6 +59,8 @@ use serde_json::{json, Value};
 use thiserror::Error;
 
 use crate::generated_json_loader::load_generated_json;
+#[cfg(feature = "network")]
+use crate::network_safety::{safe_reqwest_error_summary, safe_url_origin};
 use crate::quarantine_manager::QuarantineManager;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -95,11 +97,8 @@ pub enum OoniError {
     },
 
     /// JSON (de)serialization failure.
-    #[error("ooni JSON error: {source}")]
-    Json {
-        #[from]
-        source: serde_json::Error,
-    },
+    #[error("ooni JSON error: {0}")]
+    Json(#[from] serde_json::Error),
 
     /// Underlying HTTP client error (production `reqwest` path only).
     #[error("ooni HTTP error for {url}: {message}")]
@@ -240,7 +239,27 @@ pub fn compute_composite(
     ripe_reachable: Option<bool>,
     ripe_tested: bool,
 ) -> f64 {
-    let tcp_f = if tcp_reachable { 1.0 } else { 0.0 };
+    compute_composite_with_tcp_observation(
+        Some(tcp_reachable),
+        ooni_measurements,
+        ripe_reachable,
+        ripe_tested,
+    )
+}
+
+/// Composite score that distinguishes absent/inconclusive TCP evidence from
+/// an explicit refusal. `None` receives a neutral factor of 0.5.
+pub fn compute_composite_with_tcp_observation(
+    tcp_reachable: Option<bool>,
+    ooni_measurements: &[Value],
+    ripe_reachable: Option<bool>,
+    ripe_tested: bool,
+) -> f64 {
+    let tcp_f = match tcp_reachable {
+        Some(true) => 1.0,
+        Some(false) => 0.0,
+        None => 0.5,
+    };
     let ooni_f = ooni_factor(ooni_measurements);
     let ripe_f = ripe_factor(ripe_reachable, ripe_tested);
     round_to_4_decimals(0.35 * tcp_f + 0.40 * ooni_f + 0.25 * ripe_f)
@@ -513,7 +532,6 @@ pub fn correlate_enriched(
     for bridge_rec in bridges {
         let host = bridge_rec.get("host").and_then(Value::as_str).unwrap_or("");
         let line = bridge_rec.get("line").and_then(Value::as_str).unwrap_or("");
-        let tcp_ok = as_truthy_bool(bridge_rec.get("tcp_reachable"));
 
         // FEATURE 5: hard-exclude quarantined bridges from enriched list.
         if !host.is_empty() && quarantined.contains(host) {
@@ -556,7 +574,17 @@ pub fn correlate_enriched(
         // `if ripe_reachable else 0.0` branch.
         let ripe_reachable_for_score: Option<bool> = ripe_reachable_raw.as_ref().map(truthy);
 
-        let score = compute_composite(tcp_ok, &ooni_meas, ripe_reachable_for_score, ripe_tested);
+        // A legacy boolean cannot distinguish refusal from timeout, error, or
+        // an unattempted probe. Only typed observations may influence the TCP
+        // score; absent/inconclusive evidence uses the neutral factor.
+        let typed_tcp_observation = crate::evidence_stamp::verification(bridge_rec)
+            .and_then(|_| crate::evidence_stamp::scoring_reachability(bridge_rec));
+        let score = compute_composite_with_tcp_observation(
+            typed_tcp_observation,
+            &ooni_meas,
+            ripe_reachable_for_score,
+            ripe_tested,
+        );
         let ooni_f = ooni_factor(&ooni_meas);
 
         // Build the enriched record: spread all original fields, then add the
@@ -797,10 +825,12 @@ pub fn write_markdown_report(
         } else {
             "❓"
         };
-        let tcp = if as_truthy_bool(r.get("tcp_reachable")) {
-            "✅"
-        } else {
-            "❌"
+        let tcp = match crate::evidence_stamp::verification(r)
+            .and_then(|_| crate::evidence_stamp::scoring_reachability(r))
+        {
+            Some(true) => "✅",
+            Some(false) => "❌",
+            None => "❓",
         };
         rows.push(format!(
             "| `{host}:{port}` | {t_icon} | {tcp} | {ooni} | `{score}` |"
@@ -1153,13 +1183,13 @@ impl OoniHttpFetch for ReqwestOoniHttpFetch {
             req = req.query(&[(name.to_string(), value.clone())]);
         }
         let resp = req.send().map_err(|err| OoniError::Http {
-            url: url.to_string(),
-            message: err.to_string(),
+            url: safe_url_origin(url),
+            message: safe_reqwest_error_summary(&err).to_string(),
         })?;
         let status = resp.status().as_u16();
         let body = resp.text().map_err(|err| OoniError::Http {
-            url: url.to_string(),
-            message: err.to_string(),
+            url: safe_url_origin(url),
+            message: safe_reqwest_error_summary(&err).to_string(),
         })?;
         Ok(OoniHttpResponse { status, body })
     }
@@ -1168,6 +1198,19 @@ impl OoniHttpFetch for ReqwestOoniHttpFetch {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(feature = "network")]
+    #[test]
+    fn reqwest_ooni_errors_redact_credentials_and_query_parameters() {
+        let client = ReqwestOoniHttpFetch::default();
+        let url = "https://alice:sample-secret@example.invalid:invalid/private?token=query-secret";
+        let params = [("api_key", "parameter-secret".to_string())];
+        let error = client.get(url, &params).unwrap_err().to_string();
+        assert!(error.starts_with("ooni HTTP error for invalid URL:"));
+        assert!(!error.contains("sample-secret"));
+        assert!(!error.contains("query-secret"));
+        assert!(!error.contains("parameter-secret"));
+    }
 
     #[test]
     fn ooni_factor_empty_returns_neutral() {
@@ -1213,8 +1256,13 @@ mod tests {
             compute_composite(true, &[json!({"anomaly": false})], Some(true), true),
             1.0
         );
-        // notcp + nooni + notripe = 0.325
+        // notcp + nooni + notripe = 0.325 (legacy explicit false input)
         assert_eq!(compute_composite(false, &[], None, false), 0.325);
+        // Inconclusive TCP is neutral rather than a failed connection.
+        assert_eq!(
+            compute_composite_with_tcp_observation(None, &[], None, false),
+            0.5
+        );
         // tcp + ooni-clean + notripe = 0.875
         assert_eq!(
             compute_composite(true, &[json!({"anomaly": false})], None, false),

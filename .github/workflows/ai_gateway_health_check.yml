@@ -38,7 +38,6 @@ name: AI Gateway Health Check
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
-  NODE_NO_WARNINGS: '1'
   PYTHONPATH: ${{ github.workspace }}
 
 'on':
@@ -64,7 +63,7 @@ permissions:
 
 jobs:
   check-all-providers:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
 
     steps:

@@ -9,10 +9,11 @@
 use std::path::PathBuf;
 
 use torshield_ir_ultra::pipeline_funnel_advisory::{
-    build_funnel_report, emit_notices, REPORT_FILE,
+    build_funnel_report, contract_violations, emit_notices, REPORT_FILE,
 };
 
 fn main() {
+    let check = std::env::args().any(|arg| arg == "--check-contract");
     let repo_root = std::env::var("REPO_ROOT")
         .map(PathBuf::from)
         .unwrap_or_else(|_| PathBuf::from("."));
@@ -20,6 +21,16 @@ fn main() {
 
     let report = build_funnel_report(&repo_root);
     emit_notices(&report);
+    if check {
+        let violations = contract_violations(&report);
+        if !violations.is_empty() {
+            for msg in &violations {
+                eprintln!("::error title=FUNNEL-CONTRACT::{msg}");
+            }
+            std::process::exit(1);
+        }
+        println!("funnel_advisory: contract ok");
+    }
 
     if let Some(parent) = output.parent() {
         if !parent.as_os_str().is_empty() {

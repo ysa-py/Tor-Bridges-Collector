@@ -117,7 +117,7 @@ scoring/telemetry/evasion-policy components; the README correctly labels the
 
 | Feature | Location |
 |---|---|
-| Complete `bridge/` contract (55 files) + ZIP + manifest | `src/bridge_publication.rs`, `src/formatter.rs`, `src/results_writer.rs`, `src/bin/sync_bridge_outputs.rs` |
+| Complete `bridge/` contract (manifest-defined files) + ZIP + manifest | `src/bridge_publication.rs`, `src/formatter.rs`, `src/results_writer.rs`, `src/bin/sync_bridge_outputs.rs` |
 | Deterministic archive + byte-compare | `src/bridge_publication.rs` |
 | Telegram delivery (token-gated) | `src/notifier.rs` |
 | Publication changelog / history | `src/publication_changelog.rs`, `src/history.rs`, `src/history_utils.rs` |
@@ -153,7 +153,7 @@ JSON artefacts (see GAP_ANALYSIS).
 
 | Workflow | Cadence (recorded) |
 |---|---|
-| `.github/workflows/torshield-ir.yml` | cron `0 */3 * * *` (every 3 h) — the 19-stage collect→probe→score→publish pipeline |
+| `.github/workflows/torshield-ir.yml` | cron `0 * * * *` (hourly UTC trigger); same-branch runs serialize and long runs may delay/coalesce a refresh |
 | `.github/workflows/main-ci.yml` | every 6 h |
 | `.github/workflows/ai_self_healing.yml`, `ai_gateway_health_check.yml` | scheduled diagnostics |
 | `.github/workflows/stale-pr-cleanup.yml`, `ai-ultra-pro-cleanup.yml` | housekeeping |
@@ -175,7 +175,7 @@ GAP_ANALYSIS Phase 8).
    (root GAP-5) — their `iran_results.json` semantics cannot be audited/rebuild.
 5. Multi-vantage model exists but no multi-vantage stage runs in the pipeline
    (root GAP-3).
-6. Fresh-collection cadence is 3 h, not the sub-hourly target (root GAP-9).
+6. The full collection is triggered hourly, but a run may exceed an hour and GitHub can coalesce pending scheduled runs; completion is best-effort, and sub-hourly source polling remains unimplemented (root GAP-9).
 7. ML/AI-labelled modules are deterministic scoring, not learned inference
    (root GAP-8) — correctly disclosed in README, but a naming/expectation gap.
 8. Full Tor bootstrap verification requires a local `tor` binary unavailable in

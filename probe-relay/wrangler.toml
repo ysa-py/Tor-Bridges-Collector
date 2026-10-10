@@ -41,12 +41,12 @@ compatibility_date = "2025-08-09"
 # connects can never consume the first connection slots.
 
 [vars]
-# Maximum bridges per single POST /probe request. The CI client
-# auto-chunks larger lists, but this is the hard cap per Worker invocation.
-MAX_BRIDGES_PER_REQUEST = "50"
+# Maximum bridges per single POST /probe request. Six keeps one request to
+# at most one full six-socket wave; the client auto-chunks larger lists.
+MAX_BRIDGES_PER_REQUEST = "6"
 
 # Maximum concurrent in-flight probes. Each probe opens a TCP/TLS socket
-# via cloudflare:sockets connect(). v2.7: 6 = the Workers runtime's
+# via cloudflare:sockets connect(). Six is the Workers runtime's
 # simultaneous-connection limit per invocation (see the v2.7 note above) —
 # admission above this number queues connect() calls in the runtime while
 # each probe's own deadline keeps running, which is what produced CI's

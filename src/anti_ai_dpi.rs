@@ -832,6 +832,15 @@ mod tests {
     }
 
     #[test]
+    fn run_pipeline_empty_array_succeeds() {
+        let tmp = tempfile_dir();
+        let input = tmp.join("bridge_list_for_testing.json");
+        std::fs::write(&input, "[]\n").unwrap();
+        run_pipeline(&input, &tmp.join("report.json"), &tmp.join("export.txt")).unwrap();
+        assert!(tmp.join("report.json").exists());
+    }
+
+    #[test]
     fn run_pipeline_missing_input_returns_io_error() {
         let tmp = tempfile_dir();
         let err = run_pipeline(

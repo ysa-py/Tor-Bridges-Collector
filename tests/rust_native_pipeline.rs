@@ -141,78 +141,124 @@ fn adaptive_iran_engines_compose_without_an_external_client() {
 }
 
 #[test]
-fn result_writer_preserves_all_bridge_output_capabilities() {
+fn result_writer_preserves_output_capabilities_without_promoting_tcp_or_unknown() {
     let root = sandbox("writer");
+    let iran_at = Utc::now().to_rfc3339();
     let records = vec![
         json!({
             "line": "obfs4 1.2.3.7:443 FINGERPRINT cert=abc iat-mode=2",
             "transport": "obfs4",
             "iran_status": "iran_likely_working",
-            "tcp_reachable": true
+            "iran_assessment": {
+                "status": "iran_likely_working", "source": "ooni_measurements_api", "checked": true,
+                "vantage": { "type": "ooni_probe", "country": "IR" }, "queried_at": iran_at.clone(),
+                "measurement_at": iran_at.clone(), "measurement_window_days": 7,
+                "historical_measurement_at": iran_at.clone(), "historical_window_days": 90
+            },
+            "verification": {
+                "status": "connected", "stage": "S2",
+                "vantage": { "type": "cloudflare_worker", "colo": "FRA" },
+                "probe_type": "obfs4-handshake",
+                "observed_at": iran_at.clone()
+            }
         }),
         json!({
             "line": "webtunnel 203.0.113.2:443 FINGERPRINT url=https://cdn.example/path",
             "transport": "webtunnel",
             "iran_status": "iran_unknown",
-            "tcp_reachable": true
+            "tcp_reachable": true,
+            "verification": {
+                "status": "connected", "stage": "S1",
+                "vantage": { "type": "github_actions_runner", "region": null },
+                "probe_type": "tcp",
+                "observed_at": iran_at
+            }
         }),
     ];
     let stats = write_result_files(&root, &records).unwrap();
     assert_eq!(stats["iran_likely_working_obfs4.txt"], 1);
-    assert_eq!(stats["iran_likely_working_webtunnel.txt"], 1);
+    assert_eq!(stats["iran_likely_working_webtunnel.txt"], 0);
+    assert_eq!(stats["tested_global_obfs4.txt"], 1);
+    assert_eq!(stats["tested_global_webtunnel.txt"], 0);
     assert!(root.join("iran_likely_working_all.txt").is_file());
-    assert!(root.join("tested_global_obfs4.txt").is_file());
 
     let _ = std::fs::remove_dir_all(root);
 }
 
-/// Regression contract for the NIN cut-pack empty-webtunnel defect:
-/// URL-only WebTunnel bridges (the domain-fronted form BridgeDB publishes)
-/// reach the results stage with an empty `host`, `tcp_reachable: false`,
-/// and `iran_status: tcp_unreachable` because raw TCP cannot dial a bridge
-/// that has no routable IP. The results stage must reclassify them from
-/// the line's `url=` front domain so the WebTunnel special-case promotes
-/// them into `iran_likely_working_webtunnel.txt` instead of leaving every
-/// webtunnel tested/working projection empty.
+/// A URL-only address and a legacy TCP boolean are not transport or
+/// Iran-reachability evidence. Only a positive S2+ result with an explicit
+/// observer can enter tested/global output; the Iran projection also needs
+/// the independent Iran-specific status.
 #[test]
-fn url_only_webtunnel_tcp_unreachable_is_promoted_to_working() {
+fn url_only_webtunnel_requires_typed_s2_vantage_and_iran_status() {
     let root = sandbox("url-only-webtunnel");
+    let iran_at = Utc::now().to_rfc3339();
     let records = vec![
         json!({
-            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://unverified.example/x ver=0.0.4",
             "transport": "webtunnel",
             "host": "",
-            "iran_status": "tcp_unreachable",
-            "tcp_reachable": false
+            "iran_status": "iran_likely_working",
+            "tcp_reachable": true
         }),
         json!({
-            // RFC 3849 documentation-prefix IPv6 placeholder: BridgeDB emits
-            // these into webtunnel_ipv6 lines as anti-enumeration decoys.
-            // They carry a literal placeholder endpoint and must NOT be
-            // reclassified as working domain-front bridges.
-            "line": "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3",
+            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3106 url=https://unknown.example/x ver=0.0.4",
             "transport": "webtunnel",
-            "host": "2001:db8:1218:1de7:3a91:22cc:8d7f:197c",
-            "iran_status": "tcp_unreachable",
-            "tcp_reachable": false
+            "iran_status": "iran_unknown",
+            "verification": {
+                "status": "connected", "stage": "S2",
+                "vantage": { "type": "cloudflare_worker", "colo": "FRA" },
+                "probe_type": "websocket-101",
+                "observed_at": iran_at.clone()
+            }
+        }),
+        json!({
+            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3107 url=https://verified.example/x ver=0.0.4",
+            "transport": "webtunnel",
+            "iran_status": "iran_likely_working",
+            "iran_assessment": {
+                "status": "iran_likely_working", "source": "ooni_measurements_api", "checked": true,
+                "vantage": { "type": "ooni_probe", "country": "IR" }, "queried_at": iran_at.clone(),
+                "measurement_at": iran_at.clone(), "measurement_window_days": 7,
+                "historical_measurement_at": iran_at.clone(), "historical_window_days": 90
+            },
+            "verification": {
+                "status": "connected", "stage": "S2",
+                "vantage": { "type": "cloudflare_worker", "colo": "FRA" },
+                "probe_type": "websocket-101",
+                "observed_at": iran_at.clone()
+            }
+        }),
+        json!({
+            // Explicit S2 without a vantage is incomplete, not publishable.
+            "line": "webtunnel 68674E54A17AEB1C9ADE878BBBB46C6975DD3108 url=https://no-vantage.example/x ver=0.0.4",
+            "transport": "webtunnel",
+            "iran_status": "iran_likely_working",
+            "verification": {
+                "status": "connected", "stage": "S2",
+                "vantage": null,
+                "probe_type": "websocket-101",
+                "observed_at": iran_at
+            }
         }),
     ];
     let stats = write_result_files(&root, &records).unwrap();
 
-    let wt = std::fs::read_to_string(root.join("iran_likely_working_webtunnel.txt"))
+    let working = std::fs::read_to_string(root.join("iran_likely_working_webtunnel.txt"))
         .expect("webtunnel working file written");
-    assert!(
-        wt.contains("vika7.space"),
-        "URL-only webtunnel must be promoted into iran_likely_working_webtunnel.txt, got: {wt:?}"
-    );
-    assert!(
-        !wt.contains("2001:db8"),
-        "documentation-prefix IPv6 placeholder must not be promoted, got: {wt:?}"
-    );
-    assert_eq!(
-        stats["iran_likely_working_webtunnel.txt"], 1,
-        "exactly one URL-only webtunnel promoted"
-    );
+    assert!(working.contains("verified.example"));
+    assert!(!working.contains("unverified.example"));
+    assert!(!working.contains("unknown.example"));
+    assert!(!working.contains("no-vantage.example"));
+    assert_eq!(stats["iran_likely_working_webtunnel.txt"], 1);
+
+    let global = std::fs::read_to_string(root.join("tested_global_webtunnel.txt"))
+        .expect("global webtunnel file written");
+    assert!(global.contains("verified.example"));
+    assert!(global.contains("unknown.example"));
+    assert!(!global.contains("unverified.example"));
+    assert!(!global.contains("no-vantage.example"));
+    assert_eq!(stats["tested_global_webtunnel.txt"], 2);
 
     let _ = std::fs::remove_dir_all(root);
 }

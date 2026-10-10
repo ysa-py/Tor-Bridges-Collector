@@ -25,8 +25,8 @@ name: Egress Diagnostic (meek/conjure TLS timeout isolation)
 # (meek_lite backend), registration.refraction.network (conjure registrar),
 # ajax.aspnetcdn.com / cdn.sstatic.net (advertised fronts), plus
 # www.cdn77.com and jochenkessler.de as known-good controls and a
-# guaranteed-NXDOMAIN control (.invalid per RFC 2606) to calibrate how the
-# Workers runtime manifests an unresolvable name.
+# reserved .invalid DNS-only question to calibrate resolver NXDOMAIN handling;
+# that name is never used for a socket/fetch destination.
 
 on:
   workflow_dispatch:
@@ -50,7 +50,8 @@ concurrency:
 jobs:
   diagnose:
     name: Isolate meek/conjure TLS timeout mechanism
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-26.04
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v5
@@ -62,55 +63,97 @@ jobs:
           CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
         run: |
           set -euo pipefail
+          set +x
           if [ -z "${CF_WORKER_ACCOUNT_ID:-}" ] || [ -z "${CF_WORKER_API_TOKEN:-}" ]; then
-            echo "::error::CF_WORKER_ACCOUNT_ID/CF_WORKER_API_TOKEN not configured — cannot deploy the diagnostic worker"
+            echo "::error::Cloudflare deployment credentials are not configured"
             exit 1
           fi
           export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
           export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
 
-          # Fresh ephemeral token for this run only; the worker is deleted
-          # at the end of the run (final step, if: always()).
-          DIAG_TOKEN="$(openssl rand -hex 16)"
+          # Keep both secrets out of process arguments and Actions logs. The
+          # random token is sent to Wrangler on stdin and held in a mode-0600
+          # curl config file only for authenticated diagnostic requests.
+          DIAG_TOKEN="$(openssl rand -hex 32)"
+          DIAG_CURL_CONFIG="${RUNNER_TEMP}/egress-diag-curl.conf"
+          printf 'header = "X-Diag-Token: %s"\n' "${DIAG_TOKEN}" > "${DIAG_CURL_CONFIG}"
+          chmod 600 "${DIAG_CURL_CONFIG}"
+          echo "DIAG_CURL_CONFIG=${DIAG_CURL_CONFIG}" >> "${GITHUB_ENV}"
 
-          echo "Deploying tor-bridge-probe-relay-diag..."
-          DEPLOY_LOG="$(npx wrangler@latest deploy --config probe-relay/wrangler-diag.toml --var "DIAG_TOKEN:${DIAG_TOKEN}" 2>&1)"
-          echo "${DEPLOY_LOG}"
-
-          DIAG_URL="$(echo "${DEPLOY_LOG}" | grep -oE 'https://[a-zA-Z0-9._-]+\.workers\.dev' | head -1 || true)"
-          if [ -z "${DIAG_URL}" ]; then
-            echo "::error::could not find the deployed workers.dev URL in wrangler output"
+          DEPLOY_LOG="${RUNNER_TEMP}/egress-diag-deploy.log"
+          SECRET_LOG="${RUNNER_TEMP}/egress-diag-secret.log"
+          echo "Deploying temporary diagnostic Worker..."
+          if ! npx wrangler@latest deploy --config probe-relay/wrangler-diag.toml > "${DEPLOY_LOG}" 2>&1; then
+            echo "::error::diagnostic Worker deployment failed; CLI details suppressed"
             exit 1
           fi
-          echo "Deployed: ${DIAG_URL}"
+          if ! printf '%s' "${DIAG_TOKEN}" | npx wrangler@latest secret put DIAG_TOKEN --config probe-relay/wrangler-diag.toml > "${SECRET_LOG}" 2>&1; then
+            echo "::error::could not set the ephemeral diagnostic Worker secret; CLI details suppressed"
+            exit 1
+          fi
 
-          # Wait until the worker answers (cold start / DNS propagation).
+          DIAG_URL="$(grep -oE 'https://[a-zA-Z0-9._-]+\.workers\.dev' "${DEPLOY_LOG}" | head -1 || true)"
+          if [ -z "${DIAG_URL}" ]; then
+            echo "::error::could not identify the diagnostic workers.dev endpoint"
+            exit 1
+          fi
+          echo "Temporary diagnostic Worker deployed."
+
+          # Check both HTTP status and the actual authenticated JSON contract.
+          RESPONSE_FILE="$(mktemp "${RUNNER_TEMP}/diag-smoke.XXXXXX")"
           LIVE=0
           for i in $(seq 1 30); do
-            CODE="$(curl -s -o /dev/null -w '%{http_code}' -m 10 -X POST "${DIAG_URL}/diag" \
-              -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
-              -d '{"host":"www.cdn77.com","port":443,"mode":"dns"}' || echo "000")"
-            if [ "${CODE}" = "200" ]; then
-              echo "Diagnostic worker is live (attempt ${i})."
+            if CODE="$(curl --config "${DIAG_CURL_CONFIG}" -s -o "${RESPONSE_FILE}" -w '%{http_code}' -m 10 -X POST "${DIAG_URL}/diag" \
+              -H 'Content-Type: application/json' \
+              -d '{"host":"www.cdn77.com","port":443,"mode":"dns"}')"; then
+              :
+            else
+              CODE=000
+            fi
+            CONTENT_OK=0
+            if [ "${CODE}" = "200" ] && python3 - "${RESPONSE_FILE}" <<'PYTHON'
+          import json, sys
+          try:
+              with open(sys.argv[1], encoding="utf-8") as response_file:
+                  result = json.load(response_file)
+              valid = (
+                  isinstance(result, dict)
+                  and isinstance(result.get("ok"), bool)
+                  and isinstance(result.get("ms"), (int, float))
+                  and result["ms"] >= 0
+                  and isinstance(result.get("detail"), str)
+                  and isinstance(result.get("input"), dict)
+                  and result["input"].get("host") == "www.cdn77.com"
+                  and result["input"].get("mode") == "dns"
+              )
+              sys.exit(0 if valid else 1)
+          except Exception:
+              sys.exit(1)
+          PYTHON
+            then
+              CONTENT_OK=1
+            fi
+            if [ "${CODE}" = "200" ] && [ "${CONTENT_OK}" = "1" ]; then
+              echo "Authenticated diagnostic content check passed (attempt ${i})."
               LIVE=1
               break
             fi
-            echo "  attempt ${i}: HTTP ${CODE}, waiting..."
+            echo "  attempt ${i}: HTTP ${CODE}, valid_result=${CONTENT_OK}; waiting..."
             sleep 5
           done
+          rm -f "${RESPONSE_FILE}"
           if [ "${LIVE}" != "1" ]; then
-            echo "::error::diagnostic worker did not become live within 150s"
+            echo "::error::diagnostic Worker did not pass its content canary within the retry window"
             exit 1
           fi
 
           echo "DIAG_URL=${DIAG_URL}" >> "${GITHUB_ENV}"
-          echo "DIAG_TOKEN=${DIAG_TOKEN}" >> "${GITHUB_ENV}"
 
       # ── Worker-vantage matrix: one primitive per request from the CF edge ──
       - name: Worker-side matrix (real Cloudflare edge)
         env:
           DIAG_URL: ${{ env.DIAG_URL }}
-          DIAG_TOKEN: ${{ env.DIAG_TOKEN }}
+          DIAG_CURL_CONFIG: ${{ env.DIAG_CURL_CONFIG }}
         run: |
           set -euo pipefail
           diag() {
@@ -122,8 +165,8 @@ jobs:
             # is captured.
             local out=""
             for attempt in 1 2; do
-              out="$(curl -s -m "$(( $4 / 1000 + 20 ))" -X POST "${DIAG_URL}/diag" \
-                -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
+              out="$(curl --config "${DIAG_CURL_CONFIG}" -s -m "$(( $4 / 1000 + 20 ))" -X POST "${DIAG_URL}/diag" \
+                -H 'Content-Type: application/json' \
                 -d "{\"host\":\"$1\",\"port\":$2,\"mode\":\"$3\",\"timeout_ms\":$4}" \
                 || echo '{"ok":false,"detail":"curl transport failed"}')"
               if ! echo "${out}" | grep -q '^error code:'; then break; fi
@@ -136,7 +179,7 @@ jobs:
           echo "════════ WORKER-VANTAGE MATRIX (each line = one primitive from the real Cloudflare edge) ════════"
 
           echo "── CI-evidence hosts + controls: DNS / bare TCP / TLS-15s / startTls split / fetch"
-          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net www.cdn77.com jochenkessler.de definitely-not-real.invalid; do
+          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net www.cdn77.com jochenkessler.de; do
             echo "── ${H}"
             printf '  dns     : '; diag "${H}" 443 dns 10000
             printf '  tcp10   : '; diag "${H}" 443 tcp 10000
@@ -144,6 +187,9 @@ jobs:
             printf '  starttls: '; diag "${H}" 443 starttls 15000
             printf '  fetch   : '; diag "${H}" 443 fetch 20000
           done
+          # Reserved .invalid is queried only through fixed public DoH resolvers;
+          # the diagnostic Worker rejects it for socket and fetch destinations.
+          printf '  reserved DNS-only control: '; diag "definitely-not-real.invalid" 443 dns 10000
 
           echo "── IP literals (bypass the runtime resolver; IPs resolved by Google DoH 2026-09-08)"
           for IP in 3.86.82.153 198.252.206.17 23.217.9.140 212.102.46.11; do
@@ -153,7 +199,7 @@ jobs:
           done
 
           echo "── Patience hypothesis (iii): extended 45s TLS timeout on the failing hosts"
-          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net definitely-not-real.invalid; do
+          for H in meek.azureedge.net registration.refraction.network ajax.aspnetcdn.com cdn.sstatic.net; do
             printf '  tls45 %s: ' "${H}"; diag "${H}" 443 tls 45000
           done
 
@@ -353,7 +399,7 @@ jobs:
           PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
           PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
           DIAG_URL: ${{ env.DIAG_URL }}
-          DIAG_TOKEN: ${{ env.DIAG_TOKEN }}
+          DIAG_CURL_CONFIG: ${{ env.DIAG_CURL_CONFIG }}
         run: |
           set -euo pipefail
           if [ -z "${PROBE_RELAY_URL:-}" ] || [ -z "${PROBE_RELAY_TOKEN:-}" ]; then
@@ -371,10 +417,10 @@ jobs:
           : > "${HANGERS_FILE}"
           for CAND in ${CANDIDATES}; do
             HOST="${CAND%%:*}"; PORT="${CAND##*:}"
-            OUT="$(curl -s -m 12 -X POST "${DIAG_URL}/diag" \
-              -H "X-Diag-Token: ${DIAG_TOKEN}" -H 'Content-Type: application/json' \
+            OUT="$(curl --config "${DIAG_CURL_CONFIG}" -s -m 12 -X POST "${DIAG_URL}/diag" \
+              -H 'Content-Type: application/json' \
               -d "{\"host\":\"${HOST}\",\"port\":${PORT},\"mode\":\"tcp\",\"timeout_ms\":6000}" || true)"
-            if echo "${OUT}" | grep -q '"ok":false' && echo "${OUT}" | grep -q 'timed out'; then
+            if echo "${OUT}" | grep -q '"ok":false' && echo "${OUT}" | grep -q 'timed_out'; then
               echo "${CAND}" >> "${HANGERS_FILE}"
               echo "  ${CAND}: HANGS (tcp timeout) — selected"
             else
@@ -585,28 +631,40 @@ jobs:
           CF_WORKER_API_TOKEN: ${{ secrets.CF_WORKER_API_TOKEN }}
         run: |
           set -euo pipefail
+          set +x
+          DIAG_CURL_CONFIG="${RUNNER_TEMP}/egress-diag-curl.conf"
+          CF_CURL_CONFIG="${RUNNER_TEMP}/egress-cf-delete-curl.conf"
+          WRANGLER_DELETE_LOG="${RUNNER_TEMP}/egress-wrangler-delete.log"
           if [ -z "${CF_WORKER_ACCOUNT_ID:-}" ] || [ -z "${CF_WORKER_API_TOKEN:-}" ]; then
-            echo "No CF credentials available — nothing to delete here."
+            rm -f "${DIAG_CURL_CONFIG}" "${CF_CURL_CONFIG}" "${WRANGLER_DELETE_LOG}" \
+              "${RUNNER_TEMP}/egress-diag-deploy.log" "${RUNNER_TEMP}/egress-diag-secret.log"
+            echo "No Cloudflare credentials available for temporary-worker cleanup."
             exit 0
           fi
           export CLOUDFLARE_ACCOUNT_ID="${CF_WORKER_ACCOUNT_ID}"
           export CLOUDFLARE_API_TOKEN="${CF_WORKER_API_TOKEN}"
           DELETED=0
-          if npx wrangler@latest delete --config probe-relay/wrangler-diag.toml --force 2>&1; then
-            echo "Throwaway diagnostic worker deleted (wrangler)."
+          if npx wrangler@latest delete --config probe-relay/wrangler-diag.toml --force > "${WRANGLER_DELETE_LOG}" 2>&1; then
+            echo "Temporary diagnostic Worker deleted (Wrangler)."
             DELETED=1
           else
-            echo "wrangler delete failed (run 2 hit auth error 10000 on /storage/kv/namespaces — the deploy-scoped token lacks KV read). Falling back to the direct REST API…"
-            # Single line on purpose — see the NOTE in the artifact step:
-            # multi-line curl continuations broke bash parsing in run 3.
-            HTTP_CODE="$(curl -s -o /tmp/cf_delete.json -w '%{http_code}' -X DELETE -H "Authorization: Bearer ${CF_WORKER_API_TOKEN}" "https://api.cloudflare.com/client/v4/accounts/${CF_WORKER_ACCOUNT_ID}/workers/scripts/tor-bridge-probe-relay-diag" || echo "000")"
-            echo "REST DELETE status: ${HTTP_CODE}"
-            cat /tmp/cf_delete.json 2>/dev/null || true
-            echo
+            echo "Wrangler deletion failed; attempting the Cloudflare REST API fallback."
+            # Keep the API token out of curl's process arguments and suppress
+            # the response body, which can contain provider-controlled text.
+            printf 'header = "Authorization: Bearer %s"\n' "${CF_WORKER_API_TOKEN}" > "${CF_CURL_CONFIG}"
+            chmod 600 "${CF_CURL_CONFIG}"
+            unset CLOUDFLARE_API_TOKEN CF_WORKER_API_TOKEN
+            if HTTP_CODE="$(curl --config "${CF_CURL_CONFIG}" -s -o /dev/null -w '%{http_code}' -X DELETE "https://api.cloudflare.com/client/v4/accounts/${CF_WORKER_ACCOUNT_ID}/workers/scripts/tor-bridge-probe-relay-diag")"; then
+              :
+            else
+              HTTP_CODE=000
+            fi
             case "${HTTP_CODE}" in
-              200|204) echo "Throwaway diagnostic worker deleted (REST API)."; DELETED=1 ;;
+              200|204) echo "Temporary diagnostic Worker deleted (REST API)."; DELETED=1 ;;
             esac
           fi
+          rm -f "${DIAG_CURL_CONFIG}" "${CF_CURL_CONFIG}" "${WRANGLER_DELETE_LOG}" \
+            "${RUNNER_TEMP}/egress-diag-deploy.log" "${RUNNER_TEMP}/egress-diag-secret.log"
           if [ "${DELETED}" != "1" ]; then
-            echo "::warning::could not delete tor-bridge-probe-relay-diag — please remove it manually in the Cloudflare dashboard"
+            echo "::warning::could not delete the temporary diagnostic Worker; remove it manually in the Cloudflare dashboard"
           fi

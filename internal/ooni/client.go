@@ -8,10 +8,9 @@
 //
 //	WebTunnel bridges use HTTPS domain-fronted URLs, not bare IP:port.
 //	OONI measures by input (IP address), so WebTunnel bridges almost never
-//	appear in OONI data — they will always return StatusUnknown from OONI.
-//	The caller (iran_tester) handles this correctly: WebTunnel bridges
-//	reachable via TLS are classified as iran_likely_working (Tier-2),
-//	not left as iran_unknown.
+//	appear in OONI data. A successful front-domain probe from a non-Iranian
+//	runner is separate technical evidence and must never be upgraded into an
+//	Iran reachability status.
 package ooni
 
 import (
@@ -41,10 +40,11 @@ const (
 
 // Measurement is the minimal subset of an OONI measurement result.
 type Measurement struct {
-	Anomaly       bool   `json:"anomaly"`
-	Confirmed     bool   `json:"confirmed"`
-	TestStartTime string `json:"test_start_time"`
-	TestName      string `json:"test_name"`
+	Anomaly              bool   `json:"anomaly"`
+	Confirmed            bool   `json:"confirmed"`
+	MeasurementStartTime string `json:"measurement_start_time"`
+	TestStartTime        string `json:"test_start_time"`
+	TestName             string `json:"test_name"`
 }
 
 // measurementsResponse is the top-level OONI API response envelope.
@@ -61,12 +61,113 @@ type Client struct {
 	mu      sync.Mutex // protects ticker channel drain
 	cache   map[string]*analysisResult
 	cacheMu sync.Mutex
+	now     func() time.Time
 }
 
 type analysisResult struct {
-	Status         OONIStatus
-	RecurrenceRate float64
-	Checked        bool
+	Status                       OONIStatus
+	RecurrenceRate               float64
+	Checked                      bool
+	LatestRecentMeasurementAt    string
+	LatestTemporalMeasurementAt string
+}
+
+func measurementTimestamp(measurement Measurement) (time.Time, string, bool) {
+	raw := measurement.MeasurementStartTime
+	if raw == "" {
+		raw = measurement.TestStartTime
+	}
+	if raw == "" {
+		return time.Time{}, "", false
+	}
+	measuredAt, err := time.Parse(time.RFC3339Nano, raw)
+	if err != nil {
+		return time.Time{}, "", false
+	}
+	return measuredAt, raw, true
+}
+
+func newestMeasurement(measurements []Measurement) (Measurement, string, bool) {
+	var newest Measurement
+	var newestRaw string
+	var newestAt time.Time
+	found := false
+	for _, measurement := range measurements {
+		measuredAt, raw, ok := measurementTimestamp(measurement)
+		if !ok {
+			continue
+		}
+		if !found || measuredAt.After(newestAt) {
+			newest = measurement
+			newestRaw = raw
+			newestAt = measuredAt
+			found = true
+		}
+	}
+	return newest, newestRaw, found
+}
+
+func latestMeasurementAt(measurements []Measurement) string {
+	_, raw, ok := newestMeasurement(measurements)
+	if !ok {
+		return ""
+	}
+	return raw
+}
+
+// classifyRecentStatus uses only the newest original measurement time. Older
+// anomaly/confirmed rows in the same window, and rows without a parseable
+// timestamp, cannot override that current classification.
+func classifyRecentStatus(measurements []Measurement) OONIStatus {
+	newest, _, ok := newestMeasurement(measurements)
+	if !ok {
+		return StatusUnknown
+	}
+	if newest.Anomaly || newest.Confirmed {
+		return StatusLikelyBlocked
+	}
+	return StatusLikelyWorking
+}
+
+func timestampedAnomalyCount(measurements []Measurement) int {
+	count := 0
+	for _, measurement := range measurements {
+		if _, _, ok := measurementTimestamp(measurement); !ok {
+			continue
+		}
+		if measurement.Anomaly || measurement.Confirmed {
+			count++
+		}
+	}
+	return count
+}
+
+const observationFutureSkew = 120 * time.Second
+
+func inAgeWindow(measuredAt, now time.Time, maxAge time.Duration) bool {
+	age := now.Sub(measuredAt)
+	return age >= -observationFutureSkew && age <= maxAge
+}
+
+func filterByOriginalTime(measurements []Measurement, now time.Time, maxAge time.Duration) []Measurement {
+	filtered := make([]Measurement, 0, len(measurements))
+	for _, measurement := range measurements {
+		measuredAt, _, ok := measurementTimestamp(measurement)
+		if !ok {
+			continue
+		}
+		if inAgeWindow(measuredAt, now, maxAge) {
+			filtered = append(filtered, measurement)
+		}
+	}
+	return filtered
+}
+
+func (c *Client) clock() time.Time {
+	if c != nil && c.now != nil {
+		return c.now()
+	}
+	return time.Now().UTC()
 }
 
 // New creates a Client that honours a 5-requests-per-second rate limit.
@@ -75,6 +176,7 @@ func New() *Client {
 		hc:     &http.Client{Timeout: 30 * time.Second},
 		ticker: time.NewTicker(200 * time.Millisecond), // 5 req/s
 		cache:  make(map[string]*analysisResult),
+		now:    func() time.Time { return time.Now().UTC() },
 	}
 }
 
@@ -165,9 +267,8 @@ func buildURL(ip string, since, until time.Time, limit int) string {
 //   - Last 90 days: computes blocking recurrence rate (frequently_blocked if > 2/month).
 //
 // When OONI has no measurement data for the IP (empty results), the function
-// returns StatusUnknown. The caller is responsible for applying transport-specific
-// fallback logic — for example, WebTunnel bridges that are TLS-reachable should
-// be upgraded to StatusLikelyWorking by the caller even when OONI returns Unknown.
+// returns StatusUnknown. Transport-specific checks may add typed technical
+// evidence, but a non-Iranian vantage must not be used to infer Iran reachability.
 func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, bool) {
 	// Cache check
 	c.cacheMu.Lock()
@@ -177,7 +278,9 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 	}
 	c.cacheMu.Unlock()
 
-	now := time.Now().UTC()
+	now := c.clock()
+	recentWindow := time.Duration(recentDays) * 24 * time.Hour
+	temporalWindow := time.Duration(temporalDays) * 24 * time.Hour
 
 	// ── Recent window (7 days) ──────────────────────────────────────────
 	recentURL := buildURL(ip, now.AddDate(0, 0, -recentDays), now, 5)
@@ -186,46 +289,22 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 		return StatusUnknown, 0, false
 	}
 
-	var status OONIStatus
-	if len(recentData.Results) == 0 {
-		// No OONI measurements for this IP from Iranian probes.
-		// This is the common case for:
-		//   - New bridges not yet widely used in Iran
-		//   - WebTunnel bridges (OONI queries by IP, WebTunnel uses HTTPS domains)
-		//   - obfs4 bridges on less common ports
-		// The caller should apply transport-specific fallback logic.
-		status = StatusUnknown
-	} else {
-		anyBlocked := false
-		allClean := true
-		for _, m := range recentData.Results {
-			if m.Anomaly || m.Confirmed {
-				anyBlocked = true
-				allClean = false
-			}
-		}
-		switch {
-		case anyBlocked:
-			status = StatusLikelyBlocked
-		case allClean:
-			status = StatusLikelyWorking
-		default:
-			status = StatusUnknown
-		}
-	}
+	recentInWindow := filterByOriginalTime(recentData.Results, now, recentWindow)
+	status := classifyRecentStatus(recentInWindow)
 
 	// ── Temporal window (90 days) ───────────────────────────────────────
 	temporalURL := buildURL(ip, now.AddDate(0, 0, -temporalDays), now, 100)
 	temporalData, err := c.fetch(ctx, temporalURL)
 
 	var recurrenceRate float64
-	if err == nil && temporalData != nil && len(temporalData.Results) > 0 {
-		anomalyCount := 0
-		for _, m := range temporalData.Results {
-			if m.Anomaly || m.Confirmed {
-				anomalyCount++
-			}
-		}
+	var latestTemporalMeasurementAt string
+	var temporalInWindow []Measurement
+	if temporalData != nil {
+		temporalInWindow = filterByOriginalTime(temporalData.Results, now, temporalWindow)
+		latestTemporalMeasurementAt = latestMeasurementAt(temporalInWindow)
+	}
+	if err == nil && len(temporalInWindow) > 0 {
+		anomalyCount := timestampedAnomalyCount(temporalInWindow)
 		// blocks per 30-day period
 		recurrenceRate = float64(anomalyCount) / (float64(temporalDays) / 30.0)
 		if recurrenceRate > freqBlockThresh {
@@ -234,13 +313,42 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 	}
 
 	result := &analysisResult{
-		Status:         status,
-		RecurrenceRate: recurrenceRate,
-		Checked:        true,
+		Status:                      status,
+		RecurrenceRate:              recurrenceRate,
+		Checked:                     true,
+		LatestRecentMeasurementAt:   latestMeasurementAt(recentInWindow),
+		LatestTemporalMeasurementAt: latestTemporalMeasurementAt,
 	}
 	c.cacheMu.Lock()
 	c.cache[ip] = result
 	c.cacheMu.Unlock()
 
 	return status, recurrenceRate, true
+}
+
+// LatestRecentMeasurementAt returns the original timestamp of the newest
+// measurement in the seven-day Iran-probe query cached by Classify. A checked
+// empty query or a response without a parseable timestamp has no measurement
+// time and must not be presented as current reachability evidence.
+func (c *Client) LatestRecentMeasurementAt(ip string) (string, bool) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	cached, ok := c.cache[ip]
+	if !ok || !cached.Checked || cached.LatestRecentMeasurementAt == "" {
+		return "", false
+	}
+	return cached.LatestRecentMeasurementAt, true
+}
+
+// LatestTemporalMeasurementAt returns the original timestamp of the newest
+// measurement in the ninety-day Iranian-probe query used for recurrence
+// analysis. It is distinct from the seven-day current-assessment timestamp.
+func (c *Client) LatestTemporalMeasurementAt(ip string) (string, bool) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	cached, ok := c.cache[ip]
+	if !ok || !cached.Checked || cached.LatestTemporalMeasurementAt == "" {
+		return "", false
+	}
+	return cached.LatestTemporalMeasurementAt, true
 }
