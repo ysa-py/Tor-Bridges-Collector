@@ -177,23 +177,20 @@ fn probe_webtunnel_front(
 ) -> RegionProbeResult {
     let timeout = timeouts.tcp_connect.max(timeouts.tls_handshake);
     match crate::webtunnel_probe::probe_sync(&endpoint.host, endpoint.port, timeout) {
-        Ok((response, _resolved_ip)) => {
-            let has_101 = response.contains("101");
-            RegionProbeResult {
-                tcp_ok: true,
-                tcp_latency_ms: None,
-                tls_ok: true,
-                tls_latency_ms: None,
-                transport_ok: has_101,
-                transport_latency_ms: None,
-                error: if has_101 {
-                    None
-                } else {
-                    Some("front responded but no HTTP 101".to_string())
-                },
-                active_blocking: false,
-            }
-        }
+        Ok((_response, _resolved_ip, signature_verified)) => RegionProbeResult {
+            tcp_ok: true,
+            tcp_latency_ms: None,
+            tls_ok: true,
+            tls_latency_ms: None,
+            transport_ok: signature_verified,
+            transport_latency_ms: None,
+            error: if signature_verified {
+                None
+            } else {
+                Some("front responded without a valid WebSocket upgrade signature".to_string())
+            },
+            active_blocking: false,
+        },
         Err(err) => {
             let is_blocking = err.contains("reset")
                 || err.contains("HandshakeFailure")
