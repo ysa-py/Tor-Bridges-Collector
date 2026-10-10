@@ -50,7 +50,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Cleanup completed workflow runs
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           KEEP_LAST_N: ${{ inputs.keep_last_n || github.event.inputs.keep_last_n || '2' }}
           DRY_RUN_RAW: ${{ inputs.dry_run || github.event.inputs.dry_run || 'true' }}
