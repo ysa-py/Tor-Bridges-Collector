@@ -108,6 +108,8 @@ jobs:
         run: bash scripts/test_repair_conflict_markers.sh
       - name: Test publication contract gate
         run: bash scripts/test_publication_contract.sh
+      - name: Test self-heal audit bootstrap failure path
+        run: bash scripts/test_self_heal.sh
       - name: Optional secret availability
         id: secret_presence
         env:
