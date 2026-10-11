@@ -37,9 +37,10 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 concurrency:
-  group: ai-ultra-pro-cleanup-${{ github.repository }}
-  # Superseded branch/PR cleanup runs are validation-only and safe to cancel;
-  # main/scheduled cleanup is protected so production cleanup is not interrupted.
+  # Main cleanup has its own group. A branch run must never be able to cancel
+  # a main/scheduled cleanup just because both target the same repository.
+  # Within non-main refs, a newer commit supersedes the older validation run.
+  group: ai-ultra-pro-cleanup-${{ github.repository }}-${{ github.ref == 'refs/heads/main' && 'main' || github.ref }}
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
