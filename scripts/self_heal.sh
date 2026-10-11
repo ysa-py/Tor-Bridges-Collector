@@ -43,16 +43,42 @@ cargo audit --json > "${DIAG_DIR}/audit-report.json" 2> "${DIAG_DIR}/cargo-audit
 # Capture human-readable output as well
 cargo audit 2>&1 | tee "${DIAG_DIR}/cargo-audit-stdout.log" || true
 
-# Deterministic parsing
+# Deterministic parsing. cargo-audit JSON schemas differ across versions and
+# jq may successfully emit an empty string when the expected field is absent.
+# Normalize the value before numeric comparisons or embedding it in JSON.
 VCOUNT=0
-if [ -f "${DIAG_DIR}/audit-report.json" ]; then
-  VCOUNT=$(jq -r '(.vulnerabilities.count // .vulnerabilities.found // (.vulnerabilities.list | length) // 0) as $c | ($c // 0)' "${DIAG_DIR}/audit-report.json" 2>/dev/null || echo 0)
-  echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
-  if [ "${VCOUNT}" -gt 0 ]; then
-    EXIT_CODE=1
+if [ -f "${DIAG_DIR}/audit-report.json" ] && command -v jq >/dev/null 2>&1; then
+  VCOUNT_RAW=$(jq -er '
+    if type != "object" then 0
+    else
+      (.vulnerabilities.count
+       // .vulnerabilities.found
+       // (if (.vulnerabilities.list | type) == "array"
+           then (.vulnerabilities.list | length)
+           else 0
+           end)
+       // 0)
+      | if type == "number" and . >= 0 then floor
+        elif type == "string" and test("^[0-9]+$") then tonumber
+        else 0
+        end
+    end
+  ' "${DIAG_DIR}/audit-report.json" 2>/dev/null || true)
+  if [[ "${VCOUNT_RAW:-}" =~ ^[0-9]+$ ]]; then
+    VCOUNT="${VCOUNT_RAW}"
+  else
+    echo "[self-heal] Warning: audit vulnerability count was missing/invalid; normalized to 0" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    VCOUNT=0
   fi
+elif [ ! -f "${DIAG_DIR}/audit-report.json" ]; then
+  echo "[self-heal] No audit-report.json produced" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
 else
-  echo "[self-heal] No audit-report.json produced"
+  echo "[self-heal] Warning: jq unavailable; vulnerability count normalized to 0" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+fi
+
+echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
+if [ "${VCOUNT}" -gt 0 ]; then
+  EXIT_CODE=1
 fi
 
 # 4) Run release tests (capture output)
@@ -72,8 +98,16 @@ fi
 # Finalize
 if [ ${EXIT_CODE} -ne 0 ]; then
   echo "[self-heal] Validation detected issues. Diagnostics saved to ${DIAG_DIR}"
-  # Create a lightweight index for diagnostics
-  jq -n --arg ts "${TS}" --arg vcount "${VCOUNT}" '{timestamp: $ts, vulnerabilities: ($vcount|tonumber)}' > "${DIAG_DIR}/index.json" || true
+  # Create a lightweight index for diagnostics using a validated JSON number.
+  # Do not call tonumber on a possibly empty string: that masked the original
+  # validation failure with a second jq error and made diagnostics less useful.
+  if command -v jq >/dev/null 2>&1; then
+    jq -n --arg ts "${TS}" --argjson vulnerabilities "${VCOUNT}" \
+      '{timestamp: $ts, vulnerabilities: $vulnerabilities}' > "${DIAG_DIR}/index.json" \
+      || printf '{"timestamp":"%s","vulnerabilities":0}\n' "${TS}" > "${DIAG_DIR}/index.json"
+  else
+    printf '{"timestamp":"%s","vulnerabilities":0}\n' "${TS}" > "${DIAG_DIR}/index.json"
+  fi
   exit 1
 fi
 
