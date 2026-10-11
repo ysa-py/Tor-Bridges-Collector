@@ -64,6 +64,22 @@ jobs:
               core.info('Refusing to delete workflow runs off main; forcing dry-run');
               dryRun = true;
             }
+            // PR/feature-branch invocations are validation-only. Do not scan
+            // thousands of historical runs from a non-production CI job; this
+            // reusable workflow must not delay the parent pipeline's CI contract.
+            if (!onMain) {
+              core.info('Non-main validation run: cleanup is a safe no-op (no history scan, no deletions).');
+              await core.summary
+                .addHeading('AI Ultra-Pro Cleanup')
+                .addRaw('Mode: validation no-op (non-main ref)\n\n')
+                .addRaw('Candidates: 0; Deleted: 0; Scanned: 0\n')
+                .write();
+              core.setOutput('candidates', '0');
+              core.setOutput('deleted', '0');
+              core.setOutput('scanned_runs', '0');
+              core.setOutput('truncated_workflows', '0');
+              return;
+            }
             const {owner, repo} = context.repo;
             const currentRunId = context.runId;
             const workflows = await github.paginate(github.rest.actions.listRepoWorkflows, {
@@ -73,11 +89,20 @@ jobs:
             });
             const PAGE_SIZE = 100;
             const MAX_PAGES_PER_WORKFLOW = 2;
+            const MAX_CANDIDATES_PER_WORKFLOW = 25;
+            const MAX_CANDIDATES_PER_INVOCATION = 200;
+            const MAX_DELETIONS_PER_INVOCATION = 100;
             const summary = [];
             let deleted = 0;
             let scannedRuns = 0;
             let truncatedWorkflows = 0;
+            let candidateCapReached = false;
             for (const workflow of workflows) {
+              if (summary.length >= MAX_CANDIDATES_PER_INVOCATION || deleted >= MAX_DELETIONS_PER_INVOCATION) {
+                candidateCapReached = true;
+                core.info('Global cleanup batch cap reached; older candidates will be handled in a later cleanup pass.');
+                break;
+              }
               // Bound API work. Listing every historical run for every workflow
               // made this reusable job scan an unbounded number of pages and
               // hold up the parent pipeline's final CI contract. Scan the newest
@@ -107,8 +132,13 @@ jobs:
               const oldRuns = runs
                 .filter(run => run.id !== currentRunId)
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-                .slice(keepLast);
+                .slice(keepLast, keepLast + MAX_CANDIDATES_PER_WORKFLOW);
               for (const run of oldRuns) {
+                if (summary.length >= MAX_CANDIDATES_PER_INVOCATION || (!dryRun && deleted >= MAX_DELETIONS_PER_INVOCATION)) {
+                  candidateCapReached = true;
+                  core.info('Global cleanup batch cap reached; remaining candidates stay for a later cleanup pass.');
+                  break;
+                }
                 summary.push({workflow: workflow.name, id: run.id, created_at: run.created_at, dry_run: dryRun});
                 if (!dryRun) {
                   try {
@@ -119,13 +149,15 @@ jobs:
                   }
                 }
               }
+              if (candidateCapReached) break;
             }
             await core.summary
               .addHeading('AI Ultra-Pro Cleanup')
               .addRaw(`Mode: ${dryRun ? 'dry-run' : 'delete'}\n\n`)
               .addRaw(`Keep last completed runs per workflow: ${keepLast}\n\n`)
               .addRaw(`Candidates: ${summary.length}; Deleted: ${deleted}; Scanned: ${scannedRuns}\n\n`)
-              .addRaw(`Scan cap: ${PAGE_SIZE * MAX_PAGES_PER_WORKFLOW} newest completed runs per workflow. Workflows at cap: ${truncatedWorkflows}. Re-run cleanup to continue pruning older batches.\n`)
+              .addRaw(`Scan cap: ${PAGE_SIZE * MAX_PAGES_PER_WORKFLOW} newest completed runs per workflow. Workflows at cap: ${truncatedWorkflows}.\n\n`)
+              .addRaw(`Batch caps: ${MAX_CANDIDATES_PER_WORKFLOW} candidates/workflow, ${MAX_CANDIDATES_PER_INVOCATION} candidates/invocation, ${MAX_DELETIONS_PER_INVOCATION} deletions/invocation. Cap reached: ${candidateCapReached}.\n`)
               .write();
             core.setOutput('candidates', String(summary.length));
             core.setOutput('deleted', String(deleted));
