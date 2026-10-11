@@ -38,6 +38,10 @@ if ! cargo audit --version >/dev/null 2>&1; then
   if ! cargo install cargo-audit --locked 2>&1 | tee "${DIAG_DIR}/cargo-audit-install.log"; then
     echo "[self-heal] ERROR: cargo-audit installation failed; vulnerability status remains unknown" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
     EXIT_CODE=1
+    # Do not invoke cargo audit when the installer failed: that would create an
+    # empty report and obscure the primary failure with a misleading parser error.
+    echo "[self-heal] Aborting audit stage because cargo-audit could not be installed." | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    exit 1
   fi
 fi
 
