@@ -201,8 +201,8 @@ jq -e '
 # Empty per-run timeout history must fall back to real committed bridge entries
 # as target candidates, without pretending those entries are timeout evidence.
 bridge_candidates="$tmp_dir/bridge-candidates.json"
-printf '["93.184.216.34:8443 fingerprint","8.8.8.8:443 fingerprint","10.0.0.1:443 private"]\\n' > "$bridge_candidates"
-printf '[]\\n' > "$tmp_dir/empty-timeouts.json"
+printf '["93.184.216.34:8443 fingerprint","8.8.8.8:443 fingerprint","10.0.0.1:443 private"]\n' > "$bridge_candidates"
+printf '[]\n' > "$tmp_dir/empty-timeouts.json"
 fallback_selected="$(bash "$selector" "$tmp_dir/empty-timeouts.json" "$bridge_candidates" 2>/dev/null)" || fail 'bridge-list fallback failed when timeout history is empty'
 jq -e 'length == 2 and map(.host) == ["93.184.216.34","8.8.8.8"] and all(.[]; .transport == "vanilla")' <<< "$fallback_selected" >/dev/null || fail 'bridge-list fallback accepted unsafe entries or returned wrong controls'
 
