@@ -52,6 +52,19 @@ def select_controls(document: Any, limit: int = MAX_CONTROLS) -> list[dict[str, 
     seen_endpoints: set[tuple[ipaddress.IPv4Address, int]] = set()
     for record in document:
         endpoint = _candidate(record)
+        # A committed bridge-list entry is a target candidate, not evidence of
+        # timeout. The live authenticated Worker response must independently
+        # confirm a fresh timeout before the smoke test can pass.
+        if endpoint is None and isinstance(record, str):
+            match = re.match(r"^\\s*(\\d{1,3}(?:\\.\\d{1,3}){3}):(\\d{1,5})(?:\\s|$)", record)
+            if match:
+                try:
+                    address = ipaddress.ip_address(match.group(1))
+                    port = int(match.group(2))
+                    if isinstance(address, ipaddress.IPv4Address) and address.is_global and 1 <= port <= 65535:
+                        endpoint = (address, port)
+                except ValueError:
+                    endpoint = None
         if endpoint is None or endpoint in seen_endpoints:
             continue
         seen_endpoints.add(endpoint)
@@ -90,17 +103,26 @@ def select_controls(document: Any, limit: int = MAX_CONTROLS) -> list[dict[str, 
 
 
 def main() -> int:
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3):
         return 2
-    path = Path(sys.argv[1])
-    try:
+
+    def load(path: Path) -> Any:
         if path.stat().st_size > MAX_FILE_BYTES:
-            return 1
-        document = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeError, json.JSONDecodeError):
+            raise ValueError("candidate file too large")
+        return json.loads(path.read_text(encoding="utf-8"))
+
+    try:
+        controls = select_controls(load(Path(sys.argv[1])))
+        # The current-run snapshot intentionally resets pt_results.json. If it
+        # contains no historical timeout observations, fall back to the
+        # repository's real bridge list as *targets only*. Never treat these
+        # entries as timeout evidence; the live canary below still requires a
+        # fresh timeout observed from the Cloudflare Worker vantage.
+        if not controls and len(sys.argv) == 3:
+            controls = select_controls(load(Path(sys.argv[2])))
+    except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
         return 1
 
-    controls = select_controls(document)
     if not controls:
         return 1
     sys.stdout.write(json.dumps(controls, separators=(",", ":")))
