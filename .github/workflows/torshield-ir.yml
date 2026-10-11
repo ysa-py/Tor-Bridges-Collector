@@ -436,7 +436,7 @@ jobs:
         set -euo pipefail
         # A previously committed conflict-marker payload must never poison
         # bridge_history.json / iran_results.json evidence for this run.
-        python3 scripts/repair_conflict_markers.py
+        bash scripts/repair_conflict_markers.sh
 
     - name: Bootstrap environment defaults
       run: |
@@ -2344,7 +2344,9 @@ jobs:
         # Now: heal -> validate -> COMMIT FIRST -> rebase with generated
         # content winning (-X theirs = our freshly generated commit) -> verify
         # -> push, retrying on non-fast-forward. No stash is ever used.
-        python3 scripts/repair_conflict_markers.py
+        # The healer is shell + jq on purpose: `quality_gate py-check` fails
+        # the build while any Python source survives in this Rust-native tree.
+        bash scripts/repair_conflict_markers.sh
         PATHS="bridge/ data/ docs/ export/ README.md go.mod go.sum \
                src/bin/sync_bridge_outputs.rs cmd/ internal/ zig-scanner/ \
                generate_quantum_project.sh scripts/"
@@ -2355,11 +2357,10 @@ jobs:
         done
         echo "Staging paths: $PATHS"
         git add $PATHS
-        # Publication guard: never commit a corrupt payload.
-        for f in bridge/*.json; do
-          python3 -c 'import json,sys; json.load(open(sys.argv[1]))' "$f" \
-            || { echo "::error::refusing to publish invalid JSON: $f"; exit 1; }
-        done
+        # Publication guard: never commit a payload that does not parse.
+        bash scripts/repair_conflict_markers.sh --validate-json bridge data export docs
+        # Publication guard: never commit a conflict marker anywhere.
+        bash scripts/repair_conflict_markers.sh --check
         if git diff --staged --quiet; then
           echo "No changes to commit."
           exit 0
@@ -2375,8 +2376,8 @@ jobs:
         for attempt in 1 2 3 4 5; do
           git fetch origin main
           if git rebase -X theirs origin/main; then
-            python3 scripts/repair_conflict_markers.py --check \
-              || { python3 scripts/repair_conflict_markers.py; git add $PATHS; git commit -m "chore: heal conflict markers [skip ci]" || true; }
+            bash scripts/repair_conflict_markers.sh --check ||
+              { bash scripts/repair_conflict_markers.sh; git add $PATHS; git commit -m "chore: heal conflict markers [skip ci]" || true; }
             if git push origin HEAD:main; then pushed=1; break; fi
           else
             echo "rebase conflict on attempt ${attempt}; aborting and retrying"
