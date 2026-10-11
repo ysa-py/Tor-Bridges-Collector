@@ -38,42 +38,53 @@ if ! command -v jq >/dev/null 2>&1; then
   echo "[self-heal] Warning: jq not found on PATH — JSON parsing may fail" | tee "${DIAG_DIR}/self-heal-warnings.log"
 fi
 
-# Generate JSON report (allow non-zero exit so we can always parse)
-cargo audit --json > "${DIAG_DIR}/audit-report.json" 2> "${DIAG_DIR}/cargo-audit-stderr.log" || true
-# Capture human-readable output as well
+# Generate JSON report. cargo-audit can return non-zero for findings or for
+# operational errors; capture its status and fail closed if its report cannot
+# be parsed. A missing/unknown count must never be treated as zero findings.
+AUDIT_JSON_STATUS=0
+if cargo audit --json > "${DIAG_DIR}/audit-report.json" 2> "${DIAG_DIR}/cargo-audit-stderr.log"; then
+  AUDIT_JSON_STATUS=0
+else
+  AUDIT_JSON_STATUS=$?
+  echo "[self-heal] cargo audit --json exited with status ${AUDIT_JSON_STATUS}" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+fi
+# Keep a human-readable log for diagnostics, without allowing a second invocation
+# to overwrite the authoritative JSON status.
 cargo audit 2>&1 | tee "${DIAG_DIR}/cargo-audit-stdout.log" || true
 
-# Deterministic parsing. cargo-audit JSON schemas differ across versions and
-# jq may successfully emit an empty string when the expected field is absent.
-# Normalize the value before numeric comparisons or embedding it in JSON.
 VCOUNT=0
+AUDIT_COUNT_VALID=false
 if [ -f "${DIAG_DIR}/audit-report.json" ] && command -v jq >/dev/null 2>&1; then
   VCOUNT_RAW=$(jq -er '
-    if type != "object" then 0
+    if type != "object" then error("audit report is not an object")
     else
-      (.vulnerabilities.count
-       // .vulnerabilities.found
-       // (if (.vulnerabilities.list | type) == "array"
-           then (.vulnerabilities.list | length)
-           else 0
-           end)
-       // 0)
-      | if type == "number" and . >= 0 then floor
-        elif type == "string" and test("^[0-9]+$") then tonumber
-        else 0
+      (.vulnerabilities.count // .vulnerabilities.found) as $count
+      | if ($count | type) == "number" and $count >= 0 then ($count | floor)
+        elif ($count | type) == "string" and ($count | test("^[0-9]+$")) then ($count | tonumber)
+        elif (.vulnerabilities.list | type) == "array" then (.vulnerabilities.list | length)
+        else error("missing or invalid vulnerability count")
         end
     end
-  ' "${DIAG_DIR}/audit-report.json" 2>/dev/null || true)
+  ' "${DIAG_DIR}/audit-report.json" 2>"${DIAG_DIR}/audit-jq-error.log" || true)
   if [[ "${VCOUNT_RAW:-}" =~ ^[0-9]+$ ]]; then
     VCOUNT="${VCOUNT_RAW}"
+    AUDIT_COUNT_VALID=true
   else
-    echo "[self-heal] Warning: audit vulnerability count was missing/invalid; normalized to 0" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
-    VCOUNT=0
+    echo "[self-heal] ERROR: audit vulnerability count missing/invalid; failing closed" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    cat "${DIAG_DIR}/audit-jq-error.log" >> "${DIAG_DIR}/self-heal-warnings.log" || true
+    EXIT_CODE=1
   fi
-elif [ ! -f "${DIAG_DIR}/audit-report.json" ]; then
-  echo "[self-heal] No audit-report.json produced" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
 else
-  echo "[self-heal] Warning: jq unavailable; vulnerability count normalized to 0" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+  echo "[self-heal] ERROR: audit report or jq unavailable; cannot verify vulnerabilities" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+  EXIT_CODE=1
+fi
+
+if [ "${AUDIT_JSON_STATUS}" -ne 0 ]; then
+  # cargo-audit can return non-zero for known vulnerabilities; the count below
+  # provides the precise finding count. Preserve non-zero for operational errors.
+  if [ "${AUDIT_COUNT_VALID}" != true ] || [ "${VCOUNT}" -eq 0 ]; then
+    EXIT_CODE=1
+  fi
 fi
 
 echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
