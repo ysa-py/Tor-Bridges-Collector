@@ -44,7 +44,9 @@ def _candidate(record: Any) -> tuple[ipaddress.IPv4Address, int] | None:
     return address, port
 
 
-def select_controls(document: Any, limit: int = MAX_CONTROLS) -> list[dict[str, Any]]:
+def select_controls(
+    document: Any, limit: int = MAX_CONTROLS, *, allow_bridge_lines: bool = False
+) -> list[dict[str, Any]]:
     if not isinstance(document, list) or not 1 <= limit <= MAX_CONTROLS:
         return []
 
@@ -119,7 +121,7 @@ def main() -> int:
         # entries as timeout evidence; the live canary below still requires a
         # fresh timeout observed from the Cloudflare Worker vantage.
         if not controls and len(sys.argv) == 3:
-            controls = select_controls(load(Path(sys.argv[2])))
+            controls = select_controls(load(Path(sys.argv[2])), allow_bridge_lines=True)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError):
         return 1
 
