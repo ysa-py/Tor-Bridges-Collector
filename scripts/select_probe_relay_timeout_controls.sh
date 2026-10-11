@@ -56,7 +56,7 @@ def select_controls(document: Any, limit: int = MAX_CONTROLS) -> list[dict[str, 
         # timeout. The live authenticated Worker response must independently
         # confirm a fresh timeout before the smoke test can pass.
         if endpoint is None and isinstance(record, str):
-            match = re.match(r"^\\s*(\\d{1,3}(?:\\.\\d{1,3}){3}):(\\d{1,5})(?:\\s|$)", record)
+            match = re.match(r"^\s*(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})(?:\s|$)", record)
             if match:
                 try:
                     address = ipaddress.ip_address(match.group(1))
