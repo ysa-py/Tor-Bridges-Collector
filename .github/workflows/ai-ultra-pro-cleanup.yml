@@ -53,7 +53,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           KEEP_LAST_N: ${{ inputs.keep_last_n || github.event.inputs.keep_last_n || '2' }}
-          DRY_RUN_RAW: ${{ inputs.dry_run || github.event.inputs.dry_run || 'true' }}
+          DRY_RUN_RAW: ${{ github.event_name == 'workflow_call' && (inputs.dry_run == false && 'false' || 'true') || github.event.inputs.dry_run || 'true' }}
         with:
           script: |
             const keepLast = Math.max(0, Number.parseInt(process.env.KEEP_LAST_N || '2', 10) || 2);
@@ -71,16 +71,39 @@ jobs:
               repo,
               per_page: 100,
             });
+            const PAGE_SIZE = 100;
+            const MAX_PAGES_PER_WORKFLOW = 2;
             const summary = [];
             let deleted = 0;
+            let scannedRuns = 0;
+            let truncatedWorkflows = 0;
             for (const workflow of workflows) {
-              const runs = await github.paginate(github.rest.actions.listWorkflowRuns, {
-                owner,
-                repo,
-                workflow_id: workflow.id,
-                status: 'completed',
-                per_page: 100,
-              });
+              // Bound API work. Listing every historical run for every workflow
+              // made this reusable job scan an unbounded number of pages and
+              // hold up the parent pipeline's final CI contract. Scan the newest
+              // 200 completed runs per workflow per invocation; active deletion
+              // runs can be repeated to prune older batches incrementally.
+              const runs = [];
+              let pagesRead = 0;
+              for (let page = 1; page <= MAX_PAGES_PER_WORKFLOW; page++) {
+                const response = await github.rest.actions.listWorkflowRuns({
+                  owner,
+                  repo,
+                  workflow_id: workflow.id,
+                  status: 'completed',
+                  per_page: PAGE_SIZE,
+                  page,
+                });
+                const batch = response.data.workflow_runs || [];
+                runs.push(...batch);
+                scannedRuns += batch.length;
+                pagesRead = page;
+                if (batch.length < PAGE_SIZE) break;
+              }
+              if (pagesRead === MAX_PAGES_PER_WORKFLOW && runs.length === PAGE_SIZE * MAX_PAGES_PER_WORKFLOW) {
+                truncatedWorkflows += 1;
+                core.info(`Scan cap reached for ${workflow.name}; older runs remain for a later cleanup pass.`);
+              }
               const oldRuns = runs
                 .filter(run => run.id !== currentRunId)
                 .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
@@ -101,7 +124,10 @@ jobs:
               .addHeading('AI Ultra-Pro Cleanup')
               .addRaw(`Mode: ${dryRun ? 'dry-run' : 'delete'}\n\n`)
               .addRaw(`Keep last completed runs per workflow: ${keepLast}\n\n`)
-              .addRaw(`Candidates: ${summary.length}; Deleted: ${deleted}\n`)
+              .addRaw(`Candidates: ${summary.length}; Deleted: ${deleted}; Scanned: ${scannedRuns}\n\n`)
+              .addRaw(`Scan cap: ${PAGE_SIZE * MAX_PAGES_PER_WORKFLOW} newest completed runs per workflow. Workflows at cap: ${truncatedWorkflows}. Re-run cleanup to continue pruning older batches.\n`)
               .write();
             core.setOutput('candidates', String(summary.length));
             core.setOutput('deleted', String(deleted));
+            core.setOutput('scanned_runs', String(scannedRuns));
+            core.setOutput('truncated_workflows', String(truncatedWorkflows));
