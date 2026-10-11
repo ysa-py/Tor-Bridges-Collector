@@ -75,8 +75,8 @@ fi
 # Historical records are target candidates only. Filter out malformed, private,
 # reserved, and non-timeout entries; the live response below must independently
 # confirm at least one current timeout from the Cloudflare Worker vantage.
-timeout_controls_json="$(bash "$repo_root/scripts/select_probe_relay_timeout_controls.sh" "$dead_control_file" 2>/dev/null)" || \
-  fail_config 'Probe relay smoke test found no valid public timeout-control candidates; no live call was made.'
+timeout_controls_json="$(bash "$repo_root/scripts/select_probe_relay_timeout_controls.sh" "$dead_control_file" "$repo_root/bridge/bridge_list_for_testing.json" 2>/dev/null)" || \
+  fail_config 'Probe relay smoke test found no safe public control targets in prior results or the committed bridge list; no live call was made.'
 timeout_control_count="$(jq -er 'length' <<< "$timeout_controls_json" 2>/dev/null)" || \
   fail_config 'Probe relay smoke test could not validate its timeout-control candidate set; no live call was made.'
 if [[ ! "$timeout_control_count" =~ ^[1-4]$ ]]; then
