@@ -11,7 +11,7 @@ on:
   pull_request:
     branches: [main]
   schedule:
-    - cron: "0 */6 * * *"
+    - cron: "0 * * * *"
 
 env:
   CARGO_TERM_COLOR: always
@@ -153,6 +153,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Download pipeline bridge/data outputs
+        uses: actions/download-artifact@v7
+        with:
+          name: pipeline-bridge-data
+          path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo
@@ -200,6 +205,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Download pipeline bridge/data outputs
+        uses: actions/download-artifact@v7
+        with:
+          name: pipeline-bridge-data
+          path: .
+      - name: Download AI-ranked bridge output
+        uses: actions/download-artifact@v7
+        with:
+          name: ai-bridge-ranked-output
+          path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo
@@ -281,6 +296,28 @@ jobs:
       - name: Run pipeline (--all)
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: cargo run --locked --release --bin pipeline -- --all
+      # Pass generated bridge/data/export files across isolated GitHub-hosted jobs.
+      # On PRs the live pipeline is intentionally skipped; preserve the checked-out
+      # baseline (and make the artifact explicit) rather than losing files at the
+      # next job's fresh checkout.
+      - name: Ensure bridge artifact input
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          mkdir -p bridge data export
+          if [[ ! -f bridge/iran_results.json ]]; then
+            printf '%s\\n' '{"bridges":[],"summary":{"total_tested":0}}' > bridge/iran_results.json
+          fi
+      - name: Upload pipeline bridge/data outputs
+        uses: actions/upload-artifact@v7
+        with:
+          name: pipeline-bridge-data
+          path: |
+            bridge/
+            data/
+            export/
+          if-no-files-found: warn
+          retention-days: 1
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 5: AI Bridge Re-Ranker (Iran)
@@ -314,6 +351,13 @@ jobs:
           fi
       - name: Run AI Bridge Re-Ranker
         run: cargo run --locked --release --bin ai_bridge_reranker -- --input bridge/iran_results.json --output bridge/bridges_ai_iran_ranked.json --censorship-level 4 --top-n 0
+      - name: Upload AI-ranked bridge output
+        uses: actions/upload-artifact@v7
+        with:
+          name: ai-bridge-ranked-output
+          path: bridge/bridges_ai_iran_ranked.json
+          if-no-files-found: error
+          retention-days: 1
 
   # ──────────────────────────────────────────────────────────────────────
   # Gate 6: Package Final Artifact
