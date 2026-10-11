@@ -2117,9 +2117,24 @@ jobs:
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
           echo "self no-op: live publication rewrite stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
           if [ -f bridge/telegram_manifest.json ]; then
-            cargo run --locked --quiet --bin sync_bridge_outputs -- \
+            # Stages above regenerate bridge/ projections from the committed
+            # inputs, so this worktree no longer holds the published bytes. The
+            # contract a non-main ref must satisfy is the committed one: nothing
+            # from a PR is ever published, and every main run rewrites the whole
+            # contract from freshly generated data. Report the worktree delta as
+            # annotated evidence, then verify the committed publication.
+            if ! git diff --quiet -- bridge/; then
+              git diff --numstat -- bridge/ | sed -n '1,20p' | while read -r added removed path; do
+                echo "::warning::regenerated payload differs from the committed publication: ${path} (+${added}/-${removed})"
+              done
+            fi
+            git checkout -- bridge/
+            if ! cargo run --locked --quiet --bin sync_bridge_outputs -- \
               --bridge-dir bridge \
-              --verify-only
+              --verify-only; then
+              echo "::error::committed publication contract is inconsistent (sync_bridge_outputs --verify-only failed)"
+              exit 1
+            fi
           else
             echo "declared: no committed publication contract on this ref"
             echo "missing: bridge/telegram_manifest.json (none committed)"
