@@ -13,8 +13,10 @@ grep -Fq 'group: ai-ultra-pro-cleanup-${{ github.repository }}-' "$WORKFLOW" ||
   fail "cleanup concurrency group must be repository + branch/main scoped"
 grep -Fq "github.ref == 'refs/heads/main' && 'main' || github.ref" "$WORKFLOW" ||
   fail "main cleanup must have a concurrency group separate from non-main refs"
-grep -Fq "cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}" "$WORKFLOW" ||
-  fail "non-main runs may be cancelled but main cleanup must be protected"
+grep -Fq 'cancel-in-progress:' "$WORKFLOW" ||
+  fail "cleanup workflow must explicitly declare cancellation policy"
+grep -Fq "github.ref != 'refs/heads/main'" "$WORKFLOW" ||
+  fail "only non-main cleanup runs may be cancelled"
 
 noop_line="$(grep -nF 'Non-main validation run: cleanup is a safe no-op (no history scan, no deletions).' "$WORKFLOW" | head -n1 | cut -d: -f1 || true)"
 list_line="$(grep -nF 'github.rest.actions.listWorkflowRuns' "$WORKFLOW" | head -n1 | cut -d: -f1 || true)"
