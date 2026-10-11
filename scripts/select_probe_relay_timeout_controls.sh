@@ -54,11 +54,11 @@ def select_controls(
     seen_endpoints: set[tuple[ipaddress.IPv4Address, int]] = set()
     for record in document:
         endpoint = _candidate(record)
-        # A committed bridge-list entry is a target candidate, not evidence of
-        # timeout. The live authenticated Worker response must independently
-        # confirm a fresh timeout before the smoke test can pass.
-        if endpoint is None and isinstance(record, str):
-            match = re.match(r"^\s*(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})(?:\s|$)", record)
+# Only the explicit fallback source may contain raw bridge descriptors.
+# Strings in the primary result snapshot are malformed observations and
+# must not be promoted to live probe targets.
+        if allow_bridge_lines and endpoint is None and isinstance(record, str):
+            match = re.match(r"^\s*(?:[A-Za-z0-9_-]+\s+)?(\d{1,3}(?:\.\d{1,3}){3}):(\d{1,5})(?:\s|$)", record)
             if match:
                 try:
                     address = ipaddress.ip_address(match.group(1))
