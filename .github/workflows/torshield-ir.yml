@@ -100,11 +100,11 @@ permissions:
   actions: write
 
 concurrency:
-  # PRs must not share the hourly main group. A long PR scrape would
-  # otherwise queue behind (or delay) production publication. Superseded PR
-  # validation is disposable; main/scheduled publication must never be cancelled.
+  # Each event/ref is serialized separately. Any non-main validation run
+  # is disposable when a newer commit arrives; protect all main-branch runs
+  # (including push, schedule, and dispatch) from cancellation.
   group: torshield-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
 
