@@ -892,6 +892,7 @@ mod tests {
             ),
             "compile_error"
         );
+        assert_eq!(categorize("error[e0432]: unresolved import; 502"), "compile_error");
         assert_eq!(
             categorize(
                 "cargo clippy reported warnings/errors; operation timed out in a separate task"
