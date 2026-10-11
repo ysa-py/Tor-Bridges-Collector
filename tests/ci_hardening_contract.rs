@@ -125,7 +125,7 @@ fn self_heal_fails_closed_when_audit_count_is_unavailable() {
 fn probe_relay_canary_uses_only_a_wrangler_reported_workers_dev_fallback() {
     let yml = read(".github/workflows/torshield-ir.yml");
     assert!(
-        yml.contains("WORKERS_DEV_URL=\\"$(grep -Eo"),
+        yml.contains("WORKERS_DEV_URL=\"$(grep -Eo"),
         "fallback URL must be extracted from the successful Wrangler deployment log"
     );
     assert!(
