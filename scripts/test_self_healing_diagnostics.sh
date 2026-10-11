@@ -46,4 +46,22 @@ summary="$(bash "$HELPER" "$TMP/missing.json")"
   exit 1
 }
 
+NORMALIZER="$ROOT/scripts/normalize_self_heal_conclusion.sh"
+[ "$(bash "$NORMALIZER" success failed 639 1449)" = "failure" ] || {
+  echo "FAIL: failed diagnostics must override a successful parent conclusion" >&2
+  exit 1
+}
+[ "$(bash "$NORMALIZER" success ok 0 0)" = "success" ] || {
+  echo "FAIL: healthy diagnostics must preserve a successful parent conclusion" >&2
+  exit 1
+}
+[ "$(bash "$NORMALIZER" success ok 0 1)" = "failure" ] || {
+  echo "FAIL: unresolved findings must prevent false success" >&2
+  exit 1
+}
+[ "$(bash "$NORMALIZER" failure ok 0 0)" = "failure" ] || {
+  echo "FAIL: a failed parent conclusion must remain failed" >&2
+  exit 1
+}
+
 echo "test_self_healing_diagnostics: PASS"
