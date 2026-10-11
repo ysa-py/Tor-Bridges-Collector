@@ -200,11 +200,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Download pipeline bridge/data outputs
-        uses: actions/download-artifact@v7
-        with:
-          name: pipeline-bridge-data
-          path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo
