@@ -86,6 +86,65 @@ ordering is rebuilt from the repaired reports.
   sandbox) — the tree now contains **0** `*.py` files outside `.git`, which is
   exactly what the gate scans for.
 
+## Follow-up finding (same commit): one tree, three publications
+
+Healing the markers was necessary but not sufficient. Commit `971b17ad`
+(`chore: dual-persist bridge/ + README.md`, single parent `26e14407`,
+committed 21:06:50Z) left `bridge/` holding **three different publication
+states at once**:
+
+| artifact | what it said |
+| --- | --- |
+| `bridge/telegram_manifest.json` | `generated_at 2026-10-10T21:06:45Z`, summary counts `1497/1497` |
+| `bridge/tor_bridges.zip` | embeds its own manifest `20:29:53Z`, internally self-consistent, `1495/1495` |
+| payload (`iran_results.json`) | `1573` bridge records, the freshly stashed run |
+| `README.md` | claims archive SHA-256 `9fbf6a26…`, committed ZIP is `dffaa6a8…` |
+
+Every healthy commit before it was internally coherent (`e5a72bba` and
+`26e14407`: manifest timestamp == ZIP timestamp, every hash matching), so the
+mixture is a second signature of the same Stage 11 autostash/rebase damage:
+the ZIP is binary, so git could never merge it and kept the 20:29 side, while
+the text manifest and payload came from the newer run. CI confirmed it —
+`scrape-and-test (finalize)` failed on PR #236 in **Stage 9
+"dual persist"**, whose PR path is `sync_bridge_outputs --verify-only`
+(`src/bridge_publication.rs::verify_publication`): 2 manifest SHA-256
+mismatches and 9 ZIP entries differing from the payload.
+
+### Repair
+
+`scripts/publication_contract.sh --rebuild --set-count iran_results.json=1573`
+did the re-attestation, and only that:
+
+* manifest `sha256`/`size_bytes` updated for the two files the heal rewrote
+  (`bridge_history.json`, `iran_results.json`) — 5 scalars, surgical diff
+* `summary["iran_results.json"]` `1497 → 1573`, the row count the payload
+  actually holds (the publisher writes these counts from the payload it read)
+* `bridge/tor_bridges.zip` rebuilt deterministically (sorted
+  `bridge/<name>` entries, 1980-01-01 timestamps, deflate, 0644,
+  `len(required_files) - 1 = 78` entries) →
+  `5bc058037bafbbd9d65ac0917278b85d9d9dcfca943884bb702efa525cabd3b9`
+* `README.md` archive SHA-256 re-stamped to that ZIP
+
+No payload byte was rewritten: the pipeline's own next scheduled run
+regenerates the whole contract, and this re-attestation keeps the committed
+tree truthful in the meantime.
+
+### Guard added
+
+* `scripts/publication_contract.sh --check` mirrors `verify_publication()`
+  (manifest parses, `required_files_present`, per-file SHA-256 + `size_bytes`,
+  ZIP parity and entry count, README archive hash) so the mixture fails in the
+  Quality Gate in seconds instead of in Stage 9 after a full cargo build.
+  `--rebuild` refuses (exit 2) while any payload file still carries conflict
+  markers, NUL bytes, or unparseable JSON — re-attesting corrupt data is not
+  repair — and it refuses to rewrite a manifest that is not in the publisher's
+  canonical pretty-JSON form.
+* `main-ci.yml`: new `Publication contract gate (manifest ↔ payload ↔ ZIP)`
+  right after the conflict-marker gate, plus `Test publication contract`.
+* `scripts/test_publication_contract.sh`: 9/9 hermetic assertions (healthy
+  contract, payload drift, re-attestation, stale README hash, marker refusal,
+  declared-absence no-op).
+
 ## Deliberately not done
 
 * No data deletion: the earlier removal of `bridge/` (commit `daa0d8ee`,

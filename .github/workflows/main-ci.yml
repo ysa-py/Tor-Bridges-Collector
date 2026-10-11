@@ -79,6 +79,13 @@ jobs:
       # Stage 0z and Stage 11 heal before publishing; this gate is the tripwire.
       - name: Conflict-marker gate (no corrupt payload committed)
         run: bash scripts/repair_conflict_markers.sh --check
+      # Marker-free is not enough: the same 2026-10-11 commit also left bridge/
+      # holding three different publications at once (21:06 manifest, 20:29 ZIP,
+      # previous-run payload), which is what breaks Stage 9 `--verify-only` on
+      # pull requests. This mirrors verify_publication() in
+      # src/bridge_publication.rs so the mixture fails fast here, without cargo.
+      - name: Publication contract gate (manifest ↔ payload ↔ ZIP)
+        run: bash scripts/publication_contract.sh --check
       - name: YAML linting
         id: yaml_lint
         run: ./target/debug/quality_gate yaml-lint .
@@ -99,6 +106,8 @@ jobs:
         run: bash scripts/test_probe_relay_smoke.sh
       - name: Test conflict-marker repair
         run: bash scripts/test_repair_conflict_markers.sh
+      - name: Test publication contract gate
+        run: bash scripts/test_publication_contract.sh
       - name: Optional secret availability
         id: secret_presence
         env:
