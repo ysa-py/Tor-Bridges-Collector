@@ -1,48 +1,58 @@
 {
   "advisory_only": true,
-  "generated_at": "2026-10-11T15:53:33.954949559+00:00",
+  "generated_at": "2026-10-11T18:12:01.255732388+00:00",
   "stale_positives": [
     {
       "days_since_last_probe": 0,
-      "health_score": 0.43520000000000014,
-      "last_probe": "2026-10-11T15:24:37.629686069+00:00",
-      "lifetime_success_ratio": 0.5,
-      "probe_failures": 2,
+      "health_score": 0.34816000000000014,
+      "last_probe": "2026-10-11T17:42:42.757101981+00:00",
+      "lifetime_success_ratio": 0.4,
+      "probe_failures": 3,
       "probe_successes": 2,
       "raw": "121.110.203.115:443 ADE62CA3591E32A3CE8329F6E8EE31A441308CED",
       "transport": "vanilla"
     },
     {
       "days_since_last_probe": 0,
-      "health_score": 0.36480000000000007,
-      "last_probe": "2026-10-11T15:24:37.629686069+00:00",
-      "lifetime_success_ratio": 0.25,
-      "probe_failures": 3,
+      "health_score": 0.29184000000000004,
+      "last_probe": "2026-10-11T17:42:42.757101981+00:00",
+      "lifetime_success_ratio": 0.2,
+      "probe_failures": 4,
       "probe_successes": 1,
       "raw": "94.112.227.176:28785 11B1F55355121B050B9A2F6721B80664953D40CD",
       "transport": "vanilla"
     },
     {
       "days_since_last_probe": 0,
-      "health_score": 0.3328,
-      "last_probe": "2026-10-11T15:24:37.629686069+00:00",
-      "lifetime_success_ratio": 0.25,
-      "probe_failures": 3,
+      "health_score": 0.26624,
+      "last_probe": "2026-10-11T17:42:42.757101981+00:00",
+      "lifetime_success_ratio": 0.2,
+      "probe_failures": 4,
       "probe_successes": 1,
       "raw": "obfs4 109.202.219.164:47111 8EBD640CBC81B1AFB1E41921D376505C29E57A06 cert=nucr4/4B1W2UfTQK5bX/dqAKRcRD6UuEjvLNxlblk52owLbZNgSP0RTi869BdYPg5dzyLQ iat-mode=0",
+      "transport": "obfs4"
+    },
+    {
+      "days_since_last_probe": 0,
+      "health_score": 0.42624000000000006,
+      "last_probe": "2026-10-11T17:42:42.757101981+00:00",
+      "lifetime_success_ratio": 0.4,
+      "probe_failures": 3,
+      "probe_successes": 2,
+      "raw": "obfs4 5.83.147.191:8080 84DE70C3735D1F2D3D8142AAAD785521750310D2 cert=1EAtrN2FDSjOvdC/kznspxRnQegwZGnJ4Wk74L9Zs/wU/KRclyNn/Et10UGNC+fv0wGCUQ iat-mode=0",
       "transport": "obfs4"
     }
   ],
   "summary": {
     "counts": {
-      "healthy": 437,
+      "healthy": 436,
       "no_history": 1062,
-      "stale_positive": 3
+      "stale_positive": 4
     },
     "median_drift_evidence_by_class": {
-      "healthy": 0.7952000000000002,
-      "no_history": 0.2048000000000001,
-      "stale_positive": 0.36480000000000007
+      "healthy": 0.8361600000000002,
+      "no_history": 0.1638400000000001,
+      "stale_positive": 0.34816000000000014
     },
     "note": "drift evidence = collector EWMA health_score (0.8*old + 0.2*outcome, src/tor_collector/storage.rs::record_probe) with lifetime success-ratio fallback; stale_positive = historical successes + currently unreachable + non-fronted transport",
     "total_records": 1502
