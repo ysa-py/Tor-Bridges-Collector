@@ -79,3 +79,25 @@ fn c14_requires_locked_main_only_pipeline() {
         "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
     ));
 }
+
+
+#[test]
+fn probe_relay_canary_uses_only_a_wrangler_reported_workers_dev_fallback() {
+    let yml = read(".github/workflows/torshield-ir.yml");
+    assert!(
+        yml.contains("WORKERS_DEV_URL=\"$(grep -Eo"),
+        "fallback URL must be extracted from the successful Wrangler deployment log"
+    );
+    assert!(
+        yml.contains("export PROBE_RELAY_URL"),
+        "the canary must receive the validated fallback endpoint"
+    );
+    assert!(
+        yml.contains("Wrangler-reported workers.dev endpoint"),
+        "the workflow summary must make fallback selection observable"
+    );
+    assert!(
+        !yml.contains("tor-bridge-probe-relay.workers.dev"),
+        "never guess the account-specific workers.dev hostname"
+    );
+}
