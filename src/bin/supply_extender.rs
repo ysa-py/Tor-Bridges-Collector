@@ -21,6 +21,7 @@
 use std::collections::BTreeMap;
 use std::fs;
 use std::path::Path;
+#[cfg(feature = "network")]
 use std::time::Duration;
 
 use chrono::Utc;
@@ -31,9 +32,12 @@ use torshield_ir_ultra::scraper::{
     DEFAULT_BRIDGE_DIR,
 };
 use torshield_ir_ultra::supply_extension::{
-    count_added_lines, diagnostics_payload, fetch_html_supply, fetch_moat_supply,
+    count_added_lines, diagnostics_payload,
     history_family_counts, SourceLines, SupplyConfig, NOTICE_FOCUS_FAMILIES,
 };
+#[cfg(feature = "network")]
+use torshield_ir_ultra::supply_extension::{fetch_html_supply, fetch_moat_supply};
+#[cfg(feature = "network")]
 use torshield_ir_ultra::supply_extension_v2::fetch_moat_variant_supply;
 
 /// New diagnostics snapshot written by every run (never overwrites an
