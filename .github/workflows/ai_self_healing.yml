@@ -161,21 +161,13 @@ jobs:
           set -euo pipefail
           echo "═══ Failure Categorization ═══"
           # The parent workflow can report success while continue-on-error
-          # stages expose failed diagnostics. Do not short-circuit categorization
-          # when the analyzer reports failure, errors, or unresolved findings.
-          DIAGNOSTICS_FAILED=false
-          if [ "${DIAGNOSTICS_STATUS}" = "failed" ]; then
-            DIAGNOSTICS_FAILED=true
-          fi
-          if [[ "${DIAGNOSTICS_ERRORS}" =~ ^[0-9]+$ ]] && [ "${DIAGNOSTICS_ERRORS}" -gt 0 ]; then
-            DIAGNOSTICS_FAILED=true
-          fi
-          if [[ "${DIAGNOSTICS_UNRESOLVED}" =~ ^[0-9]+$ ]] && [ "${DIAGNOSTICS_UNRESOLVED}" -gt 0 ]; then
-            DIAGNOSTICS_FAILED=true
-          fi
-          if [ "${PARENT_CONCLUSION}" != "failure" ] && [ "${DIAGNOSTICS_FAILED}" = true ]; then
-            echo "::warning::Whole-run diagnostics failed despite parent conclusion=${PARENT_CONCLUSION}; enabling failure categorization."
-            PARENT_CONCLUSION=failure
+          # stages expose failed diagnostics. Normalize that inconsistency before
+          # the Rust categorizer's early success exit.
+          NORMALIZED_CONCLUSION="$(bash scripts/normalize_self_heal_conclusion.sh \
+            "$PARENT_CONCLUSION" "$DIAGNOSTICS_STATUS" "$DIAGNOSTICS_ERRORS" "$DIAGNOSTICS_UNRESOLVED")"
+          if [ "$PARENT_CONCLUSION" != "$NORMALIZED_CONCLUSION" ]; then
+            echo "::warning::Whole-run diagnostics failed despite parent conclusion=$PARENT_CONCLUSION; enabling failure categorization."
+            PARENT_CONCLUSION="$NORMALIZED_CONCLUSION"
             export PARENT_CONCLUSION
           fi
           # 2026-08-02: inline Python replaced by the Rust-native
