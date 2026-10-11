@@ -38,7 +38,9 @@ env:
 
 concurrency:
   group: ai-ultra-pro-cleanup-${{ github.repository }}
-  cancel-in-progress: false
+  # Superseded branch/PR cleanup runs are validation-only and safe to cancel;
+  # main/scheduled cleanup is protected so production cleanup is not interrupted.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
   cleanup:
