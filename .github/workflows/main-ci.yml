@@ -110,6 +110,8 @@ jobs:
         run: bash scripts/test_publication_contract.sh
       - name: Test self-heal audit bootstrap failure path
         run: bash scripts/test_self_heal.sh
+      - name: Test AI self-healing diagnostics summary and failure outputs
+        run: bash scripts/test_self_healing_diagnostics.sh
       - name: Optional secret availability
         id: secret_presence
         env:
