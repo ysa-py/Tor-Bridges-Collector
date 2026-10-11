@@ -995,6 +995,16 @@ jobs:
                --var "RELAY_GIT_SHA:${INCOMING_SHA}" \
                --var "RELAY_GIT_TS:${INCOMING_TS}" >"${DEPLOY_LOG}" 2>&1; then
             echo "✅ wrangler deploy succeeded (version ${INCOMING_SHA:0:10})"
+            # Prefer Wrangler-reported workers.dev URL if configured custom DNS is broken.
+            # Never guess the account-specific hostname or expose deployment logs.
+            WORKERS_DEV_URL="$(grep -Eo 'https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)?\.workers\.dev' "${DEPLOY_LOG}" | head -n 1 || true)"
+            if [[ "${WORKERS_DEV_URL}" =~ ^https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)?\.workers\.dev$ ]]; then
+              PROBE_RELAY_URL="${WORKERS_DEV_URL}"
+              export PROBE_RELAY_URL
+              echo "Using Wrangler-reported workers.dev endpoint for authenticated canary; configured custom endpoint remains unchanged."
+            else
+              echo "::warning::Wrangler deploy succeeded but exposed no valid workers.dev URL; using configured probe endpoint."
+            fi
           else
             echo "::warning::wrangler deploy failed (details redacted); the authenticated smoke test will decide whether Stage 4 can proceed."
           fi
