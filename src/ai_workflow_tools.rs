@@ -535,10 +535,7 @@ const NON_FIXABLE_CATEGORIES: &[&str] = &[
 /// as a timeout just because the same long run also logged network failures.
 pub fn categorize(combined_text_lower: &str) -> &'static str {
     for &(category, patterns) in DETERMINISTIC_FAILURE_PATTERNS {
-        if patterns
-            .iter()
-            .any(|p| combined_text_lower.contains(p))
-        {
+        if patterns.iter().any(|p| combined_text_lower.contains(p)) {
             return category;
         }
     }
@@ -890,11 +887,15 @@ mod tests {
         assert_eq!(categorize("operation timed out repeatedly"), "timeout");
         assert_eq!(categorize("syntaxerror on line 3"), "syntax_error");
         assert_eq!(
-            categorize("error: unused import: std::time::Duration; 502 bad gateway in another stage"),
+            categorize(
+                "error: unused import: std::time::Duration; 502 bad gateway in another stage"
+            ),
             "compile_error"
         );
         assert_eq!(
-            categorize("cargo clippy reported warnings/errors; operation timed out in a separate task"),
+            categorize(
+                "cargo clippy reported warnings/errors; operation timed out in a separate task"
+            ),
             "compile_error"
         );
         assert_eq!(
