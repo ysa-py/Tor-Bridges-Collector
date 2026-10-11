@@ -997,7 +997,7 @@ jobs:
             echo "✅ wrangler deploy succeeded (version ${INCOMING_SHA:0:10})"
             # Use the canonical URL emitted by Wrangler when the configured
             # custom-domain DNS is broken. Never guess the account subdomain.
-            WORKERS_DEV_URL="$(grep -Eo 'https://[A-Za-z0-9.-]+\.workers\.dev' "${DEPLOY_LOG}" | head -n 1 || true)"
+            WORKERS_DEV_URL="$(grep -Eo 'https://[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+)?\\.workers\\.dev' "${DEPLOY_LOG}" | head -n 1 || true)"
             if [[ "${WORKERS_DEV_URL}" =~ ^https://[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)?\.workers\.dev$ ]]; then
               PROBE_RELAY_URL="${WORKERS_DEV_URL}"
               export PROBE_RELAY_URL
