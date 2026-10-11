@@ -2356,9 +2356,9 @@ jobs:
         # files, which `git add` then committed. Every later run read
         # corrupt bridge_history.json / iran_results.json and lost its
         # verification evidence (=> empty *_tested / iran_likely_working_*).
-        # Now: heal -> validate -> COMMIT FIRST -> rebase with generated
-        # content winning (-X theirs = our freshly generated commit) -> verify
-        # -> push, retrying on non-fast-forward. No stash is ever used.
+        # Now: heal -> validate -> COMMIT FIRST -> rebase -> restore the
+        # generated output trees as whole blobs from that verified commit ->
+        # re-verify -> push, retrying on non-fast-forward. No stash is used.
         # The healer is shell + jq on purpose: `quality_gate py-check` fails
         # the build while any Python source survives in this Rust-native tree.
         bash scripts/repair_conflict_markers.sh
