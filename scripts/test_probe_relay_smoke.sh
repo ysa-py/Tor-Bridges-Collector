@@ -201,10 +201,15 @@ jq -e '
 # Empty per-run timeout history must fall back to real committed bridge entries
 # as target candidates, without pretending those entries are timeout evidence.
 bridge_candidates="$tmp_dir/bridge-candidates.json"
-printf '["93.184.216.34:8443 fingerprint","8.8.8.8:443 fingerprint","10.0.0.1:443 private"]\n' > "$bridge_candidates"
+printf '["obfs4 93.184.216.34:8443 fingerprint","vanilla 8.8.8.8:443 fingerprint","obfs4 10.0.0.1:443 private"]\n' > "$bridge_candidates"
 printf '[]\n' > "$tmp_dir/empty-timeouts.json"
 fallback_selected="$(bash "$selector" "$tmp_dir/empty-timeouts.json" "$bridge_candidates" 2>/dev/null)" || fail 'bridge-list fallback failed when timeout history is empty'
 jq -e 'length == 2 and map(.host) == ["93.184.216.34","8.8.8.8"] and all(.[]; .transport == "vanilla")' <<< "$fallback_selected" >/dev/null || fail 'bridge-list fallback accepted unsafe entries or returned wrong controls'
+# A malformed string in the primary results file must not bypass the explicit
+# fallback source; only records matching the historical timeout schema count.
+printf '["1.1.1.1:443 malformed-result"]\n' > "$tmp_dir/malformed-primary.json"
+fallback_selected="$(bash "$selector" "$tmp_dir/malformed-primary.json" "$bridge_candidates" 2>/dev/null)" || fail 'selector did not fall back from malformed primary results'
+jq -e 'length == 2 and map(.host) == ["93.184.216.34","8.8.8.8"]' <<< "$fallback_selected" >/dev/null || fail 'malformed primary result was incorrectly treated as a timeout candidate'
 
 # A transient transport error is retried; the redacted report records only typed live-style fields.
 printf '000 28 transport-error\n200 0 valid\n' > "$sequence_file"
