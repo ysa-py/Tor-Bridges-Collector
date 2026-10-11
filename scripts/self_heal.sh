@@ -32,6 +32,15 @@ else
 fi
 
 # 3) cargo audit — produce JSON report and human-readable logs
+echo "[self-heal] Checking cargo-audit availability"
+if ! cargo audit --version >/dev/null 2>&1; then
+  echo "[self-heal] cargo-audit is missing; installing it before the audit gate" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+  if ! cargo install cargo-audit --locked 2>&1 | tee "${DIAG_DIR}/cargo-audit-install.log"; then
+    echo "[self-heal] ERROR: cargo-audit installation failed; vulnerability status remains unknown" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    EXIT_CODE=1
+  fi
+fi
+
 echo "[self-heal] Running cargo audit to produce JSON report"
 # Ensure jq is available; if not, record warning but continue
 if ! command -v jq >/dev/null 2>&1; then
