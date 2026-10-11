@@ -112,6 +112,8 @@ jobs:
         run: bash scripts/test_self_heal.sh
       - name: Test AI self-healing diagnostics summary and failure outputs
         run: bash scripts/test_self_healing_diagnostics.sh
+      - name: Test AI Ultra-Pro cleanup safety and batch limits
+        run: bash scripts/test_ai_ultra_pro_cleanup.sh
       - name: Optional secret availability
         id: secret_presence
         env:
