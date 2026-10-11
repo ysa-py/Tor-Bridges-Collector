@@ -153,11 +153,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-      - name: Download pipeline bridge/data outputs
-        uses: actions/download-artifact@v7
-        with:
-          name: pipeline-bridge-data
-          path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo
@@ -209,11 +204,6 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: pipeline-bridge-data
-          path: .
-      - name: Download AI-ranked bridge output
-        uses: actions/download-artifact@v7
-        with:
-          name: ai-bridge-ranked-output
           path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
@@ -330,6 +320,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Download pipeline bridge/data outputs
+        uses: actions/download-artifact@v7
+        with:
+          name: pipeline-bridge-data
+          path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo
@@ -370,6 +365,16 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Download pipeline bridge/data outputs
+        uses: actions/download-artifact@v7
+        with:
+          name: pipeline-bridge-data
+          path: .
+      - name: Download AI-ranked bridge output
+        uses: actions/download-artifact@v7
+        with:
+          name: ai-bridge-ranked-output
+          path: .
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Cache Cargo
