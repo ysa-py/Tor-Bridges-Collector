@@ -79,3 +79,43 @@ fn c14_requires_locked_main_only_pipeline() {
         "if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'"
     ));
 }
+
+
+#[test]
+fn self_heal_normalizes_missing_audit_counts_before_numeric_use() {
+    let script = read("scripts/self_heal.sh");
+    assert!(
+        script.contains("if [[ \"${VCOUNT_RAW:-}\" =~ ^[0-9]+$ ]]"),
+        "audit count must be validated as a non-negative integer"
+    );
+    assert!(
+        script.contains("--argjson vulnerabilities \"${VCOUNT}\""),
+        "diagnostics JSON must receive a validated number, not tonumber of a string"
+    );
+    assert!(
+        !script.contains("($vcount|tonumber)"),
+        "empty audit counts must not trigger jq tonumber errors"
+    );
+}
+
+
+#[test]
+fn self_heal_fails_closed_when_audit_count_is_unavailable() {
+    let script = read("scripts/self_heal.sh");
+    assert!(
+        script.contains("AUDIT_COUNT_VALID=false"),
+        "audit parsing must start in an unverified state"
+    );
+    assert!(
+        script.contains("EXIT_CODE=1"),
+        "missing or invalid audit evidence must fail validation"
+    );
+    assert!(
+        script.contains("error(\"missing or invalid vulnerability count\")"),
+        "unexpected cargo-audit JSON schemas must be reported, not silently treated as zero"
+    );
+    assert!(
+        script.contains("AUDIT_JSON_STATUS"),
+        "cargo-audit execution failures must be retained for diagnostics"
+    );
+}

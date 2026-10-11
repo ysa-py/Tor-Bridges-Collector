@@ -38,21 +38,58 @@ if ! command -v jq >/dev/null 2>&1; then
   echo "[self-heal] Warning: jq not found on PATH — JSON parsing may fail" | tee "${DIAG_DIR}/self-heal-warnings.log"
 fi
 
-# Generate JSON report (allow non-zero exit so we can always parse)
-cargo audit --json > "${DIAG_DIR}/audit-report.json" 2> "${DIAG_DIR}/cargo-audit-stderr.log" || true
-# Capture human-readable output as well
+# Generate JSON report. cargo-audit can return non-zero for findings or for
+# operational errors; capture its status and fail closed if its report cannot
+# be parsed. A missing/unknown count must never be treated as zero findings.
+AUDIT_JSON_STATUS=0
+if cargo audit --json > "${DIAG_DIR}/audit-report.json" 2> "${DIAG_DIR}/cargo-audit-stderr.log"; then
+  AUDIT_JSON_STATUS=0
+else
+  AUDIT_JSON_STATUS=$?
+  echo "[self-heal] cargo audit --json exited with status ${AUDIT_JSON_STATUS}" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+fi
+# Keep a human-readable log for diagnostics, without allowing a second invocation
+# to overwrite the authoritative JSON status.
 cargo audit 2>&1 | tee "${DIAG_DIR}/cargo-audit-stdout.log" || true
 
-# Deterministic parsing
 VCOUNT=0
-if [ -f "${DIAG_DIR}/audit-report.json" ]; then
-  VCOUNT=$(jq -r '(.vulnerabilities.count // .vulnerabilities.found // (.vulnerabilities.list | length) // 0) as $c | ($c // 0)' "${DIAG_DIR}/audit-report.json" 2>/dev/null || echo 0)
-  echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
-  if [ "${VCOUNT}" -gt 0 ]; then
+AUDIT_COUNT_VALID=false
+if [ -f "${DIAG_DIR}/audit-report.json" ] && command -v jq >/dev/null 2>&1; then
+  VCOUNT_RAW=$(jq -er '
+    if type != "object" then error("audit report is not an object")
+    else
+      (.vulnerabilities.count // .vulnerabilities.found) as $count
+      | if ($count | type) == "number" and $count >= 0 then ($count | floor)
+        elif ($count | type) == "string" and ($count | test("^[0-9]+$")) then ($count | tonumber)
+        elif (.vulnerabilities.list | type) == "array" then (.vulnerabilities.list | length)
+        else error("missing or invalid vulnerability count")
+        end
+    end
+  ' "${DIAG_DIR}/audit-report.json" 2>"${DIAG_DIR}/audit-jq-error.log" || true)
+  if [[ "${VCOUNT_RAW:-}" =~ ^[0-9]+$ ]]; then
+    VCOUNT="${VCOUNT_RAW}"
+    AUDIT_COUNT_VALID=true
+  else
+    echo "[self-heal] ERROR: audit vulnerability count missing/invalid; failing closed" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    cat "${DIAG_DIR}/audit-jq-error.log" >> "${DIAG_DIR}/self-heal-warnings.log" || true
     EXIT_CODE=1
   fi
 else
-  echo "[self-heal] No audit-report.json produced"
+  echo "[self-heal] ERROR: audit report or jq unavailable; cannot verify vulnerabilities" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+  EXIT_CODE=1
+fi
+
+if [ "${AUDIT_JSON_STATUS}" -ne 0 ]; then
+  # cargo-audit can return non-zero for known vulnerabilities; the count below
+  # provides the precise finding count. Preserve non-zero for operational errors.
+  if [ "${AUDIT_COUNT_VALID}" != true ] || [ "${VCOUNT}" -eq 0 ]; then
+    EXIT_CODE=1
+  fi
+fi
+
+echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
+if [ "${VCOUNT}" -gt 0 ]; then
+  EXIT_CODE=1
 fi
 
 # 4) Run release tests (capture output)
@@ -72,8 +109,16 @@ fi
 # Finalize
 if [ ${EXIT_CODE} -ne 0 ]; then
   echo "[self-heal] Validation detected issues. Diagnostics saved to ${DIAG_DIR}"
-  # Create a lightweight index for diagnostics
-  jq -n --arg ts "${TS}" --arg vcount "${VCOUNT}" '{timestamp: $ts, vulnerabilities: ($vcount|tonumber)}' > "${DIAG_DIR}/index.json" || true
+  # Create a lightweight index for diagnostics using a validated JSON number.
+  # Do not call tonumber on a possibly empty string: that masked the original
+  # validation failure with a second jq error and made diagnostics less useful.
+  if command -v jq >/dev/null 2>&1; then
+    jq -n --arg ts "${TS}" --argjson vulnerabilities "${VCOUNT}" \
+      '{timestamp: $ts, vulnerabilities: $vulnerabilities}' > "${DIAG_DIR}/index.json" \
+      || printf '{"timestamp":"%s","vulnerabilities":0}\n' "${TS}" > "${DIAG_DIR}/index.json"
+  else
+    printf '{"timestamp":"%s","vulnerabilities":0}\n' "${TS}" > "${DIAG_DIR}/index.json"
+  fi
   exit 1
 fi
 
