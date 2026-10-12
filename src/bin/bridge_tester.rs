@@ -38,7 +38,7 @@ use tokio::task::JoinSet;
 use tokio::time::timeout;
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use tokio_rustls::TlsConnector;
-use torshield_ir_ultra::scraper::contains_documentation_or_reserved_endpoint;
+use torshield_ir_ultra::scraper::check_ingestion_endpoint;
 use torshield_ir_ultra::tester::extract_endpoint;
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -561,7 +561,7 @@ async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value 
     // Reject documentation-range/reserved IP addresses BEFORE any TCP attempt.
     // This covers RFC 3849 (2001:db8::/32), RFC 5737 (TEST-NET), RFC 1918,
     // link-local, loopback, and multicast — none are ever routable.
-    if contains_documentation_or_reserved_endpoint(&line) {
+    if let Some(reason) = check_ingestion_endpoint(&line) {
         let transport = normalise_transport(&line, extract_endpoint(&line).2);
         return json!({
             "line": line,
@@ -574,7 +574,7 @@ async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value 
             "probe_method": "none",
             "latency_ms": null,
             "iran_status": "non_routable",
-            "evidence_scope": "Bridge line contains a documentation-range or reserved IP address that is never routable from any vantage point.",
+            "evidence_scope": format!("Bridge line rejected before network access by endpoint safety guard: {reason}."),
             "composite_score": 0.0,
         });
     }
