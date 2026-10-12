@@ -471,7 +471,7 @@ impl IntelligenceCore {
     pub fn validate_bridge(&mut self, line: &str) -> BridgePipelineResult {
         // §7: detect + validate format
         let detected = self.registry.detect(line);
-        let (transport, endpoint, format_valid, format_error) = match detected {
+        let (transport, mut endpoint, mut format_valid, mut format_error) = match detected {
             Some((transport, endpoint)) => {
                 let validation = self.registry.validate(line);
                 match validation {
@@ -491,6 +491,28 @@ impl IntelligenceCore {
                 Some("could not detect transport".to_string()),
             ),
         };
+
+        if format_valid {
+            if let Some(reason) = crate::ip_guard::check_ingestion_endpoint(line) {
+                format_valid = false;
+                format_error = Some(format!(
+                    "endpoint safety gate rejected bridge before network access: {reason}"
+                ));
+            }
+        }
+
+        // The rest of this pipeline uses endpoint.host for attribution and
+        // bootstrap diagnostics as well as probing. For WebTunnel, make that
+        // field the URL's real dial host (not BridgeDB's placeholder IP).
+        if format_valid && transport == "webtunnel" {
+            match webtunnel_dial_endpoint(&endpoint) {
+                Ok(dial_endpoint) => endpoint = dial_endpoint,
+                Err(reason) => {
+                    format_valid = false;
+                    format_error = Some(reason.to_string());
+                }
+            }
+        }
 
         if !format_valid {
             self.format_rejections += 1;
@@ -917,6 +939,46 @@ mod tests {
         let outcome = probe.clone().into_outcome(Region::Europe);
         assert_eq!(outcome.region, Region::Europe);
         assert!(outcome.is_fully_reachable());
+    }
+
+    #[test]
+    fn webtunnel_dial_uses_public_url_not_documentation_ipv6_placeholder() {
+        let mut params = std::collections::BTreeMap::new();
+        params.insert(
+            "url".to_string(),
+            "https://front.example.com:8443/tunnel/path".to_string(),
+        );
+        params.insert("ver".to_string(), "0.0.4".to_string());
+        let endpoint = BridgeEndpoint {
+            host: "[2001:db8::1]".to_string(),
+            port: 443,
+            fingerprint: Some("0123456789ABCDEF0123456789ABCDEF01234567".to_string()),
+            params,
+        };
+
+        let guard_line = endpoint_guard_line("webtunnel", &endpoint);
+        assert_eq!(crate::ip_guard::check_ingestion_endpoint(&guard_line), None);
+
+        let dial_endpoint = webtunnel_dial_endpoint(&endpoint)
+            .expect("public HTTPS url= should define the WebTunnel dial target");
+        assert_eq!(dial_endpoint.host, "front.example.com");
+        assert_eq!(dial_endpoint.port, 8443);
+    }
+
+    #[test]
+    fn webtunnel_dial_rejects_http_url_even_if_host_is_public() {
+        let mut params = std::collections::BTreeMap::new();
+        params.insert("url".to_string(), "http://front.example.com/tunnel".to_string());
+        let endpoint = BridgeEndpoint {
+            host: "[2001:db8::1]".to_string(),
+            port: 443,
+            fingerprint: Some("0123456789ABCDEF0123456789ABCDEF01234567".to_string()),
+            params,
+        };
+        assert_eq!(
+            webtunnel_dial_endpoint(&endpoint).err(),
+            Some("WebTunnel dial target must use HTTPS")
+        );
     }
 
     #[test]
