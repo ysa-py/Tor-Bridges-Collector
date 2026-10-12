@@ -249,7 +249,9 @@ fn rejected_endpoint_probe(reason: &str) -> RegionProbeResult {
         tls_latency_ms: None,
         transport_ok: false,
         transport_latency_ms: None,
-        error: Some(format!("endpoint safety gate prevented network access: {reason}")),
+        error: Some(format!(
+            "endpoint safety gate prevented network access: {reason}"
+        )),
         active_blocking: false,
     }
 }
@@ -968,7 +970,10 @@ mod tests {
     #[test]
     fn webtunnel_dial_rejects_http_url_even_if_host_is_public() {
         let mut params = std::collections::BTreeMap::new();
-        params.insert("url".to_string(), "http://front.example.com/tunnel".to_string());
+        params.insert(
+            "url".to_string(),
+            "http://front.example.com/tunnel".to_string(),
+        );
         let endpoint = BridgeEndpoint {
             host: "[2001:db8::1]".to_string(),
             port: 443,
