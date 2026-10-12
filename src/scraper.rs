@@ -301,17 +301,18 @@ pub use crate::ip_guard::is_documentation_or_reserved_ip;
 /// broker-only lines or URL-fronted WebTunnel entries) are allowed through.
 ///
 /// Re-exported from the single shared [`crate::ip_guard`] module.
-pub use crate::ip_guard::contains_documentation_or_reserved_endpoint;
+pub use crate::ip_guard::{check_ingestion_endpoint, contains_documentation_or_reserved_endpoint};
 
 fn accept_ingested_bridge(line: &str, source: &str, transport: &str) -> bool {
-    if contains_documentation_or_reserved_endpoint(line) {
+    if let Some(reason) = check_ingestion_endpoint(line) {
         tracing::warn!(
             target: "bridge_ingest",
-            event = "rejected_placeholder_range",
+            event = "rejected_placeholder_or_dial_target",
             source = source,
             transport = transport,
+            reason = reason,
             bridge_line = line,
-            "rejected_placeholder_range"
+            "rejected bridge line with unsafe endpoint or dial target"
         );
         return false;
     }
@@ -1533,7 +1534,7 @@ fn selected_lines(
         .filter(|v| {
             v.get("raw")
                 .and_then(Value::as_str)
-                .map(|raw| !contains_documentation_or_reserved_endpoint(raw))
+                .map(|raw| check_ingestion_endpoint(raw).is_none())
                 .unwrap_or(true)
         })
         .filter_map(|v| {
@@ -1577,7 +1578,7 @@ pub fn write_testing_json(
             m.iter()
                 .filter(|(k, v)| {
                     let raw = v.get("raw").and_then(Value::as_str).unwrap_or(k.as_str());
-                    !contains_documentation_or_reserved_endpoint(raw)
+                    check_ingestion_endpoint(raw).is_none()
                 })
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect()
