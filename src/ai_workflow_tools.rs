@@ -480,10 +480,39 @@ const TRANSIENT_PATTERNS: &[(&str, &[&str])] = &[
 ];
 
 const FIXABLE_CATEGORIES: &[&str] = &[
+    "compile_error",
+    "tool_missing",
     "syntax_error",
     "auth_failure",
     "model_error",
     "unknown_fixable",
+];
+
+/// Deterministic local build/tooling failures take precedence over unrelated
+/// transient strings in the same long log. A single network timeout elsewhere
+/// must not hide a proven compiler/Clippy error or a missing required CLI.
+const DETERMINISTIC_FAILURE_PATTERNS: &[(&str, &[&str])] = &[
+    (
+        "compile_error",
+        &[
+            "could not compile",
+            "error: unused import",
+            "error[e",
+            "cargo clippy reported warnings/errors",
+            "clippy reported warnings/errors",
+            "failed to compile",
+            "rustc failed",
+        ],
+    ),
+    (
+        "tool_missing",
+        &[
+            "no such command: `audit`",
+            "cargo-audit is missing",
+            "cargo-audit installation failed",
+            "required command is missing",
+        ],
+    ),
 ];
 
 /// v2.6.0: categories that are transient/network/censorship-shaped and
@@ -500,9 +529,16 @@ const NON_FIXABLE_CATEGORIES: &[&str] = &[
     "no_failure",
 ];
 
-/// Classify a failure from combined lowercase text. Transient patterns are
-/// checked first, exactly as in the Python original.
+/// Classify a failure from combined lowercase text. Definite local build
+/// and tooling defects are checked first, then transient/network patterns, then
+/// the older fixable patterns. This avoids classifying a proven compiler error
+/// as a timeout just because the same long run also logged network failures.
 pub fn categorize(combined_text_lower: &str) -> &'static str {
+    for &(category, patterns) in DETERMINISTIC_FAILURE_PATTERNS {
+        if patterns.iter().any(|p| combined_text_lower.contains(p)) {
+            return category;
+        }
+    }
     for &(category, patterns) in TRANSIENT_PATTERNS {
         if patterns
             .iter()
@@ -850,6 +886,26 @@ mod tests {
         assert_eq!(categorize("a 502 bad gateway happened"), "network_error");
         assert_eq!(categorize("operation timed out repeatedly"), "timeout");
         assert_eq!(categorize("syntaxerror on line 3"), "syntax_error");
+        assert_eq!(
+            categorize(
+                "error: unused import: std::time::Duration; 502 bad gateway in another stage"
+            ),
+            "compile_error"
+        );
+        assert_eq!(
+            categorize("error[e0432]: unresolved import; 502"),
+            "compile_error"
+        );
+        assert_eq!(
+            categorize(
+                "cargo clippy reported warnings/errors; operation timed out in a separate task"
+            ),
+            "compile_error"
+        );
+        assert_eq!(
+            categorize("no such command: `audit`; network connection timed out"),
+            "tool_missing"
+        );
         assert_eq!(categorize("http 403 forbidden"), "auth_failure");
         assert_eq!(categorize("model not found: x"), "model_error");
         assert_eq!(
@@ -862,7 +918,9 @@ mod tests {
 
     #[test]
     fn category_flags_fixable_vs_transient() {
-        // fixable source defects: authorize AutoDebug
+        // fixable source/tooling defects: authorize AutoDebug
+        assert_eq!(category_flags("compile_error"), (true, true));
+        assert_eq!(category_flags("tool_missing"), (true, true));
         assert_eq!(category_flags("syntax_error"), (true, true));
         assert_eq!(category_flags("unknown_fixable"), (true, true));
         // transient/network/censorship-shaped: NEVER authorize AutoDebug (v2.6.0)

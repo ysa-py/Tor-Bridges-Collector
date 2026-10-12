@@ -110,6 +110,7 @@ jobs:
       # excerpt. The Rust classifier reads every line and records swallowed
       # fallbacks, empty source results, skipped toolchains, and non-zero exits.
       - name: Whole-run detect diagnose repair verify
+        id: whole-run-diagnostics
         if: github.event_name == 'workflow_run'
         continue-on-error: true
         env:
@@ -128,11 +129,11 @@ jobs:
             --heal \
             --output data/whole_run_diagnostics.json
           DIAGNOSTIC_STATUS=$?
-          if [ -n "${GITHUB_STEP_SUMMARY:-}" ] && [ -s data/whole_run_diagnostics.json ]; then
-            {
-              echo "## Whole-run diagnostics"
-              jq -r '.diagnostics // {} | "status=\(.status // \"unavailable\") errors=\(.errors // 0) warnings=\(.warnings // 0) failsafe_triggers=\(.failsafe_triggers // 0) unresolved=\(.unresolved // 0) total_lines=\(.total_lines // 0)"' data/whole_run_diagnostics.json
-            } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
+            echo "## Whole-run diagnostics" >> "$GITHUB_STEP_SUMMARY"
+            bash scripts/summarize_self_heal_diagnostics.sh data/whole_run_diagnostics.json | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            bash scripts/summarize_self_heal_diagnostics.sh data/whole_run_diagnostics.json
           fi
           echo "whole-run diagnostics exit status: $DIAGNOSTIC_STATUS"
           exit 0
@@ -153,8 +154,22 @@ jobs:
           GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
           GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
           PARENT_CONCLUSION: ${{ github.event.workflow_run.conclusion || 'manual' }}
+          DIAGNOSTICS_STATUS: ${{ steps.whole-run-diagnostics.outputs.diagnostics_status || 'unavailable' }}
+          DIAGNOSTICS_ERRORS: ${{ steps.whole-run-diagnostics.outputs.diagnostics_errors || '0' }}
+          DIAGNOSTICS_UNRESOLVED: ${{ steps.whole-run-diagnostics.outputs.diagnostics_unresolved || '0' }}
         run: |
+          set -euo pipefail
           echo "═══ Failure Categorization ═══"
+          # The parent workflow can report success while continue-on-error
+          # stages expose failed diagnostics. Normalize that inconsistency before
+          # the Rust categorizer's early success exit.
+          NORMALIZED_CONCLUSION="$(bash scripts/normalize_self_heal_conclusion.sh \
+            "$PARENT_CONCLUSION" "$DIAGNOSTICS_STATUS" "$DIAGNOSTICS_ERRORS" "$DIAGNOSTICS_UNRESOLVED")"
+          if [ "$PARENT_CONCLUSION" != "$NORMALIZED_CONCLUSION" ]; then
+            echo "::warning::Whole-run diagnostics failed despite parent conclusion=$PARENT_CONCLUSION; enabling failure categorization."
+            PARENT_CONCLUSION="$NORMALIZED_CONCLUSION"
+            export PARENT_CONCLUSION
+          fi
           # 2026-08-02: inline Python replaced by the Rust-native
           # `ai_workflow_tools categorize-failure` subcommand. Same contract:
           # identical pattern tables/priority, identical $GITHUB_OUTPUT keys
@@ -305,7 +320,6 @@ jobs:
 
       - name: Run self-heal diagnostics (bash)
         run: bash scripts/self_heal.sh
-        continue-on-error: true
 
       - name: Collect diagnostics artifacts
         if: always()

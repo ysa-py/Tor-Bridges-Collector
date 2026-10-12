@@ -100,10 +100,11 @@ permissions:
   actions: write
 
 concurrency:
-  # PRs must not share the hourly main group. A long PR scrape would
-  # otherwise queue behind (or delay) production publication.
+  # Each event/ref is serialized separately. Any non-main validation run
+  # is disposable when a newer commit arrives; protect all main-branch runs
+  # (including push, schedule, and dispatch) from cancellation.
   group: torshield-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
 
@@ -2366,9 +2367,9 @@ jobs:
         # files, which `git add` then committed. Every later run read
         # corrupt bridge_history.json / iran_results.json and lost its
         # verification evidence (=> empty *_tested / iran_likely_working_*).
-        # Now: heal -> validate -> COMMIT FIRST -> rebase with generated
-        # content winning (-X theirs = our freshly generated commit) -> verify
-        # -> push, retrying on non-fast-forward. No stash is ever used.
+        # Now: heal -> validate -> COMMIT FIRST -> rebase -> restore the
+        # generated output trees as whole blobs from that verified commit ->
+        # re-verify -> push, retrying on non-fast-forward. No stash is used.
         # The healer is shell + jq on purpose: `quality_gate py-check` fails
         # the build while any Python source survives in this Rust-native tree.
         bash scripts/repair_conflict_markers.sh
@@ -2394,6 +2395,12 @@ jobs:
         WORKING=$(grep -c . bridge/iran_likely_working_all.txt 2>/dev/null || echo 0)
         WORKING=${WORKING//[$'\t\r\n ']/}
         git commit -m "chore: dual-persist bridge/ + README.md (advisory working: ${WORKING:-0}, run ${GITHUB_RUN_ID}) [skip ci]"
+        # Keep the exact, pre-rebase verified snapshot as the publication source.
+        # Git's -X theirs resolves conflicting hunks; it does NOT guarantee that
+        # an entire JSON manifest or generated file comes from one run. Record
+        # this commit so the artifact directories can be restored as whole blobs
+        # after each rebase, preventing a mixed-run manifest/payload/ZIP.
+        GENERATED_COMMIT="$(git rev-parse HEAD)"
         # Leftover tracked edits outside PATHS (build byproducts) would block
         # the rebase; they are never published, so drop them (no stash).
         git checkout -- . 2>/dev/null || true
@@ -2401,8 +2408,19 @@ jobs:
         for attempt in 1 2 3 4 5; do
           git fetch origin main
           if git rebase -X theirs origin/main; then
-            bash scripts/repair_conflict_markers.sh --check ||
-              { bash scripts/repair_conflict_markers.sh; git add $PATHS; git commit -m "chore: heal conflict markers [skip ci]" || true; }
+            # Restore all generated/publication outputs from the same verified
+            # pre-rebase tree. Keep source/config merges made by the rebase.
+            git checkout "$GENERATED_COMMIT" -- bridge/ data/ docs/ export/ README.md
+            git add bridge/ data/ docs/ export/ README.md
+            if ! git diff --cached --quiet; then
+              git commit -m "chore: preserve atomic generated snapshot [skip ci]"
+            fi
+            bash scripts/repair_conflict_markers.sh --check
+            bash scripts/repair_conflict_markers.sh --validate-json bridge data export docs
+            bash scripts/publication_contract.sh --check
+            cargo run --locked --quiet --bin sync_bridge_outputs -- \
+              --bridge-dir bridge \
+              --verify-only
             if git push origin HEAD:main; then pushed=1; break; fi
           else
             echo "rebase conflict on attempt ${attempt}; aborting and retrying"

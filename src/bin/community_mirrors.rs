@@ -13,6 +13,7 @@
 
 use std::collections::BTreeMap;
 use std::path::Path;
+#[cfg(feature = "network")]
 use std::time::Duration;
 
 use serde_json::Value;
@@ -20,9 +21,11 @@ use serde_json::Value;
 use torshield_ir_ultra::scraper::{
     load_history, merge_raw_into_history, prune_history, save_history,
 };
+#[cfg(feature = "network")]
+use torshield_ir_ultra::sources_community_mirrors::fetch_mirror;
 use torshield_ir_ultra::sources_community_mirrors::{
-    build_report, count_new_lines, fetch_mirror, merge_enabled_from_env, mirrors_from_env,
-    MirrorOutcome, REPORT_FILE,
+    build_report, count_new_lines, merge_enabled_from_env, mirrors_from_env, MirrorOutcome,
+    REPORT_FILE,
 };
 
 fn run() -> Result<(), Box<dyn std::error::Error>> {

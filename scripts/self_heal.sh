@@ -32,6 +32,21 @@ else
 fi
 
 # 3) cargo audit — produce JSON report and human-readable logs
+echo "[self-heal] Checking cargo-audit availability"
+AUDIT_TOOL_AVAILABLE=true
+if ! cargo audit --version >/dev/null 2>&1; then
+  echo "[self-heal] cargo-audit is missing; installing it before the audit gate" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+  if ! cargo install cargo-audit --locked 2>&1 | tee "${DIAG_DIR}/cargo-audit-install.log"; then
+    echo "[self-heal] ERROR: cargo-audit installation failed; vulnerability status remains unknown" | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    echo "[self-heal] Skipping only the audit commands; remaining independent checks will continue." | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+    AUDIT_TOOL_AVAILABLE=false
+    EXIT_CODE=1
+  fi
+fi
+
+VCOUNT=0
+AUDIT_COUNT_VALID=false
+if [ "${AUDIT_TOOL_AVAILABLE}" = true ]; then
 echo "[self-heal] Running cargo audit to produce JSON report"
 # Ensure jq is available; if not, record warning but continue
 if ! command -v jq >/dev/null 2>&1; then
@@ -52,8 +67,6 @@ fi
 # to overwrite the authoritative JSON status.
 cargo audit 2>&1 | tee "${DIAG_DIR}/cargo-audit-stdout.log" || true
 
-VCOUNT=0
-AUDIT_COUNT_VALID=false
 if [ -f "${DIAG_DIR}/audit-report.json" ] && command -v jq >/dev/null 2>&1; then
   VCOUNT_RAW=$(jq -er '
     if type != "object" then error("audit report is not an object")
@@ -91,6 +104,11 @@ echo "[self-heal] cargo-audit reported vulnerability count: ${VCOUNT}"
 if [ "${VCOUNT}" -gt 0 ]; then
   EXIT_CODE=1
 fi
+else
+  # Unknown is not zero: keep the numeric field safe for consumers, but expose
+  # validity separately and preserve the failure status in the diagnostic index.
+  echo "[self-heal] cargo audit unavailable; vulnerability count is UNKNOWN." | tee -a "${DIAG_DIR}/self-heal-warnings.log"
+fi
 
 # 4) Run release tests (capture output)
 echo "[self-heal] Running cargo test --workspace --release (this may take time)"
@@ -114,10 +132,14 @@ if [ ${EXIT_CODE} -ne 0 ]; then
   # validation failure with a second jq error and made diagnostics less useful.
   if command -v jq >/dev/null 2>&1; then
     jq -n --arg ts "${TS}" --argjson vulnerabilities "${VCOUNT}" \
-      '{timestamp: $ts, vulnerabilities: $vulnerabilities}' > "${DIAG_DIR}/index.json" \
-      || printf '{"timestamp":"%s","vulnerabilities":0}\n' "${TS}" > "${DIAG_DIR}/index.json"
+      --argjson audit_count_valid "${AUDIT_COUNT_VALID}" \
+      '{timestamp: $ts, vulnerabilities: $vulnerabilities, audit_count_valid: $audit_count_valid}' \
+      > "${DIAG_DIR}/index.json" \
+      || printf '{"timestamp":"%s","vulnerabilities":%s,"audit_count_valid":%s}\n' \
+        "${TS}" "${VCOUNT}" "${AUDIT_COUNT_VALID}" > "${DIAG_DIR}/index.json"
   else
-    printf '{"timestamp":"%s","vulnerabilities":0}\n' "${TS}" > "${DIAG_DIR}/index.json"
+    printf '{"timestamp":"%s","vulnerabilities":%s,"audit_count_valid":%s}\n' \
+      "${TS}" "${VCOUNT}" "${AUDIT_COUNT_VALID}" > "${DIAG_DIR}/index.json"
   fi
   exit 1
 fi
