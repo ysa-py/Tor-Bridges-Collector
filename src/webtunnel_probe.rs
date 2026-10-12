@@ -562,7 +562,7 @@ pub fn probe_all_webtunnel_bridges(
     const BUDGET: Duration = Duration::from_secs(150);
     const PER_ATTEMPT_TIMEOUT: Duration = Duration::from_secs(3);
     let started = Instant::now();
-    let mut candidates: Vec<(usize, String, u16)> = Vec::new();
+    let mut candidates: Vec<(usize, String, u16, Value)> = Vec::new();
     let mut doc_ipv6_skipped = 0u32;
     let mut ip_host_skipped = 0u32;
     let mut unsafe_endpoint_skipped = 0u32;
@@ -592,7 +592,10 @@ pub fn probe_all_webtunnel_bridges(
         match front_probe_decision(host, line) {
             ProbeDecision::Probe(front_host, front_port) => {
                 front_domains.insert(front_host.clone());
-                candidates.push((index, front_host, front_port));
+                // Workers own their input records. This is intentional: the
+                // caller can honor the hard deadline even if an OS resolver
+                // stalls inside ToSocketAddrs, which is not cancellable.
+                candidates.push((index, front_host, front_port, bridge.clone()));
             }
             ProbeDecision::SkipDocIpv6 => {
                 doc_ipv6_skipped += 1;
@@ -615,54 +618,64 @@ pub fn probe_all_webtunnel_bridges(
     }
 
     let total_candidates = candidates.len();
-    let next = std::sync::atomic::AtomicUsize::new(0);
-    let bridges_ref: &[Value] = bridges;
+    let work = std::sync::Arc::new(candidates);
+    let next = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let (tx, rx) = std::sync::mpsc::channel();
     let worker_count = WORKERS.min(total_candidates);
+
+    // Detached workers own all data they touch; the collector below enforces
+    // the deadline instead of joining threads that may be stuck in blocking DNS.
+    // At most WORKERS threads are ever created by this pool.
+    for _ in 0..worker_count {
+        let tx = tx.clone();
+        let work = std::sync::Arc::clone(&work);
+        let next = std::sync::Arc::clone(&next);
+        std::thread::spawn(move || loop {
+            if started.elapsed() >= BUDGET {
+                break;
+            }
+            let slot = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let Some((index, host, port, bridge)) = work.get(slot) else {
+                break;
+            };
+
+            let updated = probe_webtunnel_bridge(
+                bridge,
+                PER_ATTEMPT_TIMEOUT.min(timeout),
+            );
+            let probe_status = updated
+                .get("probe_status")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_string();
+            let evidence = updated
+                .get("evidence_scope")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+
+            if tx
+                .send((*index, host.clone(), *port, updated, probe_status, evidence))
+                .is_err()
+            {
+                break;
+            }
+        });
+    }
+    drop(tx);
+
     let mut completed = Vec::with_capacity(total_candidates);
-
-    std::thread::scope(|scope| {
-        for _ in 0..worker_count {
-            let tx = tx.clone();
-            let candidates = &candidates;
-            let next = &next;
-            scope.spawn(move || loop {
-                if started.elapsed() >= BUDGET {
-                    break;
-                }
-                let slot = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                let Some((index, host, port)) = candidates.get(slot) else {
-                    break;
-                };
-
-                // Each probe keeps its existing transient retry policy, but the
-                // individual attempt timeout prevents one slow endpoint from
-                // monopolizing a worker. Results are applied after all worker
-                // borrows end, so no bridge record is mutated concurrently.
-                let updated =
-                    probe_webtunnel_bridge(&bridges_ref[*index], PER_ATTEMPT_TIMEOUT.min(timeout));
-                let probe_status = updated
-                    .get("probe_status")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown")
-                    .to_string();
-                let evidence = updated
-                    .get("evidence_scope")
-                    .and_then(Value::as_str)
-                    .unwrap_or("")
-                    .to_string();
-
-                if tx
-                    .send((*index, host.clone(), *port, updated, probe_status, evidence))
-                    .is_err()
-                {
-                    break;
-                }
-            });
+    while completed.len() < total_candidates {
+        let elapsed = started.elapsed();
+        if elapsed >= BUDGET {
+            break;
         }
-        drop(tx);
-        completed.extend(rx);
-    });
+        match rx.recv_timeout(BUDGET.saturating_sub(elapsed)) {
+            Ok(result) => completed.push(result),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+            | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
 
     let mut succeeded = 0usize;
     let mut failed = 0usize;
