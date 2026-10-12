@@ -320,7 +320,6 @@ jobs:
 
       - name: Run self-heal diagnostics (bash)
         run: bash scripts/self_heal.sh
-        continue-on-error: true
 
       - name: Collect diagnostics artifacts
         if: always()
