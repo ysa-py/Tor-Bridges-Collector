@@ -401,12 +401,11 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
         }
     }
 
-    let ignored_placeholder_index =
-        if is_fronted_transport && has_validated_url {
-            first_documentation_placeholder_index(&tokens)
-        } else {
-            None
-        };
+    let ignored_placeholder_index = if is_fronted_transport && has_validated_url {
+        first_documentation_placeholder_index(&tokens)
+    } else {
+        None
+    };
     check_endpoint_tokens(&tokens, ignored_placeholder_index)
 }
 
