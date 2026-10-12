@@ -1,0 +1,29 @@
+name: Temporary Cargo lock resolution
+
+'on':
+  push:
+    branches:
+      - fix/webtunnel-bounded-probe-pool
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-lock:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.90.0'
+      - name: Update the affected transitive package only
+        run: cargo update -p quinn-proto --precise 0.11.19
+      - name: Verify lockfile resolves without further edits
+        run: cargo metadata --locked --format-version 1 >/dev/null
+      - uses: actions/upload-artifact@v7
+        with:
+          name: audited-cargo-lock
+          path: Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
