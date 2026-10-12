@@ -8,10 +8,11 @@
 //!
 //! WebTunnel bridges that carry only a `url=https://front/path` (no routable
 //! IP endpoint) are probed via TLS+WebSocket Upgrade to the front domain.
-//! IPv6 bridges with documentation-range addresses (2001:db8::/32) are
-//! actively rejected before any TCP attempt — the guard in `probe_one()`
-//! uses `contains_documentation_or_reserved_endpoint()` which covers RFC 3849
-//! (2001:db8::/32), RFC 5737 (TEST-NET), link-local, loopback, and multicast.
+//! Reserved endpoints are rejected before network access. A supported
+//! URL-fronted transport may retain an RFC 3849/RFC 5737 documentation-only
+//! address as metadata only when a separate public `url=` target validates.
+//! WebTunnel is probed via that URL; this binary does not TCP-dial documented
+//! placeholder IPs for transports lacking a protocol-specific probe.
 
 use std::collections::BTreeMap;
 use std::env;
@@ -38,7 +39,9 @@ use tokio::task::JoinSet;
 use tokio::time::timeout;
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use tokio_rustls::TlsConnector;
-use torshield_ir_ultra::scraper::contains_documentation_or_reserved_endpoint;
+use torshield_ir_ultra::scraper::{
+    check_ingestion_endpoint, contains_documentation_or_reserved_endpoint,
+};
 use torshield_ir_ultra::tester::extract_endpoint;
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -558,10 +561,11 @@ fn stamp_probe_evidence(mut result: Value) -> Value {
 }
 
 async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value {
-    // Reject documentation-range/reserved IP addresses BEFORE any TCP attempt.
-    // This covers RFC 3849 (2001:db8::/32), RFC 5737 (TEST-NET), RFC 1918,
-    // link-local, loopback, and multicast — none are ever routable.
-    if contains_documentation_or_reserved_endpoint(&line) {
+    // Validate the actual dial target before any network attempt. A
+    // documentation-only endpoint token may be ignored only for a supported
+    // URL-fronted transport with a separately validated public url= target;
+    // private and other reserved literal IPs remain blocked.
+    if let Some(reason) = check_ingestion_endpoint(&line) {
         let transport = normalise_transport(&line, extract_endpoint(&line).2);
         return json!({
             "line": line,
@@ -574,7 +578,7 @@ async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value 
             "probe_method": "none",
             "latency_ms": null,
             "iran_status": "non_routable",
-            "evidence_scope": "Bridge line contains a documentation-range or reserved IP address that is never routable from any vantage point.",
+            "evidence_scope": format!("Bridge line rejected before network access by endpoint safety guard: {reason}."),
             "composite_score": 0.0,
         });
     }
@@ -588,6 +592,25 @@ async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value 
     // are probed via TLS+WebSocket Upgrade to the front domain.
     if transport == "webtunnel" {
         return probe_webtunnel_front(line, timeout_duration).await;
+    }
+    // A documentation-only address may be retained as metadata for a
+    // URL-fronted Meek/Conjure line, but this binary has no protocol-accurate
+    // harness for those transports. Never fall through and TCP-dial the fake IP.
+    if contains_documentation_or_reserved_endpoint(&line) {
+        return json!({
+            "line": line,
+            "transport": transport,
+            "host": null,
+            "port": null,
+            "tcp_reachable": false,
+            "transport_capable": false,
+            "probe_status": "unsupported_target",
+            "probe_method": "none",
+            "latency_ms": null,
+            "iran_status": "iran_unknown",
+            "evidence_scope": "A documentation-only endpoint placeholder was retained because a public URL-front target validated, but this binary has no transport-specific Meek/Conjure handshake; no network attempt was made.",
+            "composite_score": 0.5,
+        });
     }
     let Some(host) = host else {
         return json!({

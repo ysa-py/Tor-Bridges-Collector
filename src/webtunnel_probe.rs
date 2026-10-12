@@ -453,6 +453,8 @@ enum ProbeDecision {
     /// Bridge has only a literal IP endpoint and no front domain — TCP is
     /// the correct probe for it and the Go tester already ran that.
     SkipIpHost,
+    /// The endpoint or URL/front target failed the shared safety gate.
+    SkipUnsafeEndpoint,
     /// Bridge has neither a url= front domain nor an FQDN host.
     SkipNoFront,
 }
@@ -503,8 +505,17 @@ fn line_has_literal_ip_endpoint(line: &str) -> bool {
 }
 
 fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
-    if is_documentation_ipv6(host) || line_has_documentation_ipv6(line) {
-        return ProbeDecision::SkipDocIpv6;
+    // The URL-fronted WebTunnel RFC 3849 address is metadata only, but every
+    // actual dial target still has to pass the shared endpoint-safety gate.
+    // This lets a public url= override the known placeholder without allowing
+    // private, malformed, or other reserved endpoints into the probe.
+    let has_doc_placeholder = is_documentation_ipv6(host) || line_has_documentation_ipv6(line);
+    if let Some(reason) = crate::ip_guard::check_ingestion_endpoint(line) {
+        return if reason == "DOCUMENTATION_RFC3849_2001_DB8" && has_doc_placeholder {
+            ProbeDecision::SkipDocIpv6
+        } else {
+            ProbeDecision::SkipUnsafeEndpoint
+        };
     }
     if let Some((front_host, front_port)) = extract_front_domain(line) {
         // A url= host that is itself a literal IP is a directly dialable
@@ -547,6 +558,7 @@ pub fn probe_all_webtunnel_bridges(
     let mut failed = 0;
     let mut doc_ipv6_skipped = 0u32;
     let mut ip_host_skipped = 0u32;
+    let mut unsafe_endpoint_skipped = 0u32;
     let mut already_working_skipped = 0u32;
     let mut front_domains: HashSet<String> = HashSet::new();
 
@@ -593,6 +605,13 @@ pub fn probe_all_webtunnel_bridges(
                 );
                 continue;
             }
+            ProbeDecision::SkipUnsafeEndpoint => {
+                unsafe_endpoint_skipped += 1;
+                eprintln!(
+                    "webtunnel-probe: skipping unsafe endpoint or URL/front before network access: {line}"
+                );
+                continue;
+            }
             ProbeDecision::SkipNoFront => {
                 eprintln!(
                     "webtunnel-probe: skipping bridge with no front domain (no url= \
@@ -628,6 +647,7 @@ pub fn probe_all_webtunnel_bridges(
     println!(
         "webtunnel-probe: summary probed={probed} ws_101={succeeded} ws_fail={failed} \
          doc_ipv6_skipped={doc_ipv6_skipped} ip_host_skipped={ip_host_skipped} \
+         unsafe_endpoint_skipped={unsafe_endpoint_skipped} \
          already_working_skipped={already_working_skipped} \
          unique_front_domains={front_domains}",
         front_domains = front_domains.len(),
@@ -714,7 +734,7 @@ mod tests {
     fn probe_skips_doc_ipv6_host() {
         // Bridges with documentation-range IPv6 hosts are skipped
         let bridges = vec![
-            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "2001:db8::1", "line": "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://example.com/x ver=0.0.3"}),
+            json!({"transport": "webtunnel", "iran_status": "tcp_unreachable", "host": "2001:db8::1", "line": "webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.3"}),
         ];
         let mut bridges = bridges;
         let (p, _s, _f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
@@ -842,22 +862,56 @@ mod tests {
     }
 
     #[test]
-    fn edge_case_decision_skips_doc_ipv6_in_line() {
-        // BridgeDB placeholder endpoint in the line (host field empty) is
-        // detected from the bracketed token, not just the host field.
+    fn edge_case_decision_probes_url_fronted_doc_ipv6_placeholder() {
+        // The RFC 3849 token is metadata only; a validated public URL is the
+        // actual dial target and should be probed.
         let decision = front_probe_decision(
             "",
             "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 FINGERPRINT url=https://coellen.xyz ver=0.0.3",
         );
-        assert_eq!(decision, ProbeDecision::SkipDocIpv6);
+        assert_eq!(
+            decision,
+            ProbeDecision::Probe("coellen.xyz".to_string(), 443)
+        );
     }
 
     #[test]
-    fn edge_case_decision_detects_doc_ipv6_in_host_field() {
+    fn edge_case_decision_uses_public_url_over_placeholder_host_field() {
         let decision = front_probe_decision(
             "2001:db8::1",
             "webtunnel FINGERPRINT url=https://example.com/x ver=0.0.3",
         );
+        assert_eq!(
+            decision,
+            ProbeDecision::Probe("example.com".to_string(), 443)
+        );
+    }
+
+    #[test]
+    fn edge_case_decision_skips_doc_ipv6_without_valid_front() {
+        let decision =
+            front_probe_decision("", "webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.3");
         assert_eq!(decision, ProbeDecision::SkipDocIpv6);
+    }
+
+    #[test]
+    fn edge_case_decision_skips_private_url_host() {
+        let decision = front_probe_decision(
+            "",
+            "webtunnel FINGERPRINT url=https://127.0.0.1/x ver=0.0.3",
+        );
+        assert_eq!(decision, ProbeDecision::SkipUnsafeEndpoint);
+    }
+
+    #[test]
+    fn edge_case_decision_probes_documentation_ipv4_placeholder_via_public_url() {
+        let decision = front_probe_decision(
+            "",
+            "webtunnel 192.0.2.1:443 FINGERPRINT url=https://example.com/x ver=0.0.3",
+        );
+        assert_eq!(
+            decision,
+            ProbeDecision::Probe("example.com".to_string(), 443)
+        );
     }
 }

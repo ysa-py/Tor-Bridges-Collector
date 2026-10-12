@@ -330,7 +330,15 @@ pub fn probe_bridge_with_timeout(
     timeout_secs: f64,
 ) -> Value {
     let base_score = score_bridge(parsed, table);
-    let (tcp_reachable, tcp_latency_ms) = probe.probe(&parsed.ip, parsed.port, timeout_secs);
+    // This stage is a raw-TCP scorer, not a transport-specific URL probe.
+    // Never try the metadata IP from a valid URL-fronted documentation
+    // placeholder; it is not a dial target and cannot earn a TCP bonus.
+    let (tcp_reachable, tcp_latency_ms) =
+        if crate::ip_guard::contains_documentation_or_reserved_endpoint(&parsed.raw) {
+            (false, None)
+        } else {
+            probe.probe(&parsed.ip, parsed.port, timeout_secs)
+        };
 
     let nin_score = if tcp_reachable {
         round4((base_score + 0.15).min(1.0))
@@ -765,6 +773,17 @@ mod tests {
         let p = parse_bridge_line("vanilla 1.1.1.1:9001").unwrap();
         let result = probe_bridge(&p, &table, &AlwaysUnreachable);
         assert_eq!(result["nin_score"], 0.0);
+        assert_eq!(result["tcp_reachable"], false);
+        assert!(result["tcp_latency_ms"].is_null());
+    }
+
+    #[test]
+    fn probe_bridge_never_tcp_dials_url_fronted_documentation_placeholder() {
+        let table = IranCidrTable::new();
+        let p = parse_bridge_line(
+            "snowflake 192.0.2.3:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.com/ fronts=example.com"
+        ).unwrap();
+        let result = probe_bridge(&p, &table, &AlwaysReachable);
         assert_eq!(result["tcp_reachable"], false);
         assert!(result["tcp_latency_ms"].is_null());
     }

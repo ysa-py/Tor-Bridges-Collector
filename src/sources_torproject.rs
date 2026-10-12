@@ -33,9 +33,7 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::scraper::{
-    contains_documentation_or_reserved_endpoint, HttpFetch, HttpResponse, ScraperError,
-};
+use crate::scraper::{check_ingestion_endpoint, HttpFetch, HttpResponse, ScraperError};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (mirrors module-level constants in sources/torproject.py)
@@ -187,9 +185,10 @@ pub fn bridge_line_re() -> &'static Regex {
 /// Validate a single bridge line. Mirrors Python `_is_valid_line(line)`:
 /// 1. Return false if line is empty or shorter than 10 chars.
 /// 2. Return false if line contains "No bridges available" or starts with "#".
-/// 3. Return false if line contains a documentation-range or reserved IP
-///    address (RFC 3849, RFC 5737, link-local, loopback, etc.) — these are
-///    never routable and must not enter the pipeline.
+/// 3. Reject reserved IP endpoints and unsafe URL/front hosts. Only RFC 3849
+///    and RFC 5737 documentation-only address tokens may be treated as
+///    metadata for a supported URL-fronted transport with a valid public
+///    `url=` dial target; private and other reserved IP literals remain blocked.
 /// 4. Return true if `bridge_line_re().is_match(line)`, false otherwise.
 pub fn is_valid_line(line: &str) -> bool {
     if line.is_empty() || line.len() < 10 {
@@ -198,15 +197,17 @@ pub fn is_valid_line(line: &str) -> bool {
     if line.contains("No bridges available") || line.starts_with('#') {
         return false;
     }
-    // Reject documentation-range / reserved IP addresses (RFC 3849 `2001:db8::/32`,
-    // RFC 5737 TEST-NET, link-local, loopback, multicast, etc.) for ALL transports.
-    if contains_documentation_or_reserved_endpoint(line) {
+    // Reject unsafe literal endpoints and URL/front dial targets. Only a
+    // WebTunnel RFC 3849 placeholder may be ignored, and only when its
+    // separate public url= dial target is valid.
+    if let Some(reason) = check_ingestion_endpoint(line) {
         tracing::warn!(
             target: "bridge_ingest",
-            event = "rejected_documentation_or_reserved_ip",
+            event = "rejected_unsafe_endpoint",
+            reason = reason,
             transport = line.split_whitespace().next().unwrap_or("unknown"),
             bridge_line = line,
-            "rejected bridge with documentation-range or reserved IP address"
+            "rejected bridge with unsafe endpoint or dial target"
         );
         return false;
     }
@@ -551,7 +552,7 @@ mod tests {
         // enter the bridge pipeline — they're never routable.
         assert!(!is_valid_line("obfs4 [2001:db8::1]:443 cert=abc"));
         assert!(!is_valid_line(
-            "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT url=https://x ver=0.0.3"
+            "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT ver=0.0.3"
         ));
         assert!(!is_valid_line("vanilla [2001:db8:1234::1]:9001"));
     }
@@ -570,7 +571,7 @@ mod tests {
         // Real routable IPv6 addresses (not in 2001:db8::/32) should pass.
         assert!(is_valid_line("obfs4 [2001:4860:4860::8888]:443 cert=abc"));
         assert!(is_valid_line(
-            "webtunnel [2606:4700:4700::1111]:443 FINGERPRINT url=https://x ver=0.0.4"
+            "webtunnel [2606:4700:4700::1111]:443 FINGERPRINT url=https://example.com ver=0.0.4"
         ));
     }
 
@@ -604,9 +605,14 @@ mod tests {
         assert!(is_valid_line(
             "webtunnel 8.8.4.4:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
         ));
-        // Documentation-range IPv6 webtunnel must be rejected.
-        assert!(!is_valid_line(
+        // A BridgeDB placeholder address is allowed only when the separate
+        // URL dial target is public and valid.
+        assert!(is_valid_line(
             "webtunnel [2001:db8::4]:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
+        ));
+        // The same placeholder without a usable dial target remains rejected.
+        assert!(!is_valid_line(
+            "webtunnel [2001:db8::4]:443 FINGERPRINT ver=0.0.4"
         ));
     }
 

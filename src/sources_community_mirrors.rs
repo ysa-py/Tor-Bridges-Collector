@@ -15,11 +15,13 @@
 //! 1. [`crate::scraper::is_valid_line`] — the format gate every scraper
 //!    source already applies (minimum length, comment/marker rejection,
 //!    endpoint-regex match);
-//! 2. [`crate::ip_guard::contains_documentation_or_reserved_endpoint`] —
-//!    the shared non-routable endpoint guard (RFC 3849 documentation
-//!    ranges, RFC 5737 TEST-NETs, loopback, RFC 1918, link-local, …).
+//! 2. [`crate::ip_guard::check_ingestion_endpoint`] — the shared endpoint
+//!    safety gate. It rejects reserved literal IPs and unsafe URL/front hosts;
+//!    only RFC 3849/RFC 5737 documentation placeholders may pass as metadata
+//!    for supported URL-fronted transports with a separately validated public
+//!    `url=` dial target. Private and other reserved addresses remain blocked.
 //!
-//! # Toggle semantics (advisory first)
+//! //! # Toggle semantics (advisory first)
 //!
 //! * `COMMUNITY_MIRRORS` — space-separated `owner/repo` list. The literal
 //!   value `none` (or `0`) disables the module entirely. Default:
@@ -53,7 +55,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-use crate::scraper::{contains_documentation_or_reserved_endpoint, is_valid_line, HttpFetch};
+use crate::scraper::{check_ingestion_endpoint, is_valid_line, HttpFetch};
 
 /// Default mirror list: one additional, actively-maintained public mirror
 /// with the same `bridge/<file>.txt` layout this repository publishes
@@ -95,7 +97,7 @@ pub struct MirrorFileOutcome {
     pub fetched_lines: usize,
     /// Lines passing the full validation gate (format + ip_guard).
     pub valid_lines: usize,
-    /// Lines rejected by the non-routable endpoint guard.
+    /// Lines rejected by the endpoint / URL-front dial-target safety guard.
     pub rejected_placeholder: usize,
     /// Lines rejected by the format gate only.
     pub rejected_format: usize,
@@ -267,7 +269,7 @@ pub fn fetch_mirror_file(
             continue;
         }
         outcome.fetched_lines += 1;
-        if contains_documentation_or_reserved_endpoint(clean) {
+        if check_ingestion_endpoint(clean).is_some() {
             outcome.rejected_placeholder += 1;
             continue;
         }
@@ -347,7 +349,7 @@ pub fn build_report(
         "merge_enabled": merge_enabled,
         "gates_applied": [
             "scraper::is_valid_line (format gate)",
-            "ip_guard::contains_documentation_or_reserved_endpoint (non-routable endpoint guard)",
+            "ip_guard::check_ingestion_endpoint (transport-aware IP and URL-front dial-target guard)",
         ],
         "mirrors": outcomes.iter().map(MirrorOutcome::to_json).collect::<Vec<_>>(),
         "added_by_family_when_merged": added,
@@ -465,11 +467,12 @@ mod tests {
         let outcome = fetch_mirror_file(&client, "a/b", "obfs4.txt", "obfs4");
         assert_eq!(outcome.status, 200);
         assert_eq!(outcome.fetched_lines, 4);
-        assert_eq!(outcome.valid_lines, 1);
-        assert_eq!(outcome.rejected_placeholder, 1);
+        assert_eq!(outcome.valid_lines, 2);
+        assert_eq!(outcome.rejected_placeholder, 0);
         assert_eq!(outcome.rejected_format, 2);
-        assert_eq!(outcome.lines.len(), 1);
+        assert_eq!(outcome.lines.len(), 2);
         assert_eq!(outcome.lines[0].1, "ipv4");
+        assert_eq!(outcome.lines[1].1, "ipv6");
     }
 
     #[test]

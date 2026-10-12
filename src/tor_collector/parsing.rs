@@ -35,9 +35,10 @@ pub struct Obfs4Endpoint {
 
 /// Return whether `line` is a potentially usable bridge line.
 ///
-/// This is deliberately regex-equivalent to the Python checks: a line must
-/// contain an IPv4 literal, bracketed IPv6 literal, or HTTP(S) endpoint. More
-/// detailed validation happens when an endpoint is extracted.
+/// A line must contain an IPv4 literal, bracketed IPv6 literal, or HTTP(S)
+/// endpoint. The shared endpoint-safety gate runs before the format-specific
+/// checks; only a URL-fronted WebTunnel RFC 3849 placeholder may pass, and
+/// only when its separate public `url=` dial target is valid.
 pub fn is_valid_bridge_line(line: &str) -> bool {
     let trimmed = line.trim();
     if trimmed.is_empty()
@@ -48,7 +49,7 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         return false;
     }
 
-    if contains_documentation_or_reserved_endpoint(trimmed) {
+    if crate::ip_guard::check_ingestion_endpoint(trimmed).is_some() {
         return false;
     }
 

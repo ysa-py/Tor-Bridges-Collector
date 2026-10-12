@@ -296,22 +296,24 @@ pub fn is_valid_line(line: &str) -> bool {
 /// Re-exported from the single shared [`crate::ip_guard`] module.
 pub use crate::ip_guard::is_documentation_or_reserved_ip;
 
-/// Extract the first bridge endpoint address and reject known placeholder or
-/// reserved ranges. Lines without a direct IP endpoint (for example Snowflake
-/// broker-only lines or URL-fronted WebTunnel entries) are allowed through.
+/// Shared endpoint-safety gate for ingested bridge lines. URL-fronted
+/// transports may retain RFC 3849/RFC 5737 documentation-only address tokens
+/// only when a separate public url= dial target validates; private and other
+/// reserved IP literals remain rejected.
 ///
 /// Re-exported from the single shared [`crate::ip_guard`] module.
-pub use crate::ip_guard::contains_documentation_or_reserved_endpoint;
+pub use crate::ip_guard::{check_ingestion_endpoint, contains_documentation_or_reserved_endpoint};
 
 fn accept_ingested_bridge(line: &str, source: &str, transport: &str) -> bool {
-    if contains_documentation_or_reserved_endpoint(line) {
+    if let Some(reason) = check_ingestion_endpoint(line) {
         tracing::warn!(
             target: "bridge_ingest",
-            event = "rejected_placeholder_range",
+            event = "rejected_placeholder_or_dial_target",
             source = source,
             transport = transport,
+            reason = reason,
             bridge_line = line,
-            "rejected_placeholder_range"
+            "rejected bridge line with unsafe endpoint or dial target"
         );
         return false;
     }
@@ -1103,6 +1105,12 @@ pub fn tcp_reachable(line: &str, timeout_s: f64) -> bool {
 /// 2. If no match, return `false` (non-IPv4 bridges are skipped).
 /// 3. Otherwise, attempt a TCP connect with the given timeout.
 pub fn tcp_reachable_with_probe(line: &str, timeout_s: f64, probe: &dyn TcpProbe) -> bool {
+    // This helper is deliberately raw-TCP only. Do not dial a reserved or
+    // documentation-only address token, even when a separate URL allows a
+    // fronted transport to be retained for its transport-specific probe.
+    if contains_documentation_or_reserved_endpoint(line) {
+        return false;
+    }
     let caps = match ip4_port_re().captures(line) {
         Some(c) => c,
         None => return false,
@@ -1533,7 +1541,7 @@ fn selected_lines(
         .filter(|v| {
             v.get("raw")
                 .and_then(Value::as_str)
-                .map(|raw| !contains_documentation_or_reserved_endpoint(raw))
+                .map(|raw| check_ingestion_endpoint(raw).is_none())
                 .unwrap_or(true)
         })
         .filter_map(|v| {
@@ -1577,7 +1585,7 @@ pub fn write_testing_json(
             m.iter()
                 .filter(|(k, v)| {
                     let raw = v.get("raw").and_then(Value::as_str).unwrap_or(k.as_str());
-                    !contains_documentation_or_reserved_endpoint(raw)
+                    check_ingestion_endpoint(raw).is_none()
                 })
                 .map(|(k, v)| (k.clone(), v.clone()))
                 .collect()
@@ -2106,7 +2114,12 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
             "meek": ["meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com abcdef0123456789"],
         });
         let pairs = parse_moat_response(&data).unwrap();
-        assert_eq!(pairs.len(), 0, "documentation ranges must be rejected");
+        assert_eq!(
+            pairs.len(),
+            1,
+            "only the URL-fronted meek placeholder should pass"
+        );
+        assert_eq!(pairs[0].1, "meek_lite");
 
         let live = json!({
             "obfs4": ["obfs4 8.8.8.8:443 0123456789ABCDEF0123456789ABCDEF01234567"],
@@ -2171,6 +2184,18 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
         // IPv4:port match → consults the probe.
         assert!(tcp_reachable_with_probe(
             "obfs4 1.2.3.4:443 ABC",
+            1.0,
+            &probe
+        ));
+        // A raw TCP-only probe must not dial the documentation placeholder,
+        // even if the bridge has a valid URL for a different transport probe.
+        assert!(!tcp_reachable_with_probe(
+            "snowflake 192.0.2.3:1 ABC url=https://example.com/ fronts=example.com",
+            1.0,
+            &probe
+        ));
+        assert!(!tcp_reachable_with_probe(
+            "obfs4 10.0.0.1:443 ABC",
             1.0,
             &probe
         ));
