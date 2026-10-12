@@ -570,12 +570,19 @@ pub fn probe_all_webtunnel_bridges(
     let mut front_domains: HashSet<String> = HashSet::new();
 
     for (index, bridge) in bridges.iter().enumerate() {
-        let transport = bridge.get("transport").and_then(Value::as_str).unwrap_or("");
+        let transport = bridge
+            .get("transport")
+            .and_then(Value::as_str)
+            .unwrap_or("");
         if transport != "webtunnel" {
             continue;
         }
-        let status = bridge.get("iran_status").and_then(Value::as_str).unwrap_or("");
-        let needs_probe = status == "tcp_unreachable" || status.is_empty() || status == "iran_unknown";
+        let status = bridge
+            .get("iran_status")
+            .and_then(Value::as_str)
+            .unwrap_or("");
+        let needs_probe =
+            status == "tcp_unreachable" || status.is_empty() || status == "iran_unknown";
         if !needs_probe {
             already_working_skipped += 1;
             continue;
@@ -593,7 +600,9 @@ pub fn probe_all_webtunnel_bridges(
             }
             ProbeDecision::SkipIpHost => {
                 ip_host_skipped += 1;
-                eprintln!("webtunnel-probe: skipping IP-endpoint bridge; covered by raw TCP tester");
+                eprintln!(
+                    "webtunnel-probe: skipping IP-endpoint bridge; covered by raw TCP tester"
+                );
             }
             ProbeDecision::SkipUnsafeEndpoint => {
                 unsafe_endpoint_skipped += 1;
