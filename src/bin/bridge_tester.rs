@@ -8,10 +8,10 @@
 //!
 //! WebTunnel bridges that carry only a `url=https://front/path` (no routable
 //! IP endpoint) are probed via TLS+WebSocket Upgrade to the front domain.
-//! IPv6 bridges with documentation-range addresses (2001:db8::/32) are
-//! actively rejected before any TCP attempt — the guard in `probe_one()`
-//! uses `contains_documentation_or_reserved_endpoint()` which covers RFC 3849
-//! (2001:db8::/32), RFC 5737 (TEST-NET), link-local, loopback, and multicast.
+//! Reserved endpoints are rejected before network access. A WebTunnel line
+//! carrying BridgeDB's RFC 3849 IPv6 placeholder is eligible only when its
+//! separate public `url=` dial target validates; the probe then uses that URL
+//! rather than the placeholder address.
 
 use std::collections::BTreeMap;
 use std::env;
@@ -558,9 +558,9 @@ fn stamp_probe_evidence(mut result: Value) -> Value {
 }
 
 async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value {
-    // Reject documentation-range/reserved IP addresses BEFORE any TCP attempt.
-    // This covers RFC 3849 (2001:db8::/32), RFC 5737 (TEST-NET), RFC 1918,
-    // link-local, loopback, and multicast — none are ever routable.
+    // Validate the actual dial target before any network attempt. A WebTunnel
+    // RFC 3849 placeholder may be ignored only when a separate public url=
+    // target validates; other reserved literal IPs remain blocked.
     if let Some(reason) = check_ingestion_endpoint(&line) {
         let transport = normalise_transport(&line, extract_endpoint(&line).2);
         return json!({
