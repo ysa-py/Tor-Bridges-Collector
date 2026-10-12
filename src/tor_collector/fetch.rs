@@ -818,18 +818,18 @@ mod tests {
     }
 
     #[test]
-    fn telegram_parser_drops_placeholder_endpoints() {
-        // RFC3849 documentation-range endpoints must not enter the pipeline.
+    fn telegram_parser_accepts_url_fronted_webtunnel_placeholder() {
+        // BridgeDB's RFC 3849 IPv6 token is metadata-only for this form. The
+        // separately validated public HTTPS URL is the dial target and must
+        // enter the probe pipeline; the same placeholder without a URL stays rejected.
         let body = r#"{
             "ok": true,
             "result": [
-                {"update_id": 1, "message": {"text": "webtunnel [2001:db8::1]:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://front.example.com/x ver=0.0.4"}}
+                {"update_id": 1, "message": {"text": "webtunnel [2001:db8::1]:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://front.example.com/x ver=0.0.4"}},
+                {"update_id": 2, "message": {"text": "webtunnel [2001:db8::2]:443 1123456789ABCDEF0123456789ABCDEF01234567 ver=0.0.4"}}
             ]
         }"#;
         let lines = parse_telegram_updates(body, None);
-        assert!(
-            lines.is_empty(),
-            "documentation-range placeholders must be rejected"
-        );
-    }
-}
+        assert_eq!(lines.len(), 1, "only the URL-fronted placeholder should pass");
+        assert!(lines[0].contains("url=https://front.example.com/x"));
+    }}
