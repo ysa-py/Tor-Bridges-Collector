@@ -234,7 +234,7 @@ impl SwarmSelection {
                 }
                 let current = family_counts.get(family).copied().unwrap_or(0);
                 let candidate = (current, remaining, family.clone());
-                if best.as_ref().map_or(true, |best| candidate < *best) {
+                if best.as_ref().is_none_or(|best| candidate < *best) {
                     best = Some(candidate);
                 }
             }
