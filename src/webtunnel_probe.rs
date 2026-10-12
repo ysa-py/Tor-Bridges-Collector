@@ -663,8 +663,7 @@ pub fn probe_all_webtunnel_bridges(
                 break;
             };
 
-            let updated =
-                probe_webtunnel_bridge(bridge, PER_ATTEMPT_TIMEOUT.min(timeout));
+            let updated = probe_webtunnel_bridge(bridge, PER_ATTEMPT_TIMEOUT.min(timeout));
             let probe_status = updated
                 .get("probe_status")
                 .and_then(Value::as_str)
