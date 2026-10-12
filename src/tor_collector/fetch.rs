@@ -830,6 +830,11 @@ mod tests {
             ]
         }"#;
         let lines = parse_telegram_updates(body, None);
-        assert_eq!(lines.len(), 1, "only the URL-fronted placeholder should pass");
+        assert_eq!(
+            lines.len(),
+            1,
+            "only the URL-fronted placeholder should pass"
+        );
         assert!(lines[0].contains("url=https://front.example.com/x"));
-    }}
+    }
+}
