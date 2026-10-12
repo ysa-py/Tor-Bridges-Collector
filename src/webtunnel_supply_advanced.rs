@@ -255,38 +255,98 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
         responses_ok: 0,
         lines: Vec::new(),
     };
+    let browser_headers: Vec<(String, String)> = DOCS_AUDIT_BROWSER_HEADERS
+        .iter()
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect();
+
     for (index, &(url, transport, ip_version)) in plan.iter().enumerate() {
         if index > 0 {
             pace_request();
         }
-        group.requests += 1;
-        match client.get(url, REQUEST_TIMEOUT) {
-            Ok(resp) if (200..300).contains(&resp.status) => {
-                group.responses_ok += 1;
-                let parsed = parse_bridgelines_html(&resp.text);
-                println!(
-                    "webtunnel_supply_advanced draw: url={url} parsed_lines={} source={}",
-                    parsed.len(),
-                    group.source,
-                );
-                for line in parsed {
-                    group
-                        .lines
-                        .push((line, transport.to_string(), ip_version.to_string()));
+
+        let mut parsed = Vec::new();
+        for attempt in 0..=1 {
+            if attempt > 0 {
+                // One bounded fallback attempt per page. The pacing applies to
+                // retries too, so empty/challenge responses never create a
+                // tight retry loop against BridgeDB.
+                pace_request();
+            }
+            group.requests += 1;
+            let result = if attempt == 0 {
+                client.get(url, REQUEST_TIMEOUT)
+            } else {
+                client.get_with_headers(url, &browser_headers, REQUEST_TIMEOUT)
+            };
+            let method = if attempt == 0 {
+                "GET"
+            } else {
+                "GET+browser-headers"
+            };
+
+            match result {
+                Ok(resp) if (200..300).contains(&resp.status) => {
+                    group.responses_ok += 1;
+                    parsed = parse_bridgelines_html(&resp.text);
+                    println!(
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} status={} parsed_lines={} source={}",
+                        attempt + 1,
+                        method,
+                        resp.status,
+                        parsed.len(),
+                        group.source,
+                    );
+                    if !parsed.is_empty() {
+                        break;
+                    }
+                    if attempt == 0 {
+                        eprintln!(
+                            "webtunnel_supply_advanced draw: url={url} returned HTTP {} but no validated bridge lines; retrying once with browser headers",
+                            resp.status
+                        );
+                    }
+                }
+                Ok(resp) => {
+                    eprintln!(
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} status={} source={}",
+                        attempt + 1,
+                        method,
+                        resp.status,
+                        group.source,
+                    );
+                    if attempt == 0 {
+                        eprintln!(
+                            "webtunnel_supply_advanced draw: url={url} retrying once with browser headers after non-2xx response"
+                        );
+                    }
+                }
+                Err(err) => {
+                    eprintln!(
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} error={} source={}",
+                        attempt + 1,
+                        method,
+                        err,
+                        group.source,
+                    );
+                    if attempt == 0 {
+                        eprintln!(
+                            "webtunnel_supply_advanced draw: url={url} retrying once with browser headers after request error"
+                        );
+                    }
                 }
             }
-            Ok(resp) => {
-                eprintln!(
-                    "webtunnel_supply_advanced draw: url={url} status={} source={}",
-                    resp.status, group.source
-                );
-            }
-            Err(err) => {
-                eprintln!(
-                    "webtunnel_supply_advanced draw: url={url} error={err} source={}",
-                    group.source
-                );
-            }
+        }
+
+        if parsed.is_empty() {
+            eprintln!(
+                "webtunnel_supply_advanced draw: url={url} produced no validated bridge lines after the bounded retry; no records added"
+            );
+        }
+        for line in parsed {
+            group
+                .lines
+                .push((line, transport.to_string(), ip_version.to_string()));
         }
     }
     group
