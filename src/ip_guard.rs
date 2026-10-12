@@ -329,7 +329,9 @@ fn is_valid_dns_hostname(host: &str) -> bool {
                 && label.len() <= 63
                 && !label.starts_with('-')
                 && !label.ends_with('-')
-                && label.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'-')
+                && label
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b == b'-')
         })
 }
 
@@ -373,8 +375,10 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
         return None;
     }
 
+    let transport = tokens[0].to_ascii_lowercase();
+    let is_webtunnel = matches!(transport.as_str(), "webtunnel" | "web-tunnel");
     let is_fronted_transport = canonical_fronted_transport(tokens[0]).is_some();
-    let mut has_validated_dial_target = false;
+    let mut has_validated_url = false;
 
     for raw_token in &tokens {
         let Some((key, value)) = raw_token.split_once('=') else {
@@ -384,43 +388,47 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
             if let Some(reason) = check_url_host(value) {
                 return Some(reason);
             }
-            has_validated_dial_target = true;
+            has_validated_url = true;
         } else if is_fronted_transport
             && (key.eq_ignore_ascii_case("front") || key.eq_ignore_ascii_case("fronts"))
         {
             if let Some(reason) = check_front_hosts(value) {
                 return Some(reason);
             }
-            has_validated_dial_target = true;
         }
     }
 
-    let ignored_placeholder_index = if is_fronted_transport && has_validated_dial_target {
-        first_literal_endpoint_index(&tokens)
+    // Only WebTunnel's RFC 3849 IPv6 endpoint is a known intentional
+    // BridgeDB placeholder. Do not let a valid URL excuse TEST-NET, private,
+    // loopback, link-local, or any other reserved address—even for fronted
+    // Snowflake/meek/conjure descriptors.
+    let ignored_placeholder_index = if is_webtunnel && has_validated_url {
+        first_rfc3849_placeholder_index(&tokens)
     } else {
         None
     };
     check_endpoint_tokens(&tokens, ignored_placeholder_index)
 }
 
-/// Find the first literal IP endpoint token after the transport name. Do not
-/// assume it is token 1: URL-only lines put the fingerprint or options there.
-fn first_literal_endpoint_index(tokens: &[&str]) -> Option<usize> {
+/// Find the literal RFC 3849 placeholder endpoint, independent of token
+/// position: WebTunnel may place a fingerprint before its optional address.
+fn first_rfc3849_placeholder_index(tokens: &[&str]) -> Option<usize> {
     for (index, raw_token) in tokens.iter().enumerate().skip(1) {
         let token = raw_token.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '\''));
         if token.contains('=') {
             continue;
         }
-        if let Some(rest) = token.strip_prefix('[') {
-            if let Some((host, _port)) = rest.split_once("]:") {
-                if host.parse::<Ipv6Addr>().is_ok() {
-                    return Some(index);
-                }
-            }
-        } else if let Some((host, _port)) = token.rsplit_once(':') {
-            if host.parse::<Ipv4Addr>().is_ok() {
-                return Some(index);
-            }
+        let Some(rest) = token.strip_prefix('[') else {
+            continue;
+        };
+        let Some((host, _port)) = rest.split_once("]:") else {
+            continue;
+        };
+        let Ok(ip) = host.parse::<Ipv6Addr>() else {
+            continue;
+        };
+        if check_ip(IpAddr::V6(ip)) == Some("DOCUMENTATION_RFC3849_2001_DB8") {
+            return Some(index);
         }
     }
     None
@@ -428,7 +436,7 @@ fn first_literal_endpoint_index(tokens: &[&str]) -> Option<usize> {
 
 /// Remove Tor's optional vanilla Bridge prefix before classifying fields.
 fn bridge_tokens(line: &str) -> Vec<&str> {
-    let mut tokens: Vec<&str> = line.trim().split_whitespace().collect();
+    let mut tokens: Vec<&str> = line.split_whitespace().collect();
     if tokens
         .first()
         .is_some_and(|token| token.eq_ignore_ascii_case("Bridge"))
@@ -485,8 +493,8 @@ fn check_endpoint_tokens(tokens: &[&str], ignored_index: Option<usize>) -> Optio
 
 fn canonical_fronted_transport(token: &str) -> Option<&'static str> {
     match token.to_ascii_lowercase().as_str() {
-        "webtunnel" | "web-tunnel" | "snowflake" | "meek" | "meek_lite"
-        | "meek-lite" | "meek-azure" | "meek_azure" | "conjure" => Some("fronted"),
+        "webtunnel" | "web-tunnel" | "snowflake" | "meek" | "meek_lite" | "meek-lite"
+        | "meek-azure" | "meek_azure" | "conjure" => Some("fronted"),
         _ => None,
     }
 }
@@ -716,10 +724,7 @@ mod tests {
     #[test]
     fn raw_check_keeps_webtunnel_placeholder_classification_with_valid_url() {
         let line = "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT url=https://example.com/path ver=0.0.4";
-        assert_eq!(
-            check_endpoint(line),
-            Some("DOCUMENTATION_RFC3849_2001_DB8")
-        );
+        assert_eq!(check_endpoint(line), Some("DOCUMENTATION_RFC3849_2001_DB8"));
         assert_eq!(check_ingestion_endpoint(line), None);
     }
 
@@ -736,9 +741,7 @@ mod tests {
     #[test]
     fn ingestion_rejects_malformed_url_and_bad_dns_name() {
         assert_eq!(
-            check_ingestion_endpoint(
-                "webtunnel [2001:db8::1]:443 FINGERPRINT url=not-a-url"
-            ),
+            check_ingestion_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT url=not-a-url"),
             Some(URL_HOST_MALFORMED)
         );
         assert_eq!(
@@ -801,7 +804,11 @@ mod tests {
             let line = format!(
                 "{transport} [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path"
             );
-            assert_eq!(check_ingestion_endpoint(&line), None, "transport={transport}");
+            assert_eq!(
+                check_ingestion_endpoint(&line),
+                None,
+                "transport={transport}"
+            );
             assert_eq!(
                 check_endpoint(&line),
                 Some("DOCUMENTATION_RFC3849_2001_DB8"),
