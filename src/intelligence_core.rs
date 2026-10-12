@@ -113,16 +113,33 @@ impl PipelineProbeExecutor for StdProbeExecutor {
         transport: &str,
         timeouts: &PipelineTimeouts,
     ) -> RegionProbeResult {
-        // Domain-fronted WebTunnel: TCP to the IP literal is the wrong
-        // probe — use TLS + WebSocket upgrade against the front domain.
-        if transport == "webtunnel" && !endpoint.host.is_empty() {
-            let is_domain = endpoint.host.parse::<std::net::IpAddr>().is_err();
-            if is_domain {
-                return probe_webtunnel_front(endpoint, timeouts);
-            }
+        // Apply the same endpoint gate here as at ingestion: this executor is
+        // public and may be called directly with stale or manually built data.
+        let guard_line = endpoint_guard_line(transport, endpoint);
+        if let Some(reason) = crate::ip_guard::check_ingestion_endpoint(&guard_line) {
+            return rejected_endpoint_probe(reason);
         }
 
-        // Everything else: TCP connect to host:port.
+        // WebTunnel's actual dial target is url=, not the optional address
+        // token. BridgeDB's documentation-only placeholder is never dialed.
+        if transport == "webtunnel" {
+            let dial_endpoint = match webtunnel_dial_endpoint(endpoint) {
+                Ok(endpoint) => endpoint,
+                Err(reason) => return rejected_endpoint_probe(reason),
+            };
+            return probe_webtunnel_front(&dial_endpoint, timeouts);
+        }
+
+        // Some URL-fronted transports may carry an RFC 3849/RFC 5737
+        // placeholder as metadata. This executor has no protocol-specific
+        // Meek/Snowflake/Conjure harness, so don't raw-TCP dial the fake IP.
+        if crate::ip_guard::contains_documentation_or_reserved_endpoint(&guard_line) {
+            return rejected_endpoint_probe(
+                "documentation-only endpoint metadata has no supported transport-specific probe",
+            );
+        }
+
+        // Everything else: TCP connect to host:port, after the safety gate.
         let start = std::time::Instant::now();
         let addr = format!("{}:{}", endpoint.host, endpoint.port);
         let tcp_result = addr
@@ -167,6 +184,73 @@ impl PipelineProbeExecutor for StdProbeExecutor {
                 active_blocking: false,
             },
         }
+    }
+}
+
+/// Build a normalized line so direct calls to the probe executor go through
+/// the same gate as ordinary ingestion. IPv6 literals are bracketed in the
+/// endpoint slot; URL/front parameters and the fingerprint remain intact.
+fn endpoint_guard_line(transport: &str, endpoint: &BridgeEndpoint) -> String {
+    let mut tokens = vec![transport.to_string()];
+    if !endpoint.host.is_empty() {
+        let unbracketed = endpoint
+            .host
+            .strip_prefix('[')
+            .and_then(|host| host.strip_suffix(']'))
+            .unwrap_or(&endpoint.host);
+        let address = if unbracketed.parse::<std::net::Ipv6Addr>().is_ok() {
+            format!("[{unbracketed}]:{}", endpoint.port)
+        } else {
+            format!("{}:{}", endpoint.host, endpoint.port)
+        };
+        tokens.push(address);
+    }
+    if let Some(fingerprint) = endpoint.fingerprint.as_deref() {
+        tokens.push(fingerprint.to_string());
+    }
+    tokens.extend(
+        endpoint
+            .params
+            .iter()
+            .map(|(key, value)| format!("{key}={value}")),
+    );
+    tokens.join(" ")
+}
+
+/// Resolve WebTunnel's real dial destination from its URL. The address token
+/// can be a BridgeDB placeholder and is never used for this transport.
+fn webtunnel_dial_endpoint(endpoint: &BridgeEndpoint) -> Result<BridgeEndpoint, &'static str> {
+    let raw_url = endpoint
+        .params
+        .get("url")
+        .ok_or("WebTunnel missing url= dial target")?;
+    let parsed = url::Url::parse(raw_url).map_err(|_| "WebTunnel url= is malformed")?;
+    if parsed.scheme() != "https" {
+        return Err("WebTunnel dial target must use HTTPS");
+    }
+    let host = parsed
+        .host_str()
+        .ok_or("WebTunnel url= has no host")?
+        .to_string();
+    let port = parsed
+        .port_or_known_default()
+        .ok_or("WebTunnel url= has no known port")?;
+    let mut dial_endpoint = endpoint.clone();
+    dial_endpoint.host = host;
+    dial_endpoint.port = port;
+    Ok(dial_endpoint)
+}
+
+fn rejected_endpoint_probe(reason: &str) -> RegionProbeResult {
+    RegionProbeResult {
+        tcp_ok: false,
+        tcp_latency_ms: None,
+        tls_ok: false,
+        tls_latency_ms: None,
+        transport_ok: false,
+        transport_latency_ms: None,
+        error: Some(format!("endpoint safety gate prevented network access: {reason}")),
+        active_blocking: false,
     }
 }
 
