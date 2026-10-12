@@ -245,11 +245,13 @@ pub const URL_HOST_MALFORMED: &str = "URL_HOST_MALFORMED";
 /// while a separate URL/front host is the actual dial target.
 const PLACEHOLDER_ADDRESS_TRANSPORTS: &[&str] = &[
     "webtunnel",
+    "web-tunnel",
     "snowflake",
     "meek",
     "meek_lite",
     "meek-lite",
     "meek-azure",
+    "meek_azure",
     "conjure",
 ];
 
@@ -286,6 +288,7 @@ fn check_url_host(raw_url: &str) -> Option<&'static str> {
     if !matches!(parsed.scheme(), "http" | "https")
         || !parsed.username().is_empty()
         || parsed.password().is_some()
+        || parsed.port() == Some(0)
     {
         return Some(URL_HOST_MALFORMED);
     }
@@ -353,65 +356,85 @@ fn is_non_public_hostname(host: &str) -> bool {
             .any(|suffix| host == suffix.trim_start_matches('.') || host.ends_with(suffix))
 }
 
-/// Scan a bridge line for unsafe literal IP endpoints and URL/front hosts.
+/// Scan a bridge line for literal reserved IP endpoints.
 ///
-/// For URL-addressed transports, the first address token is only a protocol
-/// placeholder when the line also supplies a valid URL/front dial target.
-/// That placeholder is ignored, but the actual dial target is always checked.
+/// This is deliberately a raw-endpoint classifier rather than an ingestion
+/// decision. Analytics use it to identify placeholder addresses even when a
+/// URL-fronted transport has a valid public dial target.
 #[must_use]
 pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
     check_endpoint(line).is_some()
 }
 
-/// Like contains_documentation_or_reserved_endpoint but returns a reason label
-/// so callers can record telemetry.
+/// Like contains_documentation_or_reserved_endpoint but returns the reason
+/// label so callers can record telemetry.
 #[must_use]
 pub fn check_endpoint(line: &str) -> Option<&'static str> {
-    let mut tokens: Vec<&str> = line.split_whitespace().collect();
+    let tokens = bridge_tokens(line);
+    check_endpoint_tokens(&tokens, None)
+}
+
+/// Validate a bridge line for ingestion.
+///
+/// For URL/front-addressed transports, a reserved literal in the first address
+/// slot is permitted only when an independent public URL/front dial target is
+/// present and valid. The raw check_endpoint API remains unchanged for
+/// telemetry and analysis, so placeholder counts are not lost.
+#[must_use]
+pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
+    let tokens = bridge_tokens(line);
+    if tokens.is_empty() {
+        return None;
+    }
+
+    let is_fronted_transport = canonical_fronted_transport(tokens[0]).is_some();
+    let mut has_validated_dial_target = false;
+
+    for raw_token in &tokens {
+        let Some((key, value)) = raw_token.split_once('=') else {
+            continue;
+        };
+        if key.eq_ignore_ascii_case("url") {
+            if let Some(reason) = check_url_host(value) {
+                return Some(reason);
+            }
+            has_validated_dial_target = true;
+        } else if is_fronted_transport
+            && (key.eq_ignore_ascii_case("front") || key.eq_ignore_ascii_case("fronts"))
+        {
+            if let Some(reason) = check_front_hosts(value) {
+                return Some(reason);
+            }
+            has_validated_dial_target = true;
+        }
+    }
+
+    let ignored_placeholder_index =
+        (is_fronted_transport && has_validated_dial_target).then_some(1usize);
+    check_endpoint_tokens(&tokens, ignored_placeholder_index)
+}
+
+/// Remove Tor's optional vanilla Bridge prefix before classifying fields.
+fn bridge_tokens(line: &str) -> Vec<&str> {
+    let mut tokens: Vec<&str> = line.trim().split_whitespace().collect();
     if tokens
         .first()
         .is_some_and(|token| token.eq_ignore_ascii_case("Bridge"))
     {
         tokens.remove(0);
     }
-    if tokens.is_empty() {
-        return None;
-    }
+    tokens
+}
 
-    let transport = tokens[0].to_ascii_lowercase();
-    let uses_placeholder_address = PLACEHOLDER_ADDRESS_TRANSPORTS.contains(&transport.as_str());
-    let mut has_validated_dial_target = false;
-
-    // Validate actual URL/front hosts before considering the address token.
-    // Invalid URL metadata must not be masked by an otherwise acceptable line.
-    for token in &tokens {
-        let Some((key, value)) = token.split_once('=') else {
-            continue;
-        };
-        if key.eq_ignore_ascii_case("url") {
-            has_validated_dial_target = true;
-            if let Some(reason) = check_url_host(value) {
-                return Some(reason);
-            }
-        } else if uses_placeholder_address
-            && (key.eq_ignore_ascii_case("front") || key.eq_ignore_ascii_case("fronts"))
-        {
-            has_validated_dial_target = true;
-            if let Some(reason) = check_front_hosts(value) {
-                return Some(reason);
-            }
-        }
-    }
-
-    // Only ignore the first endpoint token for a URL/front-addressed transport
-    // after at least one separate dial target has passed validation.
-    let placeholder_endpoint_index =
-        (uses_placeholder_address && has_validated_dial_target).then_some(1usize);
-
+/// Scan tokens for literal IPv4/IPv6 endpoints. If supplied, ignored_index
+/// identifies exactly one URL-front placeholder slot; every other address
+/// token is still checked.
+fn check_endpoint_tokens(tokens: &[&str], ignored_index: Option<usize>) -> Option<&'static str> {
     for (index, raw_token) in tokens.iter().enumerate() {
-        if placeholder_endpoint_index == Some(index) {
+        if ignored_index == Some(index) {
             continue;
         }
+
         let token = raw_token.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '\''));
         if token.is_empty() || token.contains('=') {
             continue;
@@ -420,31 +443,40 @@ pub fn check_endpoint(line: &str) -> Option<&'static str> {
             continue;
         }
 
-        // Bracketed IPv6: [addr]:port
+        // Inspect bracketed IPv6 independent of port validity. Address safety
+        // and bridge-line port syntax are separate validation gates.
         if let Some(rest) = token.strip_prefix('[') {
-            if let Some((host, port_text)) = rest.split_once("]:") {
-                if port_text.parse::<u16>().is_ok_and(|p| p != 0) {
-                    if let Ok(ip) = host.parse::<Ipv6Addr>() {
-                        return check_ip(IpAddr::V6(ip));
+            if let Some((host, _port_text)) = rest.split_once("]:") {
+                if let Ok(ip) = host.parse::<Ipv6Addr>() {
+                    if let Some(reason) = check_ip(IpAddr::V6(ip)) {
+                        return Some(reason);
                     }
                 }
             }
             continue;
         }
 
-        // IPv4 or DNS: host:port (rsplit_once to handle IPv4)
-        if let Some((host, port_text)) = token.rsplit_once(':') {
-            if !host.is_empty()
-                && !host.contains(':')
-                && port_text.parse::<u16>().is_ok_and(|p| p != 0)
-            {
+        // Also inspect IPv4 literals when the port is malformed. A bad port
+        // must never make a reserved address evade the guard.
+        if let Some((host, _port_text)) = token.rsplit_once(':') {
+            if !host.is_empty() && !host.contains(':') {
                 if let Ok(ip) = host.parse::<Ipv4Addr>() {
-                    return check_ip(IpAddr::V4(ip));
+                    if let Some(reason) = check_ip(IpAddr::V4(ip)) {
+                        return Some(reason);
+                    }
                 }
             }
         }
     }
     None
+}
+
+fn canonical_fronted_transport(token: &str) -> Option<&'static str> {
+    match token.to_ascii_lowercase().as_str() {
+        "webtunnel" | "web-tunnel" | "snowflake" | "meek" | "meek_lite"
+        | "meek-lite" | "meek-azure" | "meek_azure" | "conjure" => Some("fronted"),
+        _ => None,
+    }
 }
 
 /// Convenience: check a line and record telemetry if rejected.
@@ -670,63 +702,112 @@ mod tests {
     // ── Endpoint extraction from bridge lines ─────────────────────────
 
     #[test]
-    fn check_endpoint_allows_webtunnel_placeholder_when_public_url_is_valid() {
+    fn raw_check_keeps_webtunnel_placeholder_classification_with_valid_url() {
+        let line = "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT url=https://example.com/path ver=0.0.4";
         assert_eq!(
-            check_endpoint("webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT url=https://example.com/path ver=0.0.4"),
-            None
+            check_endpoint(line),
+            Some("DOCUMENTATION_RFC3849_2001_DB8")
         );
+        assert_eq!(check_ingestion_endpoint(line), None);
     }
 
     #[test]
-    fn check_endpoint_rejects_reserved_url_host() {
+    fn ingestion_rejects_reserved_url_host() {
         assert_eq!(
-            check_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT url=https://bridge.local/path"),
+            check_ingestion_endpoint(
+                "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://bridge.local/path"
+            ),
             Some(URL_HOST_RESERVED_NAME)
         );
     }
 
     #[test]
-    fn check_endpoint_rejects_malformed_url_host() {
+    fn ingestion_rejects_malformed_url_and_bad_dns_name() {
         assert_eq!(
-            check_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT url=not-a-url"),
+            check_ingestion_endpoint(
+                "webtunnel [2001:db8::1]:443 FINGERPRINT url=not-a-url"
+            ),
             Some(URL_HOST_MALFORMED)
         );
         assert_eq!(
-            check_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT url=https://bad..example.com/path"),
+            check_ingestion_endpoint(
+                "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://bad..example.com/path"
+            ),
             Some(URL_HOST_MALFORMED)
         );
     }
 
     #[test]
-    fn check_endpoint_rejects_reserved_ip_in_url_host() {
+    fn ingestion_rejects_private_ip_in_url_host() {
         assert_eq!(
-            check_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT url=https://192.168.1.5/path"),
+            check_ingestion_endpoint(
+                "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://192.168.1.5/path"
+            ),
             Some("PRIVATE_RFC1918_192")
         );
     }
 
     #[test]
-    fn check_endpoint_rejects_documentation_address_without_dial_target() {
+    fn ingestion_rejects_url_port_zero() {
         assert_eq!(
-            check_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.4"),
+            check_ingestion_endpoint(
+                "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://front.example.com:0/path"
+            ),
+            Some(URL_HOST_MALFORMED)
+        );
+    }
+
+    #[test]
+    fn ingestion_rejects_placeholder_without_url_or_front() {
+        assert_eq!(
+            check_ingestion_endpoint("webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.4"),
             Some("DOCUMENTATION_RFC3849_2001_DB8")
         );
     }
 
     #[test]
-    fn check_endpoint_rejects_reserved_front_host() {
+    fn ingestion_rejects_reserved_front_host() {
         assert_eq!(
-            check_endpoint("snowflake 192.0.2.1:1 FINGERPRINT fronts=bridge.local"),
+            check_ingestion_endpoint("snowflake 192.0.2.1:1 FINGERPRINT fronts=bridge.local"),
             Some(URL_HOST_RESERVED_NAME)
         );
     }
 
     #[test]
-    fn check_endpoint_allows_public_front_hosts_for_placeholder_transport() {
+    fn ingestion_allows_public_front_hosts_for_placeholder_transport() {
         assert_eq!(
-            check_endpoint("snowflake 192.0.2.1:1 FINGERPRINT fronts=cdn.sstatic.net,ajax.aspnetcdn.com"),
+            check_ingestion_endpoint(
+                "snowflake 192.0.2.1:1 FINGERPRINT fronts=cdn.sstatic.net,ajax.aspnetcdn.com"
+            ),
             None
         );
+    }
+
+    #[test]
+    fn ingestion_recognizes_fronted_transport_aliases() {
+        for transport in ["web-tunnel", "meek_azure"] {
+            let line = format!(
+                "{transport} [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path"
+            );
+            assert_eq!(check_ingestion_endpoint(&line), None, "transport={transport}");
+            assert_eq!(
+                check_endpoint(&line),
+                Some("DOCUMENTATION_RFC3849_2001_DB8"),
+                "raw classifier must retain placeholder status for transport={transport}"
+            );
+        }
+    }
+
+    #[test]
+    fn raw_check_rejects_reserved_ipv6_even_with_invalid_port() {
+        for port in ["0", "65536", "not-a-port"] {
+            let line = format!("obfs4 [2001:db8::1]:{port} FINGERPRINT cert=abc");
+            assert_eq!(
+                check_endpoint(&line),
+                Some("DOCUMENTATION_RFC3849_2001_DB8"),
+                "port={port}"
+            );
+        }
     }
 
     #[test]
@@ -800,7 +881,7 @@ mod tests {
     // ── Regression: BridgeDB URL-fronted WebTunnel placeholders ──────
 
     #[test]
-    fn regression_accepts_public_url_fronted_webtunnel_placeholder_lines() {
+    fn regression_preserves_placeholder_telemetry_but_accepts_valid_fronted_lines() {
         let bridgedb_html = r#"<html><body>
             <div id="bridgelines" class="p-4 mb-3">
                 webtunnel [2001:db8:e091:f9eb:f35c:5159:f61c:a762]:443 1508F1D97E9E8C8F3B0E2B3A4C5D6E7F8A9B0C1D url=https://tor.jmrp.io/BDZQOQc4eFpyM6rWz1y9X2aB ver=0.0.4
@@ -815,22 +896,36 @@ mod tests {
             .filter(|line| line.len() >= 10 && !line.starts_with('<'))
             .collect();
 
-        let mut rejected = 0_u64;
-        let mut accepted = 0_u64;
+        reset_rejection_counters();
+        let mut rejected_for_ingestion = 0_u64;
+        let mut accepted_for_ingestion = 0_u64;
         for line in &lines {
             if let Some(reason) = check_endpoint(line) {
                 record_rejection(reason, "bridge-fixture");
-                rejected += 1;
+            }
+            if check_ingestion_endpoint(line).is_some() {
+                rejected_for_ingestion += 1;
             } else {
-                accepted += 1;
+                accepted_for_ingestion += 1;
             }
         }
 
-        assert_eq!(rejected, 0, "Public URL hosts should validate despite RFC 3849 placeholder addresses");
-        assert_eq!(accepted, 3, "Both WebTunnel entries and the routable obfs4 entry should pass");
-        assert!(
-            rejection_snapshot().is_empty(),
-            "Valid URL-fronted placeholder lines must not count as non-routable rejections"
+        assert_eq!(
+            rejected_for_ingestion, 0,
+            "public URL hosts should validate despite RFC 3849 placeholder addresses"
+        );
+        assert_eq!(
+            accepted_for_ingestion, 3,
+            "both WebTunnel entries and the routable obfs4 line should pass"
+        );
+        let doc_count: u64 = rejection_snapshot()
+            .iter()
+            .filter(|(label, _)| *label == "DOCUMENTATION_RFC3849_2001_DB8")
+            .map(|(_, count)| count)
+            .sum();
+        assert_eq!(
+            doc_count, 2,
+            "raw telemetry must still report both RFC 3849 placeholder endpoints"
         );
     }
 
