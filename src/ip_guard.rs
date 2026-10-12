@@ -364,11 +364,15 @@ pub fn check_endpoint(line: &str) -> Option<&'static str> {
 
 /// Validate a bridge line for ingestion.
 ///
-/// Only a WebTunnel line whose address token is in RFC 3849's 2001:db8::/32
-/// range may treat that token as a BridgeDB placeholder, and only when a
-/// separately validated public url= target exists. All other reserved literal
-/// IPs remain rejected, including TEST-NET values on fronted transports. The
-/// raw check_endpoint API remains unchanged for telemetry and analysis.
+/// Validate a bridge line for ingestion.
+///
+/// Some URL-fronted transports encode the dial target in url= while their
+/// endpoint token is a documentation-only placeholder. Only literal IETF
+/// documentation ranges (RFC 3849 and RFC 5737 TEST-NETs) may be ignored,
+/// and only when a supported fronted transport has a separately validated
+/// public HTTP(S) URL. Private, loopback, link-local, and other reserved
+/// endpoint literals remain rejected. The raw check_endpoint API remains
+/// unchanged for telemetry and analysis.
 #[must_use]
 pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
     let tokens = bridge_tokens(line);
@@ -376,8 +380,6 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
         return None;
     }
 
-    let transport = tokens[0].to_ascii_lowercase();
-    let is_webtunnel = matches!(transport.as_str(), "webtunnel" | "web-tunnel");
     let is_fronted_transport = canonical_fronted_transport(tokens[0]).is_some();
     let mut has_validated_url = false;
 
@@ -399,36 +401,48 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
         }
     }
 
-    // Only WebTunnel's RFC 3849 IPv6 endpoint is a known intentional
-    // BridgeDB placeholder. Do not let a valid URL excuse TEST-NET, private,
-    // loopback, link-local, or any other reserved address—even for fronted
-    // Snowflake/meek/conjure descriptors.
-    let ignored_placeholder_index = if is_webtunnel && has_validated_url {
-        first_rfc3849_placeholder_index(&tokens)
-    } else {
-        None
-    };
+    let ignored_placeholder_index =
+        if is_fronted_transport && has_validated_url {
+            first_documentation_placeholder_index(&tokens)
+        } else {
+            None
+        };
     check_endpoint_tokens(&tokens, ignored_placeholder_index)
 }
 
-/// Find the literal RFC 3849 placeholder endpoint, independent of token
-/// position: WebTunnel may place a fingerprint before its optional address.
-fn first_rfc3849_placeholder_index(tokens: &[&str]) -> Option<usize> {
+/// Locate one literal address in an IETF documentation-only range. These
+/// addresses can never be actual public bridge endpoints, so URL-fronted
+/// transports may keep them as metadata when their independent URL is valid.
+fn first_documentation_placeholder_index(tokens: &[&str]) -> Option<usize> {
     for (index, raw_token) in tokens.iter().enumerate().skip(1) {
         let token = raw_token.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '\''));
         if token.contains('=') {
             continue;
         }
-        let Some(rest) = token.strip_prefix('[') else {
+
+        if let Some(rest) = token.strip_prefix('[') {
+            let Some((host, _port)) = rest.split_once("]:") else {
+                continue;
+            };
+            let Ok(ip) = host.parse::<Ipv6Addr>() else {
+                continue;
+            };
+            if check_ip(IpAddr::V6(ip)) == Some("DOCUMENTATION_RFC3849_2001_DB8") {
+                return Some(index);
+            }
+            continue;
+        }
+
+        let Some((host, _port)) = token.rsplit_once(':') else {
             continue;
         };
-        let Some((host, _port)) = rest.split_once("]:") else {
+        let Ok(ip) = host.parse::<Ipv4Addr>() else {
             continue;
         };
-        let Ok(ip) = host.parse::<Ipv6Addr>() else {
-            continue;
-        };
-        if check_ip(IpAddr::V6(ip)) == Some("DOCUMENTATION_RFC3849_2001_DB8") {
+        if matches!(
+            check_ip(IpAddr::V4(ip)),
+            Some("TEST_NET_1_RFC5737" | "TEST_NET_2_RFC5737" | "TEST_NET_3_RFC5737")
+        ) {
             return Some(index);
         }
     }
