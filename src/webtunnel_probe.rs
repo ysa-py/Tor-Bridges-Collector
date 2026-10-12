@@ -509,8 +509,10 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
     // actual dial target still has to pass the shared endpoint-safety gate.
     // This lets a public url= override the known placeholder without allowing
     // private, malformed, or other reserved endpoints into the probe.
+    let has_doc_placeholder =
+        is_documentation_ipv6(host) || line_has_documentation_ipv6(line);
     if let Some(reason) = crate::ip_guard::check_ingestion_endpoint(line) {
-        return if reason == "DOCUMENTATION_RFC3849_2001_DB8" {
+        return if reason == "DOCUMENTATION_RFC3849_2001_DB8" && has_doc_placeholder {
             ProbeDecision::SkipDocIpv6
         } else {
             ProbeDecision::SkipUnsafeEndpoint
