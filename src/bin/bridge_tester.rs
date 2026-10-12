@@ -14,7 +14,6 @@
 //! WebTunnel is probed via that URL; this binary does not TCP-dial documented
 //! placeholder IPs for transports lacking a protocol-specific probe.
 
-
 use std::collections::BTreeMap;
 use std::env;
 use std::io;
@@ -40,7 +39,9 @@ use tokio::task::JoinSet;
 use tokio::time::timeout;
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use tokio_rustls::TlsConnector;
-use torshield_ir_ultra::scraper::{check_ingestion_endpoint, contains_documentation_or_reserved_endpoint};
+use torshield_ir_ultra::scraper::{
+    check_ingestion_endpoint, contains_documentation_or_reserved_endpoint,
+};
 use torshield_ir_ultra::tester::extract_endpoint;
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
