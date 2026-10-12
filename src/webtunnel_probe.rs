@@ -756,11 +756,13 @@ mod tests {
         let bridges = vec![
             json!({"transport": "obfs4", "iran_status": "tcp_unreachable", "host": "1.2.3.4", "line": "obfs4 1.2.3.4:443"}),
         ];
+        let original = bridges.clone();
         let mut bridges = bridges;
         let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
         assert_eq!(p, 0);
         assert_eq!(s, 0);
         assert_eq!(f, 0);
+        assert_eq!(bridges, original, "non-WebTunnel entries must remain unchanged");
     }
 
     #[test]
