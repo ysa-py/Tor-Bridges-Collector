@@ -2107,7 +2107,12 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
             "meek": ["meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com abcdef0123456789"],
         });
         let pairs = parse_moat_response(&data).unwrap();
-        assert_eq!(pairs.len(), 0, "documentation ranges must be rejected");
+        assert_eq!(
+            pairs.len(),
+            1,
+            "only the URL-fronted meek placeholder should pass"
+        );
+        assert_eq!(pairs[0].1, "meek_lite");
 
         let live = json!({
             "obfs4": ["obfs4 8.8.8.8:443 0123456789ABCDEF0123456789ABCDEF01234567"],
