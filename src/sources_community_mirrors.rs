@@ -15,9 +15,10 @@
 //! 1. [`crate::scraper::is_valid_line`] — the format gate every scraper
 //!    source already applies (minimum length, comment/marker rejection,
 //!    endpoint-regex match);
-//! 2. [`crate::ip_guard::contains_documentation_or_reserved_endpoint`] —
-//!    the shared non-routable endpoint guard (RFC 3849 documentation
-//!    ranges, RFC 5737 TEST-NETs, loopback, RFC 1918, link-local, …).
+//! 2. [`crate::ip_guard::check_ingestion_endpoint`] — the shared endpoint
+//!    safety gate. It rejects reserved literal IPs and unsafe URL/front
+//!    hosts; only WebTunnel's RFC 3849 placeholder may pass when a separate
+//!    public `url=` dial target is valid.
 //!
 //! # Toggle semantics (advisory first)
 //!
