@@ -119,3 +119,25 @@ fn self_heal_fails_closed_when_audit_count_is_unavailable() {
         "cargo-audit execution failures must be retained for diagnostics"
     );
 }
+
+
+#[test]
+fn probe_relay_canary_uses_only_a_wrangler_reported_workers_dev_fallback() {
+    let yml = read(".github/workflows/torshield-ir.yml");
+    assert!(
+        yml.contains("WORKERS_DEV_URL=\"$(grep -Eo"),
+        "fallback URL must be extracted from the successful Wrangler deployment log"
+    );
+    assert!(
+        yml.contains("export PROBE_RELAY_URL"),
+        "the canary must receive the validated fallback endpoint"
+    );
+    assert!(
+        yml.contains("Wrangler-reported workers.dev endpoint"),
+        "the workflow must make fallback selection observable"
+    );
+    assert!(
+        !yml.contains("tor-bridge-probe-relay.workers.dev"),
+        "never guess the account-specific workers.dev hostname"
+    );
+}
