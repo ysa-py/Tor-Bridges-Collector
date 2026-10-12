@@ -509,8 +509,7 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
     // actual dial target still has to pass the shared endpoint-safety gate.
     // This lets a public url= override the known placeholder without allowing
     // private, malformed, or other reserved endpoints into the probe.
-    let has_doc_placeholder =
-        is_documentation_ipv6(host) || line_has_documentation_ipv6(line);
+    let has_doc_placeholder = is_documentation_ipv6(host) || line_has_documentation_ipv6(line);
     if let Some(reason) = crate::ip_guard::check_ingestion_endpoint(line) {
         return if reason == "DOCUMENTATION_RFC3849_2001_DB8" && has_doc_placeholder {
             ProbeDecision::SkipDocIpv6
@@ -890,15 +889,13 @@ mod tests {
 
     #[test]
     fn edge_case_decision_skips_doc_ipv6_without_valid_front() {
-        let decision =
-            front_probe_decision("", "webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.3");
+        let decision = front_probe_decision("", "webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.3");
         assert_eq!(decision, ProbeDecision::SkipDocIpv6);
     }
 
     #[test]
     fn edge_case_decision_skips_private_url_host() {
-        let decision =
-            front_probe_decision("", "webtunnel FINGERPRINT url=https://127.0.0.1/x ver=0.0.3");
+        let decision = front_probe_decision("", "webtunnel FINGERPRINT url=https://127.0.0.1/x ver=0.0.3");
         assert_eq!(decision, ProbeDecision::SkipUnsafeEndpoint);
     }
 
