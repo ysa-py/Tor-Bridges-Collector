@@ -33,9 +33,7 @@ use scraper::{Html, Selector};
 use serde_json::Value;
 use thiserror::Error;
 
-use crate::scraper::{
-    contains_documentation_or_reserved_endpoint, HttpFetch, HttpResponse, ScraperError,
-};
+use crate::scraper::{check_ingestion_endpoint, HttpFetch, HttpResponse, ScraperError};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Configuration (mirrors module-level constants in sources/torproject.py)
@@ -198,15 +196,17 @@ pub fn is_valid_line(line: &str) -> bool {
     if line.contains("No bridges available") || line.starts_with('#') {
         return false;
     }
-    // Reject documentation-range / reserved IP addresses (RFC 3849 `2001:db8::/32`,
-    // RFC 5737 TEST-NET, link-local, loopback, multicast, etc.) for ALL transports.
-    if contains_documentation_or_reserved_endpoint(line) {
+    // Reject unsafe literal endpoints and URL/front dial targets. A reserved
+    // address token is allowed only when the fronted transport has a separately
+    // validated public URL/front; the raw guard remains available for analytics.
+    if let Some(reason) = check_ingestion_endpoint(line) {
         tracing::warn!(
             target: "bridge_ingest",
-            event = "rejected_documentation_or_reserved_ip",
+            event = "rejected_unsafe_endpoint",
+            reason = reason,
             transport = line.split_whitespace().next().unwrap_or("unknown"),
             bridge_line = line,
-            "rejected bridge with documentation-range or reserved IP address"
+            "rejected bridge with unsafe endpoint or dial target"
         );
         return false;
     }
