@@ -580,8 +580,8 @@ pub fn probe_all_webtunnel_bridges(
     // Collect work first, preserving the input order for deterministic updates.
     // Probing sequentially made a few hundred slow/dead domains exceed the
     // GitHub Actions step timeout. The pool caps concurrency and stops taking
-    // new work at the shared 150-second budget; in-flight probes use a short
-    // per-attempt timeout and are allowed to finish cleanly.
+    // new work at the shared 150-second budget. The collector returns at that
+    // deadline even if an in-flight blocking DNS lookup cannot be cancelled.
     const WORKERS: usize = 24;
     const BUDGET: Duration = Duration::from_secs(150);
     const PER_ATTEMPT_TIMEOUT: Duration = Duration::from_secs(3);
