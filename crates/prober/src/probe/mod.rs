@@ -23,11 +23,10 @@ pub fn target(bridge: &BridgeLine) -> Result<(String, u16), ProbeError> {
     match bridge.transport {
         TransportKind::Obfs4 | TransportKind::Vanilla => Ok((bridge.host.clone(), bridge.port)),
         TransportKind::WebTunnel | TransportKind::Meek | TransportKind::Snowflake => {
-            let url = bridge
-                .params
-                .url
-                .as_deref()
-                .ok_or_else(|| ProbeError::Config("fronted transport missing url".to_owned()))?;
+            let url =
+                bridge.params.url.as_deref().ok_or_else(|| {
+                    ProbeError::Config("fronted transport missing url".to_owned())
+                })?;
             let parsed = url::Url::parse(url)
                 .map_err(|error| ProbeError::Config(format!("invalid rendezvous URL: {error}")))?;
             if bridge.transport == TransportKind::WebTunnel && parsed.scheme() != "https" {
