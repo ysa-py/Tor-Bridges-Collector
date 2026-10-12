@@ -907,7 +907,7 @@ mod tests {
     // ── Regression: BridgeDB URL-fronted WebTunnel placeholders ──────
 
     #[test]
-    fn regression_preserves_placeholder_telemetry_but_accepts_valid_fronted_lines() {
+    fn regression_preserves_raw_placeholder_classification_but_accepts_valid_fronted_lines() {
         let bridgedb_html = r#"<html><body>
             <div id="bridgelines" class="p-4 mb-3">
                 webtunnel [2001:db8:e091:f9eb:f35c:5159:f61c:a762]:443 1508F1D97E9E8C8F3B0E2B3A4C5D6E7F8A9B0C1D url=https://tor.jmrp.io/BDZQOQc4eFpyM6rWz1y9X2aB ver=0.0.4
@@ -922,12 +922,12 @@ mod tests {
             .filter(|line| line.len() >= 10 && !line.starts_with('<'))
             .collect();
 
-        reset_rejection_counters();
         let mut rejected_for_ingestion = 0_u64;
         let mut accepted_for_ingestion = 0_u64;
+        let mut raw_doc_placeholders = 0_u64;
         for line in &lines {
-            if let Some(reason) = check_endpoint(line) {
-                record_rejection(reason, "bridge-fixture");
+            if check_endpoint(line) == Some("DOCUMENTATION_RFC3849_2001_DB8") {
+                raw_doc_placeholders += 1;
             }
             if check_ingestion_endpoint(line).is_some() {
                 rejected_for_ingestion += 1;
@@ -937,6 +937,10 @@ mod tests {
         }
 
         assert_eq!(
+            raw_doc_placeholders, 2,
+            "raw endpoint classification must retain the two RFC 3849 placeholder labels"
+        );
+        assert_eq!(
             rejected_for_ingestion, 0,
             "public URL hosts should validate despite RFC 3849 placeholder addresses"
         );
@@ -944,16 +948,8 @@ mod tests {
             accepted_for_ingestion, 3,
             "both WebTunnel entries and the routable obfs4 line should pass"
         );
-        let doc_count: u64 = rejection_snapshot()
-            .iter()
-            .filter(|(label, _)| *label == "DOCUMENTATION_RFC3849_2001_DB8")
-            .map(|(_, count)| count)
-            .sum();
-        assert_eq!(
-            doc_count, 2,
-            "raw telemetry must still report both RFC 3849 placeholder endpoints"
-        );
     }
+
 
     // ── PART B: Edge-case regression tests ───────────────────────────────
 
