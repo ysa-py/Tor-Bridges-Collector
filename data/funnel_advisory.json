@@ -8,12 +8,12 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1504,
+      "count": 1509,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1504,
+      "count": 1509,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -28,12 +28,12 @@
       "stage": "relay_success"
     },
     {
-      "count": 1504,
+      "count": 1509,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 438,
+      "count": 441,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-11T20:28:05.209594738+00:00",
+  "generated_at": "2026-10-12T04:59:41.415316344+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -67,28 +67,28 @@
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 0,
     "iran_likely_working_webtunnel.txt": 0,
-    "obfs4.txt": 670,
+    "obfs4.txt": 675,
     "obfs4_tested.txt": 0,
     "tested_global_obfs4.txt": 0,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 0,
     "vanilla.txt": 421,
-    "vanilla_tested.txt": 166,
+    "vanilla_tested.txt": 167,
     "webtunnel.txt": 0,
     "webtunnel_ipv6.txt": 0
   },
   "relay_coverage": {
-    "candidates": 1504,
+    "candidates": 1509,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
       "no_literal_endpoint": 4,
-      "obfs4": 1014,
+      "obfs4": 1019,
       "vanilla": 486
     },
-    "unobserved_candidates": 1500,
+    "unobserved_candidates": 1505,
     "unobserved_non_routable": 0,
-    "unobserved_other": 1500
+    "unobserved_other": 1505
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -108,7 +108,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1500
+    "unobserved_candidates": 1505
   },
   "sources": {
     "sources": [
