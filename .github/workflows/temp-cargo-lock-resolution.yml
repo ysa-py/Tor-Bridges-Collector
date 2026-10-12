@@ -1,19 +1,21 @@
 name: Temporary Cargo lock resolution
 
 'on':
-  pull_request:
+  push:
     branches:
-      - main
+      - fix/webtunnel-bounded-probe-pool
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   resolve-lock:
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: '1.90.0'
@@ -21,6 +23,20 @@ jobs:
         run: cargo update -p quinn-proto --precise 0.11.19
       - name: Verify lockfile resolves without further edits
         run: cargo metadata --locked --format-version 1 >/dev/null
+      - name: Commit the Cargo-generated lockfile to this PR branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Cargo.lock; then
+            echo 'Cargo.lock already resolves the requested fixed version.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Cargo.lock
+          git commit -m 'fix(deps): update quinn-proto security advisories'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - uses: actions/upload-artifact@v7
         with:
           name: audited-cargo-lock
