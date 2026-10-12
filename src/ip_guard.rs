@@ -814,15 +814,31 @@ mod tests {
     }
 
     #[test]
-    fn ingestion_does_not_exempt_ipv4_test_net_for_public_fronts_or_urls() {
-        assert!(check_ingestion_endpoint(
-            "snowflake 192.0.2.1:1 FINGERPRINT fronts=cdn.sstatic.net"
-        )
-        .is_some());
-        assert!(check_ingestion_endpoint(
-            "meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com"
-        )
-        .is_some());
+    fn ingestion_allows_documentation_placeholders_only_for_fronted_transports() {
+        assert_eq!(
+            check_ingestion_endpoint(
+                "snowflake 192.0.2.1:1 FINGERPRINT url=https://example.com/broker fronts=cdn.sstatic.net"
+            ),
+            None
+        );
+        assert_eq!(
+            check_ingestion_endpoint(
+                "meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com"
+            ),
+            None
+        );
+        assert_eq!(
+            check_ingestion_endpoint(
+                "obfs4 198.51.100.11:80 FINGERPRINT url=https://example.com/"
+            ),
+            Some("TEST_NET_2_RFC5737")
+        );
+        assert_eq!(
+            check_ingestion_endpoint(
+                "snowflake 192.168.1.1:443 FINGERPRINT url=https://example.com/ fronts=cdn.sstatic.net"
+            ),
+            Some("PRIVATE_RFC1918_192")
+        );
     }
 
     #[test]
