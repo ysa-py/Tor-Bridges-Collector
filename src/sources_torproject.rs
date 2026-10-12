@@ -551,7 +551,7 @@ mod tests {
         // enter the bridge pipeline — they're never routable.
         assert!(!is_valid_line("obfs4 [2001:db8::1]:443 cert=abc"));
         assert!(!is_valid_line(
-            "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT url=https://x ver=0.0.3"
+            "webtunnel [2001:db8:f7d3:5976:5f99:663b:3ba1:4e3a]:443 FINGERPRINT ver=0.0.3"
         ));
         assert!(!is_valid_line("vanilla [2001:db8:1234::1]:9001"));
     }
@@ -570,7 +570,7 @@ mod tests {
         // Real routable IPv6 addresses (not in 2001:db8::/32) should pass.
         assert!(is_valid_line("obfs4 [2001:4860:4860::8888]:443 cert=abc"));
         assert!(is_valid_line(
-            "webtunnel [2606:4700:4700::1111]:443 FINGERPRINT url=https://x ver=0.0.4"
+            "webtunnel [2606:4700:4700::1111]:443 FINGERPRINT url=https://example.com ver=0.0.4"
         ));
     }
 
@@ -604,9 +604,14 @@ mod tests {
         assert!(is_valid_line(
             "webtunnel 8.8.4.4:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
         ));
-        // Documentation-range IPv6 webtunnel must be rejected.
-        assert!(!is_valid_line(
+        // A BridgeDB placeholder address is allowed only when the separate
+        // URL dial target is public and valid.
+        assert!(is_valid_line(
             "webtunnel [2001:db8::4]:443 FINGERPRINT url=https://example.com/path ver=0.0.4"
+        ));
+        // The same placeholder without a usable dial target remains rejected.
+        assert!(!is_valid_line(
+            "webtunnel [2001:db8::4]:443 FINGERPRINT ver=0.0.4"
         ));
     }
 
