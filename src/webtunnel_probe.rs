@@ -903,11 +903,14 @@ mod tests {
     }
 
     #[test]
-    fn edge_case_decision_does_not_exempt_ipv4_test_net_for_public_url() {
+    fn edge_case_decision_probes_documentation_ipv4_placeholder_via_public_url() {
         let decision = front_probe_decision(
             "",
             "webtunnel 192.0.2.1:443 FINGERPRINT url=https://example.com/x ver=0.0.3",
         );
-        assert_eq!(decision, ProbeDecision::SkipUnsafeEndpoint);
+        assert_eq!(
+            decision,
+            ProbeDecision::Probe("example.com".to_string(), 443)
+        );
     }
 }
