@@ -875,10 +875,8 @@ mod tests {
 
     #[test]
     fn edge_case_decision_skips_doc_ipv6_without_valid_front() {
-        let decision = front_probe_decision(
-            "",
-            "webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.3",
-        );
+        let decision =
+            front_probe_decision("", "webtunnel [2001:db8::1]:443 FINGERPRINT ver=0.0.3");
         assert_eq!(decision, ProbeDecision::SkipDocIpv6);
     }
 }
