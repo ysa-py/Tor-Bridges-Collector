@@ -53,7 +53,7 @@ use std::time::Duration;
 
 use serde_json::{json, Value};
 
-use crate::scraper::{contains_documentation_or_reserved_endpoint, is_valid_line, HttpFetch};
+use crate::scraper::{check_ingestion_endpoint, is_valid_line, HttpFetch};
 
 /// Default mirror list: one additional, actively-maintained public mirror
 /// with the same `bridge/<file>.txt` layout this repository publishes
@@ -95,7 +95,7 @@ pub struct MirrorFileOutcome {
     pub fetched_lines: usize,
     /// Lines passing the full validation gate (format + ip_guard).
     pub valid_lines: usize,
-    /// Lines rejected by the non-routable endpoint guard.
+    /// Lines rejected by the endpoint / URL-front dial-target safety guard.
     pub rejected_placeholder: usize,
     /// Lines rejected by the format gate only.
     pub rejected_format: usize,
@@ -267,7 +267,7 @@ pub fn fetch_mirror_file(
             continue;
         }
         outcome.fetched_lines += 1;
-        if contains_documentation_or_reserved_endpoint(clean) {
+        if check_ingestion_endpoint(clean).is_some() {
             outcome.rejected_placeholder += 1;
             continue;
         }
