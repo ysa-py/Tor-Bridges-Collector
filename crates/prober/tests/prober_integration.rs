@@ -482,7 +482,7 @@ async fn webtunnel_upgrade_succeeds() {
     let now = test_now();
     let (port, server) = serve_webtunnel(101, false).await;
     let line =
-        format!("webtunnel 127.0.0.1:{port} {FINGERPRINT} url=https://127.0.0.1/path ver=0.0.3");
+        format!("webtunnel [2001:db8::1]:443 {FINGERPRINT} url=https://127.0.0.1:{port}/path ver=0.0.3");
     let bridge = BridgeLine::parse(&line, now).unwrap();
 
     let result = prober(TestClock::new(now)).probe_bridge(&bridge).await;
@@ -501,7 +501,7 @@ async fn webtunnel_rejects_wrong_accept() {
     let now = test_now();
     let (port, server) = serve_webtunnel(101, true).await;
     let line =
-        format!("webtunnel 127.0.0.1:{port} {FINGERPRINT} url=https://127.0.0.1/path ver=0.0.3");
+        format!("webtunnel [2001:db8::1]:443 {FINGERPRINT} url=https://127.0.0.1:{port}/path ver=0.0.3");
     let bridge = BridgeLine::parse(&line, now).unwrap();
 
     let result = prober(TestClock::new(now)).probe_bridge(&bridge).await;
@@ -515,7 +515,7 @@ async fn webtunnel_maps_http_error_status() {
     let now = test_now();
     let (port, server) = serve_webtunnel(403, false).await;
     let line =
-        format!("webtunnel 127.0.0.1:{port} {FINGERPRINT} url=https://127.0.0.1/path ver=0.0.3");
+        format!("webtunnel [2001:db8::1]:443 {FINGERPRINT} url=https://127.0.0.1:{port}/path ver=0.0.3");
     let bridge = BridgeLine::parse(&line, now).unwrap();
 
     let result = prober(TestClock::new(now)).probe_bridge(&bridge).await;
