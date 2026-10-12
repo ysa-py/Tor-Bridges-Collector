@@ -241,20 +241,6 @@ fn is_documentation_or_reserved_ipv6(ip: Ipv6Addr) -> bool {
 pub const URL_HOST_RESERVED_NAME: &str = "URL_HOST_RESERVED_NAME";
 pub const URL_HOST_MALFORMED: &str = "URL_HOST_MALFORMED";
 
-/// Transports for which the first bridge-line address is metadata/placeholding,
-/// while a separate URL/front host is the actual dial target.
-const PLACEHOLDER_ADDRESS_TRANSPORTS: &[&str] = &[
-    "webtunnel",
-    "web-tunnel",
-    "snowflake",
-    "meek",
-    "meek_lite",
-    "meek-lite",
-    "meek-azure",
-    "meek_azure",
-    "conjure",
-];
-
 /// Host suffixes reserved for local, testing, or non-public name resolution.
 /// Deliberately include the standards-defined special-use names and common
 /// private-network suffixes; this is a denylist, not a TLD allowlist.
