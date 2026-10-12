@@ -296,9 +296,10 @@ pub fn is_valid_line(line: &str) -> bool {
 /// Re-exported from the single shared [`crate::ip_guard`] module.
 pub use crate::ip_guard::is_documentation_or_reserved_ip;
 
-/// Extract the first bridge endpoint address and reject known placeholder or
-/// reserved ranges. Lines without a direct IP endpoint (for example Snowflake
-/// broker-only lines or URL-fronted WebTunnel entries) are allowed through.
+/// Shared endpoint-safety gate for ingested bridge lines. URL-fronted
+/// transports may retain RFC 3849/RFC 5737 documentation-only address tokens
+/// only when a separate public url= dial target validates; private and other
+/// reserved IP literals remain rejected.
 ///
 /// Re-exported from the single shared [`crate::ip_guard`] module.
 pub use crate::ip_guard::{check_ingestion_endpoint, contains_documentation_or_reserved_endpoint};
