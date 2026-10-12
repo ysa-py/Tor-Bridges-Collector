@@ -185,9 +185,10 @@ pub fn bridge_line_re() -> &'static Regex {
 /// Validate a single bridge line. Mirrors Python `_is_valid_line(line)`:
 /// 1. Return false if line is empty or shorter than 10 chars.
 /// 2. Return false if line contains "No bridges available" or starts with "#".
-/// 3. Reject reserved IP endpoints and unsafe URL/front hosts. The only
-///    exception is a WebTunnel RFC 3849 placeholder with a valid, public
-///    `url=` dial target; all other reserved literal IPs are rejected.
+/// 3. Reject reserved IP endpoints and unsafe URL/front hosts. Only RFC 3849
+///    and RFC 5737 documentation-only address tokens may be treated as
+///    metadata for a supported URL-fronted transport with a valid public
+///    `url=` dial target; private and other reserved IP literals remain blocked.
 /// 4. Return true if `bridge_line_re().is_match(line)`, false otherwise.
 pub fn is_valid_line(line: &str) -> bool {
     if line.is_empty() || line.len() < 10 {
