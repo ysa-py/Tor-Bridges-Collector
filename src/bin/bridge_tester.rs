@@ -38,7 +38,7 @@ use tokio::task::JoinSet;
 use tokio::time::timeout;
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use tokio_rustls::TlsConnector;
-use torshield_ir_ultra::scraper::check_ingestion_endpoint;
+use torshield_ir_ultra::scraper::{check_ingestion_endpoint, contains_documentation_or_reserved_endpoint};
 use torshield_ir_ultra::tester::extract_endpoint;
 
 fn invalid(message: impl Into<String>) -> Box<dyn std::error::Error> {
@@ -588,6 +588,25 @@ async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value 
     // are probed via TLS+WebSocket Upgrade to the front domain.
     if transport == "webtunnel" {
         return probe_webtunnel_front(line, timeout_duration).await;
+    }
+    // A documentation-only address may be retained as metadata for a
+    // URL-fronted Meek/Conjure line, but this binary has no protocol-accurate
+    // harness for those transports. Never fall through and TCP-dial the fake IP.
+    if contains_documentation_or_reserved_endpoint(&line) {
+        return json!({
+            "line": line,
+            "transport": transport,
+            "host": null,
+            "port": null,
+            "tcp_reachable": false,
+            "transport_capable": false,
+            "probe_status": "unsupported_target",
+            "probe_method": "none",
+            "latency_ms": null,
+            "iran_status": "iran_unknown",
+            "evidence_scope": "A documentation-only endpoint placeholder was retained because a public URL-front target validated, but this binary has no transport-specific Meek/Conjure handshake; no network attempt was made.",
+            "composite_score": 0.5,
+        });
     }
     let Some(host) = host else {
         return json!({
