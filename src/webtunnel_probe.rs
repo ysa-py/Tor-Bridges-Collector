@@ -639,10 +639,8 @@ pub fn probe_all_webtunnel_bridges(
                 // individual attempt timeout prevents one slow endpoint from
                 // monopolizing a worker. Results are applied after all worker
                 // borrows end, so no bridge record is mutated concurrently.
-                let updated = probe_webtunnel_bridge(
-                    &bridges_ref[*index],
-                    PER_ATTEMPT_TIMEOUT.min(timeout),
-                );
+                let updated =
+                    probe_webtunnel_bridge(&bridges_ref[*index], PER_ATTEMPT_TIMEOUT.min(timeout));
                 let probe_status = updated
                     .get("probe_status")
                     .and_then(Value::as_str)
@@ -762,7 +760,10 @@ mod tests {
         assert_eq!(p, 0);
         assert_eq!(s, 0);
         assert_eq!(f, 0);
-        assert_eq!(bridges, original, "non-WebTunnel entries must remain unchanged");
+        assert_eq!(
+            bridges, original,
+            "non-WebTunnel entries must remain unchanged"
+        );
     }
 
     #[test]
