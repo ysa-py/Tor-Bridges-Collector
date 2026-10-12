@@ -544,6 +544,30 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
     ProbeDecision::SkipNoFront
 }
 
+/// Collect completed worker results until either all expected results arrive
+/// or the shared hard deadline expires. The receiver may still have live
+/// senders backed by blocking DNS calls, so this must never join worker threads.
+fn collect_until_deadline<T>(
+    rx: std::sync::mpsc::Receiver<T>,
+    expected: usize,
+    started: Instant,
+    budget: Duration,
+) -> Vec<T> {
+    let mut completed = Vec::with_capacity(expected);
+    while completed.len() < expected {
+        let elapsed = started.elapsed();
+        if elapsed >= budget {
+            break;
+        }
+        match rx.recv_timeout(budget.saturating_sub(elapsed)) {
+            Ok(result) => completed.push(result),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+            | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    completed
+}
+
 /// Probe all domain-fronted WebTunnel bridges in the results, updating
 /// their statuses in-place. Returns (probed, succeeded, failed) counts.
 ///
@@ -553,16 +577,23 @@ pub fn probe_all_webtunnel_bridges(
     bridges: &mut [Value],
     timeout: Duration,
 ) -> (usize, usize, usize) {
-    let mut probed = 0;
-    let mut succeeded = 0;
-    let mut failed = 0;
+    // Collect work first, preserving the input order for deterministic updates.
+    // Probing sequentially made a few hundred slow/dead domains exceed the
+    // GitHub Actions step timeout. The pool caps concurrency and stops taking
+    // new work at the shared 150-second budget. The collector returns at that
+    // deadline even if an in-flight blocking DNS lookup cannot be cancelled.
+    const WORKERS: usize = 24;
+    const BUDGET: Duration = Duration::from_secs(150);
+    const PER_ATTEMPT_TIMEOUT: Duration = Duration::from_secs(3);
+    let started = Instant::now();
+    let mut candidates: Vec<(usize, String, u16, Value)> = Vec::new();
     let mut doc_ipv6_skipped = 0u32;
     let mut ip_host_skipped = 0u32;
     let mut unsafe_endpoint_skipped = 0u32;
     let mut already_working_skipped = 0u32;
     let mut front_domains: HashSet<String> = HashSet::new();
 
-    for bridge in bridges.iter_mut() {
+    for (index, bridge) in bridges.iter().enumerate() {
         let transport = bridge
             .get("transport")
             .and_then(Value::as_str)
@@ -574,7 +605,6 @@ pub fn probe_all_webtunnel_bridges(
             .get("iran_status")
             .and_then(Value::as_str)
             .unwrap_or("");
-        // Probe bridges marked unreachable AND bridges not yet probed (iran_unknown)
         let needs_probe =
             status == "tcp_unreachable" || status.is_empty() || status == "iran_unknown";
         if !needs_probe {
@@ -583,66 +613,102 @@ pub fn probe_all_webtunnel_bridges(
         }
         let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
         let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
-
-        let (front_host, front_port) = match front_probe_decision(host, line) {
-            ProbeDecision::Probe(front_host, front_port) => (front_host, front_port),
+        match front_probe_decision(host, line) {
+            ProbeDecision::Probe(front_host, front_port) => {
+                front_domains.insert(front_host.clone());
+                // Workers own their input records. This is intentional: the
+                // caller can honor the hard deadline even if an OS resolver
+                // stalls inside ToSocketAddrs, which is not cancellable.
+                candidates.push((index, front_host, front_port, bridge.clone()));
+            }
             ProbeDecision::SkipDocIpv6 => {
                 doc_ipv6_skipped += 1;
-                let label = if host.is_empty() { line } else { host };
-                eprintln!(
-                    "webtunnel-probe: skipping documentation-prefix IPv6 bridge ({label}) — \
-                     this is an intentional BridgeDB anti-enumeration placeholder, not a \
-                     real bridge address"
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping documentation-prefix IPv6 placeholder");
             }
             ProbeDecision::SkipIpHost => {
                 ip_host_skipped += 1;
                 eprintln!(
-                    "webtunnel-probe: skipping IP-endpoint bridge (host={host}, \
-                     line={line}) — it is covered by the raw TCP tester; webtunnel \
-                     front-domain probing requires a domain in url="
+                    "webtunnel-probe: skipping IP-endpoint bridge; covered by raw TCP tester"
                 );
-                continue;
             }
             ProbeDecision::SkipUnsafeEndpoint => {
                 unsafe_endpoint_skipped += 1;
-                eprintln!(
-                    "webtunnel-probe: skipping unsafe endpoint or URL/front before network access: {line}"
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping unsafe endpoint before network access");
             }
             ProbeDecision::SkipNoFront => {
-                eprintln!(
-                    "webtunnel-probe: skipping bridge with no front domain (no url= \
-                     parameter): {line}"
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping bridge with no front domain");
             }
-        };
-
-        front_domains.insert(front_host.clone());
-
-        probed += 1;
-        let updated = probe_webtunnel_bridge(bridge, timeout);
-        let probe_status = updated
-            .get("probe_status")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
-        let evidence = updated
-            .get("evidence_scope")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        if probe_status == "websocket_101" {
-            succeeded += 1;
-            println!("webtunnel-probe: {front_host}:{front_port} => HTTP 101 (front check only)");
-        } else {
-            failed += 1;
-            println!("webtunnel-probe: {front_host}:{front_port} => {probe_status}: {evidence}");
         }
-        *bridge = updated;
     }
 
+    let total_candidates = candidates.len();
+    let work = std::sync::Arc::new(candidates);
+    let next = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let (tx, rx) = std::sync::mpsc::channel();
+    let worker_count = WORKERS.min(total_candidates);
+
+    // Detached workers own all data they touch; the collector below enforces
+    // the deadline instead of joining threads that may be stuck in blocking DNS.
+    // At most WORKERS threads are ever created by this pool.
+    for _ in 0..worker_count {
+        let tx = tx.clone();
+        let work = std::sync::Arc::clone(&work);
+        let next = std::sync::Arc::clone(&next);
+        std::thread::spawn(move || loop {
+            if started.elapsed() >= BUDGET {
+                break;
+            }
+            let slot = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let Some((index, host, port, bridge)) = work.get(slot) else {
+                break;
+            };
+
+            let updated = probe_webtunnel_bridge(bridge, PER_ATTEMPT_TIMEOUT.min(timeout));
+            let probe_status = updated
+                .get("probe_status")
+                .and_then(Value::as_str)
+                .unwrap_or("unknown")
+                .to_string();
+            let evidence = updated
+                .get("evidence_scope")
+                .and_then(Value::as_str)
+                .unwrap_or("")
+                .to_string();
+
+            if tx
+                .send((*index, host.clone(), *port, updated, probe_status, evidence))
+                .is_err()
+            {
+                break;
+            }
+        });
+    }
+    drop(tx);
+
+    let completed = collect_until_deadline(rx, total_candidates, started, BUDGET);
+
+    let mut succeeded = 0usize;
+    let mut failed = 0usize;
+    for (index, host, port, updated, probe_status, evidence) in completed {
+        if probe_status == "websocket_101" {
+            succeeded += 1;
+            println!("webtunnel-probe: {host}:{port} => HTTP 101 (front check only)");
+        } else {
+            failed += 1;
+            println!("webtunnel-probe: {host}:{port} => {probe_status}: {evidence}");
+        }
+        bridges[index] = updated;
+    }
+
+    let probed = succeeded + failed;
+    let budget_skipped = total_candidates.saturating_sub(probed);
+    if budget_skipped > 0 {
+        eprintln!(
+            "webtunnel-probe: budget exhausted after {}s; deferred {} candidates for the next hourly run",
+            started.elapsed().as_secs(),
+            budget_skipped
+        );
+    }
     // Emit diversity summary
     println!(
         "webtunnel-probe: summary probed={probed} ws_101={succeeded} ws_fail={failed} \
@@ -659,6 +725,18 @@ pub fn probe_all_webtunnel_bridges(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn result_collector_honors_deadline_with_open_sender() {
+        let (_sender, receiver) = std::sync::mpsc::channel::<usize>();
+        let started = Instant::now();
+        let results = collect_until_deadline(receiver, 1, started, Duration::from_millis(25));
+        assert!(results.is_empty());
+        assert!(
+            started.elapsed() < Duration::from_secs(1),
+            "collector exceeded hard deadline by too much"
+        );
+    }
 
     #[test]
     fn extract_domain_from_webtunnel_line() {
@@ -711,11 +789,16 @@ mod tests {
         let bridges = vec![
             json!({"transport": "obfs4", "iran_status": "tcp_unreachable", "host": "1.2.3.4", "line": "obfs4 1.2.3.4:443"}),
         ];
+        let original = bridges.clone();
         let mut bridges = bridges;
         let (p, s, f) = probe_all_webtunnel_bridges(&mut bridges, Duration::from_secs(2));
         assert_eq!(p, 0);
         assert_eq!(s, 0);
         assert_eq!(f, 0);
+        assert_eq!(
+            bridges, original,
+            "non-WebTunnel entries must remain unchanged"
+        );
     }
 
     #[test]

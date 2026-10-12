@@ -563,7 +563,7 @@ fn filtered_family_lines(
     candidates
         .iter()
         .filter(|candidate| candidate.transport == transport)
-        .filter(|candidate| ipv6.map_or(true, |version| candidate.ipv6 == version))
+        .filter(|candidate| ipv6.is_none_or(|version| candidate.ipv6 == version))
         .filter(|candidate| !fresh || candidate.fresh)
         .filter(|candidate| !tested || candidate.tested)
         .map(|candidate| candidate.raw.clone())
@@ -609,9 +609,7 @@ fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
         .into_iter()
         .map(str::to_string)
         .filter(|line| {
-            ipv6.map_or(true, |wanted_ipv6| {
-                static_line_ip_version(line) == Some(wanted_ipv6)
-            })
+            ipv6.is_none_or(|wanted_ipv6| static_line_ip_version(line) == Some(wanted_ipv6))
         })
         .collect()
 }
