@@ -733,7 +733,10 @@ mod tests {
         let started = Instant::now();
         let results = collect_until_deadline(receiver, 1, started, Duration::from_millis(25));
         assert!(results.is_empty());
-        assert!(started.elapsed() < Duration::from_secs(1), "collector exceeded hard deadline by too much");
+        assert!(
+            started.elapsed() < Duration::from_secs(1),
+            "collector exceeded hard deadline by too much"
+        );
     }
 
     #[test]
