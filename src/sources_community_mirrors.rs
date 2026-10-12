@@ -347,7 +347,7 @@ pub fn build_report(
         "merge_enabled": merge_enabled,
         "gates_applied": [
             "scraper::is_valid_line (format gate)",
-            "ip_guard::contains_documentation_or_reserved_endpoint (non-routable endpoint guard)",
+            "ip_guard::check_ingestion_endpoint (transport-aware IP and URL-front dial-target guard)",
         ],
         "mirrors": outcomes.iter().map(MirrorOutcome::to_json).collect::<Vec<_>>(),
         "added_by_family_when_merged": added,
@@ -465,11 +465,12 @@ mod tests {
         let outcome = fetch_mirror_file(&client, "a/b", "obfs4.txt", "obfs4");
         assert_eq!(outcome.status, 200);
         assert_eq!(outcome.fetched_lines, 4);
-        assert_eq!(outcome.valid_lines, 1);
-        assert_eq!(outcome.rejected_placeholder, 1);
+        assert_eq!(outcome.valid_lines, 2);
+        assert_eq!(outcome.rejected_placeholder, 0);
         assert_eq!(outcome.rejected_format, 2);
-        assert_eq!(outcome.lines.len(), 1);
+        assert_eq!(outcome.lines.len(), 2);
         assert_eq!(outcome.lines[0].1, "ipv4");
+        assert_eq!(outcome.lines[1].1, "ipv6");
     }
 
     #[test]
