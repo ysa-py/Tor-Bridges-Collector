@@ -607,6 +607,7 @@ pub fn probe_all_webtunnel_bridges(
 
     let total_candidates = candidates.len();
     let next = std::sync::atomic::AtomicUsize::new(0);
+    let bridges_ref: &[Value] = bridges;
     let (tx, rx) = std::sync::mpsc::channel();
     let worker_count = WORKERS.min(total_candidates);
     std::thread::scope(|scope| {
@@ -624,7 +625,7 @@ pub fn probe_all_webtunnel_bridges(
                 };
                 // Keep the individual operation bounded; retries are still
                 // available for transient failures but cannot monopolize a worker.
-                let mut updated = probe_webtunnel_bridge(&bridges[*index], PER_ATTEMPT_TIMEOUT.min(timeout));
+                let mut updated = probe_webtunnel_bridge(&bridges_ref[*index], PER_ATTEMPT_TIMEOUT.min(timeout));
                 let probe_status = updated.get("probe_status").and_then(Value::as_str).unwrap_or("unknown").to_string();
                 let evidence = updated.get("evidence_scope").and_then(Value::as_str).unwrap_or("").to_string();
                 if tx.send((*index, host.clone(), *port, updated, probe_status, evidence)).is_err() {
