@@ -781,7 +781,7 @@ mod tests {
     fn probe_bridge_never_tcp_dials_url_fronted_documentation_placeholder() {
         let table = IranCidrTable::new();
         let p = parse_bridge_line(
-            "snowflake 192.0.2.3:1 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.com/ fronts=example.com"
+            "snowflake 192.0.2.3:443 0123456789ABCDEF0123456789ABCDEF01234567 url=https://example.com/ fronts=example.com"
         ).unwrap();
         let result = probe_bridge(&p, &table, &AlwaysReachable);
         assert_eq!(result["tcp_reachable"], false);
