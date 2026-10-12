@@ -610,6 +610,8 @@ pub fn probe_all_webtunnel_bridges(
     let bridges_ref: &[Value] = bridges;
     let (tx, rx) = std::sync::mpsc::channel();
     let worker_count = WORKERS.min(total_candidates);
+    let mut completed = Vec::with_capacity(total_candidates);
+
     std::thread::scope(|scope| {
         for _ in 0..worker_count {
             let tx = tx.clone();
@@ -623,28 +625,50 @@ pub fn probe_all_webtunnel_bridges(
                 let Some((index, host, port)) = candidates.get(slot) else {
                     break;
                 };
-                // Keep the individual operation bounded; retries are still
-                // available for transient failures but cannot monopolize a worker.
-                let mut updated = probe_webtunnel_bridge(&bridges_ref[*index], PER_ATTEMPT_TIMEOUT.min(timeout));
-                let probe_status = updated.get("probe_status").and_then(Value::as_str).unwrap_or("unknown").to_string();
-                let evidence = updated.get("evidence_scope").and_then(Value::as_str).unwrap_or("").to_string();
-                if tx.send((*index, host.clone(), *port, updated, probe_status, evidence)).is_err() {
+
+                // Each probe keeps its existing transient retry policy, but the
+                // individual attempt timeout prevents one slow endpoint from
+                // monopolizing a worker. Results are applied after all worker
+                // borrows end, so no bridge record is mutated concurrently.
+                let updated = probe_webtunnel_bridge(
+                    &bridges_ref[*index],
+                    PER_ATTEMPT_TIMEOUT.min(timeout),
+                );
+                let probe_status = updated
+                    .get("probe_status")
+                    .and_then(Value::as_str)
+                    .unwrap_or("unknown")
+                    .to_string();
+                let evidence = updated
+                    .get("evidence_scope")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string();
+
+                if tx
+                    .send((*index, host.clone(), *port, updated, probe_status, evidence))
+                    .is_err()
+                {
                     break;
                 }
             });
         }
         drop(tx);
-        for (index, host, port, updated, probe_status, evidence) in rx {
-            if probe_status == "websocket_101" {
-                succeeded += 1;
-                println!("webtunnel-probe: {host}:{port} => HTTP 101 (front check only)");
-            } else {
-                failed += 1;
-                println!("webtunnel-probe: {host}:{port} => {probe_status}: {evidence}");
-            }
-            bridges[index] = updated;
-        }
+        completed.extend(rx);
     });
+
+    let mut succeeded = 0usize;
+    let mut failed = 0usize;
+    for (index, host, port, updated, probe_status, evidence) in completed {
+        if probe_status == "websocket_101" {
+            succeeded += 1;
+            println!("webtunnel-probe: {host}:{port} => HTTP 101 (front check only)");
+        } else {
+            failed += 1;
+            println!("webtunnel-probe: {host}:{port} => {probe_status}: {evidence}");
+        }
+        bridges[index] = updated;
+    }
 
     let probed = succeeded + failed;
     let budget_skipped = total_candidates.saturating_sub(probed);
