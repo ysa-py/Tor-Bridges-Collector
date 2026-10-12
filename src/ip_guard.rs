@@ -812,7 +812,8 @@ mod tests {
 
     #[test]
     fn ingestion_recognizes_fronted_transport_aliases() {
-        let webtunnel = "web-tunnel [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path";
+        let webtunnel =
+            "web-tunnel [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path";
         assert_eq!(check_ingestion_endpoint(webtunnel), None);
         assert_eq!(
             check_endpoint(webtunnel),
@@ -950,7 +951,6 @@ mod tests {
             "both WebTunnel entries and the routable obfs4 line should pass"
         );
     }
-
 
     // ── PART B: Edge-case regression tests ───────────────────────────────
 
