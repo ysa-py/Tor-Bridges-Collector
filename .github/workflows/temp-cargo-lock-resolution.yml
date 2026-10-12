@@ -1,9 +1,9 @@
 name: Temporary Cargo lock resolution
 
 'on':
-  push:
+  pull_request:
     branches:
-      - fix/webtunnel-bounded-probe-pool
+      - main
 
 permissions:
   contents: read
