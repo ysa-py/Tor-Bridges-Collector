@@ -374,9 +374,23 @@ impl ProbeEngine {
     /// transiently unreachable endpoint cannot consume the whole Stage 0b
     /// budget with back-to-back retries.
     pub async fn probe(&self, line: String, transport: Transport, ipv6: bool) -> ProbeResult {
+        let mode = probe_mode(transport, ipv6);
+        if let Some(reason) = crate::ip_guard::check_ingestion_endpoint(&line) {
+            let result = ProbeResult {
+                line,
+                reachable: false,
+                latency_ms: None,
+                mode,
+                error: Some(format!(
+                    "endpoint safety guard rejected bridge before network access: {reason}"
+                )),
+            };
+            self.metrics.record(transport, &result);
+            return result;
+        }
+
         let started = Instant::now();
         let mut last_error = None;
-        let mode = probe_mode(transport, ipv6);
         for attempt in 0..self.config.max_retries {
             let result = self.probe_once(&line, transport, ipv6).await;
             match result {
