@@ -1104,6 +1104,12 @@ pub fn tcp_reachable(line: &str, timeout_s: f64) -> bool {
 /// 2. If no match, return `false` (non-IPv4 bridges are skipped).
 /// 3. Otherwise, attempt a TCP connect with the given timeout.
 pub fn tcp_reachable_with_probe(line: &str, timeout_s: f64, probe: &dyn TcpProbe) -> bool {
+    // This helper is deliberately raw-TCP only. Do not dial a reserved or
+    // documentation-only address token, even when a separate URL allows a
+    // fronted transport to be retained for its transport-specific probe.
+    if contains_documentation_or_reserved_endpoint(line) {
+        return false;
+    }
     let caps = match ip4_port_re().captures(line) {
         Some(c) => c,
         None => return false,
@@ -2177,6 +2183,18 @@ obfs4 5.6.7.8:443 0123456789ABCDEF0123456789ABCDEF01234567
         // IPv4:port match → consults the probe.
         assert!(tcp_reachable_with_probe(
             "obfs4 1.2.3.4:443 ABC",
+            1.0,
+            &probe
+        ));
+        // A raw TCP-only probe must not dial the documentation placeholder,
+        // even if the bridge has a valid URL for a different transport probe.
+        assert!(!tcp_reachable_with_probe(
+            "snowflake 192.0.2.3:1 ABC url=https://example.com/ fronts=example.com",
+            1.0,
+            &probe
+        ));
+        assert!(!tcp_reachable_with_probe(
+            "obfs4 10.0.0.1:443 ABC",
             1.0,
             &probe
         ));
