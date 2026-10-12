@@ -421,7 +421,7 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
 /// assume it is token 1: URL-only lines put the fingerprint or options there.
 fn first_literal_endpoint_index(tokens: &[&str]) -> Option<usize> {
     for (index, raw_token) in tokens.iter().enumerate().skip(1) {
-        let token = raw_token.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '\\''));
+        let token = raw_token.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '\''));
         if token.contains('=') {
             continue;
         }
