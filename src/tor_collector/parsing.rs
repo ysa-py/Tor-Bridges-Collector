@@ -48,7 +48,7 @@ pub fn is_valid_bridge_line(line: &str) -> bool {
         return false;
     }
 
-    if contains_documentation_or_reserved_endpoint(trimmed) {
+    if crate::ip_guard::check_ingestion_endpoint(trimmed).is_some() {
         return false;
     }
 
