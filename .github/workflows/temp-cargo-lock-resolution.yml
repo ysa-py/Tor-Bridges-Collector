@@ -1,0 +1,45 @@
+name: Temporary Cargo lock resolution
+
+'on':
+  push:
+    branches:
+      - fix/webtunnel-bounded-probe-pool
+
+permissions:
+  contents: write
+
+jobs:
+  resolve-lock:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: '1.90.0'
+      - name: Resolve lockfile against the maintained YAML implementation
+        run: |
+          set -euo pipefail
+          cargo metadata --format-version 1 >/dev/null
+          cargo metadata --locked --format-version 1 >/dev/null
+          grep -q 'name = "yaml_serde"' Cargo.lock
+          if grep -q 'name = "unsafe-libyaml"' Cargo.lock; then
+            echo '::error::unsafe-libyaml remains in the resolved graph'
+            exit 1
+          fi
+          grep -q 'name = "quinn-proto"' Cargo.lock
+          grep -q 'version = "0.11.19"' Cargo.lock
+      - name: Commit Cargo-generated lockfile
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- Cargo.lock; then
+            echo '::error::Cargo.lock did not change after switching the YAML package'
+            exit 1
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Cargo.lock
+          git commit -m 'fix(deps): replace unmaintained YAML parser'
+          git push origin "HEAD:${GITHUB_REF_NAME}"
