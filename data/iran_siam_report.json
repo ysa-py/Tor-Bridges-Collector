@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-12T05:55:39.995897+00:00",
+  "generated_at": "2026-10-12T13:10:44.578943+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -1372,6 +1372,30 @@
     },
     {
       "bridge_line": "obfs4 185.231.100.9:8080 E6F41C41485C503D3E8A2D4C9B096B390F9425B7 cert=wUTy69IHqzh4Xpd6X/L6YG1NDTgWOq/AVNGPXseBy/16WmlmdNinXi2VNyBUlcN9tbrtcA iat-mode=1",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_1_evasion"
+      ],
+      "iran_siam_score": 0.7202,
+      "layer_scores": {
+        "L1_packet_length": 0.85,
+        "L2_iat_timing": 0.78,
+        "L3_flow_features": 0.8,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.72,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 5,
+      "port": 8080,
+      "recommendation": "✅ خوب — obfs4 IAT-1 فعال | Good: obfs4 IAT-1 timing randomisation active",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 77.72.85.143:8080 E3E5DD3033F8F6DE8E269263EE07FA0F2A59ED14 cert=rVpV425ZbCW7rIuCno1UJr/O5cpS1xE/FU9hvC8md5S8O6FvGgLa7dY/jZOBL08XItYFWg iat-mode=1",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -33882,11 +33906,11 @@
     "COVERT": 965,
     "DETECTED": 486,
     "PHANTOM": 3,
-    "STEALTH": 59
+    "STEALTH": 60
   },
-  "total_scored": 1513,
+  "total_scored": 1514,
   "transport_summary": {
-    "obfs4": 1023,
+    "obfs4": 1024,
     "snowflake": 2,
     "vanilla": 486,
     "webtunnel": 2
