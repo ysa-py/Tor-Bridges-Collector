@@ -364,10 +364,11 @@ pub fn check_endpoint(line: &str) -> Option<&'static str> {
 
 /// Validate a bridge line for ingestion.
 ///
-/// For URL/front-addressed transports, a reserved literal in the first address
-/// slot is permitted only when an independent public URL/front dial target is
-/// present and valid. The raw check_endpoint API remains unchanged for
-/// telemetry and analysis, so placeholder counts are not lost.
+/// Only a WebTunnel line whose address token is in RFC 3849's 2001:db8::/32
+/// range may treat that token as a BridgeDB placeholder, and only when a
+/// separately validated public url= target exists. All other reserved literal
+/// IPs remain rejected, including TEST-NET values on fronted transports. The
+/// raw check_endpoint API remains unchanged for telemetry and analysis.
 #[must_use]
 pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
     let tokens = bridge_tokens(line);
