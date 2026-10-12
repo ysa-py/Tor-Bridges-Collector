@@ -16,11 +16,12 @@
 //!    source already applies (minimum length, comment/marker rejection,
 //!    endpoint-regex match);
 //! 2. [`crate::ip_guard::check_ingestion_endpoint`] — the shared endpoint
-//!    safety gate. It rejects reserved literal IPs and unsafe URL/front
-//!    hosts; only WebTunnel's RFC 3849 placeholder may pass when a separate
-//!    public `url=` dial target is valid.
+//!    safety gate. It rejects reserved literal IPs and unsafe URL/front hosts;
+//!    only RFC 3849/RFC 5737 documentation placeholders may pass as metadata
+//!    for supported URL-fronted transports with a separately validated public
+//!    `url=` dial target. Private and other reserved addresses remain blocked.
 //!
-//! # Toggle semantics (advisory first)
+//! //! # Toggle semantics (advisory first)
 //!
 //! * `COMMUNITY_MIRRORS` — space-separated `owner/repo` list. The literal
 //!   value `none` (or `0`) disables the module entirely. Default:
