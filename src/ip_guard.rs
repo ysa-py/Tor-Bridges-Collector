@@ -364,8 +364,6 @@ pub fn check_endpoint(line: &str) -> Option<&'static str> {
 
 /// Validate a bridge line for ingestion.
 ///
-/// Validate a bridge line for ingestion.
-///
 /// Some URL-fronted transports encode the dial target in url= while their
 /// endpoint token is a documentation-only placeholder. Only literal IETF
 /// documentation ranges (RFC 3849 and RFC 5737 TEST-NETs) may be ignored,
@@ -827,9 +825,7 @@ mod tests {
             None
         );
         assert_eq!(
-            check_ingestion_endpoint(
-                "obfs4 198.51.100.11:80 FINGERPRINT url=https://example.com/"
-            ),
+            check_ingestion_endpoint("obfs4 198.51.100.11:80 FINGERPRINT url=https://example.com/"),
             Some("TEST_NET_2_RFC5737")
         );
         assert_eq!(
