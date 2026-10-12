@@ -409,9 +409,35 @@ pub fn check_ingestion_endpoint(line: &str) -> Option<&'static str> {
         }
     }
 
-    let ignored_placeholder_index =
-        (is_fronted_transport && has_validated_dial_target).then_some(1usize);
+    let ignored_placeholder_index = if is_fronted_transport && has_validated_dial_target {
+        first_literal_endpoint_index(&tokens)
+    } else {
+        None
+    };
     check_endpoint_tokens(&tokens, ignored_placeholder_index)
+}
+
+/// Find the first literal IP endpoint token after the transport name. Do not
+/// assume it is token 1: URL-only lines put the fingerprint or options there.
+fn first_literal_endpoint_index(tokens: &[&str]) -> Option<usize> {
+    for (index, raw_token) in tokens.iter().enumerate().skip(1) {
+        let token = raw_token.trim_matches(|c: char| matches!(c, ',' | ';' | '"' | '\\''));
+        if token.contains('=') {
+            continue;
+        }
+        if let Some(rest) = token.strip_prefix('[') {
+            if let Some((host, _port)) = rest.split_once("]:") {
+                if host.parse::<Ipv6Addr>().is_ok() {
+                    return Some(index);
+                }
+            }
+        } else if let Some((host, _port)) = token.rsplit_once(':') {
+            if host.parse::<Ipv4Addr>().is_ok() {
+                return Some(index);
+            }
+        }
+    }
+    None
 }
 
 /// Remove Tor's optional vanilla Bridge prefix before classifying fields.
