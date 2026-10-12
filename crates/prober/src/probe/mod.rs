@@ -78,8 +78,8 @@ mod tests {
     #[test]
     fn url_fronted_target_requires_url() {
         let line = "snowflake 192.0.2.1:443 0123456789ABCDEF0123456789ABCDEF01234567";
-        let bridge = BridgeLine::parse(line, now()).unwrap_err();
-        assert!(bridge.to_string().contains("url"));
+        let bridge = BridgeLine::parse(line, now()).unwrap();
+        assert!(matches!(target(&bridge), Err(ProbeError::Config(_))));
     }
 }
 
