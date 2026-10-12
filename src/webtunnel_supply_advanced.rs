@@ -1006,7 +1006,10 @@ webtunnel url=https://example.com/ abcdef0123456789
         assert_eq!(source.requests, 4);
         assert_eq!(source.responses_ok, 4);
         assert_eq!(mock.retry_calls.load(Ordering::SeqCst), 2);
-        assert!(source.lines.is_empty(), "empty/unvalidated responses must not create bridge records");
+        assert!(
+            source.lines.is_empty(),
+            "empty/unvalidated responses must not create bridge records"
+        );
     }
 
     /// Mock client for the additive docs-audit 403 experiment: configurable
