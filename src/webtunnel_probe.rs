@@ -553,96 +553,107 @@ pub fn probe_all_webtunnel_bridges(
     bridges: &mut [Value],
     timeout: Duration,
 ) -> (usize, usize, usize) {
-    let mut probed = 0;
-    let mut succeeded = 0;
-    let mut failed = 0;
+    // Collect work first, preserving the input order for deterministic updates.
+    // Probing sequentially made a few hundred slow/dead domains exceed the
+    // GitHub Actions step timeout. The pool caps concurrency and stops taking
+    // new work at the shared 150-second budget; in-flight probes use a short
+    // per-attempt timeout and are allowed to finish cleanly.
+    const WORKERS: usize = 24;
+    const BUDGET: Duration = Duration::from_secs(150);
+    const PER_ATTEMPT_TIMEOUT: Duration = Duration::from_secs(3);
+    let started = Instant::now();
+    let mut candidates: Vec<(usize, String, u16)> = Vec::new();
     let mut doc_ipv6_skipped = 0u32;
     let mut ip_host_skipped = 0u32;
     let mut unsafe_endpoint_skipped = 0u32;
     let mut already_working_skipped = 0u32;
     let mut front_domains: HashSet<String> = HashSet::new();
 
-    for bridge in bridges.iter_mut() {
-        let transport = bridge
-            .get("transport")
-            .and_then(Value::as_str)
-            .unwrap_or("");
+    for (index, bridge) in bridges.iter().enumerate() {
+        let transport = bridge.get("transport").and_then(Value::as_str).unwrap_or("");
         if transport != "webtunnel" {
             continue;
         }
-        let status = bridge
-            .get("iran_status")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        // Probe bridges marked unreachable AND bridges not yet probed (iran_unknown)
-        let needs_probe =
-            status == "tcp_unreachable" || status.is_empty() || status == "iran_unknown";
+        let status = bridge.get("iran_status").and_then(Value::as_str).unwrap_or("");
+        let needs_probe = status == "tcp_unreachable" || status.is_empty() || status == "iran_unknown";
         if !needs_probe {
             already_working_skipped += 1;
             continue;
         }
         let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
         let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
-
-        let (front_host, front_port) = match front_probe_decision(host, line) {
-            ProbeDecision::Probe(front_host, front_port) => (front_host, front_port),
+        match front_probe_decision(host, line) {
+            ProbeDecision::Probe(front_host, front_port) => {
+                front_domains.insert(front_host.clone());
+                candidates.push((index, front_host, front_port));
+            }
             ProbeDecision::SkipDocIpv6 => {
                 doc_ipv6_skipped += 1;
-                let label = if host.is_empty() { line } else { host };
-                eprintln!(
-                    "webtunnel-probe: skipping documentation-prefix IPv6 bridge ({label}) — \
-                     this is an intentional BridgeDB anti-enumeration placeholder, not a \
-                     real bridge address"
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping documentation-prefix IPv6 placeholder");
             }
             ProbeDecision::SkipIpHost => {
                 ip_host_skipped += 1;
-                eprintln!(
-                    "webtunnel-probe: skipping IP-endpoint bridge (host={host}, \
-                     line={line}) — it is covered by the raw TCP tester; webtunnel \
-                     front-domain probing requires a domain in url="
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping IP-endpoint bridge; covered by raw TCP tester");
             }
             ProbeDecision::SkipUnsafeEndpoint => {
                 unsafe_endpoint_skipped += 1;
-                eprintln!(
-                    "webtunnel-probe: skipping unsafe endpoint or URL/front before network access: {line}"
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping unsafe endpoint before network access");
             }
             ProbeDecision::SkipNoFront => {
-                eprintln!(
-                    "webtunnel-probe: skipping bridge with no front domain (no url= \
-                     parameter): {line}"
-                );
-                continue;
+                eprintln!("webtunnel-probe: skipping bridge with no front domain");
             }
-        };
-
-        front_domains.insert(front_host.clone());
-
-        probed += 1;
-        let updated = probe_webtunnel_bridge(bridge, timeout);
-        let probe_status = updated
-            .get("probe_status")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
-        let evidence = updated
-            .get("evidence_scope")
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        if probe_status == "websocket_101" {
-            succeeded += 1;
-            println!("webtunnel-probe: {front_host}:{front_port} => HTTP 101 (front check only)");
-        } else {
-            failed += 1;
-            println!("webtunnel-probe: {front_host}:{front_port} => {probe_status}: {evidence}");
         }
-        *bridge = updated;
     }
 
+    let total_candidates = candidates.len();
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let worker_count = WORKERS.min(total_candidates);
+    std::thread::scope(|scope| {
+        for _ in 0..worker_count {
+            let tx = tx.clone();
+            let candidates = &candidates;
+            let next = &next;
+            scope.spawn(move || loop {
+                if started.elapsed() >= BUDGET {
+                    break;
+                }
+                let slot = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                let Some((index, host, port)) = candidates.get(slot) else {
+                    break;
+                };
+                // Keep the individual operation bounded; retries are still
+                // available for transient failures but cannot monopolize a worker.
+                let mut updated = probe_webtunnel_bridge(&bridges[*index], PER_ATTEMPT_TIMEOUT.min(timeout));
+                let probe_status = updated.get("probe_status").and_then(Value::as_str).unwrap_or("unknown").to_string();
+                let evidence = updated.get("evidence_scope").and_then(Value::as_str).unwrap_or("").to_string();
+                if tx.send((*index, host.clone(), *port, updated, probe_status, evidence)).is_err() {
+                    break;
+                }
+            });
+        }
+        drop(tx);
+        for (index, host, port, updated, probe_status, evidence) in rx {
+            if probe_status == "websocket_101" {
+                succeeded += 1;
+                println!("webtunnel-probe: {host}:{port} => HTTP 101 (front check only)");
+            } else {
+                failed += 1;
+                println!("webtunnel-probe: {host}:{port} => {probe_status}: {evidence}");
+            }
+            bridges[index] = updated;
+        }
+    });
+
+    let probed = succeeded + failed;
+    let budget_skipped = total_candidates.saturating_sub(probed);
+    if budget_skipped > 0 {
+        eprintln!(
+            "webtunnel-probe: budget exhausted after {}s; deferred {} candidates for the next hourly run",
+            started.elapsed().as_secs(),
+            budget_skipped
+        );
+    }
     // Emit diversity summary
     println!(
         "webtunnel-probe: summary probed={probed} ws_101={succeeded} ws_fail={failed} \
