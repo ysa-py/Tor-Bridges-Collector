@@ -789,32 +789,40 @@ mod tests {
     }
 
     #[test]
-    fn ingestion_allows_public_front_hosts_for_placeholder_transport() {
+    fn ingestion_allows_public_front_hosts_with_routable_endpoint() {
         assert_eq!(
             check_ingestion_endpoint(
-                "snowflake 192.0.2.1:1 FINGERPRINT fronts=cdn.sstatic.net,ajax.aspnetcdn.com"
+                "snowflake 8.8.8.8:443 FINGERPRINT fronts=cdn.sstatic.net,ajax.aspnetcdn.com"
             ),
             None
         );
     }
 
     #[test]
+    fn ingestion_does_not_exempt_ipv4_test_net_for_public_fronts_or_urls() {
+        assert!(check_ingestion_endpoint(
+            "snowflake 192.0.2.1:1 FINGERPRINT fronts=cdn.sstatic.net"
+        )
+        .is_some());
+        assert!(check_ingestion_endpoint(
+            "meek_lite 198.51.100.11:80 url=https://example.com/ front=example.com"
+        )
+        .is_some());
+    }
+
+    #[test]
     fn ingestion_recognizes_fronted_transport_aliases() {
-        for transport in ["web-tunnel", "meek_azure"] {
-            let line = format!(
-                "{transport} [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path"
-            );
-            assert_eq!(
-                check_ingestion_endpoint(&line),
-                None,
-                "transport={transport}"
-            );
-            assert_eq!(
-                check_endpoint(&line),
-                Some("DOCUMENTATION_RFC3849_2001_DB8"),
-                "raw classifier must retain placeholder status for transport={transport}"
-            );
-        }
+        let webtunnel = "web-tunnel [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path";
+        assert_eq!(check_ingestion_endpoint(webtunnel), None);
+        assert_eq!(
+            check_endpoint(webtunnel),
+            Some("DOCUMENTATION_RFC3849_2001_DB8"),
+            "raw classifier must retain the WebTunnel placeholder classification"
+        );
+
+        let meek = "meek_azure 8.8.8.8:443 FINGERPRINT url=https://front.example.com/path";
+        assert_eq!(check_ingestion_endpoint(meek), None);
+        assert_eq!(check_endpoint(meek), None);
     }
 
     #[test]
