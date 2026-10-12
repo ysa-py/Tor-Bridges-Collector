@@ -544,6 +544,30 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
     ProbeDecision::SkipNoFront
 }
 
+/// Collect completed worker results until either all expected results arrive
+/// or the shared hard deadline expires. The receiver may still have live
+/// senders backed by blocking DNS calls, so this must never join worker threads.
+fn collect_until_deadline<T>(
+    rx: std::sync::mpsc::Receiver<T>,
+    expected: usize,
+    started: Instant,
+    budget: Duration,
+) -> Vec<T> {
+    let mut completed = Vec::with_capacity(expected);
+    while completed.len() < expected {
+        let elapsed = started.elapsed();
+        if elapsed >= budget {
+            break;
+        }
+        match rx.recv_timeout(budget.saturating_sub(elapsed)) {
+            Ok(result) => completed.push(result),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
+            | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
+        }
+    }
+    completed
+}
+
 /// Probe all domain-fronted WebTunnel bridges in the results, updating
 /// their statuses in-place. Returns (probed, succeeded, failed) counts.
 ///
@@ -662,18 +686,7 @@ pub fn probe_all_webtunnel_bridges(
     }
     drop(tx);
 
-    let mut completed = Vec::with_capacity(total_candidates);
-    while completed.len() < total_candidates {
-        let elapsed = started.elapsed();
-        if elapsed >= BUDGET {
-            break;
-        }
-        match rx.recv_timeout(BUDGET.saturating_sub(elapsed)) {
-            Ok(result) => completed.push(result),
-            Err(std::sync::mpsc::RecvTimeoutError::Timeout)
-            | Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => break,
-        }
-    }
+    let completed = collect_until_deadline(rx, total_candidates, started, BUDGET);
 
     let mut succeeded = 0usize;
     let mut failed = 0usize;
@@ -713,6 +726,23 @@ pub fn probe_all_webtunnel_bridges(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn result_collector_honors_deadline_with_open_sender() {
+        let (_sender, receiver) = std::sync::mpsc::channel::<usize>();
+        let started = Instant::now();
+        let results = collect_until_deadline(
+            receiver,
+            1,
+            started,
+            Duration::from_millis(25),
+        );
+        assert!(results.is_empty());
+        assert!(
+            started.elapsed() < Duration::from_secs(1),
+            "collector exceeded hard deadline by too much"
+        );
+    }
 
     #[test]
     fn extract_domain_from_webtunnel_line() {
