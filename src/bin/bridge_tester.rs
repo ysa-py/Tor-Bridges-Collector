@@ -8,10 +8,12 @@
 //!
 //! WebTunnel bridges that carry only a `url=https://front/path` (no routable
 //! IP endpoint) are probed via TLS+WebSocket Upgrade to the front domain.
-//! Reserved endpoints are rejected before network access. A WebTunnel line
-//! carrying BridgeDB's RFC 3849 IPv6 placeholder is eligible only when its
-//! separate public `url=` dial target validates; the probe then uses that URL
-//! rather than the placeholder address.
+//! Reserved endpoints are rejected before network access. A supported
+//! URL-fronted transport may retain an RFC 3849/RFC 5737 documentation-only
+//! address as metadata only when a separate public `url=` target validates.
+//! WebTunnel is probed via that URL; this binary does not TCP-dial documented
+//! placeholder IPs for transports lacking a protocol-specific probe.
+
 
 use std::collections::BTreeMap;
 use std::env;
