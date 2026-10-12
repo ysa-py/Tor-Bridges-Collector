@@ -560,9 +560,10 @@ fn stamp_probe_evidence(mut result: Value) -> Value {
 }
 
 async fn probe_one_unstamped(line: String, timeout_duration: Duration) -> Value {
-    // Validate the actual dial target before any network attempt. A WebTunnel
-    // RFC 3849 placeholder may be ignored only when a separate public url=
-    // target validates; other reserved literal IPs remain blocked.
+    // Validate the actual dial target before any network attempt. A
+    // documentation-only endpoint token may be ignored only for a supported
+    // URL-fronted transport with a separately validated public url= target;
+    // private and other reserved literal IPs remain blocked.
     if let Some(reason) = check_ingestion_endpoint(&line) {
         let transport = normalise_transport(&line, extract_endpoint(&line).2);
         return json!({
