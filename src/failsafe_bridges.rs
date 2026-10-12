@@ -330,7 +330,7 @@ fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
         .into_iter()
         .map(str::to_string)
         .filter(|line| {
-            ipv6.map_or(true, |wanted_ipv6| {
+            ipv6.is_none_or(|wanted_ipv6| {
                 static_line_ip_version(line) == Some(wanted_ipv6)
             })
         })
