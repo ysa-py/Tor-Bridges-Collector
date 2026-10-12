@@ -185,9 +185,9 @@ pub fn bridge_line_re() -> &'static Regex {
 /// Validate a single bridge line. Mirrors Python `_is_valid_line(line)`:
 /// 1. Return false if line is empty or shorter than 10 chars.
 /// 2. Return false if line contains "No bridges available" or starts with "#".
-/// 3. Return false if line contains a documentation-range or reserved IP
-///    address (RFC 3849, RFC 5737, link-local, loopback, etc.) — these are
-///    never routable and must not enter the pipeline.
+/// 3. Reject reserved IP endpoints and unsafe URL/front hosts. The only
+///    exception is a WebTunnel RFC 3849 placeholder accompanied by a valid
+///    public url= dial target; all other reserved literal IPs are rejected.
 /// 4. Return true if `bridge_line_re().is_match(line)`, false otherwise.
 pub fn is_valid_line(line: &str) -> bool {
     if line.is_empty() || line.len() < 10 {
@@ -196,9 +196,9 @@ pub fn is_valid_line(line: &str) -> bool {
     if line.contains("No bridges available") || line.starts_with('#') {
         return false;
     }
-    // Reject unsafe literal endpoints and URL/front dial targets. A reserved
-    // address token is allowed only when the fronted transport has a separately
-    // validated public URL/front; the raw guard remains available for analytics.
+    // Reject unsafe literal endpoints and URL/front dial targets. Only a
+    // WebTunnel RFC 3849 placeholder may be ignored, and only when its
+    // separate public url= dial target is valid.
     if let Some(reason) = check_ingestion_endpoint(line) {
         tracing::warn!(
             target: "bridge_ingest",
