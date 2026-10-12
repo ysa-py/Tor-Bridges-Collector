@@ -21,13 +21,13 @@ use crate::socket::Socket;
 /// Resolve the `(host, port)` a probe should connect to for a bridge.
 pub fn target(bridge: &BridgeLine) -> Result<(String, u16), ProbeError> {
     match bridge.transport {
-        TransportKind::Obfs4 | TransportKind::Vanilla => {
-            Ok((bridge.host.clone(), bridge.port))
-        }
+        TransportKind::Obfs4 | TransportKind::Vanilla => Ok((bridge.host.clone(), bridge.port)),
         TransportKind::WebTunnel | TransportKind::Meek | TransportKind::Snowflake => {
-            let url = bridge.params.url.as_deref().ok_or_else(|| {
-                ProbeError::Config("fronted transport missing url".to_owned())
-            })?;
+            let url = bridge
+                .params
+                .url
+                .as_deref()
+                .ok_or_else(|| ProbeError::Config("fronted transport missing url".to_owned()))?;
             let parsed = url::Url::parse(url)
                 .map_err(|error| ProbeError::Config(format!("invalid rendezvous URL: {error}")))?;
             if bridge.transport == TransportKind::WebTunnel && parsed.scheme() != "https" {
@@ -38,6 +38,26 @@ pub fn target(bridge: &BridgeLine) -> Result<(String, u16), ProbeError> {
             let (host, port, _) = http::url_parts(url)?;
             Ok((host, port))
         }
+        TransportKind::Conjure | TransportKind::Other(_) => Err(ProbeError::UnsupportedTransport(
+            bridge.transport.to_string(),
+        )),
+    }
+}
+
+/// Run the handshake-level probe for `bridge` on a connected [`Socket`],
+/// returning a metric-safe evidence string on success.
+pub async fn handshake(
+    bridge: &BridgeLine,
+    socket: &mut Socket,
+    config: &ProbeConfig,
+    clock: &dyn Clock,
+) -> Result<String, ProbeError> {
+    match bridge.transport {
+        TransportKind::Obfs4 => obfs4::handshake(bridge, socket, config, clock).await,
+        TransportKind::WebTunnel => webtunnel::handshake(bridge, socket, config).await,
+        TransportKind::Vanilla => vanilla::handshake(bridge, socket, config, clock).await,
+        TransportKind::Snowflake => snowflake::handshake(bridge, socket, config).await,
+        TransportKind::Meek => meek::handshake(bridge, socket, config).await,
         TransportKind::Conjure | TransportKind::Other(_) => Err(ProbeError::UnsupportedTransport(
             bridge.transport.to_string(),
         )),
@@ -80,25 +100,5 @@ mod tests {
         let line = "snowflake 192.0.2.1:443 0123456789ABCDEF0123456789ABCDEF01234567";
         let bridge = BridgeLine::parse(line, now()).unwrap();
         assert!(matches!(target(&bridge), Err(ProbeError::Config(_))));
-    }
-}
-
-/// Run the handshake-level probe for `bridge` on a connected [`Socket`],
-/// returning a metric-safe evidence string on success.
-pub async fn handshake(
-    bridge: &BridgeLine,
-    socket: &mut Socket,
-    config: &ProbeConfig,
-    clock: &dyn Clock,
-) -> Result<String, ProbeError> {
-    match bridge.transport {
-        TransportKind::Obfs4 => obfs4::handshake(bridge, socket, config, clock).await,
-        TransportKind::WebTunnel => webtunnel::handshake(bridge, socket, config).await,
-        TransportKind::Vanilla => vanilla::handshake(bridge, socket, config, clock).await,
-        TransportKind::Snowflake => snowflake::handshake(bridge, socket, config).await,
-        TransportKind::Meek => meek::handshake(bridge, socket, config).await,
-        TransportKind::Conjure | TransportKind::Other(_) => Err(ProbeError::UnsupportedTransport(
-            bridge.transport.to_string(),
-        )),
     }
 }
