@@ -775,6 +775,7 @@ jobs:
         echo "✅ iran_tester and probe_scheduler built from source"
 
     - name: Stage 2 — iran_tester (TCP/ASN/OONI/CDN analysis)
+      id: iran_tester_stage
       timeout-minutes: 12
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
@@ -782,44 +783,92 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        write_incomplete_iran_report() {
-          local generated_at
-          generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          cat > bridge/iran_results.json <<EOF
-        {
-          "generated_at": "${generated_at}",
-          "summary": {
-            "total_tested": 0,
-            "global_reachable": 0,
-            "iran_likely_working": 0,
-            "iran_likely_blocked": 0,
-            "iran_unknown": 0,
-            "iran_asn_blocked": 0,
-            "iran_frequently_blocked": 0,
-            "run_deadline_exceeded": true
-          },
-          "bridges": []
-        }
-        EOF
-        }
-        # Remove the checked-in previous report from the active path first, so
-        # a watchdog timeout can never accidentally publish stale Iran evidence.
-        write_incomplete_iran_report
+        # ── v42 §A: validate-then-swap (never destroy before validating) ────
+        # The committed bridge/iran_results.json is last-known-good evidence.
+        # The old behaviour pre-wrote an EMPTY report before the tester ran
+        # (and again on timeout), so a crash or watchdog committed empty Iran
+        # evidence and the publication joined against nothing. Now the tester
+        # writes to a staging path; the staged report replaces the live file
+        # only after (a) schema validation and (b) an evidence-volume check
+        # against the previous run. Otherwise the run is marked degraded and
+        # the last-known-good report is preserved for Stage 9/11.
+        iran_results="bridge/iran_results.json"
+        staging="${RUNNER_TEMP}/iran_results.staging.json"
+        rm -f "$staging"
         set +e
         timeout --signal=TERM --kill-after=15s 10m ./iran_tester \
           --input  bridge/bridge_list_for_testing.json \
-          --output bridge/iran_results.json \
+          --output "$staging" \
           --workers 100 \
           --timeout 8s \
-          --run-timeout 9m
+          --run-timeout 9m \
+          --ooni-cache data/ooni_cache.json
         status=$?
         set -e
+
+        degraded_reason=""
         if [ "$status" -eq 124 ] || [ "$status" -eq 137 ] || [ "$status" -eq 143 ]; then
-          echo "::warning::iran_tester hit the outer 10-minute watchdog; preserving an explicit empty/incomplete report instead of stale results"
-          write_incomplete_iran_report
-          exit 0
+          degraded_reason="iran_tester hit the outer 10-minute watchdog"
+        elif [ "$status" -ne 0 ]; then
+          degraded_reason="iran_tester exited with status ${status}"
         fi
-        exit "$status"
+
+        # (a) Schema validation of the staged report.
+        staging_valid=false
+        if [ -s "$staging" ] \
+           && jq -e '.bridges | type == "array"' "$staging" > /dev/null 2>&1 \
+           && jq -e '.summary | type == "object"' "$staging" > /dev/null 2>&1 \
+           && [ "$(jq '.bridges | length' "$staging")" = "$(jq -r '.summary.total_tested // -1' "$staging")" ]; then
+          staging_valid=true
+        fi
+
+        # (b) Evidence-volume check: S2+ verified observations this run vs the
+        # last-known-good report. A staged report carrying less than 50% of
+        # the previous verified evidence may not replace it (empty-output
+        # guard); fresh evidence from a clean run always may.
+        s2_filter='[.bridges[]? | select(.verification.stage == "S2" or .verification.stage == "S3" or .verification.stage == "S4" or .verification.stage == "S5" or .verification.stage == "S6")] | length'
+        old_evidence=0
+        if [ -f "$iran_results" ]; then
+          old_evidence=$(jq -r "$s2_filter" "$iran_results" 2>/dev/null || echo 0)
+        fi
+        new_evidence=0
+        if [ "$staging_valid" = "true" ]; then
+          new_evidence=$(jq -r "$s2_filter" "$staging" 2>/dev/null || echo 0)
+        fi
+        minimum_evidence=$(( old_evidence / 2 ))
+
+        if [ "$staging_valid" != "true" ]; then
+          degraded_reason="${degraded_reason:-iran_tester produced an invalid staged report}"
+          echo "::warning::Stage 2 degraded (${degraded_reason}); staged report did not validate — keeping the last-known-good bridge/iran_results.json"
+        elif [ "$new_evidence" -lt "$minimum_evidence" ]; then
+          degraded_reason="${degraded_reason:-staged report carries less than 50% of the previous verified evidence}"
+          echo "::warning::Stage 2 degraded (${degraded_reason}); keeping the last-known-good bridge/iran_results.json (new S2+=${new_evidence}, previous=${old_evidence})"
+        else
+          # Atomic same-directory rename; the temp copy is fsync'd by cp.
+          cp "$staging" "${iran_results}.tmp"
+          mv "${iran_results}.tmp" "$iran_results"
+          echo "Stage 2 published a fresh iran_results.json (S2+ evidence: ${new_evidence}, previous: ${old_evidence})"
+        fi
+        rm -f "$staging" "${iran_results}.tmp"
+
+        # Record the run state for the Stage 11 publication guard and the
+        # funnel report. data/run_state.json is committed with data/.
+        mkdir -p data
+        jq -n \
+          --arg reason "${degraded_reason}" \
+          --argjson degraded "$([ -n "$degraded_reason" ] && echo true || echo false)" \
+          --arg run_id "${GITHUB_RUN_ID}" \
+          '{degraded: $degraded, reason: (if $degraded then $reason else "" end), stage: "iran_tester", run_id: $run_id, generated_at: (now | todate)}' \
+          > data/run_state.json
+
+        {
+          echo "### Stage 2 — iran_tester"
+          echo "- degraded: \`${degraded_reason:+true}${degraded_reason:-false}\`"
+          [ -n "$degraded_reason" ] && echo "- reason: ${degraded_reason}"
+          echo "- staged_valid: \`${staging_valid}\`"
+          echo "- s2plus_evidence: new=\`${new_evidence}\` previous=\`${old_evidence}\`"
+        } >> "${GITHUB_STEP_SUMMARY}"
+        exit 0
 
       # probe_scheduler starts an HTTP server that never exits on its own:
       # `timeout 300` force-kills it after 5 min, the PID is captured for
@@ -2468,6 +2517,11 @@ jobs:
           [ -e "$opt" ] && PATHS="$PATHS $opt"
         done
         echo "Staging paths: $PATHS"
+        # v42 §A empty-output guard: on a degraded run, restore the
+        # last-known-good version of any contract file this run would have
+        # wiped, and write data/run_manifest.json (counts + SHA-256 per file)
+        # BEFORE anything is staged. A healthy run is trusted as-is.
+        bash scripts/guard_bridge_publication.sh --bridge-dir bridge --live true
         git add $PATHS
         # Publication guard: never commit a payload that does not parse.
         bash scripts/repair_conflict_markers.sh --validate-json bridge data export docs
