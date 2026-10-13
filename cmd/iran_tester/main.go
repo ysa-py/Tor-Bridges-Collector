@@ -428,10 +428,36 @@ func dynamicWorkerCount(requested, candidates int) int {
 	return cpuScaled
 }
 
+// deadlineResult creates an explicitly inconclusive row without doing any
+// network work. It is used for inputs not started before the shared run deadline.
+func deadlineResult(rawLine string) BridgeResult {
+	result := BridgeResult{
+		Line:       rawLine,
+		IranStatus: StatusIranUnknown,
+		Verification: Verification{
+			Status:     "inconclusive",
+			Stage:      "S0",
+			ProbeType:  "none",
+			Detail:     "overall run deadline exceeded before this bridge was classified",
+			ErrorClass: "run_deadline_exceeded",
+			ObservedAt: time.Now().UTC().Format(time.RFC3339Nano),
+		},
+	}
+	if parsed, err := bridge.ParseLine(rawLine); err == nil {
+		result.Host = parsed.Host
+		result.Port = int(parsed.Port)
+		result.Transport = parsed.Type
+	} else {
+		result.Verification.ErrorClass = "invalid_bridge_line"
+		result.Verification.Detail = "bridge line could not be parsed before the run deadline"
+	}
+	return result
+}
+
 // classifyLinesWithWorkers runs bounded parallel classification under a caller-owned
 // context. Once the overall run deadline expires, remaining records are still
-// emitted as inconclusive/unknown rows; context-aware HTTP and TCP work is
-// cancelled instead of holding the Stage 2 workflow indefinitely.
+// emitted as inconclusive/unknown rows; cancelled inputs are not sent through
+// the classifier again and cannot trigger extra network calls.
 func classifyLinesWithWorkers(
 	ctx context.Context,
 	bridgeLines []string,
@@ -448,6 +474,10 @@ func classifyLinesWithWorkers(
 		if strings.TrimSpace(line) == "" {
 			continue
 		}
+		if ctx.Err() != nil {
+			results <- deadlineResult(line)
+			continue
+		}
 		select {
 		case sem <- struct{}{}:
 			wg.Add(1)
@@ -457,9 +487,7 @@ func classifyLinesWithWorkers(
 				results <- classifyBridge(ctx, raw, timeout, ipClient, ooniClient)
 			}(line)
 		case <-ctx.Done():
-			// Keep a typed record for every input even after the run budget:
-			// network clients receive the cancelled context and return quickly.
-			results <- classifyBridge(ctx, line, timeout, ipClient, ooniClient)
+			results <- deadlineResult(line)
 		}
 	}
 
