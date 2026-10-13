@@ -1287,9 +1287,21 @@ jobs:
         elif [ -f bridge/iran_results.json ]; then
           echo "scrape-and-test produced no fresh artifact (skipped or failed) — using bridge/iran_results.json already committed in the repo"
         else
-          echo '{"bridges":[],"summary":{"total_tested":0}}' > bridge/iran_results.json
-          echo "WARNING: bridge/iran_results.json not found anywhere — created empty placeholder"
+          echo "::error::No fresh bridge-intelligence artifact and no last-known-good bridge/iran_results.json. Refusing to synthesize an empty dataset."
+          {
+            echo "### Bridge input guard"
+            echo "- status: degraded"
+            echo "- action: aborted before scoring/publication"
+            echo "- reason: neither a fresh artifact nor a last-known-good result was available"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          exit 1
         fi
+        # Fail closed on malformed or empty upstream payloads; never let a
+        # syntactically valid placeholder silently enter scoring/publication.
+        jq -e 'type == "object" and (.bridges | type == "array") and (.bridges | length > 0)' bridge/iran_results.json >/dev/null || {
+          echo "::error::bridge/iran_results.json is malformed or has zero bridge records; refusing to publish."
+          exit 1
+        }
 
     - name: Run AI Re-Ranking (Rust-native scorer)
       timeout-minutes: 8
