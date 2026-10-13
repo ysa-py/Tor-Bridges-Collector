@@ -782,11 +782,44 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        ./iran_tester \
+        write_incomplete_iran_report() {
+          local generated_at
+          generated_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          cat > bridge/iran_results.json <<EOF
+        {
+          "generated_at": "${generated_at}",
+          "summary": {
+            "total_tested": 0,
+            "global_reachable": 0,
+            "iran_likely_working": 0,
+            "iran_likely_blocked": 0,
+            "iran_unknown": 0,
+            "iran_asn_blocked": 0,
+            "iran_frequently_blocked": 0,
+            "run_deadline_exceeded": true
+          },
+          "bridges": []
+        }
+        EOF
+        }
+        # Remove the checked-in previous report from the active path first, so
+        # a watchdog timeout can never accidentally publish stale Iran evidence.
+        write_incomplete_iran_report
+        set +e
+        timeout --signal=TERM --kill-after=15s 10m ./iran_tester \
           --input  bridge/bridge_list_for_testing.json \
           --output bridge/iran_results.json \
           --workers 100 \
-          --timeout 8s
+          --timeout 8s \
+          --run-timeout 9m
+        status=$?
+        set -e
+        if [ "$status" -eq 124 ] || [ "$status" -eq 137 ] || [ "$status" -eq 143 ]; then
+          echo "::warning::iran_tester hit the outer 10-minute watchdog; preserving an explicit empty/incomplete report instead of stale results"
+          write_incomplete_iran_report
+          exit 0
+        fi
+        exit "$status"
 
       # probe_scheduler starts an HTTP server that never exits on its own:
       # `timeout 300` force-kills it after 5 min, the PID is captured for

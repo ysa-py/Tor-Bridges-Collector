@@ -135,13 +135,14 @@ type TCPObservation struct {
 
 // Summary aggregates the full run statistics.
 type Summary struct {
-	TotalTested       int `json:"total_tested"`
-	GlobalReachable   int `json:"global_reachable"`
-	IranLikelyWorking int `json:"iran_likely_working"`
-	IranLikelyBlocked int `json:"iran_likely_blocked"`
-	IranUnknown       int `json:"iran_unknown"`
-	IranASNBlocked    int `json:"iran_asn_blocked"`
-	IranFreqBlocked   int `json:"iran_frequently_blocked"`
+	TotalTested        int  `json:"total_tested"`
+	GlobalReachable    int  `json:"global_reachable"`
+	IranLikelyWorking  int  `json:"iran_likely_working"`
+	IranLikelyBlocked  int  `json:"iran_likely_blocked"`
+	IranUnknown        int  `json:"iran_unknown"`
+	IranASNBlocked     int  `json:"iran_asn_blocked"`
+	IranFreqBlocked    int  `json:"iran_frequently_blocked"`
+	RunDeadlineExceeded bool `json:"run_deadline_exceeded,omitempty"`
 }
 
 // Report is the top-level output JSON document.
@@ -427,6 +428,53 @@ func dynamicWorkerCount(requested, candidates int) int {
 	return cpuScaled
 }
 
+// classifyLinesWithWorkers runs bounded parallel classification under a caller-owned
+// context. Once the overall run deadline expires, remaining records are still
+// emitted as inconclusive/unknown rows; context-aware HTTP and TCP work is
+// cancelled instead of holding the Stage 2 workflow indefinitely.
+func classifyLinesWithWorkers(
+	ctx context.Context,
+	bridgeLines []string,
+	workers int,
+	timeout time.Duration,
+	ipClient ipInfoLookup,
+	ooniClient ooniClassifier,
+) []BridgeResult {
+	sem := make(chan struct{}, workers)
+	results := make(chan BridgeResult, len(bridgeLines))
+	var wg sync.WaitGroup
+
+	for _, line := range bridgeLines {
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		select {
+		case sem <- struct{}{}:
+			wg.Add(1)
+			go func(raw string) {
+				defer wg.Done()
+				defer func() { <-sem }()
+				results <- classifyBridge(ctx, raw, timeout, ipClient, ooniClient)
+			}(line)
+		case <-ctx.Done():
+			// Keep a typed record for every input even after the run budget:
+			// network clients receive the cancelled context and return quickly.
+			results <- classifyBridge(ctx, line, timeout, ipClient, ooniClient)
+		}
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	allResults := make([]BridgeResult, 0, len(bridgeLines))
+	for result := range results {
+		allResults = append(allResults, result)
+	}
+	return allResults
+}
+
 // lineForTransport returns a formatted host:port string suitable for dialing.
 func lineForTransport(b *bridge.Transport) string {
 	return net.JoinHostPort(b.Host, fmt.Sprintf("%d", b.Port))
@@ -485,6 +533,7 @@ func main() {
 	outputFlag := flag.String("output", "bridge/iran_results.json", "Output JSON report path")
 	workersFlag := flag.Int("workers", 0, "Parallel worker count (0 = dynamic from candidate pool and CPU)")
 	timeoutFlag := flag.Duration("timeout", 8*time.Second, "Per-bridge TCP timeout")
+	runTimeoutFlag := flag.Duration("run-timeout", 9*time.Minute, "Hard deadline for the complete classification run")
 	flag.Parse()
 
 	// ── Read input ────────────────────────────────────────────────────────
@@ -500,46 +549,32 @@ func main() {
 	if err := validateWorkers(workers); err != nil {
 		log.Fatal(err)
 	}
-	log.Printf("Loaded %d bridges for testing (workers=%d, timeout=%s)",
-		len(bridgeLines), workers, *timeoutFlag)
+	if *timeoutFlag <= 0 {
+		log.Fatalf("--timeout must be > 0, got %s", *timeoutFlag)
+	}
+	if *runTimeoutFlag <= 0 {
+		log.Fatalf("--run-timeout must be > 0, got %s", *runTimeoutFlag)
+	}
+	log.Printf("Loaded %d bridges for testing (workers=%d, timeout=%s, run_timeout=%s)",
+		len(bridgeLines), workers, *timeoutFlag, *runTimeoutFlag)
 
 	// ── Shared clients ────────────────────────────────────────────────────
 	ipClient := ipinfo.New()
 	ooniClient := ooni.New()
 	defer ooniClient.Close()
 
-	// ── Parallel classification ───────────────────────────────────────────
-	sem := make(chan struct{}, workers)
-	results := make(chan BridgeResult, len(bridgeLines))
-	var wg sync.WaitGroup
-	ctx := context.Background()
+	// ── Parallel classification with a hard overall deadline ──────────────
+	ctx, cancel := context.WithTimeout(context.Background(), *runTimeoutFlag)
+	defer cancel()
+	allResults := classifyLinesWithWorkers(ctx, bridgeLines, workers, *timeoutFlag, ipClient, ooniClient)
 
-	for _, line := range bridgeLines {
-		if strings.TrimSpace(line) == "" {
-			continue
-		}
-		wg.Add(1)
-		sem <- struct{}{}
-		go func(raw string) {
-			defer wg.Done()
-			defer func() { <-sem }()
-			results <- classifyBridge(ctx, raw, *timeoutFlag, ipClient, ooniClient)
-		}(line)
-	}
-
-	go func() {
-		wg.Wait()
-		close(results)
-	}()
-
-	// ── Collect results ───────────────────────────────────────────────────
-	var allResults []BridgeResult
-	for r := range results {
-		allResults = append(allResults, r)
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		log.Printf("WARNING: overall run deadline %s exhausted; outstanding network work was cancelled and remaining bridge records stay inconclusive", *runTimeoutFlag)
 	}
 
 	// ── Build summary ─────────────────────────────────────────────────────
 	var summary Summary
+	summary.RunDeadlineExceeded = errors.Is(ctx.Err(), context.DeadlineExceeded)
 	summary.TotalTested = len(allResults)
 	for _, r := range allResults {
 		if r.TCPReachable || r.Transport == "snowflake" {

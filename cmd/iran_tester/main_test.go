@@ -244,3 +244,52 @@ func TestClassifyWebTunnelLiteralEndpointStillProbed(t *testing.T) {
 		t.Fatalf("attempted literal endpoint must retain its TCP stage and vantage: %#v", result.Verification)
 	}
 }
+
+
+// contextWaitingOONIClassifier simulates an API call that must stop when its
+// parent run context expires.
+type contextWaitingOONIClassifier struct{}
+
+func (contextWaitingOONIClassifier) Classify(ctx context.Context, _ string) (ooni.OONIStatus, float64, bool) {
+	<-ctx.Done()
+	return ooni.StatusUnknown, 0, false
+}
+
+func (contextWaitingOONIClassifier) LatestRecentMeasurementAt(string) (string, bool) {
+	return "", false
+}
+
+func (contextWaitingOONIClassifier) LatestTemporalMeasurementAt(string) (string, bool) {
+	return "", false
+}
+
+func TestClassifyLinesHonorsRunDeadlineAndPreservesInconclusiveRows(t *testing.T) {
+	lines := make([]string, 8)
+	for i := range lines {
+		lines[i] = "obfs4 127.0.0.1:1 cert=abc iat-mode=2"
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 40*time.Millisecond)
+	defer cancel()
+
+	started := time.Now()
+	results := classifyLinesWithWorkers(ctx, lines, 2, 2*time.Second, nil, contextWaitingOONIClassifier{})
+	elapsed := time.Since(started)
+
+	if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		t.Fatalf("context error=%v, want overall run deadline exceeded", ctx.Err())
+	}
+	if elapsed > time.Second {
+		t.Fatalf("classification did not stop promptly after shared deadline: elapsed=%s", elapsed)
+	}
+	if len(results) != len(lines) {
+		t.Fatalf("results=%d, want one non-fabricated result per input=%d", len(results), len(lines))
+	}
+	for i, result := range results {
+		if result.IranStatus != StatusIranUnknown {
+			t.Fatalf("result %d status=%q, want unknown after deadline", i, result.IranStatus)
+		}
+		if result.OONIChecked {
+			t.Fatalf("result %d claims OONI was checked despite cancelled context", i)
+		}
+	}
+}
