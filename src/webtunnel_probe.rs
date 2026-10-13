@@ -11,7 +11,6 @@
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
-use regex::Regex;
 use serde_json::{json, Value};
 
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
@@ -294,13 +293,27 @@ fn probe_sync(
 pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
     let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
 
-    let (host, port) = match extract_front_domain(line) {
-        Some(hp) => hp,
-        None => {
-            // No front domain found — keep original status
-            return bridge.clone();
+    // Prefer the explicit WebTunnel URL (including its private path). Some
+    // upstream candidates instead carry an FQDN as their literal host:port;
+    // those use "/" only when there is no url= endpoint in the line.
+    let target = extract_front_domain(line).or_else(|| {
+        let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
+        if host.is_empty() || host.parse::<std::net::IpAddr>().is_ok() {
+            return None;
         }
+        Some(FrontTarget {
+            host: host.to_string(),
+            port: 443,
+            path_and_query: "/".to_string(),
+        })
+    });
+    let target = match target {
+        Some(target) => target,
+        None => return bridge.clone(),
     };
+    let host = target.host.as_str();
+    let port = target.port;
+    let request_target = target.path_and_query.as_str();
 
     // Retry with exponential backoff for transient failures. RTT covers the
     // complete operation, including any bounded retry delays.
@@ -319,7 +332,7 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
             drop(delay_ms); // no-op on ARM musl (no std::thread::sleep in CI stub)
         }
 
-        let result = probe_sync(&host, port, timeout);
+        let result = probe_sync(host, port, request_target, timeout);
         match &result {
             Ok(_) => {
                 last_result = Some(result);
@@ -582,14 +595,15 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
             ProbeDecision::SkipUnsafeEndpoint
         };
     }
-    if let Some((front_host, front_port)) = extract_front_domain(line) {
+    if let Some(target) = extract_front_domain(line) {
         // A url= host that is itself a literal IP is a directly dialable
         // endpoint: TCP/TLS to it is not domain-fronting and is covered by
-        // the ordinary TCP tester.
-        return if front_host.parse::<std::net::IpAddr>().is_ok() {
+        // the ordinary TCP tester. Keep the endpoint path in the source line;
+        // probe_webtunnel_bridge re-parses it for the actual Upgrade request.
+        return if target.host.parse::<std::net::IpAddr>().is_ok() {
             ProbeDecision::SkipIpHost
         } else {
-            ProbeDecision::Probe(front_host, front_port)
+            ProbeDecision::Probe(target.host, target.port)
         };
     }
     if !host.is_empty() {
@@ -804,19 +818,50 @@ mod tests {
     }
 
     #[test]
-    fn extract_domain_from_webtunnel_line() {
+    fn extract_domain_from_webtunnel_line_preserves_path() {
         let line = "webtunnel ABC123 url=https://example.com/path ver=0.0.3";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "example.com");
-        assert_eq!(port, 443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "example.com");
+        assert_eq!(target.port, 443);
+        assert_eq!(target.path_and_query, "/path");
     }
 
     #[test]
-    fn extract_domain_with_custom_port() {
+    fn extract_domain_with_custom_port_preserves_path() {
         let line = "webtunnel DEF456 url=https://example.com:8443/path";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "example.com");
-        assert_eq!(port, 8443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "example.com");
+        assert_eq!(target.port, 8443);
+        assert_eq!(target.path_and_query, "/path");
+    }
+
+    #[test]
+    fn extract_domain_preserves_query_and_ignores_fragment() {
+        let line = "webtunnel DEF456 url=https://front.example.com:8443/a/b?token=x#fragment";
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "front.example.com");
+        assert_eq!(target.port, 8443);
+        assert_eq!(target.path_and_query, "/a/b?token=x");
+    }
+
+    #[test]
+    fn websocket_upgrade_request_uses_private_endpoint_path() {
+        let request = build_websocket_upgrade_request(
+            "front.example.com",
+            8443,
+            "/random/secret/path?token=x",
+        );
+        assert!(request.starts_with("GET /random/secret/path?token=x HTTP/1.1\\r\\n"));
+        assert!(request.contains("Host: front.example.com:8443\\r\\n"));
+        assert!(request.contains("Upgrade: websocket\\r\\n"));
+    }
+
+    #[test]
+    fn websocket_upgrade_request_brackets_ipv6_host_header() {
+        let request =
+            build_websocket_upgrade_request("2001:4860:4860::8888", 443, "/endpoint");
+        assert!(request.starts_with("GET /endpoint HTTP/1.1\\r\\n"));
+        assert!(request.contains("Host: [2001:4860:4860::8888]\\r\\n"));
     }
 
     #[test]
@@ -909,17 +954,19 @@ mod tests {
     fn edge_case_url_with_ip_instead_of_domain() {
         // url=https://1.2.3.4:8443/path — should still extract
         let line = "webtunnel FINGERPRINT url=https://1.2.3.4:8443/path ver=0.0.3";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "1.2.3.4");
-        assert_eq!(port, 8443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "1.2.3.4");
+        assert_eq!(target.port, 8443);
+        assert_eq!(target.path_and_query, "/path");
     }
 
     #[test]
     fn edge_case_url_with_no_path() {
         let line = "webtunnel FINGERPRINT url=https://example.com ver=0.0.4";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "example.com");
-        assert_eq!(port, 443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "example.com");
+        assert_eq!(target.port, 443);
+        assert_eq!(target.path_and_query, "/");
     }
 
     #[test]
