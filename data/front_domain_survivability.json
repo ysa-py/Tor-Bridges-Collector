@@ -5,7 +5,7 @@
       "advisory": "front domain unreachable for all 1 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
       "candidate_details": [
         {
-          "health_score": 0.05368709120000004,
+          "health_score": 0.04294967296000003,
           "raw": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
           "tcp_reachable": false,
           "transport": "meek-azure"
@@ -14,13 +14,34 @@
       "candidates": 1,
       "concentrated_failure": true,
       "currently_reachable": 0,
-      "mean_candidate_health": 0.054
+      "mean_candidate_health": 0.043
+    },
+    "app.datapacket.com": {
+      "advisory": "front domain unreachable for all 2 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
+      "candidate_details": [
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        }
+      ],
+      "candidates": 2,
+      "concentrated_failure": true,
+      "currently_reachable": 0,
+      "mean_candidate_health": 0.4
     },
     "assets.cloud.censys.io": {
       "advisory": "front domain unreachable for all 1 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
       "candidate_details": [
         {
-          "health_score": 0.05368709120000004,
+          "health_score": 0.04294967296000003,
           "raw": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
           "tcp_reachable": false,
           "transport": "conjure"
@@ -29,13 +50,34 @@
       "candidates": 1,
       "concentrated_failure": true,
       "currently_reachable": 0,
-      "mean_candidate_health": 0.054
+      "mean_candidate_health": 0.043
+    },
+    "cdn.ampproject.org": {
+      "advisory": "front domain unreachable for all 2 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
+      "candidate_details": [
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        }
+      ],
+      "candidates": 2,
+      "concentrated_failure": true,
+      "currently_reachable": 0,
+      "mean_candidate_health": 0.4
     },
     "cdn.sstatic.net": {
       "advisory": "front domain unreachable for all 1 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
       "candidate_details": [
         {
-          "health_score": 0.05368709120000004,
+          "health_score": 0.04294967296000003,
           "raw": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
           "tcp_reachable": false,
           "transport": "conjure"
@@ -44,19 +86,40 @@
       "candidates": 1,
       "concentrated_failure": true,
       "currently_reachable": 0,
-      "mean_candidate_health": 0.054
+      "mean_candidate_health": 0.043
+    },
+    "cdn.zk.mk": {
+      "advisory": "front domain unreachable for all 2 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
+      "candidate_details": [
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        }
+      ],
+      "candidates": 2,
+      "concentrated_failure": true,
+      "currently_reachable": 0,
+      "mean_candidate_health": 0.4
     },
     "www.cdn77.com": {
       "advisory": "front domain unreachable for all 2 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
       "candidate_details": [
         {
-          "health_score": 0.05368709120000004,
+          "health_score": 0.04294967296000003,
           "raw": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.05368709120000004,
+          "health_score": 0.04294967296000003,
           "raw": "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -65,20 +128,20 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
-      "mean_candidate_health": 0.054
+      "mean_candidate_health": 0.043
     },
-    "www.phpmyadmin.net": {
+    "www.datapacket.com": {
       "advisory": "front domain unreachable for all 2 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
       "candidate_details": [
         {
-          "health_score": 0.05368709120000004,
-          "raw": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.05368709120000004,
-          "raw": "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         }
@@ -86,8 +149,68 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
-      "mean_candidate_health": 0.054
+      "mean_candidate_health": 0.4
+    },
+    "www.google.com": {
+      "advisory": "front domain unreachable for all 2 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
+      "candidate_details": [
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        }
+      ],
+      "candidates": 2,
+      "concentrated_failure": true,
+      "currently_reachable": 0,
+      "mean_candidate_health": 0.4
+    },
+    "www.phpmyadmin.net": {
+      "advisory": "front domain unreachable for all 5 candidate(s) using it — treat as a front-level fault, not N independent bridge failures",
+      "candidate_details": [
+        {
+          "health_score": null,
+          "raw": "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
+          "tcp_reachable": null,
+          "transport": "meek_lite"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.04294967296000003,
+          "raw": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.04294967296000003,
+          "raw": "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        }
+      ],
+      "candidates": 5,
+      "concentrated_failure": true,
+      "currently_reachable": 0,
+      "mean_candidate_health": 0.221
     }
   },
-  "generated_at": "2026-10-12T13:21:03.462678040+00:00"
+  "generated_at": "2026-10-13T00:18:31.209490669+00:00"
 }

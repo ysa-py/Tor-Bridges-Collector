@@ -3,17 +3,17 @@
   "collection_mode": "live",
   "funnel": [
     {
-      "count": 23,
+      "count": 31,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1514,
+      "count": 1765,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1514,
+      "count": 1765,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -28,12 +28,12 @@
       "stage": "relay_success"
     },
     {
-      "count": 1514,
+      "count": 1765,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 443,
+      "count": 632,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,15 +43,31 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-12T13:21:04.211778948+00:00",
+  "generated_at": "2026-10-13T00:18:32.106758679+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
-    "by_reason": {},
-    "by_transport": {},
+    "by_reason": {
+      "DOCUMENTATION_RFC3849_2001_DB8": 241,
+      "TEST_NET_1_RFC5737": 7
+    },
+    "by_transport": {
+      "meek_lite": 1,
+      "snowflake": 6,
+      "webtunnel": 241
+    },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
-    "samples": [],
-    "total_non_routable": 0
+    "samples": [
+      "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
+      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+      "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3"
+    ],
+    "total_non_routable": 248
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -67,28 +83,31 @@
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 0,
     "iran_likely_working_webtunnel.txt": 0,
-    "obfs4.txt": 680,
+    "obfs4.txt": 683,
     "obfs4_tested.txt": 0,
     "tested_global_obfs4.txt": 0,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 0,
     "vanilla.txt": 421,
     "vanilla_tested.txt": 166,
-    "webtunnel.txt": 0,
-    "webtunnel_ipv6.txt": 0
+    "webtunnel.txt": 241,
+    "webtunnel_ipv6.txt": 241
   },
   "relay_coverage": {
-    "candidates": 1514,
+    "candidates": 1765,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
+      "meek_lite": 1,
       "no_literal_endpoint": 4,
-      "obfs4": 1024,
-      "vanilla": 486
+      "obfs4": 1027,
+      "snowflake": 6,
+      "vanilla": 486,
+      "webtunnel": 241
     },
-    "unobserved_candidates": 1510,
-    "unobserved_non_routable": 0,
-    "unobserved_other": 1510
+    "unobserved_candidates": 1761,
+    "unobserved_non_routable": 248,
+    "unobserved_other": 1513
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -108,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1510
+    "unobserved_candidates": 1761
   },
   "sources": {
     "sources": [
@@ -128,28 +147,28 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 7,
+        "fetched_lines": 9,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_builtin_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 2,
+        "fetched_lines": 4,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_settings_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 7,
+        "fetched_lines": 9,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_builtin_geolocated_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 7,
+        "fetched_lines": 9,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_builtin_unblocked_ir_single_transport"
@@ -182,16 +201,1137 @@
   "webtunnel_front_health": {
     "advisory_only": true,
     "evidence_source": "data/pt_results.json (live probe-relay observations from Cloudflare)",
-    "fronts": [],
-    "fronts_with_placeholder_endpoints": 0,
+    "fronts": [
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "1-cvt.sports-streams.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "2jl.cc",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "307007.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "5-ams.sports-streams.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "a.private.st",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "aaronstory2026.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "alina-photos.art",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "allium.heelsn.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "alwaysnewbie.eu.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "ams1.cryptomeanscryptography.club",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "anastasia.anondns.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "anoni.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "api.mittarovo.cz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "b.img-cdn.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "balades-et-gouts.fr",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bdrmbdrmbdrm.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bg.808.re",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bridge-es.jmrp.io",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bridge.hxflife.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bridge2.phntm.pro",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bridges.lovethosetrains.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "bubatz.legal",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "c.2jl.cc",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "c.img-cdn.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "capera.tel",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn-23.triplebit.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn-26.privacyguides.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn-46.triplebit.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn.dameray.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn.exonip.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn.seo-manager.info",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdn.yuvalbloch.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cdnspace.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "chatbuddy.eu.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "coellen.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cool110.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "crm.gateway-jp.dynamicingress.space",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cryptomeanscryptography.club",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cyfog.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "cz.tradebotz.site",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "d.img-cdn.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "dallinbryce.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "ddns.icmnt.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "deimos.fedfe1.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "dev-test.catcat.pictures",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "dev.dumkatze.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "disobey.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "docs.prevails.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "e.img-cdn.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "el-hacker.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "fdmf.ch",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "foglab.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "freeforall.camdvr.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "freesoftware.cloud",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "front-eu1.webdeliveryonl.click",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "fyhenry.uk",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "gia.shallotfarm.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "girafe.tel",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "headhumping.jumpingcrab.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "heresthespace.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "hhynz.maledict.me",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "hongkong.dagestani.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "ie01-dub.beijing.st",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "iwantabigblackdickinmyass.nayumi.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "jochenkessler.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "johns-tech-garden.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "kfc911.top",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "kochenjessler.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "le.nd-ai.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "lowkeykick.site",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "mae.nasnedagoniat.top",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "magicgreenforest.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "mail3.theyosh.nl",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "masterkeef.duckdns.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "men-touching.men",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "mensor.ch",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "meskio.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "metastable03.mori.yuka.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "mirror.sanin.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "miscellanemaker.cc",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "mrrp.sillykittens.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "mstdn.party",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "myprivatecloud82.fun",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "n8n.ikebun.jp",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "naiveproxy.lab",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nauka.edu.eu.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nextcloud.kiljan.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nextcloud.privacy-vbox.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nl.808.re",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nothing.localenby.is",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "np601p22.xoomlia.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nthpyro.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "nyx.libertasforge.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "oglilouhn.dedyn.io",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "oldradio.info",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "oneforty.chummer.online",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "onethirtyseven.chummer.online",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "onethirtysix.chummer.online",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "ovVRTrs9IcHUv2uQBPa4cvKX.cdnspace.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pablo.iki.fi",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pl.808.re",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pl2.808.re",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pod01.oneclickhost.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pod02.oneclickhost.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pod03.oneclickhost.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pod04.oneclickhost.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "pod05.oneclickhost.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "push.hieronymus.uk",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "quantentoast.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "rabbithole2.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "redstarsl.cc",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "regionalindex37.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "relay.manupawick.men",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "reptiles.miscellanemaker.cc",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "rot.ronaak.eu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "s.dont.icu",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "s3.vlue.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "sexgrueselbox.ch",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "shallotfarm.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "signaling.privacy-vbox.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "sp-sk.bitcdn.ovh",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "sp-tr.bitcdn.ovh",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "speedtest.qs.ee",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "staging.nexusocean.link",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "steuern-sind-raub.ch",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "stop.rechts.jetzt",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "stream.lacka.day",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "streaming.the-forgotten-tales.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "surf.mysticboarding.cz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "talnett.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "tearandnatureeco.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "test.mwumba.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "tired.social",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "tomorefreedomitis.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "topwager.bet",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "tor.jmrp.io",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "tor.kwe-private.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "tor1.woodie.dev",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "transformaforge.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "ttt.enerhome.site",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "unknxwn.lol",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "vault.005184.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "vika7.space",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "web.localenby.is",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "webtnl.ekiprahati.shop",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "webtunnel.buhhenbaldence.com",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "webtunnel.offblast.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wechatcommunities.top",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wildnetwork.pro",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wolkewolkewolke.zip",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wt.aaronstory2026.xyz",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wt.gri.mw",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wt3.vkurage.zip",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wt5.wtqwert.top",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "wtb007.unshakled.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "www.cafe-kantholz.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "www.jarlaxle.de",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "www.readthefinemanual.net",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "www2.shallotfarm.org",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "yandex.arkadag.org",
+        "observations": 0,
+        "successes": 0
+      }
+    ],
+    "fronts_with_placeholder_endpoints": 241,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 0,
+    "lines_examined": 241,
     "summary": {
       "degraded": 0,
       "healthy": 0,
-      "no_evidence": 0,
+      "no_evidence": 160,
       "unreachable_from_relay": 0
     },
-    "unique_fronts": 0
+    "unique_fronts": 160
   }
 }
