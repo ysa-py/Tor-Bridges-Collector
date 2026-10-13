@@ -8010,7 +8010,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain fdmf.ch:443. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:5985:711a:a60e:61a0:1260:b42e",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.21.57.111:443 58DA67BD879E9239FCD4A590E25118BB2118CB3C url=https://fdmf.ch/QCjqMFJumKjWgB7BFaOc04dN ver=0.0.3",
+      "line": "webtunnel 172.67.145.169:443 58DA67BD879E9239FCD4A590E25118BB2118CB3C url=https://fdmf.ch/QCjqMFJumKjWgB7BFaOc04dN ver=0.0.3",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -8199,7 +8199,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain ttt.enerhome.site:443. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:5f24:a703:dbde:bec8:d285:d600",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.21.48.160:443 EFCEA1B038931F73BA155FE1E5945BCEBD62212C url=https://ttt.enerhome.site/ttt_TOR_Cjy8764jkUtopY ver=0.0.1",
+      "line": "webtunnel 172.67.154.84:443 EFCEA1B038931F73BA155FE1E5945BCEBD62212C url=https://ttt.enerhome.site/ttt_TOR_Cjy8764jkUtopY ver=0.0.1",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -13239,7 +13239,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain lowkeykick.site:443. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:c9b:bc88:3d6e:1c94:c0e9:b3f9",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.21.73.84:443 908AAD3122B6D46E6CD7CE4BE03A6F9491EF4204 url=https://lowkeykick.site/199ea8c3e6efa36c7e56a280838830757b806540 ver=0.0.3",
+      "line": "webtunnel 172.67.142.7:443 908AAD3122B6D46E6CD7CE4BE03A6F9491EF4204 url=https://lowkeykick.site/199ea8c3e6efa36c7e56a280838830757b806540 ver=0.0.3",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -15382,21 +15382,11 @@
       "asn_org": "AS16509 Amazon.com, Inc.",
       "composite_score": 0.5,
       "host": "3.109.201.210",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:08.053777995Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 3.109.201.210:8443 899051E020499F2EB2ACFCE3F9407A46999D7C04 cert=ohcUhuGZxiRDGARFQA+GgN3MLtr2XP6ZtScy7SHr7Oakbam5JD7f9wre/0KA4OLDhTJleg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.765,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 8443,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -16457,50 +16447,8 @@
       "asn_org": "AS51167 Contabo GmbH",
       "composite_score": 0.675,
       "host": "213.199.35.150",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:07:02.62236166Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 213.199.35.150:443 503868C118AB3582C643D6D0DEC0044254DAE0AC cert=9Q2/xn52TQTL+mDNP3FtYHuf5svq5TA/BAyeOZJ4R8hlDdEs28I5VCVS2sEoSnNw0NGEKg iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.603,
-      "ooni_checked": true,
-      "port": 443,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
-      "test_tier": "tier_1_tcp",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-10-13T18:07:02.62230842Z",
-        "probe_type": "tcp",
-        "rtt_ms": 90.458,
-        "source": "iran_results",
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS199524",
-      "asn_country": "NL",
-      "asn_org": "AS199524 G-Core Labs S.A.",
-      "composite_score": 0.675,
-      "host": "193.169.239.241",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 193.169.239.241:443 9220934674F21905FA6E60BC6F086E599C8CF859 cert=5nZsVh74AWtuum32fZ/bMhY5zz+y4R2xypSDDpHkbZhyS7tv3r53Cd9Bz2bdB7peabGnXA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.603,
       "ooni_checked": false,
@@ -16532,7 +16480,7 @@
       "composite_score": 0.675,
       "host": "217.154.181.38",
       "iran_status": "iran_unknown",
-      "line": "obfs4 217.154.181.38:443 256E9332C04D42ED35180F29227FE18DD5AC2D3D cert=WkH4f6xH8iXM1ctY+c0VqkpQdT/cYtrXiveBGj9IjX5AhBM2oWrWKsDv1ucTTOAiiQi0Ow iat-mode=0",
+      "line": "obfs4 217.154.181.38:443 E8B019E3CC615E566AE6CE56DACC80A97A50CF12 cert=08Kw5NP+s7K3wUlIshU+h0q+0rCYABoKWeZRMxGftmeMhNmLKBYZ1tbVeT+Qqg83O5LvDA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.603,
       "ooni_checked": false,
@@ -16638,7 +16586,7 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "obfs4 217.154.181.38:443 E8B019E3CC615E566AE6CE56DACC80A97A50CF12 cert=08Kw5NP+s7K3wUlIshU+h0q+0rCYABoKWeZRMxGftmeMhNmLKBYZ1tbVeT+Qqg83O5LvDA iat-mode=0",
+      "line": "obfs4 217.154.181.38:443 256E9332C04D42ED35180F29227FE18DD5AC2D3D cert=WkH4f6xH8iXM1ctY+c0VqkpQdT/cYtrXiveBGj9IjX5AhBM2oWrWKsDv1ucTTOAiiQi0Ow iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.603,
       "ooni_checked": true,
@@ -16985,13 +16933,13 @@
       }
     },
     {
-      "asn": "AS215248",
-      "asn_country": "NL",
-      "asn_org": "AS215248 Bastiaan Mathijs Brink",
+      "asn": "AS51167",
+      "asn_country": "FR",
+      "asn_org": "AS51167 Contabo GmbH",
       "composite_score": 0.675,
-      "host": "103.149.168.234",
+      "host": "109.199.107.20",
       "iran_status": "iran_unknown",
-      "line": "obfs4 103.149.168.234:8443 2DF354DFB45E818F3437B525A312166ACE94D2F0 cert=bNk4dmMz77mVUxInj7ca7++JO8RceUxXzLkBAD3fQg3/yxoVfH5l0GtQ8FcNpjrkgyzhLQ iat-mode=0",
+      "line": "obfs4 109.199.107.20:8443 D55656DEA4AB88F801AC439F1009A39681EE88AC cert=0qHQTBX1Hx32QAdjbHVQiGoB/q72mIJ0Q1uifN3hsJcsMhz+7+/vT2cniDN9njj6xTwBIA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.563,
       "ooni_checked": false,
@@ -18572,7 +18520,7 @@
       "line": "Bridge 95.216.37.112:443 10809FCDC7B96F2C40AEACE3BF2497DA76B6A494",
       "nextgen_proto": null,
       "nin_score": 0.553,
-      "ooni_checked": false,
+      "ooni_checked": true,
       "port": 443,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
@@ -18595,11 +18543,11 @@
       }
     },
     {
-      "asn": "AS31898",
-      "asn_country": "US",
-      "asn_org": "AS31898 Oracle Corporation",
+      "asn": "AS53667",
+      "asn_country": "CH",
+      "asn_org": "AS53667 FranTech Solutions",
       "composite_score": 0.5,
-      "host": "132.226.82.75",
+      "host": "107.189.7.185",
       "iran_status": "iran_unknown",
       "line": "obfs4 107.189.7.185:443 503EB70C30120C72988B47087C720B582B6AB135 cert=C9aZnJRqK1pkHH6VRi78lTNvaBX/nhUvOFh30oPE7RGpvkgSnrACmrF82gU+RdT2D/S5Og iat-mode=0",
       "nextgen_proto": null,
@@ -18950,21 +18898,11 @@
       "asn_country": "DE",
       "composite_score": 0.5,
       "host": "217.60.199.248",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:08.995775328Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 217.60.199.248:443 5B5F87EFACAEF3ED0AACFDE6B9301C8CBCFEE520 cert=Oyq7RfVDeP81OpYEUu2NcGA74SX5H2WNc0aOM6f8wxKAK2ZVVKidBCtkSxKMNmqMRV6qVQ iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.55,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 443,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -19764,9 +19702,9 @@
     },
     {
       "composite_score": 0.5,
-      "host": "2003:fe:af0a:6600:dea6:32ff:fe5b:3ef5",
+      "host": "2602:f81c:81:5::50",
       "iran_status": "iran_unknown",
-      "line": "obfs4 [2003:fe:af0a:6600:dea6:32ff:fe5b:3ef5]:443 0C6DDE3F9FC377A5E69DC044E81C857277148D71 cert=6vp+cyZmJOp+QFtytv9Ca+Z+ASF4l7r12MeEevvufl4OcDimBhjQlxctjfgdCmnT7iu7Lg iat-mode=0",
+      "line": "obfs4 [2602:f81c:81:5::50]:443 E1FE1E1EBF704DB6D9F450895E449D86255DD8DE cert=vLKHN7ZkKJzsrzgzy2FGQvbERgeeFII97aE2LI6+JW0sfXivtjJipKyCP3fpuHZL7jKzZg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.55,
       "ooni_checked": false,
@@ -20727,7 +20665,7 @@
       "line": "obfs4 37.221.64.195:8443 B679D14EAED9B74543048CB7C9C8184596B3959F cert=LVPGGkWwz7fqw3Osp7SpXbIiMl0qQlIvsnHmhNrWOB5yUWJG3c/OJ7XfpacqJoH9N8UaPA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.51,
-      "ooni_checked": false,
+      "ooni_checked": true,
       "port": 8443,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -21448,9 +21386,9 @@
     },
     {
       "composite_score": 0.5,
-      "host": "2602:fa5d::15b",
+      "host": "2607:f130:0:15a::6f2:669b",
       "iran_status": "iran_unknown",
-      "line": "obfs4 [2602:fa5d::15b]:8443 6C240E2BF8539D655CC4EEAC920AE76CFEB5C61B cert=ONqubRkIjDuHCd/c8gE35BjoBmmSfEBn6idJrKvWHYRHy2h2xf6BS+WzdFsdhX67haHYYQ iat-mode=0",
+      "line": "obfs4 [2607:f130:0:15a::6f2:669b]:8443 2664651DE3173B7280099B1DD92F88EBF084FAA5 cert=iNq+9/9ImDhevW6w9Dbo65xRLVj6xco2UhqJeGuGWH/8Cd7Eb4dyzkWBvBX2W+tFTH7gaQ iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.51,
       "ooni_checked": false,
@@ -22016,21 +21954,11 @@
       "asn_org": "AS63949 Akamai Connected Cloud",
       "composite_score": 0.675,
       "host": "45.79.251.210",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:27.99734286Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 45.79.251.210:80 1C5D19251F1366D748C9868A16D4F7A1A1B005D7 cert=BS0vbySQ08M56MaswZoj03aaQhS25pJI1UZfH5mTRf/scwN+OLD4/0fBhLCkBj8uCPdvHA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.503,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 80,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
@@ -22164,21 +22092,11 @@
       "asn_org": "AS3320 Deutsche Telekom AG",
       "composite_score": 0.5,
       "host": "217.252.126.109",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:40.19596451Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "Bridge 217.252.126.109:443 2154DB58231A01333F76160E6DC438BDBA66AD62",
       "nextgen_proto": null,
       "nin_score": 0.5,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 443,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -22591,13 +22509,13 @@
       "composite_score": 0.5,
       "host": "86.60.180.28",
       "iran_status": "iran_unknown",
-      "line": "Bridge 82.58.252.180:443 11790370D080C588C1CD210D55B58EF0C634191D",
+      "line": "Bridge 86.60.180.28:443 1A13209935B6FBC6F16A90532CFE6D0B0B5EED37",
       "nextgen_proto": null,
       "nin_score": 0.5,
       "ooni_checked": false,
       "port": 443,
       "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
+      "test_result": "tested_failing",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-10-13T18:18:53.066307354+00:00",
       "transport": "86.60.180.28:443",
@@ -22609,49 +22527,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS3269",
-      "asn_country": "IT",
-      "asn_org": "AS3269 Telecom Italia S.p.A.",
-      "composite_score": 0.5,
-      "host": "79.40.247.139",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:05:47.032731255Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 79.40.247.139:443 11790370D080C588C1CD210D55B58EF0C634191D",
-      "nextgen_proto": null,
-      "nin_score": 0.5,
-      "ooni_checked": true,
-      "port": 443,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "79.40.247.139:443",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:04:48.797365045Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -22790,21 +22666,11 @@
       "asn_country": "US",
       "composite_score": 0.5,
       "host": "23.154.177.9",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:42.597006353Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "Bridge 23.154.177.9:8443 255EE68D31F265C768A43907EB00449D674F0FD2",
       "nextgen_proto": null,
       "nin_score": 0.46,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 8443,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -22961,7 +22827,7 @@
       "composite_score": 0.675,
       "host": "193.182.111.23",
       "iran_status": "iran_unknown",
-      "line": "Bridge 193.182.111.21:80 F31C3DDFB2ECF41BEF693EC866BFE6B7E9A06A90",
+      "line": "Bridge 193.182.111.23:80 C0C333B87E110E3BA49DB70E9D504688FAD5D556",
       "nextgen_proto": null,
       "nin_score": 0.453,
       "ooni_checked": false,
@@ -24450,21 +24316,11 @@
       "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.675,
       "host": "152.53.160.146",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:06:31.396830238Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 152.53.160.146:43119 2582C1451932CEC25E225F3D52472ED70F7EC9F0 cert=d4pnvko2HtOQUinHU5gWNirge/4R0uW0uoUuUg2M127uWYAbGPK6FsfQTlPjt2jyTp8yTw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 43119,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
@@ -25449,13 +25305,13 @@
       "asn_country": "DE",
       "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
       "composite_score": 0.675,
-      "host": "185.177.207.13",
+      "host": "185.177.207.10",
       "iran_status": "iran_unknown",
-      "line": "obfs4 185.177.207.13:22662 928C1E4289A01F34C8FB423FC32C0E77EE0F8736 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
+      "line": "obfs4 185.177.207.10:56389 6B84EEA5CE85F8CA28102B0134851F0928921EC2 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
-      "port": 22662,
+      "port": 56389,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -25609,13 +25465,13 @@
       "asn_country": "DE",
       "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
       "composite_score": 0.675,
-      "host": "185.177.207.244",
+      "host": "185.177.207.233",
       "iran_status": "iran_unknown",
-      "line": "obfs4 185.177.207.244:11244 9B5D1381000B3195BF2C0400ADE89A4CA9DE4EF1 cert=bKA4A4O1WezEItisqx170Z+23Md5nlqRJYYM1KLO13RzSDHClb5eZCrfvEt29Qh5vWUhCw iat-mode=0",
+      "line": "obfs4 185.177.207.233:11233 B8DFC8F455000A5C6C740175A6604642CB50A83D cert=cYWJY9X7MunIDSWpdhKEW/cRCX6rtZbVp2YqLf+4Vht3epd66bKBetJ7gnN6QjfqO6LPEg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
-      "port": 11244,
+      "port": 11233,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -25673,13 +25529,13 @@
       "asn_country": "DE",
       "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
       "composite_score": 0.675,
-      "host": "185.177.207.249",
+      "host": "185.177.207.247",
       "iran_status": "iran_unknown",
-      "line": "obfs4 185.177.207.249:11249 A00067FA2828A3084291A3C9ACBF55056D6E76C8 cert=pNHH2w8m+3f9+2TsjuLWopHD1WBRoSw41kVSf/ELNwW6j0s192fNLG0bSDrBhML/S8UJTA iat-mode=0",
+      "line": "obfs4 185.177.207.247:11247 B8B20E8D2EDDCD1C2A6C927FE36B722B594058CE cert=RmqPmf+5UT6OZfvsMab/QKuGugsCJKX9rmet6Ye/3MoWEVxZSK8qw1mT4qbuiR0EkOUhJg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
-      "port": 11249,
+      "port": 11247,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -25861,13 +25717,13 @@
       }
     },
     {
-      "asn": "AS30893",
-      "asn_country": "SE",
-      "asn_org": "AS30893 No ACK Group Holding AB",
+      "asn": "AS197540",
+      "asn_country": "DE",
+      "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.675,
-      "host": "185.231.100.9",
+      "host": "185.244.192.107",
       "iran_status": "iran_unknown",
-      "line": "obfs4 185.231.100.9:8080 E6F41C41485C503D3E8A2D4C9B096B390F9425B7 cert=wUTy69IHqzh4Xpd6X/L6YG1NDTgWOq/AVNGPXseBy/16WmlmdNinXi2VNyBUlcN9tbrtcA iat-mode=1",
+      "line": "obfs4 185.244.192.107:45741 5E4F1FC1B90BACEC3A9B83D55E71134636C89484 cert=RGQ7dcx7NKBdpRx71hGa4pxhrqBluaVqUDwERGXfEjQ3/Uiw7+q9K5gnUTZDaO6PsaSGYw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
@@ -26311,25 +26167,15 @@
     {
       "asn": "AS24940",
       "asn_country": "DE",
-      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "asn_org": "AS24940 Hetzner Online GmbH",
       "composite_score": 0.675,
-      "host": "185.177.207.10",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:07:22.79743738Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "195.201.141.182",
       "iran_status": "iran_unknown",
-      "line": "obfs4 185.177.207.10:56389 6B84EEA5CE85F8CA28102B0134851F0928921EC2 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
+      "line": "obfs4 195.201.141.182:30540 9B1B6916C93D3C17FEFFFD310381EB72AA78E0F3 cert=y13JWcUaNWcmXoyJ+3SG3LSJ4EMMScqgnpUKwOsiApnyzKfv9Pu23lliosOIkuFHuh8RfA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
-      "ooni_checked": true,
-      "port": 56389,
+      "ooni_checked": false,
+      "port": 30540,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -26605,7 +26451,7 @@
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
-      "port": 5470,
+      "port": 23577,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -27023,15 +26869,15 @@
     {
       "asn": "AS36352",
       "asn_country": "US",
-      "asn_org": "AS7922 Comcast Cable Communications, LLC",
+      "asn_org": "AS36352 HostPapa",
       "composite_score": 0.675,
-      "host": "24.20.143.248",
+      "host": "23.94.169.122",
       "iran_status": "iran_unknown",
-      "line": "obfs4 24.20.143.248:17442 8196FE96D2DC4F4B9BAA10C7698FDE55BE0BA0B9 cert=4rE60m6SKPWQTZx4izOwHfn0/egQ7L8SNtpH8b+HZMaaObI78Uimzm3gK0YaX6JTEhqydA iat-mode=0",
+      "line": "obfs4 23.94.169.122:63000 1878E0F5DAFFBD4A0F8DC75820ADB9B10E8ABAF0 cert=iESu5/SAcFI8GPUXHaV4Yk1zraP1AjZySYSsKh0lT+Bj0q/pdwa4PjMjsOusMxiOuUQAOA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
-      "port": 17442,
+      "port": 63000,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -27351,7 +27197,7 @@
       "nextgen_proto": null,
       "nin_score": 0.403,
       "ooni_checked": false,
-      "port": 27751,
+      "port": 9130,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -27543,27 +27389,17 @@
       }
     },
     {
-      "asn": "AS24940",
-      "asn_country": "FI",
-      "asn_org": "AS24940 Hetzner Online GmbH",
+      "asn": "AS62005",
+      "asn_country": "EE",
+      "asn_org": "AS62005 BlueVPS OU",
       "composite_score": 0.675,
-      "host": "204.168.234.22",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:07:55.396454337Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "45.83.182.93",
       "iran_status": "iran_unknown",
-      "line": "obfs4 204.168.234.22:9100 C0A343C66813AB22C9D8BB568F2862F832424249 cert=8+WB7Bda9jpqeOZOhxBJ3ZVy8QL4ywGFYd6u6EWTcWUR+X8BJ+N8bSJf3SCtwHKr92y0QQ iat-mode=0",
+      "line": "obfs4 45.83.182.93:8009 073386E7DF7406AA248CDC978ED6FE25C1048645 cert=ElM84TKLLcNU8v0TvUbhyQwRVLGDfvHMUy0aHilfO4wQh2V+FJy/aJuDcdU9xJ4XC/jXAA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
-      "ooni_checked": true,
-      "port": 9100,
+      "ooni_checked": false,
+      "port": 8009,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -30359,8 +30195,8 @@
       "line": "obfs4 92.63.169.52:4444 6E51423BA6693C627F12CBA99951B05123CBFE76 cert=5oKmfPAkMsbPYqILxgjMRswPJXwaw/sT4OQjaSeo7zqI/hSsnlEY+zInvkzCJY8z3N7WSw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
-      "ooni_checked": false,
-      "port": 8081,
+      "ooni_checked": true,
+      "port": 4444,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -30614,10 +30450,10 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "obfs4 95.179.192.8:8080 0E75D1C25A4C6E9CAA34C0326BC625F49DE76F1E cert=nof+TOgHfJEhCXAFl+laSh9QXGDS2hTXxALTmTNXL6v8xiFLl+o0OAd8ZyQ8P7RmdNnkTw iat-mode=0",
+      "line": "obfs4 95.179.192.8:8080 0E75D1C25A4C6E9CAA34C0326BC625F49DE76F1E cert=y3hZX0aEbfSfNiDJ3dM5tXbURAvAwmkKlkCkm5HDf9thLI08u6pRw1wGaF5Qg/D8Bg7pOg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.403,
-      "ooni_checked": false,
+      "ooni_checked": true,
       "port": 8080,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
@@ -30816,80 +30652,6 @@
         "source": "iran_results",
         "stage": "S0",
         "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS3320",
-      "asn_country": "DE",
-      "asn_org": "AS3320 Deutsche Telekom AG",
-      "composite_score": 0.5,
-      "host": "217.236.255.36",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:34.996692981Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 217.236.255.36:80 4FFB46D03330D629590C28153A8C4CEA6291837A",
-      "nextgen_proto": null,
-      "nin_score": 0.4,
-      "ooni_checked": true,
-      "port": 80,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "217.236.255.36:80",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:03:44.059311556Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS577",
-      "asn_country": "CA",
-      "asn_org": "AS577 Bell Canada",
-      "composite_score": 0.5,
-      "host": "74.12.120.248",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 74.12.120.248:80 A6364CE9DCAF5FBDD745B4C44C580584D9FD2CD2",
-      "nextgen_proto": null,
-      "nin_score": 0.4,
-      "ooni_checked": false,
-      "port": 80,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "74.12.120.248:80",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:04:37.997456882Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -31299,13 +31061,13 @@
       }
     },
     {
-      "asn": "AS14061",
+      "asn": "AS215248",
       "asn_country": "NL",
-      "asn_org": "AS14061 DigitalOcean, LLC",
+      "asn_org": "AS215248 Bastiaan Mathijs Brink",
       "composite_score": 0.675,
       "host": "103.149.168.242",
       "iran_status": "iran_unknown",
-      "line": "Bridge 167.99.37.45:8444 90B81B90F934BFE5D90081B5FC62A2E2FCAB5234",
+      "line": "Bridge 103.149.168.242:9443 91637DE9ED5B069722DA7A5796926EE13238694D",
       "nextgen_proto": null,
       "nin_score": 0.353,
       "ooni_checked": false,
@@ -31465,7 +31227,7 @@
       "composite_score": 0.675,
       "host": "104.244.75.238",
       "iran_status": "iran_unknown",
-      "line": "Bridge 107.189.6.207:19583 F92CEA3BB5375A86258D008DF21706BE486C9F22",
+      "line": "Bridge 104.244.75.238:22684 3DF77E92AF70F850699DEE8BC84899D1F3ECC34E",
       "nextgen_proto": null,
       "nin_score": 0.353,
       "ooni_checked": false,
@@ -31555,13 +31317,13 @@
       }
     },
     {
-      "asn": "AS12876",
-      "asn_country": "PL",
-      "asn_org": "AS12876 Scaleway SAS",
+      "asn": "AS36352",
+      "asn_country": "US",
+      "asn_org": "AS36352 HostPapa",
       "composite_score": 0.675,
       "host": "107.173.164.249",
       "iran_status": "iran_unknown",
-      "line": "Bridge 151.115.78.42:7002 4D877AB9773E6E1EEFC8AB84A705B2A9ABDDA379",
+      "line": "Bridge 107.173.164.249:50604 74DE4100C63CA34626E21C593C1A265793D69E76",
       "nextgen_proto": null,
       "nin_score": 0.353,
       "ooni_checked": false,
@@ -32865,27 +32627,17 @@
       }
     },
     {
-      "asn": "AS212531",
-      "asn_country": "LT",
-      "asn_org": "AS212531 Interneto vizija",
+      "asn": "AS200019",
+      "asn_country": "MD",
+      "asn_org": "AS200019 ALEXHOST SRL",
       "composite_score": 0.675,
-      "host": "176.223.133.126",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:48.596429553Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "194.110.247.163",
       "iran_status": "iran_unknown",
-      "line": "Bridge 176.223.133.126:6010 AA94C481EA741146AFED535BA6734DC7A3E2F050",
+      "line": "Bridge 194.110.247.163:4690 E811AABF01E9EA98D2394A5F2BCA4B0ADBB5E6B5",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 6010,
+      "ooni_checked": false,
+      "port": 4690,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -32979,27 +32731,17 @@
       }
     },
     {
-      "asn": "AS197540",
+      "asn": "AS24940",
       "asn_country": "DE",
-      "asn_org": "AS197540 netcup GmbH",
+      "asn_org": "AS24940 Hetzner Online GmbH",
       "composite_score": 0.675,
-      "host": "185.244.192.107",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:51.59562036Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "195.201.1.0",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.244.192.107:33026 5E4F1FC1B90BACEC3A9B83D55E71134636C89484",
+      "line": "Bridge 195.201.1.0:35665 D5AD7929E2FB96675E6AB4013F438FC987D32763",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 33026,
+      "ooni_checked": false,
+      "port": 35665,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -33161,25 +32903,15 @@
     {
       "asn": "AS197540",
       "asn_country": "DE",
-      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.675,
-      "host": "185.177.207.134",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:54.19653182Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "202.61.247.61",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.177.207.134:9443 A13350ACBFD0C4D0F07773EDFAFD2C3C68F79016",
+      "line": "Bridge 202.61.247.61:13313 4A6AD27946A7DCA8D9A8B34F3A3BD1932174D0B5",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 9443,
+      "ooni_checked": false,
+      "port": 13313,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -33447,25 +33179,15 @@
     {
       "asn": "AS24940",
       "asn_country": "DE",
-      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "asn_org": "AS24940 Hetzner Online GmbH",
       "composite_score": 0.675,
-      "host": "185.177.207.154",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:57.197023214Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "213.239.209.42",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.177.207.154:9443 FE2F09488536336328D31621678530642F7FFBA5",
+      "line": "Bridge 213.239.209.42:4711 6243BA21C8BF217602EEBB70B1C3D93DCEA2E366",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 9443,
+      "ooni_checked": false,
+      "port": 4711,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -33524,26 +33246,20 @@
     },
     {
       "asn": "AS8560",
-      "asn_country": "US",
+      "asn_country": "DE",
       "asn_org": "AS8560 IONOS SE",
       "composite_score": 0.675,
-      "host": "198.71.49.67",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:05.796288674Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "217.154.78.220",
       "iran_status": "iran_unknown",
-      "line": "Bridge 198.71.49.67:444 4C213AAE4ABEEB4ECD9CFEDC5F8C07DF14857949",
+      "line": "Bridge 217.154.78.220:9001 45C689D0EA9D1DF97658B800AAE323F5D66554B2",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 444,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -33597,30 +33313,20 @@
       }
     },
     {
-      "asn": "AS197540",
-      "asn_country": "DE",
-      "asn_org": "AS197540 netcup GmbH",
+      "asn": "AS141995",
+      "asn_country": "IN",
+      "asn_org": "AS141995 Contabo Asia Private Limited",
       "composite_score": 0.675,
       "flags": [
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "194.59.207.185",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:07.396587687Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "217.217.249.205",
       "iran_status": "iran_unknown",
-      "line": "Bridge 194.59.207.185:9001 D6F610636498D27639501BF07951C830C7E05BBA",
+      "line": "Bridge 217.217.249.205:9001 57CE78F6F2C5377429AD653639443DB1653F0D16",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 9001,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
@@ -33777,25 +33483,15 @@
     {
       "asn": "AS3209",
       "asn_country": "DE",
-      "asn_org": "AS24940 Hetzner Online GmbH",
+      "asn_org": "AS3209 Vodafone GmbH",
       "composite_score": 0.675,
-      "host": "195.201.1.0",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:09.596967989Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "31.19.54.209",
       "iran_status": "iran_unknown",
-      "line": "Bridge 195.201.1.0:35665 D5AD7929E2FB96675E6AB4013F438FC987D32763",
+      "line": "Bridge 31.19.54.209:55125 99FE2D1CECD0ECE7905C21C78FC1880B087E33B8",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 35665,
+      "ooni_checked": false,
+      "port": 55125,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -33885,27 +33581,17 @@
       }
     },
     {
-      "asn": "AS51167",
-      "asn_country": "FR",
-      "asn_org": "AS51167 Contabo GmbH",
+      "asn": "AS20473",
+      "asn_country": "US",
+      "asn_org": "AS20473 The Constant Company, LLC",
       "composite_score": 0.675,
-      "host": "213.199.35.150",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:22.996718913Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "45.77.204.114",
       "iran_status": "iran_unknown",
-      "line": "Bridge 213.199.35.150:993 503868C118AB3582C643D6D0DEC0044254DAE0AC",
+      "line": "Bridge 45.77.204.114:9090 B81618128521C5444C7482C7E2653E9C3DE72984",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 993,
+      "ooni_checked": false,
+      "port": 9090,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -34001,31 +33687,17 @@
       }
     },
     {
-      "asn": "AS8560",
-      "asn_country": "DE",
-      "asn_org": "AS8560 IONOS SE",
+      "asn": "AS207569",
+      "asn_country": "FI",
+      "asn_org": "AS207569 IHOR HOSTING LTD",
       "composite_score": 0.675,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "217.154.78.220",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:28.796639205Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "46.243.1.156",
       "iran_status": "iran_unknown",
-      "line": "Bridge 217.154.78.220:9001 45C689D0EA9D1DF97658B800AAE323F5D66554B2",
+      "line": "Bridge 46.243.1.156:6889 5D9EE7AA730F39263D04C90AAF23C66AB013E1C0",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 9001,
+      "ooni_checked": false,
+      "port": 6889,
       "tcp_reachable": true,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -34379,17 +34051,17 @@
       }
     },
     {
-      "asn": "AS16276",
-      "asn_country": "CA",
-      "asn_org": "AS16276 OVH SAS",
+      "asn": "AS20278",
+      "asn_country": "US",
+      "asn_org": "AS20278 Nexeon Technologies, Inc.",
       "composite_score": 0.675,
-      "host": "51.222.9.153",
+      "host": "64.44.83.138",
       "iran_status": "iran_unknown",
-      "line": "Bridge 51.222.9.153:42683 6E26C7CC5852E8D13F7865D912ADC412EAA393DA",
+      "line": "Bridge 64.44.83.138:6443 3FD2D70C4E7F8D5470080B6BABA21376F2B478A1",
       "nextgen_proto": null,
       "nin_score": 0.353,
       "ooni_checked": false,
-      "port": 42683,
+      "port": 6443,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -34885,27 +34557,21 @@
       }
     },
     {
-      "asn": "AS40545",
-      "asn_country": "US",
-      "asn_org": "AS40545 Empire Access",
+      "asn": "AS13110",
+      "asn_country": "PL",
+      "asn_org": "AS13110 INEA sp. z o.o.",
       "composite_score": 0.675,
-      "host": "72.18.53.189",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:05:26.065500298Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "85.221.202.246",
       "iran_status": "iran_unknown",
-      "line": "Bridge 72.18.53.189:9111 A216B2017C64AA3BAB144B3B9458CD24A39F53B1",
+      "line": "Bridge 85.221.202.246:9001 D5D2F897C4B28EE2FCCA7551A3847AE5C2267958",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
-      "port": 9111,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -35554,7 +35220,7 @@
       "line": "Bridge 91.218.209.33:9001 7EECCE30E1BDD02130CEA29F9E620B0771F6768E",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": false,
+      "ooni_checked": true,
       "port": 9001,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
@@ -35649,21 +35315,17 @@
       }
     },
     {
-      "asn": "AS21499",
-      "asn_country": "FR",
-      "asn_org": "AS21499 Host Europe GmbH",
+      "asn": "AS1136",
+      "asn_country": "NL",
+      "asn_org": "AS1136 KPN B.V.",
       "composite_score": 0.675,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "92.205.234.49",
+      "host": "92.65.209.172",
       "iran_status": "iran_unknown",
-      "line": "Bridge 92.205.234.49:9001 9B0B2FF02A9C20EADA74928B0042AEF763AD46B1",
+      "line": "Bridge 92.65.209.172:5050 225D6946243C9C5775E284B5FCCDD7D871F7A091",
       "nextgen_proto": null,
       "nin_score": 0.353,
       "ooni_checked": false,
-      "port": 9001,
+      "port": 5050,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
@@ -35849,62 +35511,20 @@
       }
     },
     {
-      "asn": "AS7922",
+      "asn": "AS7018",
       "asn_country": "US",
-      "asn_org": "AS7922 Comcast Cable Communications, LLC",
-      "composite_score": 0.675,
-      "host": "98.53.111.183",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 98.53.111.183:14135 8BC7A6F190B07C5F3B712C14AC9212688A842299",
-      "nextgen_proto": null,
-      "nin_score": 0.353,
-      "ooni_checked": false,
-      "port": 14135,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
-      "test_tier": "tier_1_tcp",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "98.53.111.183:14135",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-10-13T18:05:25.84433552Z",
-        "probe_type": "tcp",
-        "rtt_ms": 48.078,
-        "source": "iran_results",
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS13110",
-      "asn_country": "PL",
-      "asn_org": "AS13110 INEA sp. z o.o.",
+      "asn_org": "AS7018 AT&T Enterprises, LLC",
       "composite_score": 0.675,
       "flags": [
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "85.221.202.246",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:05:59.596442788Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "99.183.197.154",
       "iran_status": "iran_unknown",
-      "line": "Bridge 85.221.202.246:9001 D5D2F897C4B28EE2FCCA7551A3847AE5C2267958",
+      "line": "Bridge 99.183.197.154:9001 254E06880E7E7A9451C03845AD13484257D9AC5A",
       "nextgen_proto": null,
       "nin_score": 0.353,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 9001,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
@@ -36741,7 +36361,7 @@
       "composite_score": 0.5,
       "host": "146.103.40.68",
       "iran_status": "iran_unknown",
-      "line": "obfs4 146.103.40.68:9100 3204996785AD0B2AB31101D8A822148919B0D06A cert=02Moaqv7Xv5ptVj4Lb1RHkju0I0OCj1SCaB9d6X16C3J04PZ24pQcYiIv2DW5xetRwnOJg iat-mode=0",
+      "line": "obfs4 146.103.40.68:9100 691762A7D1936DE04362B5E8D9123C2DB7EA8CD1 cert=qUK6/opiPLCygmgji0x68HYhKyMX8Fjpe9aNazRNLvDBGthUnJxnGKT7SKTB24IVqKqoBQ iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
@@ -37169,80 +36789,6 @@
       }
     },
     {
-      "asn": "AS215311",
-      "asn_country": "DE",
-      "asn_org": "AS215311 Regxa Company for Information Technology Ltd",
-      "composite_score": 0.5,
-      "host": "146.103.40.68",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:06:29.796365815Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 146.103.40.68:9101 1C968AC465630A6202C76A2FA7A5C30F93FE24D7 cert=+JI0jYrr7AaHgL2lHqv/uk0/rCz+fnc6cUAf+ywVFhcFUCA1tPF+znRn2Ejsau7V3v/0Ug iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 9101,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:05:54.15503561Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS14956",
-      "asn_country": "US",
-      "asn_org": "AS14956 RouterHosting LLC",
-      "composite_score": 0.5,
-      "host": "144.172.92.216",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 144.172.92.216:9100 077F63862DA99A594F0254FAD612ACF30960C250 cert=pkEjgIQh1at/3UYG8QfjavofjFOQ5BWx2W8HmatNr/P/8/dPaaT9IXwHUn0RUPQoHC0VNw iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9100,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:05:58.550321625Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS197540",
       "asn_country": "DE",
       "asn_org": "AS197540 netcup GmbH",
@@ -37268,70 +36814,6 @@
         "source": "iran_results",
         "stage": "S0",
         "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS35758",
-      "asn_country": "IL",
-      "asn_org": "AS35758 Rachamim Aviel Twito",
-      "composite_score": 0.5,
-      "host": "147.78.2.131",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 147.78.2.131:9003 E4164FC68FDB95DBF5465737BA80086868BFB795 cert=uz41RcCQBa32zp1mCdiu1TIZwTO+Nww+BND0hhlvawbI+6F42F1AWwYOLHqwArEYGSztHA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9003,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:06:02.796622928Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "SG",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "15.235.167.10",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 15.235.167.10:9088 418136C9E3F7C8E1A2A60A618D36AE35B99CAF04 cert=iJBmTFTwF8ZpRIckIQukddL1YCYI5MxAe8esxpuQmfy0EXqX2BP8fJ1gWknQrMAR+ii0JA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9088,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:06:04.397475599Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -37599,13 +37081,13 @@
       "asn_country": "DE",
       "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.5,
-      "host": "152.53.121.113",
+      "host": "152.53.152.105",
       "iran_status": "iran_unknown",
-      "line": "obfs4 152.53.121.113:9443 6456BE1DC2E03AF194C45A9212D30A7E506955B1 cert=OWqgSmmTyZbhkhoQHFmXnhijXXd7NhOfkqzclwNN46AhMjpfqQlrGskE8TBvHJ/tlSsTaA iat-mode=0",
+      "line": "obfs4 152.53.152.105:7828 0D10AEABF5B475E0E3E0B357A9DBD68C51AB6EDE cert=tsv65JFV+UZYBrpJPv6sdhWPGo4o02DCkhoe9+tCx0qb+RSnPow9mi6bOS2v9Q7KNZwaSA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 9443,
+      "port": 7828,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -37723,17 +37205,17 @@
       }
     },
     {
-      "asn": "AS8473",
-      "asn_country": "SE",
-      "asn_org": "AS8473 Bahnhof AB",
+      "asn": "AS14061",
+      "asn_country": "SG",
+      "asn_org": "AS14061 DigitalOcean, LLC",
       "composite_score": 0.5,
-      "host": "158.174.146.87",
+      "host": "157.245.145.227",
       "iran_status": "iran_unknown",
-      "line": "obfs4 158.174.146.87:7800 B27592A9DA08DCB871F14F9247299F9FBA72D05F cert=g+x8k6Fn0V2zIESkJ05jWOANrEfj5T6HofdDcSfqqUGJGxqzjCZmt6R51yXbpz90JPS2OA iat-mode=0",
+      "line": "obfs4 157.245.145.227:9100 F5B925C5623DADC8AE241CC7F87035743E5B0AEB cert=Rub2WzrUpuyggKhq4YwIIQUxEdOPn4cqLUXJTb8doXOITpGvjG6P443hHelw6u0oxjLfdw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 7800,
+      "port": 9100,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -38245,17 +37727,17 @@
       }
     },
     {
-      "asn": "AS577",
-      "asn_country": "CA",
-      "asn_org": "AS577 Bell Canada",
+      "asn": "AS5410",
+      "asn_country": "FR",
+      "asn_org": "AS5410 Bouygues Telecom SA",
       "composite_score": 0.5,
-      "host": "174.91.123.202",
+      "host": "176.169.236.210",
       "iran_status": "iran_unknown",
-      "line": "obfs4 174.91.123.202:54321 AF0BA181FD41895F1221CCC56297E004B12C2E6A cert=kAmT6gWEP5OJANaBiasY68kkNPV/BzPucb117GFdree98fwjg/iii3MfTPpR77OJhbbOVw iat-mode=0",
+      "line": "obfs4 176.169.236.210:4431 F829D395093B4469808CE7A660AD33AC391FB64A cert=CGZxQnDVoqNLSyERUV5Wf1AklsRCwwSbLbeWjS7Aea6weFwQceg6XnEiXtKEdvWOxm1dMw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 54321,
+      "port": 4431,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -38629,38 +38111,6 @@
       }
     },
     {
-      "asn": "AS27699",
-      "asn_country": "BR",
-      "asn_org": "AS27699 TELEFÔNICA BRASIL S.A",
-      "composite_score": 0.5,
-      "host": "179.110.248.242",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 179.110.248.242:5302 A3132A846237C4ECCFAF3857FA9A236E11B7265F cert=IhsEgqaJiYxsfcfqE2Pn9GrqSKmQ+CgSSZMr1hjEIwmCijpNxvKkg8kjn7I6b8wW6O+VVQ iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 5302,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:06:31.685751884Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS60729",
       "asn_country": "DE",
       "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
@@ -38718,112 +38168,6 @@
         "source": "iran_results",
         "stage": "S0",
         "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "SG",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "15.235.134.248",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:07:04.196775855Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 15.235.134.248:40289 07799BA999BE15B9AA311450313E5C6C2EC6AC32 cert=Zt2E60wPtrhf0FSptKRFZiOsoXbptQ+D9ElWuUYm3HZNDMnSY8JnoH+8PoIiXJyHxZolNA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 40289,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:06:03.997211253Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS262196",
-      "asn_country": "AR",
-      "asn_org": "AS262196 Interface",
-      "composite_score": 0.5,
-      "host": "181.118.218.29",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 181.118.218.29:4443 F1555089C07B70D7B9513FE19F2A630D03460FAC cert=T6S21IP6FyvyuE/07jJYmhp8Qtv6gUbUK6Pk2SPsnzHSt62zUBkbXFCmXdBdm8bl7syUEw iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 4443,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:06:32.596657074Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS200651",
-      "asn_country": "RO",
-      "asn_org": "AS200651 FlokiNET ehf",
-      "composite_score": 0.5,
-      "host": "185.10.68.125",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 185.10.68.125:52726 741E17F1717B1083669AD926D53F1B1394C0C9B2 cert=ZA8fJl10Y0naSanOs4J0gSXR5qSD9Ifn90TRDUULFGfGDEnhdp58GQ5poFh7AqqGyLLVNA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 52726,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:06:32.797855578Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -39156,22 +38500,12 @@
       "asn_org": "AS209604 2E TELEKOMUNIKASYON LTD STI",
       "composite_score": 0.5,
       "host": "185.255.92.205",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:07:18.434100357Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
-      "line": "obfs4 185.255.92.205:9103 510A58A88D54C78BA002A9926AE40A0DCB6B6288 cert=pIA/Wr12z6L3OmEBrVlbIcWLvWNuwKpIjoA/v2zVJ0J+rb/+3UjEYFrRF0kggS2lNurCGw iat-mode=0",
+      "line": "obfs4 185.255.92.205:9100 D4D3EB8C02D935E69D6DFA94A516CDC87DB8A2CD cert=/icCSYdEHLfSu+bzHsj9cqkFAfQkiGtMXeQiw9+9XGYIESrMm/oRuhQIS9gL1XJxJ0gkQw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 9103,
+      "ooni_checked": false,
+      "port": 9100,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -39705,29 +39039,19 @@
       }
     },
     {
-      "asn": "AS197540",
-      "asn_country": "DE",
-      "asn_org": "AS197540 netcup GmbH",
+      "asn": "AS53667",
+      "asn_country": "US",
+      "asn_org": "AS53667 FranTech Solutions",
       "composite_score": 0.5,
-      "host": "46.38.240.142",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:07:31.495441232Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "198.98.62.82",
       "iran_status": "iran_unknown",
-      "line": "obfs4 46.38.240.142:62831 85DDB88F43F5F233BEA75246A2D693388BC2608B cert=Gz6dmuUPb1eqduXeC/fzXEDZfioPqT4nzyUrDTpofOHYz6EVTBqy+E5Ts0x1RBZZZCthOw iat-mode=0",
+      "line": "obfs4 198.98.62.82:7133 A7E7616C91B2FD83005B986A816EE9365F1360F4 cert=0a0plFGnJ1B32dH0l6qn4y/9Eht6fVX4akvRyheAkRuv0Fslqf8XDFDSba+Rgmh1//LzEg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 62831,
+      "ooni_checked": false,
+      "port": 7133,
       "tcp_reachable": false,
-      "test_result": "tested_failing",
+      "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-10-13T18:18:53.066307354+00:00",
       "transport": "obfs4",
@@ -39739,103 +39063,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS8560",
-      "asn_country": "DE",
-      "asn_org": "AS8560 IONOS SE",
-      "composite_score": 0.5,
-      "host": "212.227.71.129",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 212.227.71.129:1991 256B855715ED842DABB99B11EDC3D9B315D8E436 cert=gYzI2pqxRBfBavftkF6OunZT/Td8AKvqmv5khg1nhR+8VRJkt3/J3G39qEnPkZDR0KR5TQ iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 1991,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:07:01.370708332Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "FR",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "213.32.20.239",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 213.32.20.239:9443 025C26C142D5D6A4EA5F8D9E1B82766D62EEA3C3 cert=k+6+wzxwffXISpTKORX1cNsWZtm1fdvEGwnEU7elu3vQCRGAKjTGSG++gkUksJIfYWocVQ iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9443,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:07:02.882866129Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "FR",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "213.32.22.133",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 213.32.22.133:9100 BDC8CC985DE73FE808A6E2E184AFB211889850F1 cert=WF9y+0X9ijbxxW7LcYup5Suqg5is+ThhlLhQI6PNA3ikt5ZmKHj45g7r5eAXhT8/dkZFVQ iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9100,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:07:03.084387043Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -39875,9 +39103,9 @@
       }
     },
     {
-      "asn": "AS209604",
-      "asn_country": "TR",
-      "asn_org": "AS209604 2E TELEKOMUNIKASYON LTD STI",
+      "asn": "AS16276",
+      "asn_country": "FR",
+      "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.5,
       "host": "213.32.20.239",
       "iran_status": "iran_unknown",
@@ -40417,17 +39645,17 @@
       }
     },
     {
-      "asn": "AS2856",
-      "asn_country": "GB",
-      "asn_org": "AS2856 British Telecommunications Limited",
+      "asn": "AS50837",
+      "asn_country": "CH",
+      "asn_org": "AS50837 CLOUDSIGMA AG",
       "composite_score": 0.5,
-      "host": "31.104.35.172",
+      "host": "31.171.241.238",
       "iran_status": "iran_unknown",
-      "line": "obfs4 31.104.35.172:9877 E867187EE0B9D6F531395A41B5ECC4D5CD3BAB23 cert=EH1hAv/F7C51YMPJ6dqHFxgV2jjkbsbfCn2lndnXKXnSxYEJDkE5+058kdSXTh81RiiHBw iat-mode=0",
+      "line": "obfs4 31.171.241.238:8414 811115E721E9B530A3BA41D3FCE6B71D64E4DC5A cert=Sye+7gmUheN9ohPm8TV1pyNiuMwr4NMAKJXC3p6Du8m56VyorhG6S7u2NgklFS91rwpKBA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 9877,
+      "port": 8414,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -41545,342 +40773,6 @@
       }
     },
     {
-      "asn": "AS24940",
-      "asn_country": "FI",
-      "asn_org": "AS24940 Hetzner Online GmbH",
-      "composite_score": 0.5,
-      "host": "37.27.187.16",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:20.397141757Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 37.27.187.16:6683 994597905622C5622C41D5F2A8C25EB867923747 cert=D3mlY6TBuN84ewKqtUPW6XZuuUuD8E0lLEL3VCgQdTTJQexTtvEioZYbzUtLMeUGm/eFSw iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 6683,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:29.596445006Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS62005",
-      "asn_country": "EE",
-      "asn_org": "AS62005 BlueVPS OU",
-      "composite_score": 0.5,
-      "host": "45.83.181.50",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:20.596756291Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 45.83.181.50:2346 6858045AB459F255112D98CF24492CD9BCA60695 cert=bR0eEBYOgKaybRggBYo4cIZ3sxFD0NSrLHbVoN+3uH/voCvxVhoHqHrOhhmqOuehKHg9Uw iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 2346,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:07:28.369095539Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "GB",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "51.89.231.14",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:21.396060431Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 51.89.231.14:45153 71B727DCBCBFF6E6FB8E5B115E3FFA29EE2042FE cert=mNF4kkuPKnc7HicT59q+FGIGVZ9xtFfJjsT8JpDkE5GWTQ3s+jP+eH25+JSBoGtkNNLEZw iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 45153,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:51.045883942Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "GB",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "51.89.231.14",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:21.797020779Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 51.89.231.14:45153 B937A62223B991D3AEF58B6C790718DFA66062DE cert=zcqMchpxtMewbYo41PRxEGWxmeN+CSUbXprRtSfZuH1j/l/LW5ycmpRpC34R2sLij5AxHg iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 45153,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:51.431178553Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS56971",
-      "asn_country": "HK",
-      "asn_org": "AS56971 AS56971 Cloud",
-      "composite_score": 0.5,
-      "host": "45.38.42.101",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:21.996955957Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 45.38.42.101:9100 3DD1EC05989D25793694FE73439768F87DC0EB64 cert=5NbEE3euZBttq64Y9XWLErtrKkcICetuGYViOa2aNU3Q4UGVJPkxZEsuB55YnCHeNWDceA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 9100,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:32.198169338Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS400194",
-      "asn_country": "US",
-      "asn_org": "AS400194 Wire 3 LLC",
-      "composite_score": 0.5,
-      "host": "38.40.91.122",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:22.396392714Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 38.40.91.122:54433 78267E565F5A728C2A3E65C8FF4CA65BF9E07CF3 cert=RxHtF05sEOIoTl5dNiDfeIRg2qGETKUBy0TpiQvP0oSZTzJwkGRIYuRDAe4BEnmjs44UFg iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 54433,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:30.59780789Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS400194",
-      "asn_country": "US",
-      "asn_org": "AS400194 Wire 3 LLC",
-      "composite_score": 0.5,
-      "host": "38.30.191.95",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:22.796883158Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 38.30.191.95:54433 78267E565F5A728C2A3E65C8FF4CA65BF9E07CF3 cert=RxHtF05sEOIoTl5dNiDfeIRg2qGETKUBy0TpiQvP0oSZTzJwkGRIYuRDAe4BEnmjs44UFg iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 54433,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:30.425817102Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "GB",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "51.89.231.14",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:22.995961062Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 51.89.231.14:45153 C016CD9F09C87B0AB7DBC38B0DBD99FA287185F0 cert=XthK9twEeqOIyBbAKfGUXwCLCBjeugcmxqF440LXy3sMzKiwg3zmSKZuaHqno+JTLC6Ucg iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 45153,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:07:51.796597656Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS16276",
       "asn_country": "FR",
       "asn_org": "AS16276 OVH SAS",
@@ -41945,29 +40837,19 @@
       }
     },
     {
-      "asn": "AS20473",
-      "asn_country": "JP",
-      "asn_org": "AS20473 The Constant Company, LLC",
+      "asn": "AS16276",
+      "asn_country": "GB",
+      "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.5,
-      "host": "64.176.44.117",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:27.197119659Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "51.89.231.14",
       "iran_status": "iran_unknown",
       "line": "obfs4 51.89.231.14:45153 5F93758EBEF602BC4BFC79C7FE318441B4ED5295 cert=OULUuUlDWQaAOfcKHfWqae/txwouf/MyPlhW7RGCHrHxSAD1Hv/dH1ujahSOyKWUp62vRA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 8080,
+      "ooni_checked": false,
+      "port": 45153,
       "tcp_reachable": false,
-      "test_result": "tested_failing",
+      "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-10-13T18:18:53.066307354+00:00",
       "transport": "obfs4",
@@ -41979,7 +40861,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "refused",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -41987,29 +40869,19 @@
       }
     },
     {
-      "asn": "AS20473",
-      "asn_country": "JP",
-      "asn_org": "AS20473 The Constant Company, LLC",
+      "asn": "AS16276",
+      "asn_country": "GB",
+      "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.5,
-      "host": "64.176.44.117",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:27.796530705Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "51.89.231.14",
       "iran_status": "iran_unknown",
-      "line": "obfs4 64.176.44.117:8080 9A5140B2C5EC60C96195E8152E5BF56954F42A3F cert=unoOZjKgnJs3dzC09CCgYMuqKQ9utbsW91wuMW8RRiDm2N2yZD0zAPKmaTpklWXzS6smSw iat-mode=0",
+      "line": "obfs4 51.89.231.14:45153 B937A62223B991D3AEF58B6C790718DFA66062DE cert=zcqMchpxtMewbYo41PRxEGWxmeN+CSUbXprRtSfZuH1j/l/LW5ycmpRpC34R2sLij5AxHg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 8080,
+      "ooni_checked": false,
+      "port": 45153,
       "tcp_reachable": false,
-      "test_result": "tested_failing",
+      "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-10-13T18:18:53.066307354+00:00",
       "transport": "obfs4",
@@ -42021,49 +40893,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS15796",
-      "asn_country": "CH",
-      "asn_org": "AS15796 Salt Mobile SA",
-      "composite_score": 0.5,
-      "host": "51.154.72.128",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:08:28.19591631Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 51.154.72.128:17891 45083E375EC3203B890FD18840681242099D624C cert=f12ZrQF+lEidRN6C+ykcx5Fq8TweCfitVhDP6Ef8y3odnlDvT2K4ETMOPnVCm4M+Z9CmUw iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": true,
-      "port": 17891,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:07:35.698339588Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -42733,7 +41563,7 @@
       "composite_score": 0.5,
       "host": "65.109.141.141",
       "iran_status": "iran_unknown",
-      "line": "obfs4 65.109.141.141:40443 7C6F1961DB10B209ECB2AEFF16C928A9CCB71AE1 cert=Xp/8kQ4DMhHJhO89axRbeNGB+d78WNT8AAo1Bs3z5snVG87TDK8f2bl3QE3Dj3zq+ll7Hg iat-mode=0",
+      "line": "obfs4 65.109.141.141:40443 CC6686E824F09EBF056B4832328AE0FE7337385A cert=Sbf05mX0YHrgHxQY0kSMpJgpy16d/Vn2yedBliJQ7Y0fLQcB/D9I2r6VardyQ0U8qSs5SQ iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
@@ -43239,19 +42069,19 @@
       }
     },
     {
-      "asn": "AS577",
-      "asn_country": "CA",
-      "asn_org": "AS577 Bell Canada",
+      "asn": "AS16276",
+      "asn_country": "FR",
+      "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.5,
-      "host": "76.69.197.14",
+      "host": "79.137.26.210",
       "iran_status": "iran_unknown",
-      "line": "obfs4 76.69.197.14:8080 5C06CF9CBD395D3A077544FBBCE865E7F12EC5B0 cert=bkkxeUSyiwNnLWA5EPeL107LV+T78hixjrDI3xrn8m3PUybaElGiGLbjVFOb4lTpnB2ocg iat-mode=0",
+      "line": "obfs4 79.137.26.210:6965 4C5E0116789FAEDE583A099DF6DB17B5679CC77A cert=EE5442Mz8R3iYBBrHHl5NKeGFpcqZkpZ7HVWjzy+/5IGTBPl7IUuedWP4KSYBjPNxkLSVA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 8080,
+      "port": 6965,
       "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
+      "test_result": "tested_failing",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-10-13T18:18:53.066307354+00:00",
       "transport": "obfs4",
@@ -43263,7 +42093,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "timeout",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -43616,38 +42446,6 @@
         "source": "iran_results",
         "stage": "S0",
         "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "FR",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.5,
-      "host": "79.137.26.210",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 79.137.26.210:6965 4C5E0116789FAEDE583A099DF6DB17B5679CC77A cert=EE5442Mz8R3iYBBrHHl5NKeGFpcqZkpZ7HVWjzy+/5IGTBPl7IUuedWP4KSYBjPNxkLSVA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 6965,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:08:22.683071791Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -45969,38 +44767,6 @@
       }
     },
     {
-      "asn": "AS57269",
-      "asn_country": "ES",
-      "asn_org": "AS57269 DIGI SPAIN TELECOM S.A",
-      "composite_score": 0.5,
-      "host": "86.127.241.14",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 86.127.241.14:4443 98422E9D1648FFDB8F16C06CF58CD64B6C03A003 cert=RCUYFuGgCEvO302f5H0+vVnwuTtI9k5u+e/N8cnxXH+nNlcaWeSX6Thq1yENGOiXho50IQ iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 4443,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:09:02.902903234Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS3320",
       "asn_country": "DE",
       "asn_org": "AS3320 Deutsche Telekom AG",
@@ -46289,70 +45055,6 @@
       }
     },
     {
-      "asn": "AS15557",
-      "asn_country": "FR",
-      "asn_org": "AS15557 Societe Francaise Du Radiotelephone - SFR SA",
-      "composite_score": 0.5,
-      "host": "86.76.21.109",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 86.76.21.109:9006 5D38326DEAC9C858DCB85991C6B781F783FF13C6 cert=mUtSdKyACOqlxi3gmYYPKLdsaReL+bOAIguwpDy7P94e/OiUWc5/Ogd56WtjwrjcwFjzJQ iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9006,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:09:07.127627855Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS15557",
-      "asn_country": "FR",
-      "asn_org": "AS15557 Societe Francaise Du Radiotelephone - SFR SA",
-      "composite_score": 0.5,
-      "host": "86.76.21.109",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 86.76.21.109:9006 C001DBEAD46E8E8CA89E35245E376D6A69E2FEED cert=RhiIViP9Pg5UEhwQoTROYHkZjcmMhv2bmPPePXjOq1sFpW7+e0Q6wWRc9cklc7WWzkXKKg iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9006,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:09:07.231716938Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS8560",
       "asn_country": "DE",
       "asn_org": "AS8560 IONOS SE",
@@ -46577,17 +45279,17 @@
       }
     },
     {
-      "asn": "AS6855",
-      "asn_country": "SK",
-      "asn_org": "AS6855 Slovak Telekom, a.s.",
+      "asn": "AS12414",
+      "asn_country": "NL",
+      "asn_org": "AS12414 Solcon Internetdiensten B.V.",
       "composite_score": 0.5,
-      "host": "87.197.128.98",
+      "host": "87.195.159.238",
       "iran_status": "iran_unknown",
-      "line": "obfs4 87.197.128.98:9292 AE6BA15179AEEF64A0F543BEB7FA1BE2E91A93CF cert=t36bkZYMFJyJzTN1HYyh5LzAK/R81GAAH2Q7N3P9qLt5Jd0g7qDvWPIKTurxO2t7XzxSQA iat-mode=0",
+      "line": "obfs4 87.195.159.238:55766 97A77E789F724E9E008BEEED993CC0B6DB2D085F cert=T/WxxliJll2OdV5HxO1kVk1ifaGu5QubDcFsnCWdfq5gpWtikdahyGHPw2wbiX/GgTLaKA iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 9292,
+      "port": 55766,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -47101,11 +45803,11 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "obfs4 91.107.159.59:9100 EDF36102C116CDBD97D2517FF7F7FC58C9486249 cert=B/cA9maMmP8gRt03L3gvlS0zEHLz63rmZwSMRceYvZsqhgSXnsQ8CPV0XFhN7Njv36lLKQ iat-mode=0",
+      "line": "obfs4 91.107.244.46:9101 B48628292457742F04E6244312999742FABB789E cert=0YDpGjgM6TaauiLF4uH512XpPyLy7xbOcHTg+6sli1A2L/G8pk5JDgx1gnOFJf1oNsyoDQ iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9100,
+      "ooni_checked": true,
+      "port": 9101,
       "tcp_reachable": false,
       "test_result": "tested_failing",
       "test_tier": "tier_0_attempt",
@@ -47143,11 +45845,11 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "obfs4 91.107.244.46:9101 B48628292457742F04E6244312999742FABB789E cert=0YDpGjgM6TaauiLF4uH512XpPyLy7xbOcHTg+6sli1A2L/G8pk5JDgx1gnOFJf1oNsyoDQ iat-mode=0",
+      "line": "obfs4 91.107.244.46:9102 C2374BFD48B58608433BB1B8A2BC56F5858C0DC5 cert=nM1VnPj86drWrsEZy02H5qZxkRCf6BDRMgWRkCkli1D/2ohpwFfJs5pAUA9NpLo/vfH/KQ iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": true,
-      "port": 9101,
+      "port": 9102,
       "tcp_reachable": false,
       "test_result": "tested_failing",
       "test_tier": "tier_0_attempt",
@@ -47488,38 +46190,6 @@
         "source": "iran_results",
         "stage": "S0",
         "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS24940",
-      "asn_country": "FI",
-      "asn_org": "AS24940 Hetzner Online GmbH",
-      "composite_score": 0.5,
-      "host": "95.217.86.169",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 95.217.86.169:9043 7E0551FA74CF3C94C9CE3FB627AA6CA1066CECDC cert=bOJ0d+mkNfEaWYVIiIC61DvWdu2enc1JLJZVTYDRj6TCLuRz/O/L0aPUidT2Mg2kvTL8bA iat-mode=0",
-      "nextgen_proto": null,
-      "nin_score": 0.35,
-      "ooni_checked": false,
-      "port": 9043,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:09:29.913386714Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -48030,10 +46700,10 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "obfs4 [2001:19f0:7400:2a8a:5400:6ff:fe0b:db16]:8080 0E75D1C25A4C6E9CAA34C0326BC625F49DE76F1E cert=zt9rbLTs2d+K4FQgGZfXr0V3Q1YOjdvv73p/nMz/7GUm3t7CNWrzCWBOEcp+vWGrGadCWA iat-mode=0",
+      "line": "obfs4 [2001:19f0:7400:1256:5400:5ff:fefc:2467]:8080 0E75D1C25A4C6E9CAA34C0326BC625F49DE76F1E cert=nof+TOgHfJEhCXAFl+laSh9QXGDS2hTXxALTmTNXL6v8xiFLl+o0OAd8ZyQ8P7RmdNnkTw iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
-      "ooni_checked": false,
+      "ooni_checked": true,
       "port": 8080,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -50793,11 +49463,11 @@
       "composite_score": 0.5,
       "host": "2602:fa5d::48d",
       "iran_status": "iran_unknown",
-      "line": "obfs4 [2602:fa5d::48d]:9101 CE19B1966714EAE25C6C11C3BC6C73AE60024680 cert=ME8Ez1pL6WEPMmz2q99eDB+5ON9KumE4zRWddL+Dd2STnbJ3vLKLS09dqYpyz2HPcsfncg iat-mode=0",
+      "line": "obfs4 [2602:fa5d::48d]:9100 711BF0CB4D8BE6A417B1FA9AEDBD637A32EFE9D8 cert=/sG3F9ojuDa/wrM+3QYWU/xqrKQi5VnlRHIM3qSHDdSmC2PdtZv+Uyn7QzyctWt6Zqx2Vg iat-mode=0",
       "nextgen_proto": null,
       "nin_score": 0.35,
       "ooni_checked": false,
-      "port": 9101,
+      "port": 9100,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -51458,7 +50128,7 @@
     },
     {
       "composite_score": 0.5,
-      "host": "2a00:10:6514:1c01:be24:11ff:feea:70d5",
+      "host": "2804:9874:0:1600::5267:76ec",
       "iran_status": "iran_unknown",
       "line": "obfs4 [2804:9874:0:1600::5267:76ec]:8902 B90A053E497D4D97795563A42DBAA0D6A16D3FB0 cert=56v3WQBDGYyyoAJDHdmODDD0hRklZYflJLgfqyxzhi5txCmLlPl7JzjjScCUaJtbCYVDJw iat-mode=0",
       "nextgen_proto": null,
@@ -57335,9 +56005,9 @@
       }
     },
     {
-      "asn": "AS14061",
-      "asn_country": "SG",
-      "asn_org": "AS14061 DigitalOcean, LLC",
+      "asn": "AS401332",
+      "asn_country": "PL",
+      "asn_org": "AS401332 Triplebit",
       "composite_score": 0.5,
       "host": "103.17.153.52",
       "iran_status": "iran_unknown",
@@ -57399,9 +56069,9 @@
       }
     },
     {
-      "asn": "AS55884",
-      "asn_country": "AU",
-      "asn_org": "AS55884 OrionVM Cloud Platform",
+      "asn": "AS401332",
+      "asn_country": "PL",
+      "asn_org": "AS401332 Triplebit",
       "composite_score": 0.5,
       "host": "103.17.153.56",
       "iran_status": "iran_unknown",
@@ -58515,7 +57185,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "timeout",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -59331,17 +58001,17 @@
       }
     },
     {
-      "asn": "AS211301",
+      "asn": "AS60729",
       "asn_country": "DE",
-      "asn_org": "AS211301 Unesty Company",
+      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
       "composite_score": 0.5,
-      "host": "179.61.251.203",
+      "host": "185.177.207.239",
       "iran_status": "iran_unknown",
-      "line": "Bridge 179.61.251.203:23451 DECC64D11DC92B5B132C58528A0A160FDA30CB4B",
+      "line": "Bridge 185.177.207.239:14239 DF5BEC50253970F50145BCF947404B4459D41DA7",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
-      "port": 23451,
+      "port": 14239,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -59355,201 +58025,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS42159",
-      "asn_country": "NL",
-      "asn_org": "AS42159 Zemlyaniy Dmitro Leonidovich",
-      "composite_score": 0.5,
-      "host": "185.161.210.189",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 185.161.210.189:47281 96FE8631C0047C67E0C1572C7EB5A7B3F84C5FE8",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 47281,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "185.161.210.189:47281",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:03:04.396128706Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS59441",
-      "asn_country": "IR",
-      "asn_org": "AS59441 Hostiran Network",
-      "composite_score": 0.5,
-      "host": "185.173.104.100",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 185.173.104.100:65003 892951C6974391F9D219A0B9EC2A3064B7AF0EFE",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 65003,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "185.173.104.100:65003",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:03:04.596495262Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS30036",
-      "asn_country": "US",
-      "asn_org": "AS30036 Mediacom Communications Corp",
-      "composite_score": 0.5,
-      "host": "173.21.185.152",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:35.712412093Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 173.21.185.152:55443 495215F7998AB709391E4C9BC365ADF8DB1C4548",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 55443,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "173.21.185.152:55443",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:02:33.49376304Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS17378",
-      "asn_country": "US",
-      "asn_org": "AS17378 TierPoint, LLC",
-      "composite_score": 0.5,
-      "host": "174.136.25.230",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:36.058776598Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 174.136.25.230:33431 0589A61F7707BCA9D29AFD197F3B86FCD95E14A4",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 33431,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "174.136.25.230:33431",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:02:37.492952937Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS14956",
-      "asn_country": "DE",
-      "asn_org": "AS14956 RouterHosting LLC",
-      "composite_score": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "172.86.69.87",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:36.42264147Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 172.86.69.87:9001 EB598C7621BAADBFB77F43615C9B78AE08445D1E",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 9001,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "172.86.69.87:9001",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:02:32.49305086Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -59679,16 +58155,23 @@
         "stage": "S0",
         "status": "refused",
         "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
+          "region": null,
+          "type": "github_actions_runner"
         }
-      },
+      }
+    },
+    {
+      "asn": "AS60729",
+      "asn_country": "DE",
+      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "composite_score": 0.5,
+      "host": "185.177.207.250",
       "iran_status": "iran_unknown",
-      "line": "Bridge 173.21.186.234:55443 495215F7998AB709391E4C9BC365ADF8DB1C4548",
+      "line": "Bridge 185.177.207.250:14250 C5157FBA3D75DC77E7EF14E0A8C1D6869384EFCD",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 55443,
+      "ooni_checked": false,
+      "port": 14250,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -59702,7 +58185,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "timeout",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -60178,31 +58661,17 @@
       }
     },
     {
-      "asn": "AS24940",
+      "asn": "AS216127",
       "asn_country": "DE",
-      "asn_org": "AS24940 Hetzner Online GmbH",
+      "asn_org": "AS216127 INTERNATIONAL HOSTING COMPANY LIMITED",
       "composite_score": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "176.9.63.237",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:47.996276184Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "185.218.137.172",
       "iran_status": "iran_unknown",
-      "line": "Bridge 176.9.63.237:9001 A4F0AB9EE10F9B8C695F5C157E0BBDE378276B7E",
+      "line": "Bridge 185.218.137.172:40093 1E242C749707B4A68A269F0D31311CE36CDFEC28",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 9001,
+      "ooni_checked": false,
+      "port": 40093,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -60216,7 +58685,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "refused",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -60282,16 +58751,27 @@
         "stage": "S0",
         "status": "timeout",
         "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
+          "region": null,
+          "type": "github_actions_runner"
         }
-      },
+      }
+    },
+    {
+      "asn": "AS197540",
+      "asn_country": "DE",
+      "asn_org": "AS197540 netcup GmbH",
+      "composite_score": 0.5,
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "185.232.71.49",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.228.137.251:37993 1F5056811B0E123CAD39AD0259F14F2880CA33F0",
+      "line": "Bridge 185.232.71.49:9001 3F4CA17BCA6E1318A982D2672DCE4F6E66404015",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 37993,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -60477,27 +58957,17 @@
       }
     },
     {
-      "asn": "AS39458",
-      "asn_country": "GB",
-      "asn_org": "AS39458 Real Hosts Limited",
+      "asn": "AS24940",
+      "asn_country": "DE",
+      "asn_org": "AS24940 Hetzner Online GmbH",
       "composite_score": 0.5,
-      "host": "185.85.87.222",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:52.796099719Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "188.245.177.130",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.85.87.222:5443 24479DC0282DECD4EE9EDD6017B25EDDD217AAF1",
+      "line": "Bridge 188.245.177.130:9002 B936843580813CCE420C4FC545638FC26531DB7B",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 5443,
+      "ooni_checked": false,
+      "port": 9002,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -60926,22 +59396,12 @@
       "asn_org": "AS51765 Oy Creanova Hosting Solutions Ltd.",
       "composite_score": 0.5,
       "host": "194.34.134.115",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:03:56.996912234Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
-      "line": "Bridge 194.34.134.115:37425 8A1EE5824071CA39E7D76BD579FB2AEF2B52E524",
+      "line": "Bridge 194.34.134.115:34037 98455BF447EE853891921A5179B23C748F5DFCC7",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 37425,
+      "ooni_checked": false,
+      "port": 34037,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -61027,9 +59487,9 @@
       }
     },
     {
-      "asn": "AS60729",
+      "asn": "AS59645",
       "asn_country": "DE",
-      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "asn_org": "AS59645 Tobias Fiebig",
       "composite_score": 0.5,
       "host": "195.191.197.70",
       "iran_status": "iran_unknown",
@@ -61053,16 +59513,27 @@
         "stage": "S0",
         "status": "timeout",
         "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
+          "region": null,
+          "type": "github_actions_runner"
         }
-      },
+      }
+    },
+    {
+      "asn": "AS8437",
+      "asn_country": "AT",
+      "asn_org": "AS8437 Hutchison Drei Austria GmbH",
+      "composite_score": 0.5,
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "195.96.28.160",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.177.207.247:14247 B8B20E8D2EDDCD1C2A6C927FE36B722B594058CE",
+      "line": "Bridge 195.96.28.160:9001 C7764777839B1F9EC1FDBD2041083D6D59F683E5",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 14247,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -61186,25 +59657,19 @@
     {
       "asn": "AS3209",
       "asn_country": "DE",
-      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "asn_org": "AS3209 Vodafone GmbH",
       "composite_score": 0.5,
-      "host": "185.177.207.239",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:03.797238482Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "2.202.3.186",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.177.207.239:14239 DF5BEC50253970F50145BCF947404B4459D41DA7",
+      "line": "Bridge 2.202.3.186:9001 BFBCC9B62599D4F1A0EEE9F3157A50154146AAC2",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 14239,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -61226,9 +59691,9 @@
       }
     },
     {
-      "asn": "AS60729",
-      "asn_country": "DE",
-      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
+      "asn": "AS3243",
+      "asn_country": "PT",
+      "asn_org": "AS3243 MEO - SERVICOS DE COMUNICACOES E MULTIMEDIA S.A.",
       "composite_score": 0.5,
       "host": "2.82.33.200",
       "iran_status": "iran_unknown",
@@ -61252,16 +59717,23 @@
         "stage": "S0",
         "status": "timeout",
         "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
+          "region": null,
+          "type": "github_actions_runner"
         }
-      },
+      }
+    },
+    {
+      "asn": "AS7545",
+      "asn_country": "AU",
+      "asn_org": "AS7545 TPG Telecom Limited",
+      "composite_score": 0.5,
+      "host": "203.221.235.230",
       "iran_status": "iran_unknown",
-      "line": "Bridge 185.177.207.250:14250 C5157FBA3D75DC77E7EF14E0A8C1D6869384EFCD",
+      "line": "Bridge 203.221.235.230:9221 71F0E04779200F446C639742AC1751B2A03AB3EE",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 14250,
+      "ooni_checked": false,
+      "port": 9221,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -61347,9 +59819,9 @@
       }
     },
     {
-      "asn": "AS216127",
+      "asn": "AS60729",
       "asn_country": "DE",
-      "asn_org": "AS216127 INTERNATIONAL HOSTING COMPANY LIMITED",
+      "asn_org": "AS60729 Stiftung Erneuerbare Freiheit",
       "composite_score": 0.5,
       "host": "185.177.207.243",
       "iran_assessment": {
@@ -61389,9 +59861,9 @@
       }
     },
     {
-      "asn": "AS50053",
-      "asn_country": "NL",
-      "asn_org": "AS50053 VDSka hosting",
+      "asn": "AS63023",
+      "asn_country": "CH",
+      "asn_org": "AS63023 GTHost",
       "composite_score": 0.5,
       "host": "208.69.78.161",
       "iran_status": "iran_unknown",
@@ -61557,132 +60029,6 @@
       }
     },
     {
-      "asn": "AS210644",
-      "asn_country": "DE",
-      "asn_org": "AS210644 AEZA GROUP LLC",
-      "composite_score": 0.5,
-      "host": "213.165.44.41",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:08.596824003Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 213.165.44.41:2391 4C10FD675D144C4C752C4EFCD8E167A5966F5459",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 2391,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "213.165.44.41:2391",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:03:38.397454821Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS8560",
-      "asn_country": "DE",
-      "asn_org": "AS8560 IONOS SE",
-      "composite_score": 0.5,
-      "host": "192.67.197.242",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:08.996294698Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 192.67.197.242:15101 05D0531304F2DB161921D6D03CE38DB1CA2332D6",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 15101,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "192.67.197.242:15101",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:03:15.105750778Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS50053",
-      "asn_country": "NL",
-      "asn_org": "AS50053 VDSka hosting",
-      "composite_score": 0.5,
-      "host": "194.76.168.99",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:09.196672755Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 194.76.168.99:6398 2BFBEEA0AD4FB38F61C64CEDA21673961566BF30",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 6398,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "194.76.168.99:6398",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:03:19.090314068Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS44382",
       "asn_country": "US",
       "asn_org": "AS44382 Fiba Cloud Operation Company, LLC",
@@ -61757,9 +60103,9 @@
       }
     },
     {
-      "asn": "AS51765",
-      "asn_country": "FI",
-      "asn_org": "AS51765 Oy Creanova Hosting Solutions Ltd.",
+      "asn": "AS8560",
+      "asn_country": "DE",
+      "asn_org": "AS8560 IONOS SE",
       "composite_score": 0.5,
       "host": "217.160.24.123",
       "iran_status": "iran_unknown",
@@ -61789,114 +60135,20 @@
       }
     },
     {
-      "asn": "AS200918",
-      "asn_country": "CZ",
-      "asn_org": "AS200918 Pavel Zizka",
-      "composite_score": 0.5,
-      "host": "185.91.116.216",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:11.79682091Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 185.91.116.216:8088 2AEBFC803933EDD1D1B70FAD463DFD671C0DC785",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 8088,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "185.91.116.216:8088",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:03:20.196704147Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS1257",
-      "asn_country": "SE",
-      "asn_org": "AS1257 Tele2 Sverige AB",
-      "composite_score": 0.5,
-      "host": "188.150.39.66",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:18.341488952Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 188.150.39.66:4202 E57C2F015ED863E81C400BA9A980EB0689C56E41",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 4202,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "untested",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "188.150.39.66:4202",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:03:20.596879187Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS207957",
-      "asn_country": "DE",
-      "asn_org": "AS207957 SERV.HOST GROUP LTD",
+      "asn": "AS132203",
+      "asn_country": "US",
+      "asn_org": "AS132203 Tencent Building, Kejizhongyi Avenue",
       "composite_score": 0.5,
       "flags": [
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "193.151.108.123",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:22.072095716Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "43.135.176.13",
       "iran_status": "iran_unknown",
-      "line": "Bridge 193.151.108.123:9001 E461C11213C5EE01C79C339729D23C9C291C257B",
+      "line": "Bridge 43.135.176.13:9001 FDC4E45545936ECF62EC8EE9FD911E7027737ED2",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -62023,22 +60275,12 @@
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "195.96.28.160",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:23.996027728Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "24.24.130.127",
       "iran_status": "iran_unknown",
-      "line": "Bridge 195.96.28.160:9001 C7764777839B1F9EC1FDBD2041083D6D59F683E5",
+      "line": "Bridge 24.24.130.127:9001 A41F3882F74BA13DAD68057528F39925B5B15D0B",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
@@ -62061,27 +60303,21 @@
       }
     },
     {
-      "asn": "AS7545",
-      "asn_country": "AU",
-      "asn_org": "AS7545 TPG Telecom Limited",
+      "asn": "AS11290",
+      "asn_country": "CA",
+      "asn_org": "AS11290 Cogeco Connexion inc",
       "composite_score": 0.5,
-      "host": "203.221.235.230",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:24.197114428Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "24.50.126.134",
       "iran_status": "iran_unknown",
-      "line": "Bridge 203.221.235.230:9221 71F0E04779200F446C639742AC1751B2A03AB3EE",
+      "line": "Bridge 24.50.126.134:9001 08B79489712224E4CE956070CC44C44DB2D54A63",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 9221,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -62167,21 +60403,17 @@
       }
     },
     {
-      "asn": "AS396982",
-      "asn_country": "DE",
-      "asn_org": "AS396982 Google LLC",
+      "asn": "AS42655",
+      "asn_country": "UA",
+      "asn_org": "AS42655 ON-LINE Ltd",
       "composite_score": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "34.32.19.39",
+      "host": "31.41.216.243",
       "iran_status": "iran_unknown",
-      "line": "Bridge 34.32.19.39:9001 4AD17EDB8CEBC3A6D1BAE9656755AA30BBD3291A",
+      "line": "Bridge 31.41.216.243:16000 E2BC4AE4EDD648DC6736EFFEDC553759C981C5D2",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
-      "port": 9001,
+      "port": 16000,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -62315,27 +60547,17 @@
       }
     },
     {
-      "asn": "AS53667",
-      "asn_country": "US",
-      "asn_org": "AS53667 FranTech Solutions",
+      "asn": "AS51167",
+      "asn_country": "FR",
+      "asn_org": "AS51167 Contabo GmbH",
       "composite_score": 0.5,
-      "host": "198.98.62.82",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:26.809509662Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "38.242.223.84",
       "iran_status": "iran_unknown",
-      "line": "Bridge 198.98.62.82:46772 A7E7616C91B2FD83005B986A816EE9365F1360F4",
+      "line": "Bridge 38.242.223.84:9002 7CEA882631D5EE5F0581E6A776BAC1B068A83B6C",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 46772,
+      "ooni_checked": false,
+      "port": 9002,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -62357,27 +60579,21 @@
       }
     },
     {
-      "asn": "AS16652",
-      "asn_country": "US",
-      "asn_org": "AS16652 Riseup Networks",
+      "asn": "AS24940",
+      "asn_country": "DE",
+      "asn_org": "AS24940 Hetzner Online GmbH",
       "composite_score": 0.5,
-      "host": "204.13.164.108",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:29.197039037Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "46.225.26.177",
       "iran_status": "iran_unknown",
-      "line": "Bridge 204.13.164.108:42489 E4533D738926D1E5B7EE77260ABB19AE32E19299",
+      "line": "Bridge 46.225.26.177:9001 CFC149C6AF92426024F716FCF2FC4E979EBB6438",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 42489,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -62391,7 +60607,7 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "timeout",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -62399,27 +60615,17 @@
       }
     },
     {
-      "asn": "AS53667",
-      "asn_country": "US",
-      "asn_org": "AS53667 FranTech Solutions",
+      "asn": "AS51167",
+      "asn_country": "FR",
+      "asn_org": "AS51167 Contabo GmbH",
       "composite_score": 0.5,
-      "host": "198.98.53.149",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:29.597125747Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "host": "38.242.231.77",
       "iran_status": "iran_unknown",
-      "line": "Bridge 198.98.53.149:46311 886CA31F71272FC8B3808C601FA3ABB8A2905DB4",
+      "line": "Bridge 38.242.231.77:9003 07A6DE31BD42DE57A680AB0ADA1F114DDAE159B7",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 46311,
+      "ooni_checked": false,
+      "port": 9003,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "untested",
@@ -63073,9 +61279,9 @@
       }
     },
     {
-      "asn": "AS51167",
-      "asn_country": "FR",
-      "asn_org": "AS51167 Contabo GmbH",
+      "asn": "AS8881",
+      "asn_country": "DE",
+      "asn_org": "AS8881 1&1 Versatel GmbH",
       "composite_score": 0.5,
       "flags": [
         "iran_dpi_high_risk",
@@ -63086,8 +61292,8 @@
       "line": "Bridge 46.142.135.195:9001 964400BD72F85E4EF3541DD8578E9131EA628DD8",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 9002,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -63151,27 +61357,21 @@
       }
     },
     {
-      "asn": "AS8560",
+      "asn": "AS8881",
       "asn_country": "DE",
-      "asn_org": "AS8560 IONOS SE",
+      "asn_org": "AS8881 1&1 Versatel GmbH",
       "composite_score": 0.5,
-      "host": "217.160.24.123",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:41.396343739Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "46.142.135.226",
       "iran_status": "iran_unknown",
-      "line": "Bridge 217.160.24.123:41383 20DF3C42C22ABC9FD23987125D081FF6F5AD3DFB",
+      "line": "Bridge 46.142.135.226:9001 964400BD72F85E4EF3541DD8578E9131EA628DD8",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 41383,
+      "ooni_checked": false,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -63279,9 +61479,9 @@
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "46.225.31.53",
+      "host": "46.225.60.12",
       "iran_status": "iran_unknown",
-      "line": "Bridge 46.225.31.53:9001 26D3E1961BAF7A0C0BA43BE24AF91A12F0022882",
+      "line": "Bridge 46.225.60.12:9001 AF9609296856474AD3650D13EC8E966FEF1D0C7F",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
@@ -63375,59 +61575,13 @@
       "asn_country": "SG",
       "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.5,
-      "host": "47.134.43.253",
+      "host": "51.79.255.64",
       "iran_status": "iran_unknown",
-      "line": "Bridge 47.134.43.253:38403 7B0A390DE9B7C5BE5DB1E9E7B92345AE4B7B8773",
+      "line": "Bridge 51.79.255.64:6670 416D9DF18C061452ABF88871272B72BE37DF0ED4",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
-      "port": 38403,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "47.134.43.253:38403",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:04:12.797788999Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS56971",
-      "asn_country": "FR",
-      "asn_org": "AS56971 AS56971 Cloud",
-      "composite_score": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "46.8.224.69",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:04:43.423923Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 46.8.224.69:9001 4AB55C9C577DD9FC18A3EE9543287F8DD0AD5730",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 9001,
+      "port": 6670,
       "tcp_reachable": false,
       "test_result": "tested_failing",
       "test_tier": "tier_0_attempt",
@@ -63517,17 +61671,21 @@
       }
     },
     {
-      "asn": "AS212477",
-      "asn_country": "NL",
-      "asn_org": "AS212477 RoyaleHosting BV",
+      "asn": "AS16276",
+      "asn_country": "DE",
+      "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.5,
-      "host": "62.3.53.9",
+      "flags": [
+        "iran_dpi_high_risk",
+        "iran_port_high_risk"
+      ],
+      "host": "57.129.123.58",
       "iran_status": "iran_unknown",
-      "line": "Bridge 62.3.53.9:44333 D7F760433E790324E3DA6CB27C351BB949C819C7",
+      "line": "Bridge 57.129.123.58:9001 AD78401CC84C482BE673E2FC31C53ECCFE243A07",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
-      "port": 44333,
+      "port": 9001,
       "tcp_reachable": false,
       "test_result": "tested_failing",
       "test_tier": "tier_0_attempt",
@@ -65067,48 +63225,6 @@
       }
     },
     {
-      "asn": "AS7922",
-      "asn_country": "US",
-      "asn_org": "AS7922 Comcast Cable Communications, LLC",
-      "composite_score": 0.5,
-      "host": "71.194.37.55",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:05:24.796238419Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 71.194.37.55:9175 DD53308EDB8CEA5729B09A14B7B673D7314ED02D",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": true,
-      "port": 9175,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "71.194.37.55:9175",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:04:28.426547856Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS8648",
       "asn_country": "DE",
       "asn_org": "AS8648 dogado GmbH",
@@ -65675,14 +63791,17 @@
       }
     },
     {
+      "asn": "AS3303",
+      "asn_country": "CH",
+      "asn_org": "AS3303 Swisscom (Switzerland) Ltd",
       "composite_score": 0.5,
-      "host": "",
+      "host": "83.78.22.120",
       "iran_status": "iran_unknown",
-      "line": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
+      "line": "Bridge 83.78.22.120:9766 A2DD6DB3145992F29506C2CD1A3FB9FD64CCB306",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
-      "port": 0,
+      "port": 9766,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
@@ -65696,8 +63815,11 @@
         "rtt_ms": null,
         "source": "iran_results",
         "stage": "S0",
-        "status": "inconclusive",
-        "vantage": null
+        "status": "timeout",
+        "vantage": {
+          "region": null,
+          "type": "github_actions_runner"
+        }
       }
     },
     {
@@ -65762,70 +63884,6 @@
         "source": "iran_results",
         "stage": "S0",
         "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS3320",
-      "asn_country": "DE",
-      "asn_org": "AS3320 Deutsche Telekom AG",
-      "composite_score": 0.5,
-      "host": "84.189.227.100",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 84.189.227.100:3389 C7D122ADFB6385C3569D50B1518EF9D645D3E46A",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 3389,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "84.189.227.100:3389",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:04:56.888407508Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS8560",
-      "asn_country": "DE",
-      "asn_org": "AS8560 IONOS SE",
-      "composite_score": 0.5,
-      "host": "85.215.163.16",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 85.215.163.16:15101 775A648318DA1E1240EF0DEC038154B60696DE5B",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 15101,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "85.215.163.16:15101",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:04:59.505883744Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -66523,9 +64581,9 @@
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "87.123.142.149",
+      "host": "87.123.143.101",
       "iran_status": "iran_unknown",
-      "line": "Bridge 87.123.142.149:9001 B61ADFA59F20230EB5EA3ACB3701FD157204EC81",
+      "line": "Bridge 87.123.143.101:9001 B61ADFA59F20230EB5EA3ACB3701FD157204EC81",
       "nextgen_proto": null,
       "nin_score": 0.3,
       "ooni_checked": false,
@@ -66909,74 +64967,6 @@
       }
     },
     {
-      "asn": "AS209641",
-      "asn_country": "RU",
-      "asn_org": "AS209641 IHOR HOSTING LTD",
-      "composite_score": 0.5,
-      "host": "94.232.248.57",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 94.232.248.57:5433 624FDEADED90729E046AB393476914788E294954",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 5433,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "94.232.248.57:5433",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:05:22.563617437Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS56971",
-      "asn_country": "FR",
-      "asn_org": "AS56971 AS56971 Cloud",
-      "composite_score": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "94.183.186.185",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 94.183.186.185:9001 8249263979938F6DA726B88E36F8CBEA4C4E8FD4",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 9001,
-      "tcp_reachable": false,
-      "test_result": "tested_failing",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "94.183.186.185:9001",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-10-13T18:05:22.843751451Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS5432",
       "asn_country": "BE",
       "asn_org": "AS5432 Proximus NV",
@@ -67223,9 +65213,9 @@
       }
     },
     {
-      "asn": "AS3303",
-      "asn_country": "CH",
-      "asn_org": "AS3303 Swisscom (Switzerland) Ltd",
+      "asn": "AS3209",
+      "asn_country": "DE",
+      "asn_org": "AS3209 Vodafone GmbH",
       "composite_score": 0.5,
       "flags": [
         "iran_dpi_high_risk",
@@ -67451,138 +65441,6 @@
       }
     },
     {
-      "asn": "AS3209",
-      "asn_country": "DE",
-      "asn_org": "AS3209 Vodafone GmbH",
-      "composite_score": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "92.74.131.218",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 92.74.131.218:9001 BFBCC9B62599D4F1A0EEE9F3157A50154146AAC2",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 9001,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "92.74.131.218:9001",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:05:26.228980801Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS3320",
-      "asn_country": "DE",
-      "asn_org": "AS3320 Deutsche Telekom AG",
-      "composite_score": 0.5,
-      "host": "93.213.181.247",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 93.213.181.247:6666 F49966A08CF162752CB630CAD5EE9E3BDF1D817B",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 6666,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "93.213.181.247:6666",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:05:27.02907893Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS3320",
-      "asn_country": "DE",
-      "asn_org": "AS3320 Deutsche Telekom AG",
-      "composite_score": 0.5,
-      "host": "93.213.189.251",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 93.213.189.251:6666 F49966A08CF162752CB630CAD5EE9E3BDF1D817B",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 6666,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "93.213.189.251:6666",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:05:27.232071044Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS3320",
-      "asn_country": "DE",
-      "asn_org": "AS3320 Deutsche Telekom AG",
-      "composite_score": 0.5,
-      "host": "93.248.62.127",
-      "iran_status": "iran_unknown",
-      "line": "Bridge 93.248.62.127:3389 C7D122ADFB6385C3569D50B1518EF9D645D3E46A",
-      "nextgen_proto": null,
-      "nin_score": 0.3,
-      "ooni_checked": false,
-      "port": 3389,
-      "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-10-13T18:13:38.438078374+00:00",
-      "transport": "93.248.62.127:3389",
-      "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-10-13T18:05:28.229163533Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "source": "iran_results",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS9031",
       "asn_country": "BE",
       "asn_org": "AS9031 EDPNET Belgium BV",
@@ -67647,9 +65505,9 @@
       }
     },
     {
-      "asn": "AS6871",
-      "asn_country": "GB",
-      "asn_org": "AS6871 Plusnet",
+      "asn": "AS3212",
+      "asn_country": "SI",
+      "asn_org": "AS3212 Telemach Slovenija d.o.o.",
       "composite_score": 0.5,
       "host": "94.140.88.46",
       "iran_status": "iran_unknown",
@@ -67684,21 +65542,11 @@
       "asn_org": "AS24940 Hetzner Online GmbH",
       "composite_score": 0.5,
       "host": "95.216.166.73",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-10-13T18:06:24.59636224Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "Bridge 95.216.166.73:10197 96E16DE2F8DA38060D93A554DC56C90A681F6FE4",
       "nextgen_proto": null,
       "nin_score": 0.3,
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 10197,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
