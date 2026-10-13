@@ -112,18 +112,18 @@ fn recover_history_from_testing_list(bridge_dir: &Path) -> Option<serde_json::Ma
         recovered
             .entry(crate::history::HistoryManager::normalize_key(raw))
             .or_insert_with(|| {
-            serde_json::json!({
-                "raw": raw,
-                "transport": transport,
-                "first_seen": "",
-                "last_seen": "",
-                "test_pass": null,
-                "test_time": null,
-                "latency_ms": null,
-                "score": 0,
-                "probes": [],
-            })
-        });
+                serde_json::json!({
+                    "raw": raw,
+                    "transport": transport,
+                    "first_seen": "",
+                    "last_seen": "",
+                    "test_pass": null,
+                    "test_time": null,
+                    "latency_ms": null,
+                    "score": 0,
+                    "probes": [],
+                })
+            });
     }
 
     (!recovered.is_empty()).then_some(recovered)
