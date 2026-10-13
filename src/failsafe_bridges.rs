@@ -478,7 +478,10 @@ pub fn run(bridge_dir: &Path) -> i32 {
             };
             body.push(b'\n');
             if let Err(err) = fs::write(&history_path, body) {
-                eprintln!("FAILSAFE: cannot persist recovered {}: {err}", history_path.display());
+                eprintln!(
+                    "FAILSAFE: cannot persist recovered {}: {err}",
+                    history_path.display()
+                );
                 return 1;
             }
             println!(
