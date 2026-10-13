@@ -851,17 +851,17 @@ mod tests {
             8443,
             "/random/secret/path?token=x",
         );
-        assert!(request.starts_with("GET /random/secret/path?token=x HTTP/1.1\\r\\n"));
-        assert!(request.contains("Host: front.example.com:8443\\r\\n"));
-        assert!(request.contains("Upgrade: websocket\\r\\n"));
+        assert!(request.starts_with("GET /random/secret/path?token=x HTTP/1.1\r\n"));
+        assert!(request.contains("Host: front.example.com:8443\r\n"));
+        assert!(request.contains("Upgrade: websocket\r\n"));
     }
 
     #[test]
     fn websocket_upgrade_request_brackets_ipv6_host_header() {
         let request =
             build_websocket_upgrade_request("2001:4860:4860::8888", 443, "/endpoint");
-        assert!(request.starts_with("GET /endpoint HTTP/1.1\\r\\n"));
-        assert!(request.contains("Host: [2001:4860:4860::8888]\\r\\n"));
+        assert!(request.starts_with("GET /endpoint HTTP/1.1\r\n"));
+        assert!(request.contains("Host: [2001:4860:4860::8888]\r\n"));
     }
 
     #[test]
