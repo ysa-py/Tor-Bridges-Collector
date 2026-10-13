@@ -202,7 +202,12 @@ fn stage_results(input: &Path) -> StageResult {
     if probed > 0 {
         println!("webtunnel-probe: probed={probed} ws_101={ws_ok} ws_fail={ws_fail}");
     }
-    let stats = results_writer::write_result_files_at(Path::new("bridge"), &bridges, now)?;
+    // WebTunnel probes can take minutes across retries and many candidates.
+    // Use a post-probe clock for freshness/stamping; the earlier `now` is
+    // retained only for the relay observation merge above.
+    let results_now = Utc::now();
+    let stats =
+        results_writer::write_result_files_at(Path::new("bridge"), &bridges, results_now)?;
     // v2.6.3: Persist webtunnel probe results back to iran_results.json
     // so downstream stages (bridge_publication.rs) read the updated
     // tcp_reachable / iran_status fields. Without this, publication
@@ -212,7 +217,7 @@ fn stage_results(input: &Path) -> StageResult {
     // evidence (tested_at / test_tier / test_result) derived from the
     // recorded observations, so published entries carry a timestamp, a
     // result tag, and the tier of test that produced it.
-    let fallback_now = now.to_rfc3339();
+    let run_timestamp = results_now.to_rfc3339();
     let mut stamp = evidence_stamp::StampSummary {
         stamped: 0,
         tiers: BTreeMap::new(),
@@ -232,6 +237,10 @@ fn stage_results(input: &Path) -> StageResult {
                 let bridge_count = bridges.len();
                 if let Some(obj) = root.as_object_mut() {
                     obj.insert("bridges".to_string(), json!(bridges));
+                    // generated_at must describe this post-probe result set,
+                    // not an earlier source-fetch timestamp. Otherwise fresh
+                    // observations may look like future evidence and fail TTL.
+                    obj.insert("generated_at".to_string(), json!(run_timestamp));
                     if let Some(summary) = obj.get_mut("summary").and_then(|s| s.as_object_mut()) {
                         summary.insert(
                             "webtunnel_ws_probed".to_string(),
@@ -239,7 +248,7 @@ fn stage_results(input: &Path) -> StageResult {
                         );
                     }
                 }
-                stamp = evidence_stamp::stamp_results(&mut root, &fallback_now);
+                stamp = evidence_stamp::stamp_results(&mut root, &run_timestamp);
                 if let Some(obj) = root.as_object_mut() {
                     obj.insert(
                         "evidence".to_string(),
