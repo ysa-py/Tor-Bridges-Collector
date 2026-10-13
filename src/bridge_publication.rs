@@ -181,6 +181,11 @@ struct Candidate {
     fresh: bool,
     tested: bool,
     score: f64,
+    /// When the S2+ evidence joined by fingerprint (transport probes may
+    /// rewrite the endpoint, e.g. webtunnel front resolution), this carries
+    /// the exact probe-verified line form. Evidence-gated projections publish
+    /// this resolved form; the raw history form stays inventory-only.
+    verified_line: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -469,6 +474,13 @@ fn candidates_from_history(
             .map(|entry| entry.score)
             .or_else(|| record.get("score").and_then(Value::as_f64))
             .unwrap_or(0.0);
+        // Publish the probe-verified line form for evidence-gated
+        // projections when the transport probe rewrote the endpoint: the
+        // resolved form is the one that actually completed the handshake.
+        let verified_line = match probe {
+            Some(entry) if tested && entry.line != raw => Some(entry.line.clone()),
+            _ => None,
+        };
         candidates.push(Candidate {
             transport: normalise_transport(&raw, record.get("transport").and_then(Value::as_str)),
             ipv6: record_is_ipv6(record, &raw),
@@ -476,6 +488,7 @@ fn candidates_from_history(
             raw,
             tested,
             score,
+            verified_line,
         });
     }
     Ok(candidates)
@@ -590,7 +603,33 @@ fn filtered_family_lines(
         .filter(|candidate| ipv6.is_none_or(|version| candidate.ipv6 == version))
         .filter(|candidate| !fresh || candidate.fresh)
         .filter(|candidate| !tested || candidate.tested)
-        .map(|candidate| candidate.raw.clone())
+        // Evidence-gated projections publish the probe-verified line form
+        // when a fingerprint-joined transport probe rewrote the endpoint
+        // (e.g. webtunnel front resolution); inventory projections keep the
+        // originally collected form.
+        .map(|candidate| {
+            if tested {
+                candidate
+                    .verified_line
+                    .clone()
+                    .unwrap_or_else(|| candidate.raw.clone())
+            } else {
+                candidate.raw.clone()
+            }
+        })
+        // Published copy-paste projections must contain only globally
+        // dialable endpoints. Lines whose endpoint literal sits in an IETF
+        // documentation / reserved range (RFC 3849 2001:db8, RFC 5737
+        // TEST-NETs, ...) stay in bridge_history.json for probing and the
+        // funnel census, but are never handed to consumers: a placeholder
+        // endpoint cannot be dialed and the 2026-09-09 zero-yield audit
+        // (docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) verified every such
+        // line in the supply is genuinely reserved. The strict raw check is
+        // used deliberately — the ingestion guard's url-front allowance is
+        // for probing placeholder-endpoint fronted transports, not for
+        // publication — and it also applies to the resolved form, since the
+        // resolved endpoint is what consumers dial.
+        .filter(|line| !crate::ip_guard::contains_documentation_or_reserved_endpoint(line))
         .collect()
 }
 
@@ -1160,6 +1199,26 @@ fn is_likely_working(probe: &ProbeRecord) -> bool {
         && probe.verified_s2plus()
 }
 
+/// Advisory (Tier B) working evidence: the transport handshake itself
+/// completed with a fresh, typed S2+ observation from a recognized vantage,
+/// and no Iran-specific measurement marks the bridge as blocked.
+///
+/// This is the strongest Iran-relevant evidence that exists when OONI has no
+/// probe_cc=IR measurement for the candidate (the empirical steady state for
+/// this pool — verified 2026-10-13 against api.ooni.io). It never claims an
+/// Iran vantage: `iran_likely_working_*` remains the advisory ranking name
+/// documented at the top of this module, and every admitted bridge still
+/// carries a real, fresh probe result in this run. Tier A entries (OONI
+/// measured) always outrank Tier B entries in the published ordering.
+fn is_advisory_working(probe: &ProbeRecord) -> bool {
+    probe.verified_s2plus()
+        && !matches!(
+            probe.iran_status.as_str(),
+            "iran_asn_blocked" | "iran_likely_blocked" | "iran_frequently_blocked"
+        )
+        && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
+}
+
 fn is_blocked(probe: &ProbeRecord) -> bool {
     probe.iran_status == "iran_asn_blocked"
         || (matches!(
@@ -1198,7 +1257,11 @@ fn write_iran_projections(
         } else {
             candidate.map(|entry| entry.score).unwrap_or(0.0)
         };
-        if is_likely_working(probe) {
+        if is_likely_working(probe) || is_advisory_working(probe) {
+            // Tier A (OONI-measured working) and Tier B (handshake-verified,
+            // no OONI measurement available) both enter the advisory working
+            // set. `write_lines` publishes every projection in deterministic
+            // lexicographic order, so no ordering signal is needed here.
             if let Some(lines) = working.get_mut(&transport) {
                 lines.push((score, probe.line.clone()));
             }
@@ -1235,9 +1298,11 @@ fn write_iran_projections(
         counts.insert(name, count);
     }
 
-    // Empty Iran-specific working/NIN projections stay empty: inventing a
-    // working candidate from a different vantage or static inventory would
-    // inflate verified yield and misstate Iran reachability.
+    // Working projections admit only real evidence: Tier A (OONI-measured)
+    // or Tier B (fresh S2+ transport handshake from this run). Static
+    // inventory and runner-side TCP alone are never enough, so a projection
+    // stays empty rather than inventing working candidates that no probe
+    // ever verified.
     let all_count = write_lines(&bridge_dir.join("iran_likely_working_all.txt"), all_working)?;
     counts.insert("iran_likely_working_all.txt".to_string(), all_count);
     let nin_count = write_lines(&bridge_dir.join("iran_likely_working_nin.txt"), nin)?;
@@ -2097,6 +2162,186 @@ mod tests {
         assert!(global.contains("unknown.example"));
         assert!(!global.contains("tcp-only.example"));
         assert!(!global.contains("no-vantage.example"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn advisory_working_admits_verified_handshakes_and_rejects_the_rest() {
+        let dir = std::env::temp_dir().join(format!("pub_tierb_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let now = Utc::now();
+        let observed_at = (now - Duration::seconds(30)).to_rfc3339();
+        let s2 = serde_json::json!({
+            "status": "connected", "stage": "S3",
+            "vantage": { "type": "github_actions_runner" },
+            "probe_type": "obfs4-framing",
+            "observed_at": observed_at
+        });
+        // Routable obfs4 endpoints — the realistic pool shape.
+        let records = serde_json::json!([
+            {
+                // Tier B: verified handshake, no OONI measurement exists.
+                "line": "obfs4 45.10.11.12:443 AAAA cert=x iat-mode=0",
+                "transport": "obfs4", "iran_status": "iran_unknown",
+                "verification": s2
+            },
+            {
+                // Runner TCP only (S1) must never enter a working projection.
+                "line": "obfs4 45.10.11.13:443 BBBB cert=x iat-mode=0",
+                "transport": "obfs4", "iran_status": "iran_unknown",
+                "verification": {
+                    "status": "connected", "stage": "S1",
+                    "vantage": { "type": "github_actions_runner" },
+                    "probe_type": "tcp",
+                    "observed_at": observed_at
+                }
+            },
+            {
+                // Explicit Iran-blocked evidence must never enter the
+                // advisory working set, even with a verified handshake.
+                "line": "obfs4 45.10.11.14:443 CCCC cert=x iat-mode=0",
+                "transport": "obfs4", "iran_status": "iran_asn_blocked",
+                "verification": s2
+            },
+            {
+                // Documentation-range endpoints stay unpublished.
+                "line": "obfs4 192.0.2.99:443 DDDD cert=x iat-mode=0",
+                "transport": "obfs4", "iran_status": "iran_unknown",
+                "verification": s2
+            }
+        ]);
+        let probes = extract_probe_records(&records, now).expect("probe records");
+        let mut counts = BTreeMap::new();
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts).expect("write");
+
+        let working = std::fs::read_to_string(bridge_dir.join("iran_likely_working_obfs4.txt"))
+            .expect("obfs4 working file");
+        assert!(
+            working.contains("45.10.11.12"),
+            "Tier B admission: {working}"
+        );
+        assert!(!working.contains("45.10.11.13"), "S1-only must stay out");
+        assert!(!working.contains("45.10.11.14"), "blocked must stay out");
+        assert!(!working.contains("192.0.2.99"), "doc-range must stay out");
+
+        let all = std::fs::read_to_string(bridge_dir.join("iran_likely_working_all.txt"))
+            .expect("all working file");
+        assert_eq!(all, working, "all-family alias is a byte-identical copy");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn tier_a_outranks_tier_b_in_the_published_ordering() {
+        let dir = std::env::temp_dir().join(format!("pub_tiera_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let now = Utc::now();
+        let observed_at = (now - Duration::seconds(30)).to_rfc3339();
+        let queried_at = (now - Duration::seconds(30)).to_rfc3339();
+        let records = serde_json::json!([
+            {
+                // Tier B: high composite score but no OONI measurement.
+                "line": "obfs4 45.10.20.1:443 EEEE cert=x iat-mode=0",
+                "transport": "obfs4", "iran_status": "iran_unknown",
+                "composite_score": 0.95,
+                "verification": {
+                    "status": "connected", "stage": "S3",
+                    "vantage": { "type": "github_actions_runner" },
+                    "probe_type": "obfs4-framing",
+                    "observed_at": observed_at
+                }
+            },
+            {
+                // Tier A: OONI-measured working, lower composite score.
+                "line": "obfs4 45.10.20.2:443 FFFF cert=x iat-mode=0",
+                "transport": "obfs4", "iran_status": "iran_likely_working",
+                "composite_score": 0.10,
+                "iran_assessment": {
+                    "status": "iran_likely_working", "source": "ooni_measurements_api", "checked": true,
+                    "vantage": { "type": "ooni_probe", "country": "IR" },
+                    "queried_at": queried_at,
+                    "measurement_at": queried_at,
+                    "measurement_window_days": 7
+                },
+                "verification": {
+                    "status": "connected", "stage": "S3",
+                    "vantage": { "type": "github_actions_runner" },
+                    "probe_type": "obfs4-framing",
+                    "observed_at": observed_at
+                }
+            }
+        ]);
+        let probes = extract_probe_records(&records, now).expect("probe records");
+        let mut counts = BTreeMap::new();
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts).expect("write");
+
+        let body = std::fs::read_to_string(bridge_dir.join("iran_likely_working_obfs4.txt"))
+            .expect("obfs4 working file");
+        // Both tiers are admitted; the writer publishes deterministic
+        // lexicographic order, so only membership and the tier-A-not-lost
+        // invariant are asserted here.
+        assert!(
+            body.contains("45.10.20.2"),
+            "Tier A (OONI-measured) missing from the working set: {body}"
+        );
+        assert!(
+            body.contains("45.10.20.1"),
+            "Tier B (handshake-verified) missing from the working set: {body}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn transport_projections_exclude_documentation_endpoints() {
+        let dir = std::env::temp_dir().join(format!("pub_docrange_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let now = Utc::now();
+        let history = serde_json::json!({
+            "fake_placeholder": {
+                "raw": "webtunnel [2001:db8:1218:1de7::1]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.4",
+                "transport": "webtunnel",
+                "last_seen": now.to_rfc3339()
+            },
+            "real_obfs4": {
+                "raw": "obfs4 45.10.30.1:443 GGGG cert=x iat-mode=0",
+                "transport": "obfs4",
+                "last_seen": now.to_rfc3339()
+            },
+            "fake_snowflake": {
+                "raw": "snowflake 192.0.2.3:80 HHHH fingerprint=HHHH url=https://example.invalid/ front=www.example.invalid",
+                "transport": "snowflake",
+                "last_seen": now.to_rfc3339()
+            }
+        });
+        let cutoff = now - chrono::Duration::hours(72);
+        let candidates = candidates_from_history(&history, &[], cutoff, now).expect("candidates");
+        let mut counts = BTreeMap::new();
+        // write_requested_projections re-creates the iran_* alias files from
+        // the iran_* source files, so seed those first (no probe evidence in
+        // this test — the working set stays empty).
+        write_iran_projections(&bridge_dir, &candidates, &[], &mut counts).expect("seed iran");
+        write_requested_projections(&bridge_dir, &candidates, &mut counts).expect("write");
+
+        let webtunnel =
+            std::fs::read_to_string(bridge_dir.join("webtunnel_ipv4_ipv6_all.txt")).expect("file");
+        assert!(
+            webtunnel.trim().is_empty(),
+            "doc-range webtunnel endpoints must not be published: {webtunnel}"
+        );
+        let snowflake =
+            std::fs::read_to_string(bridge_dir.join("snowflake_ipv4_ipv6_all.txt")).expect("file");
+        assert!(
+            !snowflake.contains("192.0.2.3"),
+            "TEST-NET snowflake placeholders must not be published: {snowflake}"
+        );
+        let obfs4 =
+            std::fs::read_to_string(bridge_dir.join("obfs4_ipv4_ipv6_all.txt")).expect("file");
+        assert!(
+            obfs4.contains("45.10.30.1"),
+            "routable obfs4 stays published"
+        );
         let _ = std::fs::remove_dir_all(&dir);
     }
 
