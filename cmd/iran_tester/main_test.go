@@ -284,6 +284,7 @@ func TestClassifyLinesHonorsRunDeadlineAndPreservesInconclusiveRows(t *testing.T
 	if len(results) != len(lines) {
 		t.Fatalf("results=%d, want one non-fabricated result per input=%d", len(results), len(lines))
 	}
+	deadlineRows := 0
 	for i, result := range results {
 		if result.IranStatus != StatusIranUnknown {
 			t.Fatalf("result %d status=%q, want unknown after deadline", i, result.IranStatus)
@@ -291,5 +292,11 @@ func TestClassifyLinesHonorsRunDeadlineAndPreservesInconclusiveRows(t *testing.T
 		if result.OONIChecked {
 			t.Fatalf("result %d claims OONI was checked despite cancelled context", i)
 		}
+		if result.Verification.ErrorClass == "run_deadline_exceeded" {
+			deadlineRows++
+		}
+	}
+	if deadlineRows < len(lines)-2 {
+		t.Fatalf("deadline rows=%d, want at least %d unstarted rows to be emitted without network work", deadlineRows, len(lines)-2)
 	}
 }
