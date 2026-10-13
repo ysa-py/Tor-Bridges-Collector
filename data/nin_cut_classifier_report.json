@@ -849,6 +849,14 @@
       "transport": "webtunnel"
     },
     {
+      "ip": "2001:db8:6436:5c16:83c6:449c:38a9:2a10",
+      "port": 443,
+      "raw": "webtunnel [2001:db8:6436:5c16:83c6:449c:38a9:2a10]:443 11D9156D1D3B8C8574AF58BA0D5FBCFB6B8D541E url=https://lonecandle.net/iPJbF1QT014OzEXMSSOtCuUm ver=0.0.1",
+      "sni": "lonecandle.net",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
       "ip": "2001:db8:6442:84:8e10:778c:8aaa:7a8e",
       "port": 443,
       "raw": "webtunnel [2001:db8:6442:84:8e10:778c:8aaa:7a8e]:443 FDA4F037334BA25B7ECEBAC458350B588C57DA24 url=https://freeforall.camdvr.org/BrLxiuXhwTEx3qJxFEhOE3tA ver=0.0.4",
@@ -1569,6 +1577,14 @@
       "transport": "webtunnel"
     },
     {
+      "ip": "2001:db8:bdee:c6e2:6cfd:2817:a6ad:f54b",
+      "port": 443,
+      "raw": "webtunnel [2001:db8:bdee:c6e2:6cfd:2817:a6ad:f54b]:443 4871F1EC668F7C97C3DF08D813E0D3057AD37A7D url=https://barker.anistratov.net/bmJxk3nHttyVd7B2nwLabOQi ver=0.0.7",
+      "sni": "barker.anistratov.net",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
       "ip": "2001:db8:beb:5884:ffcc:bfe3:2858:b06b",
       "port": 443,
       "raw": "webtunnel [2001:db8:beb:5884:ffcc:bfe3:2858:b06b]:443 1E242C749707B4A68A269F0D31311CE36CDFEC28 url=https://wt.gri.mw/74Fm0lKUWWMMjZpKf6iSC0UH ver=0.0.3",
@@ -1993,10 +2009,26 @@
       "transport": "webtunnel"
     },
     {
-      "ip": "192.0.2.20",
-      "port": 80,
-      "raw": "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
-      "sni": "1603026938.rsc.cdn77.org",
+      "ip": "",
+      "port": 0,
+      "raw": "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+      "sni": "meek.azureedge.net",
+      "tier": "GREEN",
+      "transport": "meek_lite"
+    },
+    {
+      "ip": "",
+      "port": 0,
+      "raw": "meek_lite 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 url=https://a0.awsstatic.com/ front=a0.awsstatic.com",
+      "sni": "a0.awsstatic.com",
+      "tier": "GREEN",
+      "transport": "meek_lite"
+    },
+    {
+      "ip": "",
+      "port": 0,
+      "raw": "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=cloudflightcdn.azureedge.net",
+      "sni": "meek.azureedge.net",
       "tier": "GREEN",
       "transport": "meek_lite"
     }
@@ -2006,10 +2038,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-13T00:08:04.123664+00:00",
-  "green_count": 9,
+  "generated_at": "2026-10-13T03:15:20.963763+00:00",
+  "green_count": 11,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 250,
-  "yellow_count": 241
+  "total_bridges": 254,
+  "yellow_count": 243
 }
