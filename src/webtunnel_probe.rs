@@ -26,6 +26,7 @@ const MAX_PROBE_RETRIES: u32 = 3;
 /// Base backoff between retries (milliseconds), doubled each attempt.
 const RETRY_BASE_MS: u64 = 500;
 const WS_PROBE_KEY: &str = "dGhlIHNhbXBsZSBub25jZQ==";
+const MAX_RESPONSE_HEADER_BYTES: usize = 16 * 1024;
 
 /// Check whether an IPv6 address string is in the RFC 3849 documentation
 /// prefix `2001:db8::/32`. BridgeDB intentionally substitutes these for
@@ -211,6 +212,7 @@ mod tls_ws {
     pub fn probe_sync(
         host: &str,
         port: u16,
+        request_target: &str,
         timeout: Duration,
     ) -> Result<(String, String, bool), String> {
         // 1. DNS + TCP connect
@@ -239,27 +241,33 @@ mod tls_ws {
         // triggered on first read/write through the stream.
         let mut stream = rustls::Stream::new(&mut conn, &mut tcp);
 
-        // 3. WebSocket Upgrade request
-        let request = format!(
-            "GET / HTTP/1.1\r\n\
-             Host: {host}\r\n\
-             Connection: Upgrade\r\n\
-             Upgrade: websocket\r\n\
-             Sec-WebSocket-Key: {WS_PROBE_KEY}\r\n\
-             Sec-WebSocket-Version: 13\r\n\
-             \r\n"
-        );
+        // 3. WebSocket Upgrade request uses the full endpoint path from url=.
+        let request = build_websocket_upgrade_request(host, port, request_target);
         stream
             .write_all(request.as_bytes())
             .map_err(|e| format!("WS upgrade write: {e}"))?;
         stream.flush().map_err(|e| format!("flush: {e}"))?;
 
-        // 4. Read response
+        // 4. Read the complete response headers, bounded even if the server
+        // never terminates its header block. A single read can return only a
+        // partial TLS record, which is not enough to validate HTTP 101.
+        let mut response_bytes = Vec::with_capacity(1024);
         let mut buf = [0u8; 512];
-        let n = stream
-            .read(&mut buf)
-            .map_err(|e| format!("read response: {e}"))?;
-        let response = String::from_utf8_lossy(&buf[..n]).to_string();
+        while response_bytes.len() < MAX_RESPONSE_HEADER_BYTES {
+            let remaining = MAX_RESPONSE_HEADER_BYTES - response_bytes.len();
+            let read_len = remaining.min(buf.len());
+            let n = stream
+                .read(&mut buf[..read_len])
+                .map_err(|e| format!("read response: {e}"))?;
+            if n == 0 {
+                break;
+            }
+            response_bytes.extend_from_slice(&buf[..n]);
+            if response_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
+                break;
+            }
+        }
+        let response = String::from_utf8_lossy(&response_bytes).to_string();
         let signature_verified =
             crate::websocket_signature::has_valid_upgrade_signature(&response, WS_PROBE_KEY);
         Ok((response, resolved_ip, signature_verified))
@@ -273,6 +281,7 @@ pub(crate) use tls_ws::probe_sync;
 fn probe_sync(
     _host: &str,
     _port: u16,
+    _request_target: &str,
     _timeout: Duration,
 ) -> Result<(String, String, bool), String> {
     // ARMv7-musl CI-only type-check target — no ring/rustls available
