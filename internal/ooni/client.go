@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 )
@@ -70,6 +71,11 @@ type analysisResult struct {
 	Checked                     bool
 	LatestRecentMeasurementAt   string
 	LatestTemporalMeasurementAt string
+	// QueriedAt records when this classification was actually produced by a
+	// live OONI API query (or loaded from a previous run's persisted cache).
+	// It must never be refreshed without a real query, so downstream
+	// consumers can bound the age of the Iran-specific evidence honestly.
+	QueriedAt string
 }
 
 func measurementTimestamp(measurement Measurement) (time.Time, string, bool) {
@@ -185,6 +191,144 @@ func (c *Client) Close() {
 	c.ticker.Stop()
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Persisted classification cache
+//
+// OONI Iranian-probe coverage for a given bridge IP changes on the scale of
+// days, not seconds. Re-querying the full candidate pool every hour burns the
+// shared 5 req/s budget (≈6 minutes of wall clock for ~1500 IPs) and was the
+// mathematical root cause of run_deadline_exceeded. The cache persists every
+// real classification — including honest negative results (checked with no
+// OONI data) — together with the original queried_at timestamp, and reloads
+// it on the next run. Entries older than the caller-provided TTL are ignored
+// so the OONI evidence consumed downstream stays within the publisher's
+// 24-hour assessment-freshness window.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// CacheEntry is the on-disk form of one cached classification.
+type CacheEntry struct {
+	Status                      string  `json:"status"`
+	RecurrenceRate              float64 `json:"recurrence_rate"`
+	Checked                     bool    `json:"checked"`
+	LatestRecentMeasurementAt   string  `json:"latest_recent_measurement_at,omitempty"`
+	LatestTemporalMeasurementAt string  `json:"latest_temporal_measurement_at,omitempty"`
+	QueriedAt                   string  `json:"queried_at"`
+}
+
+type cacheFile struct {
+	Version int                    `json:"version"`
+	SavedAt string                 `json:"saved_at"`
+	Entries map[string]*CacheEntry `json:"entries"`
+}
+
+const cacheFileVersion = 1
+
+// LoadCache pre-populates the in-memory cache from a previous run's file.
+// Entries missing a parseable queried_at or older than ttl are skipped so a
+// stale cache can never resurrect expired evidence. Corrupt or missing files
+// are non-fatal: the run simply starts with a cold cache.
+func (c *Client) LoadCache(path string, ttl time.Duration) (int, error) {
+	if path == "" || ttl <= 0 {
+		return 0, nil
+	}
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("read ooni cache: %w", err)
+	}
+	var disk cacheFile
+	if err := json.Unmarshal(raw, &disk); err != nil {
+		return 0, fmt.Errorf("parse ooni cache: %w", err)
+	}
+	if disk.Version != cacheFileVersion {
+		return 0, nil
+	}
+	now := c.clock()
+	loaded := 0
+	c.cacheMu.Lock()
+	for ip, entry := range disk.Entries {
+		if entry == nil || !entry.Checked || entry.QueriedAt == "" {
+			continue
+		}
+		queriedAt, err := time.Parse(time.RFC3339Nano, entry.QueriedAt)
+		if err != nil {
+			continue
+		}
+		if now.Sub(queriedAt) > ttl || now.Sub(queriedAt) < -observationFutureSkew {
+			continue
+		}
+		c.cache[ip] = &analysisResult{
+			Status:                      OONIStatus(entry.Status),
+			RecurrenceRate:              entry.RecurrenceRate,
+			Checked:                     true,
+			LatestRecentMeasurementAt:   entry.LatestRecentMeasurementAt,
+			LatestTemporalMeasurementAt: entry.LatestTemporalMeasurementAt,
+			QueriedAt:                   entry.QueriedAt,
+		}
+		loaded++
+	}
+	c.cacheMu.Unlock()
+	return loaded, nil
+}
+
+// SaveCache writes every cached classification (including negative results)
+// to path as a single JSON document. WriteFile on a temp path + rename keeps
+// the file atomic for concurrent readers.
+func (c *Client) SaveCache(path string) error {
+	if path == "" {
+		return nil
+	}
+	c.cacheMu.Lock()
+	entries := make(map[string]*CacheEntry, len(c.cache))
+	for ip, result := range c.cache {
+		if result == nil {
+			continue
+		}
+		entries[ip] = &CacheEntry{
+			Status:                      string(result.Status),
+			RecurrenceRate:              result.RecurrenceRate,
+			Checked:                     result.Checked,
+			LatestRecentMeasurementAt:   result.LatestRecentMeasurementAt,
+			LatestTemporalMeasurementAt: result.LatestTemporalMeasurementAt,
+			QueriedAt:                   result.QueriedAt,
+		}
+	}
+	c.cacheMu.Unlock()
+
+	disk := cacheFile{
+		Version: cacheFileVersion,
+		SavedAt: c.clock().Format(time.RFC3339Nano),
+		Entries: entries,
+	}
+	out, err := json.MarshalIndent(disk, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal ooni cache: %w", err)
+	}
+	tmp := path + ".tmp"
+	if err := os.WriteFile(tmp, out, 0o644); err != nil {
+		return fmt.Errorf("write ooni cache: %w", err)
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		return fmt.Errorf("rename ooni cache: %w", err)
+	}
+	return nil
+}
+
+// QueriedAtFor reports when the cached classification for ip was actually
+// queried. Cache hits must carry the original query timestamp, not the
+// current time, so downstream freshness gates stay honest.
+func (c *Client) QueriedAtFor(ip string) (string, bool) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+	cached, ok := c.cache[ip]
+	if !ok || !cached.Checked || cached.QueriedAt == "" {
+		return "", false
+	}
+	return cached.QueriedAt, true
+}
+
 // waitTick blocks until the rate-limiter permits the next request.
 func (c *Client) waitTick(ctx context.Context) error {
 	select {
@@ -293,22 +437,29 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 	status := classifyRecentStatus(recentInWindow)
 
 	// ── Temporal window (90 days) ───────────────────────────────────────
-	temporalURL := buildURL(ip, now.AddDate(0, 0, -temporalDays), now, 100)
-	temporalData, err := c.fetch(ctx, temporalURL)
-
+	// Skip the second query entirely when the 7-day window returned
+	// nothing: an IP with zero recent Iranian-probe measurements yields an
+	// unknown status either way, and the temporal query only refines
+	// blocking recurrence. This halves the per-IP query cost for the
+	// (dominant) no-OONI-coverage part of the candidate pool.
 	var recurrenceRate float64
 	var latestTemporalMeasurementAt string
-	var temporalInWindow []Measurement
-	if temporalData != nil {
-		temporalInWindow = filterByOriginalTime(temporalData.Results, now, temporalWindow)
-		latestTemporalMeasurementAt = latestMeasurementAt(temporalInWindow)
-	}
-	if err == nil && len(temporalInWindow) > 0 {
-		anomalyCount := timestampedAnomalyCount(temporalInWindow)
-		// blocks per 30-day period
-		recurrenceRate = float64(anomalyCount) / (float64(temporalDays) / 30.0)
-		if recurrenceRate > freqBlockThresh {
-			status = StatusFreqBlocked
+	if len(recentData.Results) > 0 {
+		temporalURL := buildURL(ip, now.AddDate(0, 0, -temporalDays), now, 100)
+		temporalData, temporalErr := c.fetch(ctx, temporalURL)
+
+		var temporalInWindow []Measurement
+		if temporalData != nil {
+			temporalInWindow = filterByOriginalTime(temporalData.Results, now, temporalWindow)
+			latestTemporalMeasurementAt = latestMeasurementAt(temporalInWindow)
+		}
+		if temporalErr == nil && len(temporalInWindow) > 0 {
+			anomalyCount := timestampedAnomalyCount(temporalInWindow)
+			// blocks per 30-day period
+			recurrenceRate = float64(anomalyCount) / (float64(temporalDays) / 30.0)
+			if recurrenceRate > freqBlockThresh {
+				status = StatusFreqBlocked
+			}
 		}
 	}
 
@@ -318,6 +469,7 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 		Checked:                     true,
 		LatestRecentMeasurementAt:   latestMeasurementAt(recentInWindow),
 		LatestTemporalMeasurementAt: latestTemporalMeasurementAt,
+		QueriedAt:                   now.Format(time.RFC3339Nano),
 	}
 	c.cacheMu.Lock()
 	c.cache[ip] = result
