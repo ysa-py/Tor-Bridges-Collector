@@ -231,6 +231,10 @@ type ooniClassifier interface {
 	Classify(context.Context, string) (ooni.OONIStatus, float64, bool)
 	LatestRecentMeasurementAt(string) (string, bool)
 	LatestTemporalMeasurementAt(string) (string, bool)
+	// QueriedAtFor exposes the timestamp of the real OONI query behind a
+	// cached classification so a written assessment carries honest
+	// provenance instead of a fresh wall-clock stamp on cache hits.
+	QueriedAtFor(string) (string, bool)
 }
 
 func classifyBridge(
@@ -338,7 +342,7 @@ func classifyBridge(
 		// A runner-side front/TCP response is not an Iran-specific measurement.
 		iranStatus = StatusIranUnknown
 
-	case b.Host != "" && net.ParseIP(b.Host) != nil:
+	case b.Host != "" && net.ParseIP(b.Host) != nil && ooniClassifiableTransport(b.Type):
 		// IP-addressed bridge (obfs4, vanilla): query OONI independently of
 		// whether the generic runner-side S1 TCP connect succeeded.
 		if ooniClient != nil {
@@ -349,12 +353,20 @@ func classifyBridge(
 			recentAt, hasRecentMeasurement := ooniClient.LatestRecentMeasurementAt(b.Host)
 			historicalAt, hasHistoricalMeasurement := ooniClient.LatestTemporalMeasurementAt(b.Host)
 			if checked {
+				// queried_at must carry the timestamp of the real OONI query
+				// (live or persisted-cache hit), never the current wall clock:
+				// downstream freshness gates bound the age of Iran-specific
+				// evidence by this field.
+				queriedAt, hasQueriedAt := ooniClient.QueriedAtFor(b.Host)
+				if !hasQueriedAt {
+					queriedAt = time.Now().UTC().Format(time.RFC3339Nano)
+				}
 				assessment := &IranAssessment{
 					Status:    StatusIranUnknown,
 					Source:    "ooni_measurements_api",
 					Checked:   true,
 					Vantage:   IranVantage{Type: "ooni_probe", Country: "IR"},
-					QueriedAt: time.Now().UTC().Format(time.RFC3339Nano),
+					QueriedAt: queriedAt,
 				}
 				if hasRecentMeasurement {
 					assessment.MeasurementAt = recentAt
@@ -398,6 +410,21 @@ func classifyBridge(
 	result.IranStatus = iranStatus
 	result.CompositeScore = compositeScore(tcpOK, iranStatus, nil, false)
 	return result
+}
+
+// ooniClassifiableTransport reports whether the OONI bridge measurements
+// query can decide anything for this transport. Only transports whose
+// bridge line carries the real bridge IP (obfs4, vanilla, and other
+// unrecognized IP transports) are classifiable; broker/front transports
+// (snowflake, webtunnel, meek_lite, conjure) are skipped so the shared
+// 5 req/s OONI budget stays reserved for decidable classifications.
+func ooniClassifiableTransport(transport string) bool {
+	switch transport {
+	case "snowflake", "webtunnel", "meek_lite", "meek-azure", "conjure":
+		return false
+	default:
+		return true
+	}
 }
 
 func validateWorkers(workers int) error {
@@ -561,6 +588,8 @@ func main() {
 	workersFlag := flag.Int("workers", 0, "Parallel worker count (0 = dynamic from candidate pool and CPU)")
 	timeoutFlag := flag.Duration("timeout", 8*time.Second, "Per-bridge TCP timeout")
 	runTimeoutFlag := flag.Duration("run-timeout", 9*time.Minute, "Hard deadline for the complete classification run")
+	cacheFlag := flag.String("ooni-cache", "", "Optional persistent OONI classification cache path (loaded before, saved after the run)")
+	cacheTTLFlag := flag.Duration("ooni-cache-ttl", 12*time.Hour, "Maximum age of persisted OONI classifications reused from the cache")
 	flag.Parse()
 
 	// ── Read input ────────────────────────────────────────────────────────
@@ -589,6 +618,20 @@ func main() {
 	ipClient := ipinfo.New()
 	ooniClient := ooni.New()
 	defer ooniClient.Close()
+
+	// ── Persistent OONI cache ─────────────────────────────────────────────
+	// OONI coverage for a bridge IP changes on the scale of days. Loading
+	// the previous run's classifications (including honest negatives) keeps
+	// hourly runs inside the deadline without re-spending the shared 5 req/s
+	// OONI budget on IPs already known to have no measurements.
+	if *cacheFlag != "" {
+		loaded, cacheErr := ooniClient.LoadCache(*cacheFlag, *cacheTTLFlag)
+		if cacheErr != nil {
+			log.Printf("WARNING: OONI cache %s unusable (%v); continuing with a cold cache", *cacheFlag, cacheErr)
+		} else if loaded > 0 {
+			log.Printf("OONI cache: reused %d classification(s) from %s (ttl=%s)", loaded, *cacheFlag, *cacheTTLFlag)
+		}
+	}
 
 	// ── Parallel classification with a hard overall deadline ──────────────
 	ctx, cancel := context.WithTimeout(context.Background(), *runTimeoutFlag)
@@ -630,6 +673,17 @@ func main() {
 	log.Printf("Summary: total=%d reachable=%d likely_working=%d likely_blocked=%d unknown=%d asn_blocked=%d",
 		summary.TotalTested, summary.GlobalReachable, summary.IranLikelyWorking,
 		summary.IranLikelyBlocked, summary.IranUnknown, summary.IranASNBlocked)
+
+	// ── Persist the OONI cache before writing the report ──────────────────
+	// Every real classification from this run (positive or negative) is
+	// stored with its original query timestamp for the next run.
+	if *cacheFlag != "" {
+		if saveErr := ooniClient.SaveCache(*cacheFlag); saveErr != nil {
+			log.Printf("WARNING: could not persist OONI cache %s: %v", *cacheFlag, saveErr)
+		} else {
+			log.Printf("OONI cache persisted to %s", *cacheFlag)
+		}
+	}
 
 	// ── Write output ──────────────────────────────────────────────────────
 	out, err := json.MarshalIndent(report, "", "  ")

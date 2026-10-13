@@ -1290,7 +1290,26 @@ pub fn merge_raw_into_history_with_now(
         .as_object_mut()
         .ok_or(ScraperError::HistoryNotObject { actual })?;
     let now_iso = now.to_rfc3339();
+    // ── Strict endpoint guard (v42 §0.1 parity with the seed script) ──────
+    //
+    // `bridge_history.json` is the single source of truth every published
+    // projection is rebuilt from. The 2026-09-09 zero-yield audit
+    // (docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) verified that mirror
+    // lines with documentation/reserved endpoint literals (RFC 3849
+    // 2001:db8::/32, RFC 5737 TEST-NETs, ...) are never dialable — the
+    // unguarded merge re-seeded 244 such webtunnel placeholders into the
+    // pool on every run, where they burned probe budget and, before the
+    // publication filter, reached consumers. The canonical history writer
+    // therefore rejects any line whose endpoint literal is reserved,
+    // mirroring scripts/refresh_bridge_seed.sh (SEED_STRICT_IP_GUARD).
+    // Skipped lines are counted and logged so the rejection stays visible
+    // in run logs instead of silently shrinking the supply.
+    let mut skipped_reserved = 0_usize;
     for (raw_line, transport, ip_version) in lines {
+        if crate::ip_guard::check_endpoint(raw_line).is_some() {
+            skipped_reserved += 1;
+            continue;
+        }
         let key = normalize_for_history(raw_line, transport);
         let raw_stripped = raw_line.trim();
         let needs_insert = match map.get(&key) {
@@ -1318,6 +1337,11 @@ pub fn merge_raw_into_history_with_now(
             obj.insert("last_seen".to_string(), Value::String(now_iso.clone()));
             obj.insert("raw".to_string(), Value::String(raw_stripped.to_string()));
         }
+    }
+    if skipped_reserved > 0 {
+        tracing::info!(
+            "merge_raw_into_history: skipped {skipped_reserved} line(s) with              documentation/reserved endpoints (strict history guard)"
+        );
     }
     Ok(())
 }
@@ -1949,6 +1973,56 @@ fn type_name_of_value(value: &Value) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn merge_rejects_documentation_and_reserved_endpoints() {
+        let mut history = serde_json::json!({});
+        let lines = vec![
+            // RFC 3849 documentation IPv6 (the exact fake shape re-seeded by
+            // the community mirror before the guard).
+            (
+                "webtunnel [2001:db8:1218:1de7::1]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.4"
+                    .to_string(),
+                "webtunnel".to_string(),
+                "ipv6".to_string(),
+            ),
+            // RFC 5737 TEST-NET-1 snowflake placeholder.
+            (
+                "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://example.invalid/ front=www.example.invalid"
+                    .to_string(),
+                "snowflake".to_string(),
+                "ipv4".to_string(),
+            ),
+            // RFC 1918 private endpoint.
+            (
+                "obfs4 10.0.0.7:1443 AAAA cert=x iat-mode=0".to_string(),
+                "obfs4".to_string(),
+                "ipv4".to_string(),
+            ),
+        ];
+        merge_raw_into_history(&mut history, &lines).expect("merge must not fail");
+        assert!(
+            history.as_object().expect("object").is_empty(),
+            "reserved endpoints must never enter history: {history}"
+        );
+    }
+
+    #[test]
+    fn merge_still_accepts_routable_lines_and_refreshes_last_seen() {
+        let mut history = serde_json::json!({});
+        let real = (
+            "obfs4 45.10.40.1:443 AAAA cert=x iat-mode=0".to_string(),
+            "obfs4".to_string(),
+            "ipv4".to_string(),
+        );
+        merge_raw_into_history(&mut history, std::slice::from_ref(&real)).expect("first merge");
+        assert_eq!(history.as_object().unwrap().len(), 1);
+
+        // A second merge of the same key refreshes instead of duplicating.
+        merge_raw_into_history(&mut history, &[real]).expect("second merge");
+        let object = history.as_object().unwrap();
+        assert_eq!(object.len(), 1, "same key must refresh, not duplicate");
+    }
+
     use super::*;
 
     #[cfg(feature = "network")]

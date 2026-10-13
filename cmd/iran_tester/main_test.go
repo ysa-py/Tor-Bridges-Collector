@@ -98,6 +98,7 @@ type stubOONIClassifier struct {
 	checked      bool
 	recentAt     string
 	historicalAt string
+	queriedAt    string
 	calls        int
 }
 
@@ -112,6 +113,10 @@ func (s *stubOONIClassifier) LatestRecentMeasurementAt(_ string) (string, bool) 
 
 func (s *stubOONIClassifier) LatestTemporalMeasurementAt(_ string) (string, bool) {
 	return s.historicalAt, s.historicalAt != ""
+}
+
+func (s *stubOONIClassifier) QueriedAtFor(_ string) (string, bool) {
+	return s.queriedAt, s.queriedAt != ""
 }
 
 func TestRunnerTCPFailureDoesNotSuppressIranOONIAssessment(t *testing.T) {
@@ -264,6 +269,10 @@ func (contextWaitingOONIClassifier) LatestRecentMeasurementAt(string) (string, b
 }
 
 func (contextWaitingOONIClassifier) LatestTemporalMeasurementAt(string) (string, bool) {
+	return "", false
+}
+
+func (contextWaitingOONIClassifier) QueriedAtFor(string) (string, bool) {
 	return "", false
 }
 
