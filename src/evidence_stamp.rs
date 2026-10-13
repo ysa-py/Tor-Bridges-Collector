@@ -635,14 +635,21 @@ pub struct StampSummary {
     pub results: BTreeMap<String, usize>,
 }
 
-/// Stamp every entry in a `{ "bridges": [...] }` document. The evaluation
-/// clock is the document's `generated_at`, or the caller-supplied fallback.
-pub fn stamp_results(doc: &mut Value, fallback_timestamp: &str) -> StampSummary {
-    let run_timestamp = doc
-        .get("generated_at")
-        .and_then(Value::as_str)
-        .filter(|s| !s.is_empty())
-        .unwrap_or(fallback_timestamp)
+/// Stamp every entry in a `{ "bridges": [...] }` document.
+/// Prefer the caller-supplied post-observation run timestamp; use the document's
+/// `generated_at` only when no valid run timestamp was supplied. Source-fetch
+/// timestamps may predate probes and must not make fresh observations look future-dated.
+pub fn stamp_results(doc: &mut Value, run_timestamp: &str) -> StampSummary {
+    let supplied_timestamp = DateTime::parse_from_rfc3339(run_timestamp)
+        .ok()
+        .map(|_| run_timestamp);
+    let run_timestamp = supplied_timestamp
+        .or_else(|| {
+            doc.get("generated_at")
+                .and_then(Value::as_str)
+                .filter(|timestamp| DateTime::parse_from_rfc3339(timestamp).is_ok())
+        })
+        .unwrap_or_default()
         .to_string();
     let now = DateTime::parse_from_rfc3339(&run_timestamp)
         .map(|timestamp| timestamp.with_timezone(&Utc))
