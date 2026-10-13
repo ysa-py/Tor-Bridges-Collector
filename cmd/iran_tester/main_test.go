@@ -275,7 +275,7 @@ func TestClassifyLinesHonorsRunDeadlineAndPreservesInconclusiveRows(t *testing.T
 	results := classifyLinesWithWorkers(ctx, lines, 2, 2*time.Second, nil, contextWaitingOONIClassifier{})
 	elapsed := time.Since(started)
 
-	if !errors.Is(ctx.Err(), context.DeadlineExceeded) {
+	if ctx.Err() != context.DeadlineExceeded {
 		t.Fatalf("context error=%v, want overall run deadline exceeded", ctx.Err())
 	}
 	if elapsed > time.Second {
