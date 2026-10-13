@@ -1110,6 +1110,31 @@ mod tests {
     }
 
     #[test]
+    fn stamp_results_uses_post_probe_timestamp_when_generated_at_is_stale() {
+        let now = Utc::now();
+        let run_timestamp = now.to_rfc3339();
+        let stale_generated_at = (now - Duration::minutes(5)).to_rfc3339();
+        let mut doc = json!({
+            "generated_at": stale_generated_at,
+            "bridges": [{
+                "verification": typed(
+                    "connected",
+                    "S2",
+                    "websocket-101",
+                    Some("cloudflare_worker")
+                )
+            }]
+        });
+
+        let summary = stamp_results(&mut doc, &run_timestamp);
+
+        assert_eq!(doc["generated_at"], json!(run_timestamp));
+        assert_eq!(doc["bridges"][0]["tested_at"], json!(run_timestamp));
+        assert_eq!(summary.tiers.get(TIER_2_PT_HANDSHAKE), Some(&1));
+        assert_eq!(summary.results.get(RESULT_WORKING), Some(&1));
+    }
+
+    #[test]
     fn stamp_results_handles_missing_bridges_and_non_object_entries() {
         let mut missing = json!({ "generated_at": "2026-10-10T10:20:55Z" });
         let summary = stamp_results(&mut missing, "fallback");
