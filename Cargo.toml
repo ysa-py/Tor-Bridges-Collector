@@ -117,6 +117,15 @@ zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
 # pinned version string matches `[workspace.dependencies]`.
 serde_yaml = { workspace = true }
 ctrlc = { workspace = true }
+# `handshake_probe` (Stage 8w) drives the tbc-prober handshake engine to turn
+# the S1-only candidate pool into typed S2+/S3 transport evidence. Both crates
+# are workspace members, so this adds no external dependency and no new
+# vendored code; the tokio "net" feature they require is already enabled.
+tbc-core = { path = "crates/core" }
+tbc-prober = { path = "crates/prober" }
+# clap 4.5.x pinned for the same clap_lex 0.7 compatibility reason documented
+# in bridge-probe/Cargo.toml (4.6+ would require clap_lex 1.1 / Rust 2024).
+clap = { version = "=4.5.4", features = ["derive"] }
 
 # The hosted ARMv7-musl CI job is deliberately a Rust type-check, not a
 # deployable collector build. `ring` needs a C cross compiler for that target;
@@ -187,6 +196,13 @@ path = "tests/webtunnel_v2_tests.rs"
 [[test]]
 name = "rust_native_pipeline"
 path = "tests/rust_native_pipeline.rs"
+
+# Results-writer publication contract (typed S2+/S3 evidence gating, transport
+# family bucketing). The file previously existed without a [[test]] target,
+# so `autotests = false` silently excluded it from every `cargo test` run.
+[[test]]
+name = "results_writer_contract"
+path = "tests/results_writer_parity.rs"
 
 # Offline contract for the complete bridge/ + Telegram publication inventory.
 # `autotests = false` above means this explicit declaration is required for

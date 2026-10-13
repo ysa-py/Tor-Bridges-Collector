@@ -63,7 +63,7 @@ func TestClassifyRecentStatusMissingTimestampsStayUnknown(t *testing.T) {
 func TestFilterByOriginalTimeDropsStaleAndFutureMeasurements(t *testing.T) {
 	now := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
 	measurements := []Measurement{
-		{Confirmed: true, MeasurementStartTime: "2026-10-01T12:00:00Z"},     // 9 days
+		{Confirmed: true, MeasurementStartTime: "2026-10-01T12:00:00Z"},      // 9 days
 		{Confirmed: false, MeasurementStartTime: "2026-10-10T11:30:00.125Z"}, // 30 min
 		{Anomaly: true, MeasurementStartTime: "2026-10-10T12:03:00Z"},        // 180s future
 		{Confirmed: true, MeasurementStartTime: "not-a-timestamp"},

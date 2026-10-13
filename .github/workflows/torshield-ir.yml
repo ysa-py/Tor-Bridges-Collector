@@ -2149,6 +2149,47 @@ jobs:
         set -euo pipefail
         cargo run --locked --quiet --bin funnel_advisory
 
+      # Stage 8w (ADDITIVE 2026-10-13): runner-side transport handshake
+      # verification. Before this stage the pipeline produced S1 (TCP) and
+      # best-case S1 webtunnel front-check evidence only, so every evidence-
+      # gated projection (`*_tested.txt`, `tested_global_*.txt`,
+      # `iran_likely_working_*`) stayed structurally empty: the publication
+      # contract requires typed S2+ protocol observations, the probe relay
+      # canary fails closed without credentials, and the tbc-prober handshake
+      # engine had no executable wiring at all. This stage runs the REAL
+      # transport handshakes (vanilla VERSIONS/NETINFO, obfs4 framing
+      # M_S/MAC_S, webtunnel RFC 6455 accept, meek envelope, snowflake broker)
+      # against the S1-reachable, highest-scoring candidates seconds before
+      # Stage 9, keeping observations inside the 10-minute evidence freshness
+      # window at publish time. Evidence stays honest: failures remain typed
+      # neutral S0 records, obfs4 is stamped S3 (framing handshake, ntor AUTH
+      # out of scope per crates/prober), and no record is ever upgraded beyond
+      # what was actually verified. Advisory: a probe failure must never gate
+      # publication — the merge is additive and deduplicated into
+      # data/pt_results.json, which `pipeline --stage results` already joins.
+    - name: Stage 8w — Runner-side transport handshake verification (S2+ evidence)
+      continue-on-error: true
+      timeout-minutes: 12
+      run: |
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: live evidence probing stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          exit 0
+        fi
+        set -euo pipefail
+        cargo run --locked --quiet --bin handshake_probe -- \
+          --input bridge/iran_results.json \
+          --output data/handshake_results.json \
+          --merge-into data/pt_results.json \
+          --max-bridges 300 \
+          --workers 24 \
+          --timeout-secs 8 \
+          --budget-seconds 480
+        if [ -f data/handshake_results.json ]; then
+          HS_TOTAL=$(jq 'length' data/handshake_results.json 2>/dev/null || echo 0)
+          HS_S2PLUS=$(jq '[.[] | select(.status == "connected" and (.stage == "S2" or .stage == "S3" or .stage == "S4"))] | length' data/handshake_results.json 2>/dev/null || echo 0)
+          echo "Stage 8w completed: ${HS_S2PLUS} typed S2+ handshake observations from ${HS_TOTAL} records (merged into data/pt_results.json for the Stage 9 results join)"
+        fi
+
       # Dual persist, one verified payload: the Rust publisher atomically
       # rewrites every REQUIRED_FILES bridge/ output, re-renders README.md from the
       # verified snapshot, byte-verifies tor_bridges.zip, and then delivers

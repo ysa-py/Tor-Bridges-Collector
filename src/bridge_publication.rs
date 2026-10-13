@@ -246,6 +246,19 @@ fn bridge_key(line: &str) -> String {
         .to_ascii_lowercase()
 }
 
+/// Extract the bridge identity fingerprint (a 40-character hex token) from a
+/// bridge line, if present. The fingerprint is the stable cross-stage bridge
+/// identity: transport probes legitimately rewrite the endpoint portion of a
+/// webtunnel line (resolving a front domain to `IP:PORT`), while the
+/// canonical history keeps the originally collected form.
+fn fingerprint_of(line: &str) -> Option<String> {
+    line.split_whitespace().find_map(|token| {
+        let hex = token.trim_matches(|c: char| !c.is_ascii_hexdigit());
+        (hex.len() == 40 && hex.bytes().all(|byte| byte.is_ascii_hexdigit()))
+            .then(|| hex.to_ascii_uppercase())
+    })
+}
+
 fn normalise_transport(raw: &str, declared: Option<&str>) -> String {
     let lower = raw.trim().to_ascii_lowercase();
     let first = lower.split_whitespace().next().unwrap_or_default();
@@ -416,6 +429,14 @@ fn candidates_from_history(
         .iter()
         .map(|probe| (bridge_key(&probe.line), probe))
         .collect();
+    // Fingerprint fallback join: transport probes may rewrite the endpoint
+    // portion of a line (webtunnel front resolution), so an exact-line miss
+    // with a matching 40-hex fingerprint is still the same bridge and its
+    // typed evidence must count for the evidence-gated projections.
+    let probe_by_fingerprint: BTreeMap<String, &ProbeRecord> = probes
+        .iter()
+        .filter_map(|probe| fingerprint_of(&probe.line).map(|fp| (fp, probe)))
+        .collect();
     let mut candidates = Vec::with_capacity(object.len());
 
     for (key, value) in object {
@@ -431,7 +452,10 @@ fn candidates_from_history(
         if raw.is_empty() {
             continue;
         }
-        let probe = probe_by_line.get(&bridge_key(&raw)).copied();
+        let probe = probe_by_line
+            .get(&bridge_key(&raw))
+            .copied()
+            .or_else(|| fingerprint_of(&raw).and_then(|fp| probe_by_fingerprint.get(&fp).copied()));
         // Only an explicit, positive S2+ observation with an observing
         // vantage qualifies for evidence-labeled *_tested projections. Legacy
         // TCP booleans, counters, and `test_pass` fields do not encode the

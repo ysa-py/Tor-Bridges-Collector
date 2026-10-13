@@ -65,19 +65,19 @@ const (
 
 // BridgeResult is the per-bridge output record.
 type BridgeResult struct {
-	Line           string     `json:"line"`
-	Host           string     `json:"host"`
-	Port           int        `json:"port"`
-	Transport      string     `json:"transport"`
-	TCPReachable   bool       `json:"tcp_reachable"`
-	IranStatus     IranStatus `json:"iran_status"`
-	OONIChecked    bool       `json:"ooni_checked"`
-	RecurrenceRate float64    `json:"recurrence_rate_per_30d,omitempty"`
-	ASN            string     `json:"asn,omitempty"`
-	ASNCountry     string     `json:"asn_country,omitempty"`
-	ASNOrg         string     `json:"asn_org,omitempty"`
-	RIPEReachable  *bool      `json:"ripe_reachable,omitempty"`
-	Flags          []DPIFlag  `json:"flags,omitempty"`
+	Line           string          `json:"line"`
+	Host           string          `json:"host"`
+	Port           int             `json:"port"`
+	Transport      string          `json:"transport"`
+	TCPReachable   bool            `json:"tcp_reachable"`
+	IranStatus     IranStatus      `json:"iran_status"`
+	OONIChecked    bool            `json:"ooni_checked"`
+	RecurrenceRate float64         `json:"recurrence_rate_per_30d,omitempty"`
+	ASN            string          `json:"asn,omitempty"`
+	ASNCountry     string          `json:"asn_country,omitempty"`
+	ASNOrg         string          `json:"asn_org,omitempty"`
+	RIPEReachable  *bool           `json:"ripe_reachable,omitempty"`
+	Flags          []DPIFlag       `json:"flags,omitempty"`
 	CompositeScore float64         `json:"composite_score"`
 	Verification   Verification    `json:"verification"`
 	IranAssessment *IranAssessment `json:"iran_assessment,omitempty"`
@@ -106,15 +106,15 @@ type Verification struct {
 // iran_status. OONI measurements are queried with probe_cc=IR; this is not the
 // GitHub runner or relay vantage used for the technical verification stage.
 type IranAssessment struct {
-	Status                     IranStatus  `json:"status"`
-	Source                     string      `json:"source"`
-	Checked                    bool        `json:"checked"`
-	Vantage                    IranVantage `json:"vantage"`
-	QueriedAt                  string      `json:"queried_at"`
-	MeasurementAt              string      `json:"measurement_at,omitempty"`
-	MeasurementWindowDays      int         `json:"measurement_window_days,omitempty"`
-	HistoricalMeasurementAt    string      `json:"historical_measurement_at,omitempty"`
-	HistoricalWindowDays       int         `json:"historical_window_days,omitempty"`
+	Status                  IranStatus  `json:"status"`
+	Source                  string      `json:"source"`
+	Checked                 bool        `json:"checked"`
+	Vantage                 IranVantage `json:"vantage"`
+	QueriedAt               string      `json:"queried_at"`
+	MeasurementAt           string      `json:"measurement_at,omitempty"`
+	MeasurementWindowDays   int         `json:"measurement_window_days,omitempty"`
+	HistoricalMeasurementAt string      `json:"historical_measurement_at,omitempty"`
+	HistoricalWindowDays    int         `json:"historical_window_days,omitempty"`
 }
 
 type IranVantage struct {
@@ -135,13 +135,13 @@ type TCPObservation struct {
 
 // Summary aggregates the full run statistics.
 type Summary struct {
-	TotalTested        int  `json:"total_tested"`
-	GlobalReachable    int  `json:"global_reachable"`
-	IranLikelyWorking  int  `json:"iran_likely_working"`
-	IranLikelyBlocked  int  `json:"iran_likely_blocked"`
-	IranUnknown        int  `json:"iran_unknown"`
-	IranASNBlocked     int  `json:"iran_asn_blocked"`
-	IranFreqBlocked    int  `json:"iran_frequently_blocked"`
+	TotalTested         int  `json:"total_tested"`
+	GlobalReachable     int  `json:"global_reachable"`
+	IranLikelyWorking   int  `json:"iran_likely_working"`
+	IranLikelyBlocked   int  `json:"iran_likely_blocked"`
+	IranUnknown         int  `json:"iran_unknown"`
+	IranASNBlocked      int  `json:"iran_asn_blocked"`
+	IranFreqBlocked     int  `json:"iran_frequently_blocked"`
 	RunDeadlineExceeded bool `json:"run_deadline_exceeded,omitempty"`
 }
 
@@ -270,12 +270,12 @@ func classifyBridge(
 		observedAt = time.Now().UTC().Format(time.RFC3339Nano)
 	}
 	result.Verification = Verification{
-		Status: tcpObservation.Status,
-		Stage: tcpObservation.Stage,
-		Vantage: tcpObservation.Vantage,
-		RTTMS: tcpObservation.RTTMS,
-		ProbeType: "tcp",
-		Detail: tcpObservation.Detail,
+		Status:     tcpObservation.Status,
+		Stage:      tcpObservation.Stage,
+		Vantage:    tcpObservation.Vantage,
+		RTTMS:      tcpObservation.RTTMS,
+		ProbeType:  "tcp",
+		Detail:     tcpObservation.Detail,
 		ErrorClass: tcpObservation.ErrorClass,
 		ObservedAt: observedAt,
 	}
@@ -350,10 +350,10 @@ func classifyBridge(
 			historicalAt, hasHistoricalMeasurement := ooniClient.LatestTemporalMeasurementAt(b.Host)
 			if checked {
 				assessment := &IranAssessment{
-					Status: StatusIranUnknown,
-					Source: "ooni_measurements_api",
-					Checked: true,
-					Vantage: IranVantage{Type: "ooni_probe", Country: "IR"},
+					Status:    StatusIranUnknown,
+					Source:    "ooni_measurements_api",
+					Checked:   true,
+					Vantage:   IranVantage{Type: "ooni_probe", Country: "IR"},
 					QueriedAt: time.Now().UTC().Format(time.RFC3339Nano),
 				}
 				if hasRecentMeasurement {
@@ -389,7 +389,6 @@ func classifyBridge(
 		if result.IranAssessment != nil {
 			result.IranAssessment.Status = iranStatus
 		}
-
 
 	default:
 		// Unresolvable or non-IP, non-domain host
@@ -514,9 +513,9 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 	observedAt := time.Now().UTC().Format(time.RFC3339Nano)
 	if b.Host == "" || b.Port == 0 {
 		return TCPObservation{
-			Status: "inconclusive",
-			Stage: "S0",
-			Detail: "no literal TCP endpoint is available to this probe stage",
+			Status:     "inconclusive",
+			Stage:      "S0",
+			Detail:     "no literal TCP endpoint is available to this probe stage",
 			ErrorClass: "endpoint_unavailable",
 			ObservedAt: observedAt,
 		}
@@ -546,12 +545,12 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 	_ = conn.Close()
 	rtt := float64(time.Since(started).Microseconds()) / 1000.0
 	return TCPObservation{
-		Reachable: true,
-		Status: "connected",
-		Stage: "S1",
-		Vantage: vantage,
-		RTTMS: &rtt,
-		Detail: "TCP connection established; no transport handshake was performed",
+		Reachable:  true,
+		Status:     "connected",
+		Stage:      "S1",
+		Vantage:    vantage,
+		RTTMS:      &rtt,
+		Detail:     "TCP connection established; no transport handshake was performed",
 		ObservedAt: observedAt,
 	}
 }
