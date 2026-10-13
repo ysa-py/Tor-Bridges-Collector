@@ -255,38 +255,98 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
         responses_ok: 0,
         lines: Vec::new(),
     };
+    let browser_headers: Vec<(String, String)> = DOCS_AUDIT_BROWSER_HEADERS
+        .iter()
+        .map(|(name, value)| (name.to_string(), value.to_string()))
+        .collect();
+
     for (index, &(url, transport, ip_version)) in plan.iter().enumerate() {
         if index > 0 {
             pace_request();
         }
-        group.requests += 1;
-        match client.get(url, REQUEST_TIMEOUT) {
-            Ok(resp) if (200..300).contains(&resp.status) => {
-                group.responses_ok += 1;
-                let parsed = parse_bridgelines_html(&resp.text);
-                println!(
-                    "webtunnel_supply_advanced draw: url={url} parsed_lines={} source={}",
-                    parsed.len(),
-                    group.source,
-                );
-                for line in parsed {
-                    group
-                        .lines
-                        .push((line, transport.to_string(), ip_version.to_string()));
+
+        let mut parsed = Vec::new();
+        for attempt in 0..=1 {
+            if attempt > 0 {
+                // One bounded fallback attempt per page. The pacing applies to
+                // retries too, so empty/challenge responses never create a
+                // tight retry loop against BridgeDB.
+                pace_request();
+            }
+            group.requests += 1;
+            let result = if attempt == 0 {
+                client.get(url, REQUEST_TIMEOUT)
+            } else {
+                client.get_with_headers(url, &browser_headers, REQUEST_TIMEOUT)
+            };
+            let method = if attempt == 0 {
+                "GET"
+            } else {
+                "GET+browser-headers"
+            };
+
+            match result {
+                Ok(resp) if (200..300).contains(&resp.status) => {
+                    group.responses_ok += 1;
+                    parsed = parse_bridgelines_html(&resp.text);
+                    println!(
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} status={} parsed_lines={} source={}",
+                        attempt + 1,
+                        method,
+                        resp.status,
+                        parsed.len(),
+                        group.source,
+                    );
+                    if !parsed.is_empty() {
+                        break;
+                    }
+                    if attempt == 0 {
+                        eprintln!(
+                            "webtunnel_supply_advanced draw: url={url} returned HTTP {} but no validated bridge lines; retrying once with browser headers",
+                            resp.status
+                        );
+                    }
+                }
+                Ok(resp) => {
+                    eprintln!(
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} status={} source={}",
+                        attempt + 1,
+                        method,
+                        resp.status,
+                        group.source,
+                    );
+                    if attempt == 0 {
+                        eprintln!(
+                            "webtunnel_supply_advanced draw: url={url} retrying once with browser headers after non-2xx response"
+                        );
+                    }
+                }
+                Err(err) => {
+                    eprintln!(
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} error={} source={}",
+                        attempt + 1,
+                        method,
+                        err,
+                        group.source,
+                    );
+                    if attempt == 0 {
+                        eprintln!(
+                            "webtunnel_supply_advanced draw: url={url} retrying once with browser headers after request error"
+                        );
+                    }
                 }
             }
-            Ok(resp) => {
-                eprintln!(
-                    "webtunnel_supply_advanced draw: url={url} status={} source={}",
-                    resp.status, group.source
-                );
-            }
-            Err(err) => {
-                eprintln!(
-                    "webtunnel_supply_advanced draw: url={url} error={err} source={}",
-                    group.source
-                );
-            }
+        }
+
+        if parsed.is_empty() {
+            eprintln!(
+                "webtunnel_supply_advanced draw: url={url} produced no validated bridge lines after the bounded retry; no records added"
+            );
+        }
+        for line in parsed {
+            group
+                .lines
+                .push((line, transport.to_string(), ip_version.to_string()));
         }
     }
     group
@@ -863,6 +923,94 @@ mod tests {
     }
 
     use crate::scraper::{HttpFetch, HttpResponse, ScraperError};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    /// Mock for WebTunnel HTML ingestion: the first request can return a
+    /// challenge/empty page while the bounded browser-header retry returns
+    /// a parser-valid bridge line. It tracks retries without touching the
+    /// network.
+    struct WebTunnelHtmlRetryMock {
+        initial_status: u16,
+        initial_body: &'static str,
+        retry_status: u16,
+        retry_body: &'static str,
+        retry_calls: AtomicUsize,
+    }
+
+    impl HttpFetch for WebTunnelHtmlRetryMock {
+        fn get(&self, _url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
+            Ok(mock_response(self.initial_status, self.initial_body))
+        }
+
+        fn post_json(
+            &self,
+            _url: &str,
+            _body: &Value,
+            _headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            Err(ScraperError::Http {
+                url: String::new(),
+                message: "POST not supported by WebTunnel retry mock".to_string(),
+            })
+        }
+
+        fn get_with_headers(
+            &self,
+            _url: &str,
+            _headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            self.retry_calls.fetch_add(1, Ordering::SeqCst);
+            Ok(mock_response(self.retry_status, self.retry_body))
+        }
+    }
+
+    #[test]
+    fn webtunnel_html_retries_empty_200_once_with_browser_headers() {
+        let mock = WebTunnelHtmlRetryMock {
+            initial_status: 200,
+            initial_body: "<html><body>challenge page, no bridge lines</body></html>",
+            retry_status: 200,
+            retry_body: r#"<div id="bridgelines">
+webtunnel url=https://example.com/ abcdef0123456789
+</div>"#,
+            retry_calls: AtomicUsize::new(0),
+        };
+
+        // One draw contains two canonical pages. Each empty 200 gets exactly
+        // one paced retry; only parser- and safety-validated lines are returned.
+        let source = fetch_webtunnel_html(&mock, 1);
+        assert_eq!(source.requests, 4);
+        assert_eq!(source.responses_ok, 4);
+        assert_eq!(mock.retry_calls.load(Ordering::SeqCst), 2);
+        assert_eq!(source.lines.len(), 2);
+        assert!(source.lines.iter().all(|(line, transport, _)| {
+            transport == "webtunnel" && line.contains("url=https://example.com/")
+        }));
+        assert_eq!(source.lines[0].2, "ipv4");
+        assert_eq!(source.lines[1].2, "ipv6");
+    }
+
+    #[test]
+    fn webtunnel_html_does_not_fabricate_lines_when_both_attempts_are_empty() {
+        let mock = WebTunnelHtmlRetryMock {
+            initial_status: 200,
+            initial_body: "<html><body>challenge page</body></html>",
+            retry_status: 200,
+            retry_body: "<html><body>still no bridge lines</body></html>",
+            retry_calls: AtomicUsize::new(0),
+        };
+
+        let source = fetch_webtunnel_html(&mock, 1);
+        assert_eq!(source.requests, 4);
+        assert_eq!(source.responses_ok, 4);
+        assert_eq!(mock.retry_calls.load(Ordering::SeqCst), 2);
+        assert!(
+            source.lines.is_empty(),
+            "empty/unvalidated responses must not create bridge records"
+        );
+    }
 
     /// Mock client for the additive docs-audit 403 experiment: configurable
     /// outcomes for the base GET, the browser-header retry, and the HEAD.
