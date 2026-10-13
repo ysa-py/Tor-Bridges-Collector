@@ -8,12 +8,12 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1769,
+      "count": 1772,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1769,
+      "count": 1772,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -28,12 +28,12 @@
       "stage": "relay_success"
     },
     {
-      "count": 1769,
+      "count": 1772,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 635,
+      "count": 638,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,18 +43,18 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-13T03:26:20.174819313+00:00",
+  "generated_at": "2026-10-13T08:00:30.548614188+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
-      "DOCUMENTATION_RFC3849_2001_DB8": 243,
+      "DOCUMENTATION_RFC3849_2001_DB8": 244,
       "TEST_NET_1_RFC5737": 7
     },
     "by_transport": {
       "meek-azure": 1,
       "snowflake": 6,
-      "webtunnel": 243
+      "webtunnel": 244
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
     "samples": [
@@ -67,7 +67,7 @@
       "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
       "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.3"
     ],
-    "total_non_routable": 250
+    "total_non_routable": 251
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -83,31 +83,31 @@
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 0,
     "iran_likely_working_webtunnel.txt": 0,
-    "obfs4.txt": 685,
+    "obfs4.txt": 687,
     "obfs4_tested.txt": 0,
     "tested_global_obfs4.txt": 0,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 0,
     "vanilla.txt": 421,
-    "vanilla_tested.txt": 165,
-    "webtunnel.txt": 243,
-    "webtunnel_ipv6.txt": 243
+    "vanilla_tested.txt": 166,
+    "webtunnel.txt": 244,
+    "webtunnel_ipv6.txt": 244
   },
   "relay_coverage": {
-    "candidates": 1769,
+    "candidates": 1772,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
       "meek_lite": 1,
       "no_literal_endpoint": 4,
-      "obfs4": 1029,
+      "obfs4": 1031,
       "snowflake": 6,
       "vanilla": 486,
-      "webtunnel": 243
+      "webtunnel": 244
     },
-    "unobserved_candidates": 1765,
-    "unobserved_non_routable": 250,
-    "unobserved_other": 1515
+    "unobserved_candidates": 1768,
+    "unobserved_non_routable": 251,
+    "unobserved_other": 1517
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1765
+    "unobserved_candidates": 1768
   },
   "sources": {
     "sources": [
@@ -381,6 +381,13 @@
         "classification": "no_evidence",
         "endpoint_is_placeholder": true,
         "front": "capera.tel",
+        "observations": 0,
+        "successes": 0
+      },
+      {
+        "classification": "no_evidence",
+        "endpoint_is_placeholder": true,
+        "front": "catun.privacy-vbox.de",
         "observations": 0,
         "successes": 0
       },
@@ -1337,15 +1344,15 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 243,
+    "fronts_with_placeholder_endpoints": 244,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 243,
+    "lines_examined": 244,
     "summary": {
       "degraded": 0,
       "healthy": 0,
-      "no_evidence": 162,
+      "no_evidence": 163,
       "unreachable_from_relay": 0
     },
-    "unique_fronts": 162
+    "unique_fronts": 163
   }
 }
