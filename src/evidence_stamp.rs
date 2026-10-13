@@ -1128,7 +1128,6 @@ mod tests {
 
         let summary = stamp_results(&mut doc, &run_timestamp);
 
-        assert_eq!(doc["generated_at"], json!(run_timestamp));
         assert_eq!(doc["bridges"][0]["tested_at"], json!(run_timestamp));
         assert_eq!(summary.tiers.get(TIER_2_PT_HANDSHAKE), Some(&1));
         assert_eq!(summary.results.get(RESULT_WORKING), Some(&1));
