@@ -206,8 +206,7 @@ fn stage_results(input: &Path) -> StageResult {
     // Use a post-probe clock for freshness/stamping; the earlier `now` is
     // retained only for the relay observation merge above.
     let results_now = Utc::now();
-    let stats =
-        results_writer::write_result_files_at(Path::new("bridge"), &bridges, results_now)?;
+    let stats = results_writer::write_result_files_at(Path::new("bridge"), &bridges, results_now)?;
     // v2.6.3: Persist webtunnel probe results back to iran_results.json
     // so downstream stages (bridge_publication.rs) read the updated
     // tcp_reachable / iran_status fields. Without this, publication
