@@ -93,12 +93,12 @@ func (s *stubIPInfoLookup) Lookup(_ context.Context, _ string) (*ipinfo.Response
 }
 
 type stubOONIClassifier struct {
-	status         ooni.OONIStatus
-	rate           float64
-	checked        bool
-	recentAt       string
-	historicalAt   string
-	calls          int
+	status       ooni.OONIStatus
+	rate         float64
+	checked      bool
+	recentAt     string
+	historicalAt string
+	calls        int
 }
 
 func (s *stubOONIClassifier) Classify(_ context.Context, _ string) (ooni.OONIStatus, float64, bool) {
@@ -222,7 +222,9 @@ func TestClassifyURLOnlyWebTunnelNotHardUnreachable(t *testing.T) {
 }
 
 // A webtunnel bridge with a literal (non-routable) IP endpoint is still
-// probed at S1, but a runner-side failure remains iran_unknown.
+// TCP-probed; since 1585d4e5 the typed observation semantics classify a
+// refused/timeout/error dial as an explicit S0 attempt carrying the runner
+// vantage, and the Iran status stays iran_unknown either way.
 func TestClassifyWebTunnelLiteralEndpointStillProbed(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -240,11 +242,13 @@ func TestClassifyWebTunnelLiteralEndpointStillProbed(t *testing.T) {
 	if result.IranStatus != StatusIranUnknown {
 		t.Fatalf("status=%q, want %q for literal-endpoint webtunnel", result.IranStatus, StatusIranUnknown)
 	}
-	if result.Verification.Stage != "S1" || result.Verification.Vantage == nil {
-		t.Fatalf("attempted literal endpoint must retain its TCP stage and vantage: %#v", result.Verification)
+	if result.Verification.Stage != "S0" || result.Verification.Status != "timeout" {
+		t.Fatalf("literal-endpoint dial must stay a typed S0 timeout attempt: %#v", result.Verification)
+	}
+	if result.Verification.Vantage == nil {
+		t.Fatalf("attempted literal endpoint must retain its runner vantage: %#v", result.Verification)
 	}
 }
-
 
 // contextWaitingOONIClassifier simulates an API call that must stop when its
 // parent run context expires.

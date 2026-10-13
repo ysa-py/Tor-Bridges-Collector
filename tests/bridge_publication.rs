@@ -347,3 +347,70 @@ fn verifier_rejects_archive_or_manifest_drift() {
     assert!(error.contains("manifest SHA-256 mismatch"));
     let _ = std::fs::remove_dir_all(root);
 }
+
+/// The transport probe legitimately rewrites the endpoint portion of a
+/// webtunnel line (front-domain → resolved `IP:PORT`), so the canonical
+/// history record and the probe record may disagree on everything except the
+/// 40-hex fingerprint. The evidence join must fall back to the fingerprint so
+/// the evidence-gated `webtunnel_tested.txt` projection fills instead of
+/// silently staying empty.
+#[test]
+fn fingerprint_join_upgrades_history_records_with_rewritten_lines() {
+    let root = scratch("fingerprint-join");
+    let bridge = root.join("bridge");
+    let now = "2026-08-01T23:30:00Z";
+    let observed_at = "2026-08-01T23:55:00Z";
+    let fp = "68674E54A17AEB1C9ADE878BBBB46C6975DD3105";
+    // History keeps the originally collected form (placeholder endpoint as
+    // collected from a mirror).
+    let history_line = format!("webtunnel 198.51.100.7:443 {fp} url=https://front.example/t");
+    let history = json!({
+        "webtunnel placeholder form": {
+            "raw": history_line,
+            "transport": "webtunnel",
+            "ip_version": "ipv4",
+            "first_seen": now,
+            "last_seen": now,
+            "tcp_reachable": true,
+            "score": 0.7
+        }
+    });
+    // The probe record carries the front-resolved endpoint form with the SAME
+    // fingerprint plus a typed S2 observation.
+    let probe_line = format!("webtunnel 104.21.60.225:443 {fp} url=https://front.example/t");
+    let results = json!({
+        "bridges": [
+            {
+                "line": probe_line,
+                "transport": "webtunnel",
+                "tcp_reachable": true,
+                "iran_status": "iran_unknown",
+                "verification": {"status":"connected", "stage":"S2", "vantage":{"type":"github_actions_runner", "region":null}, "probe_type":"websocket-101", "observed_at":observed_at},
+                "composite_score": 0.9
+            }
+        ]
+    });
+    std::fs::write(
+        bridge.join("bridge_history.json"),
+        serde_json::to_string_pretty(&history).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        bridge.join("iran_results.json"),
+        serde_json::to_string_pretty(&results).unwrap(),
+    )
+    .unwrap();
+
+    let options = options(&root);
+    publish_at(&options, Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap()).unwrap();
+
+    let tested = std::fs::read_to_string(bridge.join("webtunnel_tested.txt")).unwrap();
+    assert!(
+        tested.contains(fp),
+        "webtunnel_tested.txt must carry the fingerprint-joined verified bridge, got: {tested:?}"
+    );
+    let tested_global =
+        std::fs::read_to_string(bridge.join("tested_global_webtunnel.txt")).unwrap();
+    assert!(tested_global.contains(fp));
+    let _ = std::fs::remove_dir_all(root);
+}

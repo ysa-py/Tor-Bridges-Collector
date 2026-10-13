@@ -129,6 +129,52 @@ fn typed_evidence_gates_working_and_global_outputs() {
 }
 
 #[test]
+fn raw_endpoint_transport_buckets_by_line_family() {
+    // The Go tester records `transport` as the raw `IP:PORT` endpoint for
+    // vanilla lines. S2+/S3 evidence on such a record must still land in
+    // `tested_global_vanilla.txt` — bucketing happens on the transport family
+    // derived from the bridge line, mirroring the publisher's projection.
+    let dir = case_dir("raw_endpoint_transport");
+    let records = vec![
+        json!({
+            "line": "158.69.55.8:25001 E91C15AA725D309066E8F0A3709D27BDBEE34B40",
+            "transport": "158.69.55.8:25001",
+            "iran_status": "iran_unknown",
+            "verification": typed("connected", "S3", "tor-handshake", Some("github_actions_runner"))
+        }),
+        json!({
+            "line": "snowflake-lookalike 1.2.3.11:443",
+            "transport": "snowflake",
+            "iran_status": "iran_likely_working",
+            "iran_assessment": {
+                "status": "iran_likely_working", "source": "ooni_measurements_api", "checked": true,
+                "vantage": { "type": "ooni_probe", "country": "IR" }, "queried_at": Utc::now().to_rfc3339(),
+                "measurement_at": Utc::now().to_rfc3339(), "measurement_window_days": 7,
+                "historical_measurement_at": Utc::now().to_rfc3339(), "historical_window_days": 90
+            },
+            "verification": typed("connected", "S2", "snowflake-broker", Some("github_actions_runner"))
+        })
+    ];
+
+    let stats = write_result_files(&dir, &records).expect("writer succeeds");
+    let read = |name: &str| fs::read_to_string(dir.join(name)).expect("output exists");
+
+    assert_eq!(read("tested_global_vanilla.txt"), "158.69.55.8:25001 E91C15AA725D309066E8F0A3709D27BDBEE34B40\n");
+    // A declared snowflake family still reaches the working bucket even when
+    // the line itself does not carry the transport token.
+    assert_eq!(stats["iran_likely_working_snowflake.txt"], 1);
+    assert_eq!(
+        read("iran_likely_working_snowflake.txt"),
+        "snowflake-lookalike 1.2.3.11:443\n"
+    );
+    // Snowflake is not a global-tested family; it must not leak there.
+    assert_eq!(read("tested_global_obfs4.txt"), "");
+    assert_eq!(read("tested_global_webtunnel.txt"), "");
+
+    let _ = fs::remove_dir_all(dir);
+}
+
+#[test]
 fn empty_input_still_writes_mandatory_empty_files() {
     let dir = case_dir("empty");
     let stats = write_result_files(&dir, &[]).expect("writer succeeds");

@@ -417,10 +417,15 @@ fn relay_observation(result: &Value) -> Option<Value> {
             observation.insert(key.to_string(), value.clone());
         }
     }
-    observation.insert(
-        "source".to_string(),
-        Value::String("probe-relay".to_string()),
-    );
+    // Preserve an explicit source label from the producer (for example the
+    // runner-side handshake prober tags itself `handshake-probe`); only
+    // default to `probe-relay` when the record carries no source of its own.
+    let source = result
+        .get("source")
+        .and_then(Value::as_str)
+        .filter(|source| !source.trim().is_empty())
+        .unwrap_or("probe-relay");
+    observation.insert("source".to_string(), Value::String(source.to_string()));
     Some(Value::Object(observation))
 }
 
@@ -1014,6 +1019,54 @@ mod tests {
                 .unwrap()
                 .len(),
             2
+        );
+    }
+
+    #[test]
+    fn relay_observation_preserves_explicit_producer_source() {
+        // The runner-side handshake prober tags its records `handshake-probe`;
+        // the merge must keep that provenance instead of relabeling it as
+        // probe-relay, while source-less relay records keep the default.
+        let observed_at = Utc::now().to_rfc3339();
+        let line = "Bridge 192.0.2.7:443 ABCD";
+        let mut bridges = vec![json!({
+            "line": line,
+            "verification": typed("connected", "S1", "tcp", Some("github_actions_runner"))
+        })];
+        let relay = vec![
+            json!({
+                "line": line,
+                "status": "connected",
+                "stage": "S3",
+                "vantage": { "type": "github_actions_runner", "region": null },
+                "rtt_ms": 21.0,
+                "probe_type": "tor-handshake",
+                "detail": "VERSIONS/NETINFO link-cell exchange verified",
+                "error_class": null,
+                "observed_at": observed_at,
+                "source": "handshake-probe"
+            }),
+            json!({
+                "line": "Bridge 192.0.2.8:443 EFGH",
+                "status": "connected",
+                "stage": "S2",
+                "vantage": { "type": "cloudflare_worker" },
+                "probe_type": "websocket-101",
+                "observed_at": observed_at
+            }),
+        ];
+        let relayless_source = relay_observation(&relay[0]).expect("typed observation");
+        assert_eq!(relayless_source["source"], json!("handshake-probe"));
+        let defaulted = relay_observation(&relay[1]).expect("typed observation");
+        assert_eq!(defaulted["source"], json!("probe-relay"));
+
+        let summary = merge_relay_results(&mut bridges, &relay);
+        assert_eq!(summary["bridges_matched"], 1);
+        assert_eq!(summary["s2plus_connected"], 1);
+        assert!(has_verified_s2plus(&bridges[0]));
+        assert_eq!(
+            bridges[0]["verification"]["source"],
+            json!("handshake-probe")
         );
     }
 

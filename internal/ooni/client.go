@@ -65,10 +65,10 @@ type Client struct {
 }
 
 type analysisResult struct {
-	Status                       OONIStatus
-	RecurrenceRate               float64
-	Checked                      bool
-	LatestRecentMeasurementAt    string
+	Status                      OONIStatus
+	RecurrenceRate              float64
+	Checked                     bool
+	LatestRecentMeasurementAt   string
 	LatestTemporalMeasurementAt string
 }
 
