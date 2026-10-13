@@ -109,7 +109,9 @@ fn recover_history_from_testing_list(bridge_dir: &Path) -> Option<serde_json::Ma
         } else {
             crate::scraper::infer_transport(raw)
         };
-        recovered.entry(raw.to_string()).or_insert_with(|| {
+        recovered
+            .entry(crate::history::HistoryManager::normalize_key(raw))
+            .or_insert_with(|| {
             serde_json::json!({
                 "raw": raw,
                 "transport": transport,
@@ -693,7 +695,8 @@ mod tests {
 
         let recovered = recover_history_from_testing_list(&bridge_dir).expect("recovered history");
         assert_eq!(recovered.len(), 1);
-        let record = recovered.get(raw).expect("raw-keyed record");
+        let normalized_key = crate::history::HistoryManager::normalize_key(raw);
+        let record = recovered.get(&normalized_key).expect("normalized record key");
         assert_eq!(record["transport"], "obfs4");
         assert_eq!(record["first_seen"], "");
         assert_eq!(record["last_seen"], "");
