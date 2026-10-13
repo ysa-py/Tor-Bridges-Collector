@@ -1,30 +1,6 @@
 {
   "activations": [
     {
-      "file": "meek-azure_tested.txt",
-      "lines": 1,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_projection",
-      "timestamp": "2026-10-04T21:22:54.509458882+00:00",
-      "transport": "meek-azure"
-    },
-    {
-      "file": "obfs4_ipv6_tested.txt",
-      "lines": 5,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_projection",
-      "timestamp": "2026-10-04T21:22:54.519518897+00:00",
-      "transport": "obfs4"
-    },
-    {
-      "file": "snowflake_ipv6_tested.txt",
-      "lines": 4,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_projection",
-      "timestamp": "2026-10-04T21:22:54.527833800+00:00",
-      "transport": "snowflake"
-    },
-    {
       "file": "webtunnel_72h_ipv6.txt",
       "lines": 0,
       "producer": "bridge_publication",
@@ -3721,8 +3697,30 @@
       "reason": "empty_transport_projection",
       "timestamp": "2026-10-13T12:54:29.205352853+00:00",
       "transport": "meek-azure"
+    },
+    {
+      "file": "webtunnel.txt",
+      "lines": 244,
+      "reason": "empty_projection_recovered_from_history",
+      "timestamp": "2026-10-13T16:31:35.064020627+00:00",
+      "transport": "webtunnel"
+    },
+    {
+      "file": "meek_lite.txt",
+      "lines": 3,
+      "reason": "empty_or_missing_projection",
+      "timestamp": "2026-10-13T16:31:35.071574365+00:00",
+      "transport": "meek_lite"
+    },
+    {
+      "file": "meek-azure.txt",
+      "lines": 1,
+      "producer": "bridge_publication",
+      "reason": "empty_transport_projection",
+      "timestamp": "2026-10-13T16:56:17.328870863+00:00",
+      "transport": "meek-azure"
     }
   ],
-  "generated_at": "2026-10-13T12:54:29.205365640+00:00",
+  "generated_at": "2026-10-13T16:56:17.328886602+00:00",
   "note": "Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data."
 }
