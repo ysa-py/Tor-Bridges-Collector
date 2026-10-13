@@ -1211,7 +1211,7 @@ jobs:
         cargo run --locked --quiet --bin pipeline -- --stage ml --stage rotation --report data/stage6a_score_report.json
 
     - name: Stage 6b — Export bridge files
-      timeout-minutes: 5
+      timeout-minutes: 12
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"

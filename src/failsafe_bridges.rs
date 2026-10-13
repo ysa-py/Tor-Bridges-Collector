@@ -80,6 +80,55 @@ fn read_history(bridge_dir: &Path) -> serde_json::Map<String, Value> {
     }
 }
 
+/// Recover a lost canonical history from the already-persisted bridge test inventory.
+///
+/// The inventory supplies bridge lines only. Deliberately leave observation times,
+/// test outcomes, and scores empty/default: recovery must not manufacture freshness
+/// or imply that a bridge was tested successfully.
+fn recover_history_from_testing_list(bridge_dir: &Path) -> Option<serde_json::Map<String, Value>> {
+    let path = bridge_dir.join("bridge_list_for_testing.json");
+    let text = fs::read_to_string(path).ok()?;
+    let root = serde_json::from_str::<Value>(&text).ok()?;
+    let lines = root.as_array()?;
+    let mut recovered = serde_json::Map::new();
+
+    for value in lines {
+        let Some(raw) = value.as_str().map(str::trim) else {
+            continue;
+        };
+        let raw = raw.strip_prefix("Bridge ").unwrap_or(raw).trim();
+        if !crate::scraper::is_valid_line(raw) {
+            continue;
+        }
+
+        let lower = raw.to_ascii_lowercase();
+        let transport = if lower.contains("conjure") {
+            "conjure".to_string()
+        } else if lower.contains("meek-azure") {
+            "meek-azure".to_string()
+        } else {
+            crate::scraper::infer_transport(raw)
+        };
+        recovered
+            .entry(crate::history::HistoryManager::normalize_key(raw))
+            .or_insert_with(|| {
+                serde_json::json!({
+                    "raw": raw,
+                    "transport": transport,
+                    "first_seen": "",
+                    "last_seen": "",
+                    "test_pass": null,
+                    "test_time": null,
+                    "latency_ms": null,
+                    "score": 0,
+                    "probes": [],
+                })
+            });
+    }
+
+    (!recovered.is_empty()).then_some(recovered)
+}
+
 /// Collect trimmed `raw` lines per transport from history. Pure for testing.
 pub fn transport_map(history: &serde_json::Map<String, Value>) -> Vec<(&'static str, Vec<String>)> {
     let mut map: Vec<(&'static str, Vec<String>)> =
@@ -418,7 +467,38 @@ pub fn run(bridge_dir: &Path) -> i32 {
         return 1;
     }
 
-    let history = read_history(bridge_dir);
+    let mut history = read_history(bridge_dir);
+    if history.is_empty() {
+        if let Some(recovered) = recover_history_from_testing_list(bridge_dir) {
+            let history_path = bridge_dir.join("bridge_history.json");
+            let mut body = match serde_json::to_vec_pretty(&Value::Object(recovered.clone())) {
+                Ok(body) => body,
+                Err(err) => {
+                    eprintln!("FAILSAFE: cannot serialize recovered bridge history: {err}");
+                    return 1;
+                }
+            };
+            body.push(b'\n');
+            if let Err(err) = fs::write(&history_path, body) {
+                eprintln!(
+                    "FAILSAFE: cannot persist recovered {}: {err}",
+                    history_path.display()
+                );
+                return 1;
+            }
+            println!(
+                "FAILSAFE: recovered {} inventory-only records into bridge_history.json; no test evidence or freshness was inferred",
+                recovered.len()
+            );
+            record_failsafe_activation(
+                bridge_dir,
+                "bridge_history.json",
+                recovered.len(),
+                "empty_history_recovered_from_existing_test_inventory",
+            );
+            history = recovered;
+        }
+    }
     let per_transport = transport_map(&history);
     let mut total = 0_u64;
 
@@ -597,6 +677,41 @@ mod tests {
         assert_eq!(list.len(), 4);
         // Second run: files populated -> OK branch, no rewrite.
         assert_eq!(run(&bridge_dir), 0);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn recover_empty_history_from_existing_testing_inventory_without_fabricating_evidence() {
+        let dir = std::env::temp_dir().join(format!("fb_recover_history_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let raw = "obfs4 1.2.3.4:443 0123456789ABCDEF0123456789ABCDEF01234567";
+        std::fs::write(bridge_dir.join("bridge_history.json"), "").expect("empty history");
+        std::fs::write(
+            bridge_dir.join("bridge_list_for_testing.json"),
+            serde_json::to_string_pretty(&vec![raw, "invalid"]).expect("inventory JSON"),
+        )
+        .expect("write inventory");
+
+        let recovered = recover_history_from_testing_list(&bridge_dir).expect("recovered history");
+        assert_eq!(recovered.len(), 1);
+        let normalized_key = crate::history::HistoryManager::normalize_key(raw);
+        let record = recovered
+            .get(&normalized_key)
+            .expect("normalized record key");
+        assert_eq!(record["transport"], "obfs4");
+        assert_eq!(record["first_seen"], "");
+        assert_eq!(record["last_seen"], "");
+        assert!(record.get("verification").is_none());
+        assert_eq!(record["test_pass"], Value::Null);
+        assert_eq!(record["score"], 0);
+
+        assert_eq!(run(&bridge_dir), 0);
+        let saved = std::fs::read_to_string(bridge_dir.join("bridge_history.json"))
+            .expect("recovered history file");
+        let parsed: Value = serde_json::from_str(&saved).expect("valid history JSON");
+        assert!(parsed.is_object());
+        assert_eq!(parsed.as_object().expect("object").len(), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 
