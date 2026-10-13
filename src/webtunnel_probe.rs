@@ -38,18 +38,74 @@ pub fn is_documentation_ipv6(addr: &str) -> bool {
     stripped.starts_with("2001:db8:") || stripped == "2001:db8"
 }
 
-/// Extract the front domain host and port from a WebTunnel bridge line.
-/// Returns None if the line doesn't contain a url= parameter.
-fn extract_front_domain(line: &str) -> Option<(String, u16)> {
-    let re = Regex::new(r"(?i)https?://([^/:\s]+)(?::(\d+))?").unwrap();
-    re.captures(line).map(|caps| {
-        let host = caps.get(1).unwrap().as_str().to_string();
-        let port = caps
-            .get(2)
-            .and_then(|m| m.as_str().parse::<u16>().ok())
-            .unwrap_or(443);
-        (host, port)
+/// Parsed HTTPS dial target for one WebTunnel bridge line.
+/// The path and query are part of the endpoint, not optional website metadata.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FrontTarget {
+    host: String,
+    port: u16,
+    path_and_query: String,
+}
+
+/// Extract the HTTPS front target from the bridge's explicit url= token.
+/// WebTunnel uses the URL path as its endpoint path, so callers must preserve
+/// it for the WebSocket Upgrade request. URL fragments are never sent in HTTP.
+fn extract_front_domain(line: &str) -> Option<FrontTarget> {
+    let raw_url = line.split_whitespace().find_map(|token| {
+        let (key, value) = token.split_once('=')?;
+        key.eq_ignore_ascii_case("url")
+            .then_some(value.trim_matches(|c| matches!(c, '"' | '\'' | ',' | ';')))
+    })?;
+    let parsed = url::Url::parse(raw_url).ok()?;
+    if parsed.scheme() != "https" || !parsed.username().is_empty() || parsed.password().is_some() {
+        return None;
+    }
+    let host = match parsed.host()? {
+        url::Host::Domain(domain) => domain.to_string(),
+        url::Host::Ipv4(ip) => ip.to_string(),
+        url::Host::Ipv6(ip) => ip.to_string(),
+    };
+    let port = parsed.port_or_known_default()?;
+    let mut path_and_query = parsed.path().to_string();
+    if path_and_query.is_empty() {
+        path_and_query.push('/');
+    }
+    if let Some(query) = parsed.query() {
+        path_and_query.push('?');
+        path_and_query.push_str(query);
+    }
+    Some(FrontTarget {
+        host,
+        port,
+        path_and_query,
     })
+}
+
+/// Build a safe WebSocket handshake request. Never log the target path: for
+/// WebTunnel bridge lines it may contain a secret/randomized path component.
+fn build_websocket_upgrade_request(host: &str, port: u16, path_and_query: &str) -> String {
+    let target = if path_and_query.starts_with('/')
+        && !path_and_query
+            .bytes()
+            .any(|byte| byte.is_ascii_control() || byte.is_ascii_whitespace())
+    {
+        path_and_query
+    } else {
+        "/"
+    };
+    let host_name = if host.parse::<std::net::Ipv6Addr>().is_ok() {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    };
+    let host_header = if port == 443 {
+        host_name
+    } else {
+        format!("{host_name}:{port}")
+    };
+    format!(
+        "GET {target} HTTP/1.1\r\nHost: {host_header}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: {WS_PROBE_KEY}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+    )
 }
 
 /// Strip any existing IP:PORT or [IPv6]:PORT endpoint from the beginning
