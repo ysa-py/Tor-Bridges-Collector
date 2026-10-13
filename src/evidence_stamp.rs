@@ -642,15 +642,15 @@ pub struct StampSummary {
 pub fn stamp_results(doc: &mut Value, run_timestamp: &str) -> StampSummary {
     let supplied_timestamp = DateTime::parse_from_rfc3339(run_timestamp)
         .ok()
-        .map(|_| run_timestamp);
+        .map(|_| run_timestamp.to_string());
     let run_timestamp = supplied_timestamp
         .or_else(|| {
             doc.get("generated_at")
                 .and_then(Value::as_str)
                 .filter(|timestamp| DateTime::parse_from_rfc3339(timestamp).is_ok())
+                .map(str::to_string)
         })
-        .unwrap_or_default()
-        .to_string();
+        .unwrap_or_default();
     let now = DateTime::parse_from_rfc3339(&run_timestamp)
         .map(|timestamp| timestamp.with_timezone(&Utc))
         .unwrap_or_else(|_| Utc::now());
