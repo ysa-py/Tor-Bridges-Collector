@@ -11,7 +11,6 @@
 use std::collections::HashSet;
 use std::time::{Duration, Instant};
 
-use regex::Regex;
 use serde_json::{json, Value};
 
 #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
@@ -26,6 +25,7 @@ const MAX_PROBE_RETRIES: u32 = 3;
 /// Base backoff between retries (milliseconds), doubled each attempt.
 const RETRY_BASE_MS: u64 = 500;
 const WS_PROBE_KEY: &str = "dGhlIHNhbXBsZSBub25jZQ==";
+const MAX_RESPONSE_HEADER_BYTES: usize = 16 * 1024;
 
 /// Check whether an IPv6 address string is in the RFC 3849 documentation
 /// prefix `2001:db8::/32`. BridgeDB intentionally substitutes these for
@@ -38,18 +38,74 @@ pub fn is_documentation_ipv6(addr: &str) -> bool {
     stripped.starts_with("2001:db8:") || stripped == "2001:db8"
 }
 
-/// Extract the front domain host and port from a WebTunnel bridge line.
-/// Returns None if the line doesn't contain a url= parameter.
-fn extract_front_domain(line: &str) -> Option<(String, u16)> {
-    let re = Regex::new(r"(?i)https?://([^/:\s]+)(?::(\d+))?").unwrap();
-    re.captures(line).map(|caps| {
-        let host = caps.get(1).unwrap().as_str().to_string();
-        let port = caps
-            .get(2)
-            .and_then(|m| m.as_str().parse::<u16>().ok())
-            .unwrap_or(443);
-        (host, port)
+/// Parsed HTTPS dial target for one WebTunnel bridge line.
+/// The path and query are part of the endpoint, not optional website metadata.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct FrontTarget {
+    host: String,
+    port: u16,
+    path_and_query: String,
+}
+
+/// Extract the HTTPS front target from the bridge's explicit url= token.
+/// WebTunnel uses the URL path as its endpoint path, so callers must preserve
+/// it for the WebSocket Upgrade request. URL fragments are never sent in HTTP.
+fn extract_front_domain(line: &str) -> Option<FrontTarget> {
+    let raw_url = line.split_whitespace().find_map(|token| {
+        let (key, value) = token.split_once('=')?;
+        key.eq_ignore_ascii_case("url")
+            .then_some(value.trim_matches(|c| matches!(c, '"' | '\'' | ',' | ';')))
+    })?;
+    let parsed = url::Url::parse(raw_url).ok()?;
+    if parsed.scheme() != "https" || !parsed.username().is_empty() || parsed.password().is_some() {
+        return None;
+    }
+    let host = match parsed.host()? {
+        url::Host::Domain(domain) => domain.to_string(),
+        url::Host::Ipv4(ip) => ip.to_string(),
+        url::Host::Ipv6(ip) => ip.to_string(),
+    };
+    let port = parsed.port_or_known_default()?;
+    let mut path_and_query = parsed.path().to_string();
+    if path_and_query.is_empty() {
+        path_and_query.push('/');
+    }
+    if let Some(query) = parsed.query() {
+        path_and_query.push('?');
+        path_and_query.push_str(query);
+    }
+    Some(FrontTarget {
+        host,
+        port,
+        path_and_query,
     })
+}
+
+/// Build a safe WebSocket handshake request. Never log the target path: for
+/// WebTunnel bridge lines it may contain a secret/randomized path component.
+fn build_websocket_upgrade_request(host: &str, port: u16, path_and_query: &str) -> String {
+    let target = if path_and_query.starts_with('/')
+        && !path_and_query
+            .bytes()
+            .any(|byte| byte.is_ascii_control() || byte.is_ascii_whitespace())
+    {
+        path_and_query
+    } else {
+        "/"
+    };
+    let host_name = if host.parse::<std::net::Ipv6Addr>().is_ok() {
+        format!("[{host}]")
+    } else {
+        host.to_string()
+    };
+    let host_header = if port == 443 {
+        host_name
+    } else {
+        format!("{host_name}:{port}")
+    };
+    format!(
+        "GET {target} HTTP/1.1\r\nHost: {host_header}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Key: {WS_PROBE_KEY}\r\nSec-WebSocket-Version: 13\r\n\r\n"
+    )
 }
 
 /// Strip any existing IP:PORT or [IPv6]:PORT endpoint from the beginning
@@ -155,6 +211,7 @@ mod tls_ws {
     pub fn probe_sync(
         host: &str,
         port: u16,
+        request_target: &str,
         timeout: Duration,
     ) -> Result<(String, String, bool), String> {
         // 1. DNS + TCP connect
@@ -183,27 +240,36 @@ mod tls_ws {
         // triggered on first read/write through the stream.
         let mut stream = rustls::Stream::new(&mut conn, &mut tcp);
 
-        // 3. WebSocket Upgrade request
-        let request = format!(
-            "GET / HTTP/1.1\r\n\
-             Host: {host}\r\n\
-             Connection: Upgrade\r\n\
-             Upgrade: websocket\r\n\
-             Sec-WebSocket-Key: {WS_PROBE_KEY}\r\n\
-             Sec-WebSocket-Version: 13\r\n\
-             \r\n"
-        );
+        // 3. WebSocket Upgrade request uses the full endpoint path from url=.
+        let request = build_websocket_upgrade_request(host, port, request_target);
         stream
             .write_all(request.as_bytes())
             .map_err(|e| format!("WS upgrade write: {e}"))?;
         stream.flush().map_err(|e| format!("flush: {e}"))?;
 
-        // 4. Read response
+        // 4. Read the complete response headers, bounded even if the server
+        // never terminates its header block. A single read can return only a
+        // partial TLS record, which is not enough to validate HTTP 101.
+        let mut response_bytes = Vec::with_capacity(1024);
         let mut buf = [0u8; 512];
-        let n = stream
-            .read(&mut buf)
-            .map_err(|e| format!("read response: {e}"))?;
-        let response = String::from_utf8_lossy(&buf[..n]).to_string();
+        while response_bytes.len() < MAX_RESPONSE_HEADER_BYTES {
+            let remaining = MAX_RESPONSE_HEADER_BYTES - response_bytes.len();
+            let read_len = remaining.min(buf.len());
+            let n = stream
+                .read(&mut buf[..read_len])
+                .map_err(|e| format!("read response: {e}"))?;
+            if n == 0 {
+                break;
+            }
+            response_bytes.extend_from_slice(&buf[..n]);
+            if response_bytes
+                .windows(4)
+                .any(|window| window == b"\r\n\r\n")
+            {
+                break;
+            }
+        }
+        let response = String::from_utf8_lossy(&response_bytes).to_string();
         let signature_verified =
             crate::websocket_signature::has_valid_upgrade_signature(&response, WS_PROBE_KEY);
         Ok((response, resolved_ip, signature_verified))
@@ -217,6 +283,7 @@ pub(crate) use tls_ws::probe_sync;
 fn probe_sync(
     _host: &str,
     _port: u16,
+    _request_target: &str,
     _timeout: Duration,
 ) -> Result<(String, String, bool), String> {
     // ARMv7-musl CI-only type-check target — no ring/rustls available
@@ -229,13 +296,27 @@ fn probe_sync(
 pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
     let line = bridge.get("line").and_then(Value::as_str).unwrap_or("");
 
-    let (host, port) = match extract_front_domain(line) {
-        Some(hp) => hp,
-        None => {
-            // No front domain found — keep original status
-            return bridge.clone();
+    // Prefer the explicit WebTunnel URL (including its private path). Some
+    // upstream candidates instead carry an FQDN as their literal host:port;
+    // those use "/" only when there is no url= endpoint in the line.
+    let target = extract_front_domain(line).or_else(|| {
+        let host = bridge.get("host").and_then(Value::as_str).unwrap_or("");
+        if host.is_empty() || host.parse::<std::net::IpAddr>().is_ok() {
+            return None;
         }
+        Some(FrontTarget {
+            host: host.to_string(),
+            port: 443,
+            path_and_query: "/".to_string(),
+        })
+    });
+    let target = match target {
+        Some(target) => target,
+        None => return bridge.clone(),
     };
+    let host = target.host.as_str();
+    let port = target.port;
+    let request_target = target.path_and_query.as_str();
 
     // Retry with exponential backoff for transient failures. RTT covers the
     // complete operation, including any bounded retry delays.
@@ -254,7 +335,7 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
             drop(delay_ms); // no-op on ARM musl (no std::thread::sleep in CI stub)
         }
 
-        let result = probe_sync(&host, port, timeout);
+        let result = probe_sync(host, port, request_target, timeout);
         match &result {
             Ok(_) => {
                 last_result = Some(result);
@@ -517,14 +598,15 @@ fn front_probe_decision(host: &str, line: &str) -> ProbeDecision {
             ProbeDecision::SkipUnsafeEndpoint
         };
     }
-    if let Some((front_host, front_port)) = extract_front_domain(line) {
+    if let Some(target) = extract_front_domain(line) {
         // A url= host that is itself a literal IP is a directly dialable
         // endpoint: TCP/TLS to it is not domain-fronting and is covered by
-        // the ordinary TCP tester.
-        return if front_host.parse::<std::net::IpAddr>().is_ok() {
+        // the ordinary TCP tester. Keep the endpoint path in the source line;
+        // probe_webtunnel_bridge re-parses it for the actual Upgrade request.
+        return if target.host.parse::<std::net::IpAddr>().is_ok() {
             ProbeDecision::SkipIpHost
         } else {
-            ProbeDecision::Probe(front_host, front_port)
+            ProbeDecision::Probe(target.host, target.port)
         };
     }
     if !host.is_empty() {
@@ -739,19 +821,49 @@ mod tests {
     }
 
     #[test]
-    fn extract_domain_from_webtunnel_line() {
+    fn extract_domain_from_webtunnel_line_preserves_path() {
         let line = "webtunnel ABC123 url=https://example.com/path ver=0.0.3";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "example.com");
-        assert_eq!(port, 443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "example.com");
+        assert_eq!(target.port, 443);
+        assert_eq!(target.path_and_query, "/path");
     }
 
     #[test]
-    fn extract_domain_with_custom_port() {
+    fn extract_domain_with_custom_port_preserves_path() {
         let line = "webtunnel DEF456 url=https://example.com:8443/path";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "example.com");
-        assert_eq!(port, 8443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "example.com");
+        assert_eq!(target.port, 8443);
+        assert_eq!(target.path_and_query, "/path");
+    }
+
+    #[test]
+    fn extract_domain_preserves_query_and_ignores_fragment() {
+        let line = "webtunnel DEF456 url=https://front.example.com:8443/a/b?token=x#fragment";
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "front.example.com");
+        assert_eq!(target.port, 8443);
+        assert_eq!(target.path_and_query, "/a/b?token=x");
+    }
+
+    #[test]
+    fn websocket_upgrade_request_uses_private_endpoint_path() {
+        let request = build_websocket_upgrade_request(
+            "front.example.com",
+            8443,
+            "/random/secret/path?token=x",
+        );
+        assert!(request.starts_with("GET /random/secret/path?token=x HTTP/1.1\r\n"));
+        assert!(request.contains("Host: front.example.com:8443\r\n"));
+        assert!(request.contains("Upgrade: websocket\r\n"));
+    }
+
+    #[test]
+    fn websocket_upgrade_request_brackets_ipv6_host_header() {
+        let request = build_websocket_upgrade_request("2001:4860:4860::8888", 443, "/endpoint");
+        assert!(request.starts_with("GET /endpoint HTTP/1.1\r\n"));
+        assert!(request.contains("Host: [2001:4860:4860::8888]\r\n"));
     }
 
     #[test]
@@ -844,17 +956,19 @@ mod tests {
     fn edge_case_url_with_ip_instead_of_domain() {
         // url=https://1.2.3.4:8443/path — should still extract
         let line = "webtunnel FINGERPRINT url=https://1.2.3.4:8443/path ver=0.0.3";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "1.2.3.4");
-        assert_eq!(port, 8443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "1.2.3.4");
+        assert_eq!(target.port, 8443);
+        assert_eq!(target.path_and_query, "/path");
     }
 
     #[test]
     fn edge_case_url_with_no_path() {
         let line = "webtunnel FINGERPRINT url=https://example.com ver=0.0.4";
-        let (host, port) = extract_front_domain(line).unwrap();
-        assert_eq!(host, "example.com");
-        assert_eq!(port, 443);
+        let target = extract_front_domain(line).unwrap();
+        assert_eq!(target.host, "example.com");
+        assert_eq!(target.port, 443);
+        assert_eq!(target.path_and_query, "/");
     }
 
     #[test]

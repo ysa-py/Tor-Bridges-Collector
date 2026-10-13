@@ -262,7 +262,7 @@ fn probe_webtunnel_front(
     timeouts: &PipelineTimeouts,
 ) -> RegionProbeResult {
     let timeout = timeouts.tcp_connect.max(timeouts.tls_handshake);
-    match crate::webtunnel_probe::probe_sync(&endpoint.host, endpoint.port, timeout) {
+    match crate::webtunnel_probe::probe_sync(&endpoint.host, endpoint.port, "/", timeout) {
         Ok((_response, _resolved_ip, signature_verified)) => RegionProbeResult {
             tcp_ok: true,
             tcp_latency_ms: None,
