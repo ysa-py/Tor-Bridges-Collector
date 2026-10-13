@@ -635,15 +635,22 @@ pub struct StampSummary {
     pub results: BTreeMap<String, usize>,
 }
 
-/// Stamp every entry in a `{ "bridges": [...] }` document. The evaluation
-/// clock is the document's `generated_at`, or the caller-supplied fallback.
-pub fn stamp_results(doc: &mut Value, fallback_timestamp: &str) -> StampSummary {
-    let run_timestamp = doc
-        .get("generated_at")
-        .and_then(Value::as_str)
-        .filter(|s| !s.is_empty())
-        .unwrap_or(fallback_timestamp)
-        .to_string();
+/// Stamp every entry in a `{ "bridges": [...] }` document.
+/// Prefer the caller-supplied post-observation run timestamp; use the document's
+/// `generated_at` only when no valid run timestamp was supplied. Source-fetch
+/// timestamps may predate probes and must not make fresh observations look future-dated.
+pub fn stamp_results(doc: &mut Value, run_timestamp: &str) -> StampSummary {
+    let supplied_timestamp = DateTime::parse_from_rfc3339(run_timestamp)
+        .ok()
+        .map(|_| run_timestamp.to_string());
+    let run_timestamp = supplied_timestamp
+        .or_else(|| {
+            doc.get("generated_at")
+                .and_then(Value::as_str)
+                .filter(|timestamp| DateTime::parse_from_rfc3339(timestamp).is_ok())
+                .map(str::to_string)
+        })
+        .unwrap_or_default();
     let now = DateTime::parse_from_rfc3339(&run_timestamp)
         .map(|timestamp| timestamp.with_timezone(&Utc))
         .unwrap_or_else(|_| Utc::now());
@@ -1100,6 +1107,30 @@ mod tests {
         assert_eq!(doc["bridges"][2]["test_result"], json!(RESULT_UNTESTED));
         assert_eq!(doc["bridges"][3]["test_tier"], json!(TIER_UNTESTED));
         assert!(doc["evidence_scope"].is_string());
+    }
+
+    #[test]
+    fn stamp_results_uses_post_probe_timestamp_when_generated_at_is_stale() {
+        let now = Utc::now();
+        let run_timestamp = now.to_rfc3339();
+        let stale_generated_at = (now - Duration::minutes(5)).to_rfc3339();
+        let mut doc = json!({
+            "generated_at": stale_generated_at,
+            "bridges": [{
+                "verification": typed(
+                    "connected",
+                    "S2",
+                    "websocket-101",
+                    Some("cloudflare_worker")
+                )
+            }]
+        });
+
+        let summary = stamp_results(&mut doc, &run_timestamp);
+
+        assert_eq!(doc["bridges"][0]["tested_at"], json!(run_timestamp));
+        assert_eq!(summary.tiers.get(TIER_2_PT_HANDSHAKE), Some(&1));
+        assert_eq!(summary.results.get(RESULT_WORKING), Some(&1));
     }
 
     #[test]
