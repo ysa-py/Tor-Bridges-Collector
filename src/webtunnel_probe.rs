@@ -262,7 +262,10 @@ mod tls_ws {
                 break;
             }
             response_bytes.extend_from_slice(&buf[..n]);
-            if response_bytes.windows(4).any(|window| window == b"\r\n\r\n") {
+            if response_bytes
+                .windows(4)
+                .any(|window| window == b"\r\n\r\n")
+            {
                 break;
             }
         }
@@ -858,8 +861,7 @@ mod tests {
 
     #[test]
     fn websocket_upgrade_request_brackets_ipv6_host_header() {
-        let request =
-            build_websocket_upgrade_request("2001:4860:4860::8888", 443, "/endpoint");
+        let request = build_websocket_upgrade_request("2001:4860:4860::8888", 443, "/endpoint");
         assert!(request.starts_with("GET /endpoint HTTP/1.1\r\n"));
         assert!(request.contains("Host: [2001:4860:4860::8888]\r\n"));
     }
