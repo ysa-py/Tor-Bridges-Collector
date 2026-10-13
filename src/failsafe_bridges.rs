@@ -696,7 +696,9 @@ mod tests {
         let recovered = recover_history_from_testing_list(&bridge_dir).expect("recovered history");
         assert_eq!(recovered.len(), 1);
         let normalized_key = crate::history::HistoryManager::normalize_key(raw);
-        let record = recovered.get(&normalized_key).expect("normalized record key");
+        let record = recovered
+            .get(&normalized_key)
+            .expect("normalized record key");
         assert_eq!(record["transport"], "obfs4");
         assert_eq!(record["first_seen"], "");
         assert_eq!(record["last_seen"], "");
