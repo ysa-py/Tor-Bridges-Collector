@@ -270,7 +270,7 @@ fn protocol_error(error: tbc_transports::TransportError) -> ProbeError {
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
-    use tbc_transports::vanilla::versions_variable_cell;
+    use tbc_transports::vanilla::{versions_variable_cell, CELL_PAYLOAD_LEN};
 
     #[test]
     fn supported_versions_are_v4_plus() {
