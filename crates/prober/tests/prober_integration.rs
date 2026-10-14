@@ -32,38 +32,21 @@ use tbc_transports::vanilla::{Cell, NetinfoCell, VersionsCell, CELL_LEN};
 
 // TLS fixtures for the TLS-based transports (vanilla ORPort, WebTunnel):
 // the prober upgrades those sockets to TLS before the transport handshake,
-// so the loopback stubs must terminate TLS with a self-signed certificate.
-// Fixture-only material, regenerated for tests, never real network data.
-const TEST_SERVER_CERT_PEM: &str = r#"-----BEGIN CERTIFICATE-----
-MIIBgDCCASegAwIBAgIUdgiBnbj15AqKMzS3Cc1gUW0ziQ8wCgYIKoZIzj0EAwIw
-FjEUMBIGA1UEAwwLcHJvYmVyLXRlc3QwHhcNMjYxMDE0MTI0NjExWhcNMzYxMDEx
-MTI0NjExWjAWMRQwEgYDVQQDDAtwcm9iZXItdGVzdDBZMBMGByqGSM49AgEGCCqG
-SM49AwEHA0IABB+Q82VD3FfI3XJf85UKx8JhkU0FOVgDirA4m4QGLHSoreD7k0NV
-fHK0X9jnnz/sFFGsRUAzfmbf3HZqo1374tWjUzBRMB0GA1UdDgQWBBR6PPe0MCA3
-WrTW1VA1f8YwC6bihjAfBgNVHSMEGDAWgBR6PPe0MCA3WrTW1VA1f8YwC6bihjAP
-BgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIFHN5vitbOfua4n0KlU1
-+S1kSjy9KpbuI6n3z7VDprSbAiAOptTUejDI6CRQlSZnDJYhavwDS3S1wAeDNx6e
-NreqDA==
------END CERTIFICATE-----"#;
-const TEST_SERVER_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
-MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgwr9t4kmAAp80WDDI
-VUb5ZRWevYuTJLRPurgBk5BUS4ChRANCAAQfkPNlQ9xXyN1yX/OVCsfCYZFNBTlY
-A4qwOJuEBix0qK3g+5NDVXxytF/Y558/7BRRrEVAM35m39x2aqNd++LV
------END PRIVATE KEY-----"#;
-
-/// A TLS acceptor for the loopback stubs (any client, no client auth).
+// so the loopback stubs must terminate TLS. The certificate is generated at
+// test runtime (rcgen) — no key material is ever committed.
 fn tls_acceptor() -> tokio_rustls::TlsAcceptor {
-    use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
-    let certs = CertificateDer::pem_slice_iter(TEST_SERVER_CERT_PEM.as_bytes())
-        .collect::<Result<Vec<_>, _>>()
-        .unwrap();
-    let key = PrivateKeyDer::pem_slice_iter(TEST_SERVER_KEY_PEM.as_bytes())
-        .next()
+    use rustls::pki_types::{CertificateDer, PrivatePkcs8KeyDer};
+
+    let key_pair = rcgen::KeyPair::generate().unwrap();
+    let cert = rcgen::CertificateParams::new(vec!["prober-test".to_owned()])
         .unwrap()
+        .self_signed(&key_pair)
         .unwrap();
+    let certs = vec![CertificateDer::from(cert.der().to_vec())];
+    let key = PrivatePkcs8KeyDer::from(key_pair.serialize_der());
     let config = rustls::ServerConfig::builder()
         .with_no_client_auth()
-        .with_single_cert(certs, key)
+        .with_single_cert(certs, key.into())
         .unwrap();
     tokio_rustls::TlsAcceptor::from(Arc::new(config))
 }
