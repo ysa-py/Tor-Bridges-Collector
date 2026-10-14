@@ -532,9 +532,38 @@ pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
 const MAX_FRONT_LIVENESS_CHECKS: usize = 16;
 /// Per-attempt TCP connect budget for the front liveness check.
 const FRONT_LIVENESS_TIMEOUT: Duration = Duration::from_secs(3);
+/// Upper bound on resolved addresses dialed per front (bounded + diverse).
+const MAX_FRONT_ADDRESSES_PER_DOMAIN: usize = 8;
+
+/// Typed verdict of a front-liveness verification.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FrontLiveness {
+    /// At least one resolved global address accepted the TCP connection.
+    Reachable,
+    /// At least one resolved global address was attempted and every attempt
+    /// failed with a FRONT-observable error (refused / timed out / other
+    /// dial failure). Only this verdict supports a "front-level fault"
+    /// claim.
+    Unreachable,
+    /// DNS resolution failed, no global address resolved (SSRF guard), or
+    /// every dial failed because the RUNNER's own network cannot reach the
+    /// address family (`NetworkUnreachable` / `HostUnreachable`) — the
+    /// front itself was never meaningfully probed.
+    Inconclusive,
+}
+
+impl FrontLiveness {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Reachable => "reachable",
+            Self::Unreachable => "unreachable",
+            Self::Inconclusive => "unknown",
+        }
+    }
+}
 
 /// Independently verify a front domain's TCP-443 liveness (additive,
-/// 2026-10-14).
+/// 2026-10-14; recalibrated 2026-10-15, directive v43 §C).
 ///
 /// WHY: the concentrated-failure attribution ("front domain unreachable for
 /// every candidate using it") previously inferred FRONT health purely from
@@ -543,34 +572,90 @@ const FRONT_LIVENESS_TIMEOUT: Duration = Duration::from_secs(3);
 /// fronts unreachable, including universally-alive domains (www.google.com,
 /// cdn.ampproject.org, ajax.aspnetcdn.com), purely because every candidate
 /// that referenced them failed — a mis-attribution that read as nonsense to
-/// any operator. This check measures the FRONT itself: a real TCP connect to
-/// `domain:443` from the runner, capped at [`MAX_FRONT_LIVENESS_CHECKS`]
-/// domains per run and [`FRONT_LIVENESS_TIMEOUT`] per address.
+/// any operator. This check measures the FRONT itself.
 ///
-/// Returns:
-/// * `Some(true)`  — at least one resolved global address accepted the
-///   connection (front alive; candidate failures are bridge-side).
-/// * `Some(false)` — every resolved global address refused or timed out
-///   (front-level fault CONFIRMED by direct measurement).
-/// * `None`        — DNS resolution failed, or every resolved address was
-///   private/reserved/documentation (SSRF guard: never dial non-global
-///   targets); liveness is UNKNOWN, never guessed.
-fn verify_front_liveness(domain: &str) -> Option<bool> {
-    let resolved = (domain, 44u16).to_socket_addrs().ok()?;
+/// Recalibration root causes (run 38613981417 artifacts contradicting the
+/// probe's own verdict from the same runner):
+/// 1. the old loop tried only the FIRST THREE getaddrinfo results — on a
+///    dual-stack runner whose resolver orders AAAA first without IPv6
+///    egress, all three dials fail instantly with ENETUNREACH and the
+///    verdict became "unreachable" without ever touching the IPv4
+///    addresses that DOC_AUDIT-style HTTP clients successfully use;
+/// 2. connect errors were not classified — a local `NetworkUnreachable`
+///    (environment) scored identically to a front-side refusal/timeout;
+/// 3. the dead `Some(checked == 0)` branch could never return inconclusive.
+///
+/// Now: dial IPv4 addresses first (up to [`MAX_FRONT_ADDRESSES_PER_DOMAIN`]
+/// total, all families), classify every error kind, and return
+/// [`FrontLiveness::Unreachable`] only when at least one GLOBAL IPv4 (or
+/// the only available family) address was genuinely attempted and every
+/// attempt failed with a front-observable error.
+fn verify_front_liveness(domain: &str) -> (FrontLiveness, usize, Option<String>) {
+    let resolved = match (domain, 44u16).to_socket_addrs() {
+        Ok(addrs) => addrs.collect::<Vec<_>>(),
+        Err(_) => {
+            return (
+                FrontLiveness::Inconclusive,
+                0,
+                Some("dns_resolution_failed".into()),
+            )
+        }
+    };
     let candidates: Vec<_> = resolved
+        .into_iter()
         .filter(|addr| !is_documentation_or_reserved_ip(addr.ip()))
         .collect();
     if candidates.is_empty() {
-        return None;
+        return (
+            FrontLiveness::Inconclusive,
+            0,
+            Some("no_global_address_resolved".into()),
+        );
     }
-    let mut checked = 0;
-    for address in candidates.iter().take(3) {
-        checked += 1;
-        if TcpStream::connect_timeout(address, FRONT_LIVENESS_TIMEOUT).is_ok() {
-            return Some(true);
+    // Dial IPv4 first: on a v6-less runner the AAAA attempts are environment
+    // noise, and the IPv4 result is the meaningful front measurement.
+    let mut ordered: Vec<&std::net::SocketAddr> =
+        candidates.iter().filter(|a| a.is_ipv4()).collect();
+    ordered.extend(candidates.iter().filter(|a| a.is_ipv6()));
+
+    let mut attempted = 0usize;
+    let mut environment_blocked = 0usize;
+    let mut last_error = Option::<String>::None;
+    for address in ordered.into_iter().take(MAX_FRONT_ADDRESSES_PER_DOMAIN) {
+        attempted += 1;
+        match TcpStream::connect_timeout(address, FRONT_LIVENESS_TIMEOUT) {
+            Ok(_) => return (FrontLiveness::Reachable, attempted, last_error),
+            Err(error) => {
+                let kind = error.kind();
+                if matches!(
+                    kind,
+                    std::io::ErrorKind::NetworkUnreachable
+                        | std::io::ErrorKind::HostUnreachable
+                        | std::io::ErrorKind::AddrNotAvailable
+                ) {
+                    // The RUNNER cannot reach this address family at all —
+                    // this says nothing about the front.
+                    environment_blocked += 1;
+                    last_error = Some(format!("environment:{kind}"));
+                } else {
+                    last_error = Some(format!("front:{kind}"));
+                }
+            }
         }
     }
-    Some(checked == 0)
+    if attempted > 0 && environment_blocked == attempted {
+        // Every dial failed because the runner lacks that route — the front
+        // was never meaningfully probed.
+        return (FrontLiveness::Inconclusive, attempted, last_error);
+    }
+    if attempted == 0 {
+        return (
+            FrontLiveness::Inconclusive,
+            0,
+            Some("no_address_attempted".into()),
+        );
+    }
+    (FrontLiveness::Unreachable, attempted, last_error)
 }
 
 /// Extract the front domains a bridge line dials, from `front=` (single) and
@@ -733,35 +818,37 @@ fn main() {
             if confirmed_front_faults.len() >= MAX_FRONT_LIVENESS_CHECKS {
                 break;
             }
-            let liveness = verify_front_liveness(domain);
+            let (liveness, attempted, last_error) = verify_front_liveness(domain);
             let (verdict, advisory) = match liveness {
-                Some(true) => (
-                    "reachable",
+                FrontLiveness::Reachable => (
+                    liveness.label(),
                     "front verified reachable (direct TCP-443 connect succeeded); all candidates using it failed — bridge-side fault, not a front-level fault".to_string(),
                 ),
-                Some(false) => {
+                FrontLiveness::Unreachable => {
                     confirmed_front_faults.push(domain.clone());
                     (
-                        "unreachable",
+                        liveness.label(),
                         format!(
-                            "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all {n} candidate(s) using it — front-level fault",
+                            "front confirmed unreachable (direct TCP-443 connect attempted {attempted} address(es), every attempt failed with a front-observable error) for all {n} candidate(s) using it — front-level fault",
                             n = fronts[domain]["candidates"].as_u64().unwrap_or(0)
                         ),
                     )
                 }
-                None => (
-                    "unknown",
-                    "front liveness inconclusive (DNS resolution failed or only non-global addresses resolved); candidate failures cannot be attributed".to_string(),
+                FrontLiveness::Inconclusive => (
+                    liveness.label(),
+                    "front liveness inconclusive (DNS resolution failed, only non-global addresses resolved, or the runner has no route to the resolved address family); candidate failures cannot be attributed".to_string(),
                 ),
             };
             if let Some(entry) = fronts.as_object_mut().and_then(|map| map.get_mut(domain)) {
                 entry["front_liveness_tcp443"] = json!(verdict);
+                entry["front_liveness_attempted_addresses"] = json!(attempted);
+                entry["front_liveness_last_error_class"] = json!(last_error);
                 entry["advisory"] = json!(advisory);
             }
         }
         for domain in &confirmed_front_faults {
             println!(
-                "::notice::front domain {domain} CONFIRMED unreachable by direct verification (TCP-443) while every candidate using it failed — front-level fault (advisory; see data/front_domain_survivability.json)"
+                "::notice::front domain {domain} CONFIRMED unreachable by direct verification (TCP-443 attempted from this runner; every attempt failed with a front-observable error) while every candidate using it failed — front-level fault (advisory; see data/front_domain_survivability.json)"
             );
         }
         let unverifiable: Vec<&String> = concentrated
@@ -776,7 +863,17 @@ fn main() {
         let report = json!({
             "generated_at": now.to_rfc3339(),
             "fronts": fronts,
-            "front_liveness_verified": !concentrated.is_empty(),
+            // Honest field name: true only when every concentrated front
+            // received a typed direct-verification verdict (reachable or
+            // unreachable), not merely when concentrated failures exist.
+            "front_liveness_verified": !concentrated.is_empty()
+                && concentrated.iter().all(|domain| {
+                    fronts
+                        .get(domain)
+                        .and_then(|entry| entry.get("front_liveness_tcp443"))
+                        .and_then(Value::as_str)
+                        .is_some_and(|verdict| verdict != "unknown")
+                }),
             "advisory_only": true,
         });
         write_json_file(&front_out, &report);
@@ -1130,14 +1227,22 @@ mod tests {
         // before any dial regardless of what listens there.
         let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
         let _listener = listener; // keep the listener alive for the asserts
-        assert_eq!(verify_front_liveness("127.0.0.1"), None);
-        assert_eq!(verify_front_liveness("10.255.0.1"), None);
-        assert_eq!(verify_front_liveness("192.0.2.1"), None);
+        for target in ["127.0.0.1", "10.255.0.1", "192.0.2.1"] {
+            let (verdict, attempted, reason) = verify_front_liveness(target);
+            assert_eq!(verdict, FrontLiveness::Inconclusive, "{target}");
+            assert_eq!(attempted, 0, "{target}");
+            assert_eq!(
+                reason.as_deref(),
+                Some("no_global_address_resolved"),
+                "{target}"
+            );
+        }
         // RFC 6761 .invalid never resolves; DNS-level unknown, never dialed.
-        assert_eq!(
-            verify_front_liveness("this-domain-definitely-does-not-exist.invalid"),
-            None
-        );
+        let (verdict, attempted, reason) =
+            verify_front_liveness("this-domain-definitely-does-not-exist.invalid");
+        assert_eq!(verdict, FrontLiveness::Inconclusive);
+        assert_eq!(attempted, 0);
+        assert_eq!(reason.as_deref(), Some("dns_resolution_failed"));
     }
 
     #[test]
