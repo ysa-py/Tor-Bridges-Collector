@@ -8,12 +8,12 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1945,
+      "count": 1954,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1945,
+      "count": 1954,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -28,12 +28,12 @@
       "stage": "relay_success"
     },
     {
-      "count": 1945,
+      "count": 1954,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 807,
+      "count": 815,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-14T16:21:48.521949718+00:00",
+  "generated_at": "2026-10-14T17:08:00.642584553+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -89,12 +89,12 @@
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 0,
     "vanilla.txt": 423,
-    "vanilla_tested.txt": 165,
-    "webtunnel.txt": 157,
+    "vanilla_tested.txt": 164,
+    "webtunnel.txt": 166,
     "webtunnel_ipv6.txt": 244
   },
   "relay_coverage": {
-    "candidates": 1945,
+    "candidates": 1954,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
@@ -103,11 +103,11 @@
       "obfs4": 1045,
       "snowflake": 6,
       "vanilla": 488,
-      "webtunnel": 401
+      "webtunnel": 410
     },
-    "unobserved_candidates": 1941,
+    "unobserved_candidates": 1950,
     "unobserved_non_routable": 251,
-    "unobserved_other": 1690
+    "unobserved_other": 1699
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1941
+    "unobserved_candidates": 1950
   },
   "sources": {
     "sources": [
@@ -1346,7 +1346,7 @@
     ],
     "fronts_with_placeholder_endpoints": 244,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 401,
+    "lines_examined": 410,
     "summary": {
       "degraded": 0,
       "healthy": 0,
