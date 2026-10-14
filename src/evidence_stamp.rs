@@ -18,8 +18,11 @@
 //!   * `tested_working` — a positive, typed S2+ protocol result from a recognized vantage.
 //!   * `tcp_reachable_s1` — TCP opened, but no transport capability is claimed.
 //!   * `tested_failing` — an explicit, observed connection refusal.
-//!   * `untested (rate-limited)` — missing or inconclusive evidence. Timeouts and
-//!     generic errors are neutral and never reduce Rust scoring.
+//!   * `untested (tcp timeout)` — an observed connect timeout; distinct from rate limiting.
+//!   * `untested (probe error)` — an observed generic probe error.
+//!   * `untested (budget exhausted)` — the run deadline consumed the record's probe slot.
+//!   * `untested (rate-limited)` — missing or inconclusive evidence with no typed cause.
+//!     Timeouts and errors are neutral and never reduce Rust scoring.
 //!
 //! These are per-observation tags, not claims of Iranian reachability or a full
 //! Tor circuit. Iran-specific projections require separate Iran-vantage evidence.
@@ -49,6 +52,13 @@ pub const RESULT_WORKING: &str = "tested_working";
 pub const RESULT_REACHABLE_S1: &str = "tcp_reachable_s1";
 pub const RESULT_FAILING: &str = "tested_failing";
 pub const RESULT_UNTESTED: &str = "untested (rate-limited)";
+/// An observed TCP connect timeout. Never mislabeled as rate limiting
+/// (engineering directive v42 §C: "never label a real timeout 'rate-limited'").
+pub const RESULT_TIMEOUT: &str = "untested (tcp timeout)";
+/// An observed generic probe error (unreachable, TLS failure, DNS, …).
+pub const RESULT_ERROR: &str = "untested (probe error)";
+/// The record was never probed because the overall run budget was exhausted.
+pub const RESULT_BUDGET: &str = "untested (budget exhausted)";
 
 /// Return the typed verification object, accepting the relay's flat result
 /// shape as a compatibility input. Published bridge records use the nested
@@ -575,6 +585,11 @@ pub fn derive_result_at(entry: &Value, now: DateTime<Utc>) -> String {
         .and_then(Value::as_str)
         .and_then(stage_rank);
     let observed = has_observing_vantage(&verification);
+    if verification.get("error_class").and_then(Value::as_str) == Some("run_deadline_exceeded") {
+        // Budget exhaustion is a scheduling outcome, not a network verdict;
+        // label it explicitly instead of implying the probe was rate-limited.
+        return RESULT_BUDGET.to_string();
+    }
     match verification.get("status").and_then(Value::as_str) {
         Some("connected")
             if stage.is_some_and(|rank| rank >= 2)
@@ -585,6 +600,8 @@ pub fn derive_result_at(entry: &Value, now: DateTime<Utc>) -> String {
         }
         Some("connected") if stage == Some(1) && observed => RESULT_REACHABLE_S1.to_string(),
         Some("refused") if stage.is_some() && observed => RESULT_FAILING.to_string(),
+        Some("timeout") if stage.is_some() && observed => RESULT_TIMEOUT.to_string(),
+        Some("error") if stage.is_some() && observed => RESULT_ERROR.to_string(),
         _ => RESULT_UNTESTED.to_string(),
     }
 }
@@ -694,6 +711,7 @@ pub fn stamp_results(doc: &mut Value, run_timestamp: &str) -> StampSummary {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
     use serde_json::json;
 
     fn typed(status: &str, stage: &str, probe_type: &str, vantage: Option<&str>) -> Value {
@@ -744,17 +762,35 @@ mod tests {
         assert_eq!(derive_result(&refused), RESULT_FAILING);
         assert_eq!(scoring_reachability(&refused), Some(false));
 
-        for status in ["timeout", "inconclusive", "error"] {
+        for (status, expected) in [
+            ("timeout", RESULT_TIMEOUT),
+            ("inconclusive", RESULT_UNTESTED),
+            ("error", RESULT_ERROR),
+        ] {
             let entry =
                 json!({ "verification": typed(status, "S0", "tcp", Some("cloudflare_worker")) });
             assert_eq!(derive_tier(&entry), TIER_0_ATTEMPT);
-            assert_eq!(derive_result(&entry), RESULT_UNTESTED);
+            assert_eq!(derive_result(&entry), expected);
             assert_eq!(
                 scoring_reachability(&entry),
                 None,
                 "{status} must be neutral"
             );
         }
+    }
+
+    #[test]
+    fn budget_exhaustion_is_labeled_explicitly() {
+        let entry = json!({ "verification": {
+            "status": "inconclusive", "stage": "S0", "probe_type": "none",
+            "detail": "overall run deadline exceeded before this bridge was classified",
+            "error_class": "run_deadline_exceeded",
+            "vantage": null,
+            "observed_at": "2026-08-01T23:55:00Z"
+        } });
+        let now = Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap();
+        assert_eq!(derive_result_at(&entry, now), RESULT_BUDGET);
+        assert_eq!(scoring_reachability(&entry), None);
     }
 
     #[test]
@@ -1156,8 +1192,11 @@ mod tests {
         assert_eq!(summary.results.get(RESULT_WORKING), Some(&1));
         assert_eq!(summary.results.get(RESULT_REACHABLE_S1), Some(&1));
         assert_eq!(summary.results.get(RESULT_FAILING), Some(&1));
-        assert_eq!(summary.results.get(RESULT_UNTESTED), Some(&2));
-        assert_eq!(doc["bridges"][2]["test_result"], json!(RESULT_UNTESTED));
+        // The timeout record is labeled explicitly; only the static legacy
+        // record falls back to the inconclusive tag.
+        assert_eq!(summary.results.get(RESULT_TIMEOUT), Some(&1));
+        assert_eq!(summary.results.get(RESULT_UNTESTED), Some(&1));
+        assert_eq!(doc["bridges"][2]["test_result"], json!(RESULT_TIMEOUT));
         assert_eq!(doc["bridges"][3]["test_tier"], json!(TIER_UNTESTED));
         assert!(doc["evidence_scope"].is_string());
     }
