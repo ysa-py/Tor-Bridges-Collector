@@ -146,6 +146,18 @@ pub struct PublishOptions {
     pub repo_url: String,
     /// Freshness window used by `*_72h*` projections.
     pub recent_hours: i64,
+    /// Inclusive lower bound of the current pipeline run's observation
+    /// window. Typed observations recorded at or after this instant count as
+    /// current evidence even when they exceed the bare ten-minute freshness
+    /// window (an hourly run legitimately probes for up to ~90 minutes).
+    /// `None` reproduces the bare near-now window exactly.
+    pub run_floor: Option<DateTime<Utc>>,
+    /// Whether the optional probe-relay edge produced observations this run
+    /// (`Some(true)`), was explicitly skipped/unavailable (`Some(false)`), or
+    /// was never reported (`None`). Drives the `RELAY_DOWN` reason_code on
+    /// otherwise-unexplained empty evidence files; it never promotes or
+    /// demotes any recorded evidence.
+    pub relay_available: Option<bool>,
 }
 
 impl Default for PublishOptions {
@@ -157,6 +169,8 @@ impl Default for PublishOptions {
                 "https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main"
                     .to_string(),
             recent_hours: 72,
+            run_floor: None,
+            relay_available: None,
         }
     }
 }
@@ -179,13 +193,39 @@ struct Candidate {
     transport: String,
     ipv6: bool,
     fresh: bool,
+    /// Positive typed S2+ transport-handshake evidence (the strongest
+    /// runner-observable tier; `tested_working` in the stamp vocabulary).
     tested: bool,
+    /// Positive typed runner-side TCP/TLS-or-better evidence (stage >= S1,
+    /// connected, recognized vantage). This is the reachability tier admitted
+    /// by `*_tested.txt` / `tested_global_*` alongside S2+ (directive v43 §E);
+    /// it never claims a PT handshake or Iranian reachability.
+    runner_verified: bool,
+    /// The stamp-vocabulary tier label of the best joined evidence
+    /// (`tier_4_pt_handshake` … `untested`), surfaced per file in the manifest.
+    test_tier: String,
     score: f64,
-    /// When the S2+ evidence joined by fingerprint (transport probes may
-    /// rewrite the endpoint, e.g. webtunnel front resolution), this carries
-    /// the exact probe-verified line form. Evidence-gated projections publish
-    /// this resolved form; the raw history form stays inventory-only.
+    /// When the S2+ (or runner-verified) evidence joined by fingerprint
+    /// (transport probes may rewrite the endpoint, e.g. webtunnel front
+    /// resolution), this carries the exact probe-verified line form.
+    /// Evidence-gated projections publish this resolved form; the raw history
+    /// form stays inventory-only.
     verified_line: Option<String>,
+}
+
+impl Candidate {
+    /// Numeric evidence rank: 2 = S2+ handshake, 1 = runner TCP/TLS verified,
+    /// 0 = no current typed positive evidence. Higher is stronger; consumers
+    /// must never present a lower tier as a higher one.
+    fn evidence_rank(&self) -> u8 {
+        if self.tested {
+            2
+        } else if self.runner_verified {
+            1
+        } else {
+            0
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -196,12 +236,29 @@ struct ProbeRecord {
     iran_specific_assessment: bool,
     iran_specific_working: bool,
     verified_s2plus: bool,
+    /// Runner-side TCP/TLS-or-better positive evidence (stage >= S1,
+    /// connected, recognized vantage, current or in-run). Drives the Tier C
+    /// advisory admission and the tiered `*_tested.txt` contract.
+    verified_runner_s1plus: bool,
+    /// Stamp-vocabulary tier label (`tier_4_pt_handshake` … `untested`).
+    test_tier: String,
     score: f64,
 }
 
 impl ProbeRecord {
     fn verified_s2plus(&self) -> bool {
         self.verified_s2plus
+    }
+
+    /// Numeric evidence rank mirroring [`Candidate::evidence_rank`].
+    fn evidence_rank(&self) -> u8 {
+        if self.verified_s2plus {
+            2
+        } else if self.verified_runner_s1plus {
+            1
+        } else {
+            0
+        }
     }
 }
 
@@ -212,6 +269,16 @@ struct ManifestFile {
     size_bytes: u64,
     non_empty_lines: Option<usize>,
     sha256: String,
+    /// For evidence-gated files: the strongest tier admitted by this file's
+    /// filter ("s2plus_handshake" or "runner_tcp_tls"). `None` for plain
+    /// inventory projections.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    evidence_tier: Option<String>,
+    /// For empty files only: why the file is empty without fabricating rows
+    /// (`NO_UPSTREAM_SUPPLY`, `NO_IPV6_SUPPLY`, `NO_EVIDENCE`, `RELAY_DOWN`,
+    /// `NO_FRESH_WITHIN_WINDOW`). Never present on non-empty files.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    reason_code: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -302,6 +369,14 @@ fn normalise_transport(raw: &str, declared: Option<&str>) -> String {
 }
 
 fn record_is_ipv6(record: &Map<String, Value>, raw: &str) -> bool {
+    // The endpoint literal in the line is the ground truth (directive v42 §C
+    // "classify IPv4/IPv6 by the real endpoint"): collector-side `ip_version`
+    // labels have been observed to disagree with the recorded raw line
+    // (e.g. vanilla records tagged "ipv6" carrying IPv4 literals, which
+    // previously leaked IPv4 lines into vanilla_ipv6*.txt).
+    if let Some(from_literal) = static_line_ip_version(raw) {
+        return from_literal;
+    }
     if record.get("ip_version").and_then(Value::as_str) == Some("ipv6") {
         return true;
     }
@@ -368,6 +443,7 @@ fn write_lines(
 fn extract_probe_records(
     root: &Value,
     now: DateTime<Utc>,
+    run_floor: Option<DateTime<Utc>>,
 ) -> Result<Vec<ProbeRecord>, Box<dyn std::error::Error>> {
     let records = root
         .get("bridges")
@@ -408,6 +484,21 @@ fn extract_probe_records(
         let iran_specific_working =
             crate::evidence_stamp::has_iran_specific_working_assessment_at(record, now);
         let verified_s2plus = crate::evidence_stamp::has_verified_s2plus_at(record, now);
+        let verified_runner_s1plus =
+            crate::evidence_stamp::has_runner_verified_s1plus_in_run_at(record, now, run_floor);
+        // Stamp-vocabulary tier of the best current evidence on this record.
+        // Prefer the stamped `test_tier` when it is still current; re-derive
+        // with the run window when it is missing or stale.
+        let test_tier = match record.get("test_tier").and_then(Value::as_str) {
+            Some(stamped)
+                if stamped == crate::evidence_stamp::TIER_UNTESTED
+                    || verified_s2plus
+                    || verified_runner_s1plus =>
+            {
+                stamped.to_string()
+            }
+            _ => crate::evidence_stamp::derive_tier_in_run_at(record, now, run_floor),
+        };
         result.push(ProbeRecord {
             line,
             transport,
@@ -415,6 +506,8 @@ fn extract_probe_records(
             iran_specific_assessment,
             iran_specific_working,
             verified_s2plus,
+            verified_runner_s1plus,
+            test_tier,
             score,
         });
     }
@@ -426,6 +519,7 @@ fn candidates_from_history(
     probes: &[ProbeRecord],
     cutoff: DateTime<Utc>,
     now: DateTime<Utc>,
+    run_floor: Option<DateTime<Utc>>,
 ) -> Result<Vec<Candidate>, Box<dyn std::error::Error>> {
     let object = history
         .as_object()
@@ -497,24 +591,45 @@ fn candidates_from_history(
                 ipv6 = static_line_ip_version(&raw).unwrap_or(ipv6);
             }
         }
-        // Only an explicit, positive S2+ observation with an observing
-        // vantage qualifies for evidence-labeled *_tested projections. Legacy
-        // TCP booleans, counters, and `test_pass` fields do not encode the
-        // verification stage and therefore remain inventory-only.
-        let history_test =
-            crate::evidence_stamp::has_verified_s2plus_at(&Value::Object(record.clone()), now);
+        // Evidence admission (tiered, directive v43 §E):
+        //  * `tested` (rank 2) requires a typed S2+ transport handshake with
+        //    an observing vantage and a current observation.
+        //  * `runner_verified` (rank 1) accepts a typed runner-side TCP/TLS
+        //    connect (stage S1, connected) from a recognized vantage whose
+        //    observation is current or was recorded inside this run. It is
+        //    the reachability tier that keeps `*_tested.txt` honest-but-non-
+        //    empty when the optional relay edge is down; it never claims a
+        //    PT handshake or Iranian reachability.
+        // Legacy TCP booleans, counters, and `test_pass` fields still do not
+        // encode a verification stage and remain inventory-only.
+        let record_object = Value::Object(record.clone());
+        let history_test = crate::evidence_stamp::has_verified_s2plus_at(&record_object, now);
+        let history_runner = crate::evidence_stamp::has_runner_verified_s1plus_in_run_at(
+            &record_object,
+            now,
+            run_floor,
+        );
         let tested = probe
-            .map(ProbeRecord::verified_s2plus)
+            .map(|entry| entry.verified_s2plus)
             .unwrap_or(history_test);
+        let runner_verified = probe
+            .map(|entry| entry.verified_runner_s1plus)
+            .unwrap_or(history_runner);
+        let test_tier = probe
+            .map(|entry| entry.test_tier.clone())
+            .unwrap_or_else(|| {
+                crate::evidence_stamp::derive_tier_in_run_at(&record_object, now, run_floor)
+            });
         let score = probe
             .map(|entry| entry.score)
             .or_else(|| record.get("score").and_then(Value::as_f64))
             .unwrap_or(0.0);
         // Publish the probe-verified line form for evidence-gated
         // projections when the transport probe rewrote the endpoint: the
-        // resolved form is the one that actually completed the handshake.
+        // resolved form is the one that actually completed the connection.
+        let evidence_positive = tested || runner_verified;
         let verified_line = match probe {
-            Some(entry) if tested && entry.line != raw => Some(entry.line.clone()),
+            Some(entry) if evidence_positive && entry.line != raw => Some(entry.line.clone()),
             _ => None,
         };
         candidates.push(Candidate {
@@ -523,6 +638,8 @@ fn candidates_from_history(
             fresh: record_is_fresh(record, cutoff),
             raw,
             tested,
+            runner_verified,
+            test_tier,
             score,
             verified_line,
         });
@@ -638,7 +755,13 @@ fn filtered_family_lines(
         .filter(|candidate| candidate.transport == transport)
         .filter(|candidate| ipv6.is_none_or(|version| candidate.ipv6 == version))
         .filter(|candidate| !fresh || candidate.fresh)
-        .filter(|candidate| !tested || candidate.tested)
+        // Evidence-gated projections (directive v43 §E tiered contract):
+        // admit typed positive evidence at rank >= 1 — a runner-side TCP/TLS
+        // connect (S1, `tcp_reachable_s1` in the stamp vocabulary) or a
+        // stronger S2+ transport handshake. A lower tier is never presented
+        // as a higher one: the manifest records each file's admitted tier,
+        // and the README documents the tier semantics.
+        .filter(|candidate| !tested || candidate.evidence_rank() >= 1)
         // Evidence-gated projections publish the probe-verified line form
         // when a fingerprint-joined transport probe rewrote the endpoint
         // (e.g. webtunnel front resolution); inventory projections keep the
@@ -713,6 +836,42 @@ fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
         .collect()
 }
 
+/// Record the strongest evidence rank that ACTUALLY contributes to an
+/// evidence-gated projection, so the manifest can label each file with the
+/// tier its contents carry (2 = S2+ handshake present, 1 = only runner
+/// TCP/TLS reachability). Inventory projections never get a tier label.
+fn record_evidence_tier(
+    evidence_tiers: &mut BTreeMap<String, String>,
+    name: &str,
+    candidates: &[Candidate],
+    transport: &str,
+    ipv6: Option<bool>,
+    fresh: bool,
+    tested: bool,
+) {
+    let is_evidence_file = name.contains("_tested")
+        || name.starts_with("tested_global_")
+        || name.starts_with("iran_likely_working_");
+    if !is_evidence_file {
+        return;
+    }
+    // Strongest contributing candidate decides the file's tier label; the
+    // stamp-vocabulary label (`tier_4_pt_handshake` … `tier_1_tcp`) is the
+    // honest per-record observation vocabulary already documented in the
+    // README. Rank 0 (no positive evidence) stores the "untested" label,
+    // which write_manifest never surfaces as evidence_tier.
+    let best = candidates
+        .iter()
+        .filter(|candidate| candidate.transport == transport)
+        .filter(|candidate| ipv6.is_none_or(|version| candidate.ipv6 == version))
+        .filter(|candidate| !fresh || candidate.fresh)
+        .filter(|candidate| !tested || candidate.evidence_rank() >= 1)
+        .max_by_key(|candidate| candidate.evidence_rank())
+        .map(|candidate| candidate.test_tier.clone())
+        .unwrap_or_else(|| "untested".to_string());
+    evidence_tiers.insert(name.to_string(), best);
+}
+
 fn write_transport_family(
     bridge_dir: &Path,
     candidates: &[Candidate],
@@ -720,6 +879,7 @@ fn write_transport_family(
     stem: &str,
     with_ipv6: bool,
     counts: &mut BTreeMap<String, usize>,
+    evidence_tiers: &mut BTreeMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Static fallback lines are valid for unfiltered family inventories only.
     // Do not copy an untested or stale fallback into `_tested`/`_72h` outputs,
@@ -733,6 +893,15 @@ fn write_transport_family(
     ];
     for (name, ipv6, fresh, tested) in standard {
         let mut lines = family_lines(candidates, transport, ipv6, fresh, tested);
+        record_evidence_tier(
+            evidence_tiers,
+            &name,
+            candidates,
+            transport,
+            Some(ipv6),
+            fresh,
+            tested,
+        );
         if lines.is_empty() && !fresh && !tested {
             // The unqualified base file remains compatible with transports
             // whose bridge lines have no direct IP endpoint (e.g. Snowflake).
@@ -761,6 +930,15 @@ fn write_transport_family(
         ];
         for (name, fresh, tested) in ipv6_outputs {
             let mut lines = family_lines(candidates, transport, true, fresh, tested);
+            record_evidence_tier(
+                evidence_tiers,
+                &name,
+                candidates,
+                transport,
+                Some(true),
+                fresh,
+                tested,
+            );
             if lines.is_empty() && !fresh && !tested {
                 let fallback_lines = fallback(Some(true));
                 if !fallback_lines.is_empty() {
@@ -799,6 +977,7 @@ fn write_requested_projections(
     bridge_dir: &Path,
     candidates: &[Candidate],
     counts: &mut BTreeMap<String, usize>,
+    evidence_tiers: &mut BTreeMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // name, transport, IP version (None = both), recent-only, tested-only,
     // permit static fallback. Base files and *_all files are inventories;
@@ -1185,6 +1364,15 @@ fn write_requested_projections(
 
     for (name, transport, ipv6, fresh, tested, allow_fallback) in PROJECTIONS {
         let mut lines = filtered_family_lines(candidates, transport, *ipv6, *fresh, *tested);
+        record_evidence_tier(
+            evidence_tiers,
+            name,
+            candidates,
+            transport,
+            *ipv6,
+            *fresh,
+            *tested,
+        );
         if lines.is_empty() && *allow_fallback {
             lines = fallback_family_lines(transport, *ipv6);
         }
@@ -1255,6 +1443,29 @@ fn is_advisory_working(probe: &ProbeRecord) -> bool {
         && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
 }
 
+/// Advisory (Tier C) reachability evidence (directive v43 §E): a typed,
+/// current-or-in-run runner-side TCP/TLS connect (stage >= S1, connected,
+/// recognized vantage) with no Iran-specific measurement marking the bridge
+/// blocked.
+///
+/// Tier C keeps the advisory working sets non-empty when the optional relay
+/// edge is down and no S2+ handshake evidence exists for a transport (the
+/// observed webtunnel/snowflake steady state). It is the LOWEST admitted
+/// tier: published ordering always ranks Tier A > B > C first, the manifest
+/// records each file's admitted tier composition, the per-record
+/// `verification`/`test_tier` fields keep the exact observed stage, and the
+/// README states that Tier C membership is reachability evidence, never a
+/// PT-handshake or Iran-vantage claim. Documentation/reserved endpoints and
+/// relay-unreachable claims are never admitted.
+fn is_runner_advisory_working(probe: &ProbeRecord) -> bool {
+    probe.verified_runner_s1plus
+        && !matches!(
+            probe.iran_status.as_str(),
+            "iran_asn_blocked" | "iran_likely_blocked" | "iran_frequently_blocked"
+        )
+        && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
+}
+
 fn is_blocked(probe: &ProbeRecord) -> bool {
     probe.iran_status == "iran_asn_blocked"
         || (matches!(
@@ -1268,18 +1479,27 @@ fn write_iran_projections(
     candidates: &[Candidate],
     probes: &[ProbeRecord],
     counts: &mut BTreeMap<String, usize>,
+    evidence_tiers: &mut BTreeMap<String, String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let candidate_by_line: BTreeMap<String, &Candidate> = candidates
         .iter()
         .map(|candidate| (bridge_key(&candidate.raw), candidate))
         .collect();
-    let mut working: BTreeMap<String, Vec<(f64, String)>> = IRAN_TRANSPORTS
+    let mut working: BTreeMap<String, Vec<(u8, f64, String)>> = IRAN_TRANSPORTS
         .iter()
         .map(|transport| ((*transport).to_string(), Vec::new()))
         .collect();
-    let mut global: BTreeMap<String, Vec<(f64, String)>> = GLOBAL_TRANSPORTS
+    let mut working_tiers: BTreeMap<String, (u8, String)> = IRAN_TRANSPORTS
+        .iter()
+        .map(|transport| ((*transport).to_string(), (0_u8, "untested".to_string())))
+        .collect();
+    let mut global: BTreeMap<String, Vec<(u8, f64, String)>> = GLOBAL_TRANSPORTS
         .iter()
         .map(|transport| ((*transport).to_string(), Vec::new()))
+        .collect();
+    let mut global_tiers: BTreeMap<String, (u8, String)> = GLOBAL_TRANSPORTS
+        .iter()
+        .map(|transport| ((*transport).to_string(), (0_u8, "untested".to_string())))
         .collect();
     let mut blocked = Vec::new();
 
@@ -1293,19 +1513,58 @@ fn write_iran_projections(
         } else {
             candidate.map(|entry| entry.score).unwrap_or(0.0)
         };
-        if is_likely_working(probe) || is_advisory_working(probe) {
-            // Tier A (OONI-measured working) and Tier B (handshake-verified,
-            // no OONI measurement available) both enter the advisory working
-            // set. `write_lines` publishes every projection in deterministic
-            // lexicographic order, so no ordering signal is needed here.
+        if is_likely_working(probe) {
+            // Tier A: OONI-measured working + typed S2+ verification. The
+            // numeric tier rank (3) orders it above B (2) and C (1).
             if let Some(lines) = working.get_mut(&transport) {
-                lines.push((score, probe.line.clone()));
+                lines.push((3, score, probe.line.clone()));
             }
+            working_tiers
+                .entry(transport.clone())
+                .and_modify(|tier| *tier = (2, probe.test_tier.clone()))
+                .or_insert((2, probe.test_tier.clone()));
+        } else if is_advisory_working(probe) {
+            // Tier B: fresh S2+ transport handshake, no OONI measurement
+            // available, not blocked.
+            if let Some(lines) = working.get_mut(&transport) {
+                lines.push((2, score, probe.line.clone()));
+            }
+            working_tiers
+                .entry(transport.clone())
+                .and_modify(|tier| *tier = (2, probe.test_tier.clone()))
+                .or_insert((2, probe.test_tier.clone()));
+        } else if is_runner_advisory_working(probe) {
+            // Tier C: runner-side TCP/TLS reachability only (directive v43
+            // §E). Explicitly the lowest admitted tier — the ordering below
+            // always sinks it beneath A/B, and the README + manifest state
+            // that these entries carry reachability evidence only.
+            if let Some(lines) = working.get_mut(&transport) {
+                lines.push((1, score, probe.line.clone()));
+            }
+            working_tiers
+                .entry(transport.clone())
+                .and_modify(|tier| {
+                    if tier.0 < 1 {
+                        *tier = (1, probe.test_tier.clone());
+                    }
+                })
+                .or_insert((1, probe.test_tier.clone()));
         }
-        if probe.verified_s2plus() {
+        if probe.verified_s2plus() || probe.verified_runner_s1plus {
+            // tested_global_* uses the same tiered contract as *_tested.txt:
+            // strongest evidence first (S2+ above runner TCP/TLS).
+            let rank = probe.evidence_rank();
             if let Some(lines) = global.get_mut(&transport) {
-                lines.push((score, probe.line.clone()));
+                lines.push((rank, score, probe.line.clone()));
             }
+            global_tiers
+                .entry(transport.clone())
+                .and_modify(|tier| {
+                    if tier.0 < rank {
+                        *tier = (rank, probe.test_tier.clone());
+                    }
+                })
+                .or_insert((rank, probe.test_tier.clone()));
         }
         if is_blocked(probe) {
             blocked.push(probe.line.clone());
@@ -1316,29 +1575,40 @@ fn write_iran_projections(
     let mut nin = Vec::new();
     for transport in IRAN_TRANSPORTS {
         let mut entries = working.remove(*transport).unwrap_or_default();
-        // Score first, then line; the text writer does a final deterministic
-        // dedup/sort so consumers never receive duplicate bridge lines.
+        // Best evidence tier first, then score, then line; the text writer
+        // does a final deterministic dedup/sort so consumers never receive
+        // duplicate bridge lines.
         entries.sort_by(|left, right| {
             right
                 .0
-                .total_cmp(&left.0)
-                .then_with(|| left.1.cmp(&right.1))
+                .cmp(&left.0)
+                .then_with(|| right.1.total_cmp(&left.1))
+                .then_with(|| left.2.cmp(&right.2))
         });
-        let lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
+        let lines: Vec<String> = entries.into_iter().map(|(_, _, line)| line).collect();
         if matches!(*transport, "snowflake" | "webtunnel" | "meek_lite") {
             nin.extend(lines.iter().cloned());
         }
         all_working.extend(lines.iter().cloned());
         let name = format!("iran_likely_working_{transport}.txt");
         let count = write_lines(&bridge_dir.join(&name), lines)?;
-        counts.insert(name, count);
+        counts.insert(name.clone(), count);
+        // Tier A/B rows are S2+ evidence (rank 2); a Tier C-only file is
+        // runner TCP/TLS reachability (rank 1). The label is the strongest
+        // contributing record's stamp-vocabulary tier.
+        let best = working_tiers
+            .get(*transport)
+            .map(|(_, label)| label.clone())
+            .unwrap_or_else(|| "untested".to_string());
+        evidence_tiers.insert(name, best);
     }
 
-    // Working projections admit only real evidence: Tier A (OONI-measured)
-    // or Tier B (fresh S2+ transport handshake from this run). Static
-    // inventory and runner-side TCP alone are never enough, so a projection
-    // stays empty rather than inventing working candidates that no probe
-    // ever verified.
+    // Working projections admit only real evidence: Tier A (OONI-measured),
+    // Tier B (fresh S2+ transport handshake from this run), or Tier C
+    // (runner-side TCP/TLS reachability, directive v43 §E). Static inventory
+    // lines are never enough, so a projection stays empty rather than
+    // inventing working candidates that no probe ever verified; the manifest
+    // records a reason_code for every empty evidence file.
     let all_count = write_lines(&bridge_dir.join("iran_likely_working_all.txt"), all_working)?;
     counts.insert("iran_likely_working_all.txt".to_string(), all_count);
     let nin_count = write_lines(&bridge_dir.join("iran_likely_working_nin.txt"), nin)?;
@@ -1351,15 +1621,23 @@ fn write_iran_projections(
         entries.sort_by(|left, right| {
             right
                 .0
-                .total_cmp(&left.0)
-                .then_with(|| left.1.cmp(&right.1))
+                .cmp(&left.0)
+                .then_with(|| right.1.total_cmp(&left.1))
+                .then_with(|| left.2.cmp(&right.2))
         });
         // These outputs are evidence-qualified. Never fill an empty tested
         // projection with an unprobed static bridge.
-        let lines: Vec<String> = entries.into_iter().map(|(_, line)| line).collect();
+        let lines: Vec<String> = entries.into_iter().map(|(_, _, line)| line).collect();
         let name = format!("tested_global_{transport}.txt");
         let count = write_lines(&bridge_dir.join(&name), lines)?;
-        counts.insert(name, count);
+        counts.insert(name.clone(), count);
+        evidence_tiers.insert(
+            name,
+            global_tiers
+                .get(*transport)
+                .map(|(_, label)| label.clone())
+                .unwrap_or_else(|| "untested".to_string()),
+        );
     }
     Ok(())
 }
@@ -1495,10 +1773,95 @@ fn payload_files() -> Vec<&'static str> {
         .collect()
 }
 
+/// Map a projection filename back to its transport, if it names exactly one
+/// (`None` for multi-transport files such as `iran_likely_working_all.txt`).
+fn file_transport_of<'a>(name: &str, transports: &[&'a str]) -> Option<&'a str> {
+    let stem = name
+        .strip_suffix(".txt")
+        .unwrap_or(name)
+        .trim_end_matches("_tested")
+        .trim_end_matches("_72h");
+    if name.starts_with("tested_global_") {
+        let rest = stem.strip_prefix("tested_global_")?;
+        return transports.iter().copied().find(|t| *t == rest);
+    }
+    if let Some(rest) = stem.strip_prefix("iran_likely_working_") {
+        // `_all` and `_nin` span several transports.
+        if rest == "all" || rest == "nin" || rest == "ipv4_ipv6_all" {
+            return None;
+        }
+        return transports.iter().copied().find(|t| *t == rest);
+    }
+    if name.starts_with("iran_blocked") {
+        return None;
+    }
+    transports.iter().copied().find(|t| {
+        stem == *t
+            || stem
+                .strip_prefix(t)
+                .is_some_and(|rest| rest.is_empty() || rest.starts_with('_'))
+    })
+}
+
+/// Explain why an empty projection is empty, without fabricating rows
+/// (directive v43 §E). Precedence: NO_UPSTREAM_SUPPLY > NO_IPV6_SUPPLY >
+/// NO_FRESH_WITHIN_WINDOW > RELAY_DOWN > NO_EVIDENCE. An empty blocklist is
+/// a truthful "nothing observed blocked", not a publication defect.
+fn empty_file_reason_code(
+    name: &str,
+    supply: usize,
+    ipv6_supply: usize,
+    fresh_supply: usize,
+    evidence_supply: usize,
+    relay_available: Option<bool>,
+) -> Option<String> {
+    if name.starts_with("iran_blocked") {
+        return Some("NO_EVIDENCE".to_string());
+    }
+    if file_transport_of(
+        name,
+        &[
+            "obfs4",
+            "vanilla",
+            "webtunnel",
+            "snowflake",
+            "meek_lite",
+            "meek-azure",
+            "conjure",
+        ],
+    )
+    .is_none()
+    {
+        return Some("NO_EVIDENCE".to_string());
+    }
+    if supply == 0 {
+        return Some("NO_UPSTREAM_SUPPLY".to_string());
+    }
+    let is_ipv6_file = name.contains("_ipv6") && !name.contains("_ipv4_ipv6_all");
+    if is_ipv6_file && ipv6_supply == 0 {
+        return Some("NO_IPV6_SUPPLY".to_string());
+    }
+    if name.contains("_72h") && fresh_supply == 0 {
+        return Some("NO_FRESH_WITHIN_WINDOW".to_string());
+    }
+    let is_evidence_file = name.contains("_tested")
+        || name.starts_with("tested_global_")
+        || name.starts_with("iran_likely_working_");
+    if is_evidence_file {
+        if evidence_supply == 0 && relay_available == Some(false) {
+            return Some("RELAY_DOWN".to_string());
+        }
+        return Some("NO_EVIDENCE".to_string());
+    }
+    Some("NO_EVIDENCE".to_string())
+}
+
 fn write_manifest(
     options: &PublishOptions,
     generated_at: DateTime<Utc>,
     counts: &BTreeMap<String, usize>,
+    evidence_tiers: &BTreeMap<String, String>,
+    candidates: &[Candidate],
 ) -> Result<(), Box<dyn std::error::Error>> {
     let bridge_dir = &options.bridge_dir;
     let missing_before_manifest: Vec<String> = REQUIRED_FILES
@@ -1514,16 +1877,91 @@ fn write_manifest(
         )));
     }
 
+    // Per-transport supply context used to explain empty files without
+    // fabricating rows (directive v43 §E: every empty evidence file carries a
+    // reason_code). Counts come from the same candidate set that produced the
+    // projections, so the reasons can never contradict the published bytes.
+    let transports = [
+        "obfs4",
+        "vanilla",
+        "webtunnel",
+        "snowflake",
+        "meek_lite",
+        "meek-azure",
+        "conjure",
+    ];
+    let mut supply: BTreeMap<&str, usize> = transports.iter().map(|t| (*t, 0)).collect();
+    let mut ipv6_supply: BTreeMap<&str, usize> = transports.iter().map(|t| (*t, 0)).collect();
+    let mut fresh_supply: BTreeMap<&str, usize> = transports.iter().map(|t| (*t, 0)).collect();
+    let mut evidence_supply: BTreeMap<&str, usize> = transports.iter().map(|t| (*t, 0)).collect();
+    for candidate in candidates {
+        let Some(slot) = transports.iter().find(|t| *t == &candidate.transport) else {
+            continue;
+        };
+        *supply.get_mut(slot).expect("seeded") += 1;
+        if candidate.ipv6 {
+            *ipv6_supply.get_mut(slot).expect("seeded") += 1;
+        }
+        if candidate.fresh {
+            *fresh_supply.get_mut(slot).expect("seeded") += 1;
+        }
+        if candidate.evidence_rank() >= 1 {
+            *evidence_supply.get_mut(slot).expect("seeded") += 1;
+        }
+    }
+
+    let reason_for = |name: &str, empty: bool| -> Option<String> {
+        if !empty {
+            return None;
+        }
+        let seed =
+            |map: &BTreeMap<&str, usize>, transport: &str| map.get(transport).copied().unwrap_or(0);
+        let transport_supply = |map: &BTreeMap<&str, usize>, transport: Option<&str>| {
+            transport.map(|t| seed(map, t)).unwrap_or(usize::MAX)
+        };
+        empty_file_reason_code(
+            name,
+            transport_supply(&supply, file_transport_of(name, &transports)),
+            transport_supply(&ipv6_supply, file_transport_of(name, &transports)),
+            transport_supply(&fresh_supply, file_transport_of(name, &transports)),
+            transport_supply(&evidence_supply, file_transport_of(name, &transports)),
+            options.relay_available,
+        )
+    };
+
+    let tier_label = |name: &str| -> Option<String> {
+        let is_evidence_file = name.contains("_tested")
+            || name.starts_with("tested_global_")
+            || name.starts_with("iran_likely_working_");
+        if !is_evidence_file {
+            return None;
+        }
+        // Surface the stamp-vocabulary label of the strongest contributor,
+        // with a coarse grouped label as a stable fallback vocabulary.
+        match evidence_tiers.get(name).map(String::as_str) {
+            Some("tier_4_pt_handshake")
+            | Some("tier_3_transport")
+            | Some("tier_2_pt_handshake") => Some("s2plus_handshake".to_string()),
+            Some("tier_1_tcp") => Some("runner_tcp_tls".to_string()),
+            Some(other) if other != "untested" => Some(other.to_string()),
+            _ => None,
+        }
+    };
+
     let mut files: Vec<ManifestFile> = payload_files()
         .into_iter()
         .map(|name| {
             let path = bridge_dir.join(name);
+            let non_empty_lines = is_text_output(name).then(|| count_non_empty_lines(&path));
+            let empty = non_empty_lines.map(|lines| lines == 0).unwrap_or(false);
             Ok(ManifestFile {
                 name: name.to_string(),
                 raw_url: format!("{}/bridge/{name}", options.repo_url.trim_end_matches('/')),
                 size_bytes: path.metadata()?.len(),
-                non_empty_lines: is_text_output(name).then(|| count_non_empty_lines(&path)),
+                non_empty_lines,
                 sha256: sha256_file(&path)?,
+                evidence_tier: tier_label(name),
+                reason_code: reason_for(name, empty),
             })
         })
         .collect::<Result<_, Box<dyn std::error::Error>>>()?;
@@ -1531,10 +1969,10 @@ fn write_manifest(
 
     let archive_entries = payload_files().len() + 1; // + telegram_manifest.json
     let manifest = Manifest {
-        schema_version: 2,
+        schema_version: 3,
         generated_at: generated_at.to_rfc3339_opts(SecondsFormat::Secs, true),
-        producer: "torshield-ir-rust-publication-v2".to_string(),
-        evidence_scope: "TCP observations are made from the CI runner. Iran labels are advisory rankings derived from recorded evidence and transport capability; they are not a guarantee of reachability from Iran."
+        producer: "torshield-ir-rust-publication-v3".to_string(),
+        evidence_scope: "TCP observations are made from the CI runner. Evidence tiers are relay-verified > runner TCP/TLS-verified > capability-only > unverified; *_tested.txt admits runner-side TCP/TLS-or-better typed evidence from this run, and iran_likely_working_* ranks OONI-measured > S2+ handshake > runner TCP/TLS reachability. They are advisory and are not a guarantee of reachability from Iran. Empty evidence files carry a reason_code (NO_UPSTREAM_SUPPLY, NO_IPV6_SUPPLY, NO_FRESH_WITHIN_WINDOW, NO_EVIDENCE, RELAY_DOWN)."
             .to_string(),
         bridge_directory: bridge_dir.display().to_string(),
         required_files: REQUIRED_FILES.iter().map(|name| (*name).to_string()).collect(),
@@ -1668,7 +2106,10 @@ Telegram delivery uses a bot token and distributes a bridge inventory outside Gi
 
 ## Evidence and safety notes
 
-- `*_tested.txt` is restricted to typed, positive S2+ protocol evidence. An S1 TCP connection is recorded as `tcp_reachable_s1` but is only a prefilter; it is not a working bridge and does **not** prove a full Tor circuit or Iranian reachability.
+- Evidence tiers (strongest first): **relay-verified → runner TCP/TLS-verified → capability-only → unverified**, stored per record in `bridge/iran_results.json` (`verification.stage`, `test_tier`, `test_result`).
+- `*_tested.txt` and `tested_global_*.txt` admit typed, positive evidence at **runner TCP/TLS-verified or better** (stage S1 `tcp_reachable_s1`, or the stronger S2+ `tested_working` handshake core; strongest tier first). An S1 TCP/TLS connect proves the endpoint answered from the recorded vantage — it does **not** prove a pluggable-transport handshake or Iranian reachability.
+- `iran_likely_working_*` ranks the best available tier per bridge: **Tier A** OONI-measured working > **Tier B** S2+ handshake > **Tier C** runner TCP/TLS reachability. Tier C membership is reachability evidence only; per-record confidence stays in `iran_results.json`.
+- `telegram_manifest.json` records an `evidence_tier` per evidence file and a `reason_code` for every empty file (`NO_UPSTREAM_SUPPLY`, `NO_IPV6_SUPPLY`, `NO_FRESH_WITHIN_WINDOW`, `NO_EVIDENCE`, `RELAY_DOWN`) — an empty file means no qualifying observation, never a fabricated one.
 - `iran_likely_working_*` and anti-DPI scores are decision aids, not guarantees. Censorship conditions vary by ISP, region, time, and Tor Browser version.
 - The AI/DPI-labelled reports in `data/` are deterministic scoring/telemetry analyses. They are not a promise that an AI system can defeat filtering or DPI.
 - Never place personal credentials in bridge files, commit messages, workflow inputs, or Telegram captions.
@@ -1761,15 +2202,17 @@ pub fn publish_at(
 
     let history = read_json(&history_path)?;
     let results = read_json(&results_path)?;
-    let probes = extract_probe_records(&results, now)?;
+    let probes = extract_probe_records(&results, now, options.run_floor)?;
     let candidates = candidates_from_history(
         &history,
         &probes,
         now - Duration::hours(options.recent_hours),
         now,
+        options.run_floor,
     )?;
 
     let mut counts = BTreeMap::new();
+    let mut evidence_tiers: BTreeMap<String, String> = BTreeMap::new();
     let testing_count = ensure_testing_list(
         &options.bridge_dir.join("bridge_list_for_testing.json"),
         &candidates,
@@ -1785,6 +2228,7 @@ pub fn publish_at(
         "conjure",
         false,
         &mut counts,
+        &mut evidence_tiers,
     )?;
     write_transport_family(
         &options.bridge_dir,
@@ -1793,6 +2237,7 @@ pub fn publish_at(
         "meek-azure",
         false,
         &mut counts,
+        &mut evidence_tiers,
     )?;
     for (transport, stem) in [
         ("obfs4", "obfs4"),
@@ -1808,17 +2253,29 @@ pub fn publish_at(
             stem,
             true,
             &mut counts,
+            &mut evidence_tiers,
         )?;
     }
-    write_iran_projections(&options.bridge_dir, &candidates, &probes, &mut counts)?;
-    write_requested_projections(&options.bridge_dir, &candidates, &mut counts)?;
+    write_iran_projections(
+        &options.bridge_dir,
+        &candidates,
+        &probes,
+        &mut counts,
+        &mut evidence_tiers,
+    )?;
+    write_requested_projections(
+        &options.bridge_dir,
+        &candidates,
+        &mut counts,
+        &mut evidence_tiers,
+    )?;
 
     // `bridge_history.json` and `iran_results.json` are canonical inputs but
     // are still represented in the summary so the manifest makes their use
     // explicit.
     counts.insert("bridge_history.json".to_string(), candidates.len());
     counts.insert("iran_results.json".to_string(), probes.len());
-    write_manifest(options, now, &counts)?;
+    write_manifest(options, now, &counts, &evidence_tiers, &candidates)?;
     let archive_path = build_archive(&options.bridge_dir)?;
 
     let missing = required_missing(&options.bridge_dir);
@@ -2006,8 +2463,16 @@ mod tests {
         let mut counts = BTreeMap::new();
         // A static bridge is valid in the unqualified inventory, but must not
         // be labelled recent, tested, or IPv6 without supporting evidence.
-        write_transport_family(&bridge_dir, &[], "obfs4", "obfs4", true, &mut counts)
-            .expect("write family");
+        write_transport_family(
+            &bridge_dir,
+            &[],
+            "obfs4",
+            "obfs4",
+            true,
+            &mut counts,
+            &mut BTreeMap::new(),
+        )
+        .expect("write family");
         let base = std::fs::read_to_string(bridge_dir.join("obfs4.txt")).expect("base file");
         assert!(
             !base.trim().is_empty(),
@@ -2042,8 +2507,16 @@ mod tests {
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let mut counts = BTreeMap::new();
-        write_transport_family(&bridge_dir, &[], "conjure", "conjure", false, &mut counts)
-            .expect("write conjure");
+        write_transport_family(
+            &bridge_dir,
+            &[],
+            "conjure",
+            "conjure",
+            false,
+            &mut counts,
+            &mut BTreeMap::new(),
+        )
+        .expect("write conjure");
         write_transport_family(
             &bridge_dir,
             &[],
@@ -2051,6 +2524,7 @@ mod tests {
             "meek-azure",
             false,
             &mut counts,
+            &mut BTreeMap::new(),
         )
         .expect("write meek-azure");
         for name in ["conjure.txt", "meek-azure.txt"] {
@@ -2111,7 +2585,8 @@ mod tests {
                 "test_pass": true
             }
         });
-        let candidates = candidates_from_history(&history, &[], cutoff, now).expect("candidates");
+        let candidates =
+            candidates_from_history(&history, &[], cutoff, now, None).expect("candidates");
         let tested: Vec<&str> = candidates
             .iter()
             .filter(|candidate| candidate.tested)
@@ -2181,13 +2656,24 @@ mod tests {
                 }
             }
         ]);
-        let probes = extract_probe_records(&records, now).expect("typed probe records");
+        let probes = extract_probe_records(&records, now, None).expect("typed probe records");
         let mut counts = BTreeMap::new();
-        write_iran_projections(&bridge_dir, &[], &probes, &mut counts).expect("write projections");
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts, &mut BTreeMap::new())
+            .expect("write projections");
 
+        // Tiered contract (directive v43 \u00a7E): Tier A (OONI + S2+) first,
+        // Tier B (S2+, no OONI) next, Tier C (runner/edge TCP/TLS reachability)
+        // admitted last. Records without a recognized observing vantage are
+        // still rejected everywhere.
         let working = std::fs::read_to_string(bridge_dir.join("iran_likely_working_webtunnel.txt"))
             .expect("working output");
-        assert!(working.contains("working.example"));
+        assert!(
+            working.contains("working.example"),
+            "Tier A admission: {working}"
+        );
+        // B and C use TEST-NET (192.0.2.0/24) endpoints: the advisory working
+        // set never publishes documentation-range endpoints, whatever their
+        // tier. D has no observing vantage and is rejected everywhere.
         assert!(!working.contains("unknown.example"));
         assert!(!working.contains("tcp-only.example"));
         assert!(!working.contains("no-vantage.example"));
@@ -2196,7 +2682,10 @@ mod tests {
             .expect("global output");
         assert!(global.contains("working.example"));
         assert!(global.contains("unknown.example"));
-        assert!(!global.contains("tcp-only.example"));
+        assert!(
+            global.contains("tcp-only.example"),
+            "typed S1+TLS evidence with a recognized vantage is admitted (rank 1)"
+        );
         assert!(!global.contains("no-vantage.example"));
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -2223,7 +2712,8 @@ mod tests {
                 "verification": s2
             },
             {
-                // Runner TCP only (S1) must never enter a working projection.
+                // Tier C: runner TCP-only (S1) is admitted LAST — reachability
+                // evidence only, never a PT-handshake claim (directive v43 \u00a7E).
                 "line": "obfs4 45.10.11.13:443 BBBB cert=x iat-mode=0",
                 "transport": "obfs4", "iran_status": "iran_unknown",
                 "verification": {
@@ -2247,17 +2737,26 @@ mod tests {
                 "verification": s2
             }
         ]);
-        let probes = extract_probe_records(&records, now).expect("probe records");
+        let probes = extract_probe_records(&records, now, None).expect("probe records");
         let mut counts = BTreeMap::new();
-        write_iran_projections(&bridge_dir, &[], &probes, &mut counts).expect("write");
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts, &mut BTreeMap::new())
+            .expect("write");
 
         let working = std::fs::read_to_string(bridge_dir.join("iran_likely_working_obfs4.txt"))
             .expect("obfs4 working file");
-        assert!(
-            working.contains("45.10.11.12"),
-            "Tier B admission: {working}"
+        let order: Vec<&str> = working
+            .lines()
+            .filter_map(|line| line.split_whitespace().nth(2))
+            .collect();
+        assert_eq!(
+            order,
+            vec!["AAAA", "BBBB"],
+            "Tier B (AAAA) is admitted ahead of Tier C (BBBB): {working}"
         );
-        assert!(!working.contains("45.10.11.13"), "S1-only must stay out");
+        assert!(
+            working.contains("45.10.11.13"),
+            "Tier C admission: typed runner TCP evidence is reachability evidence"
+        );
         assert!(!working.contains("45.10.11.14"), "blocked must stay out");
         assert!(!working.contains("192.0.2.99"), "doc-range must stay out");
 
@@ -2308,9 +2807,10 @@ mod tests {
                 }
             }
         ]);
-        let probes = extract_probe_records(&records, now).expect("probe records");
+        let probes = extract_probe_records(&records, now, None).expect("probe records");
         let mut counts = BTreeMap::new();
-        write_iran_projections(&bridge_dir, &[], &probes, &mut counts).expect("write");
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts, &mut BTreeMap::new())
+            .expect("write");
 
         let body = std::fs::read_to_string(bridge_dir.join("iran_likely_working_obfs4.txt"))
             .expect("obfs4 working file");
@@ -2352,13 +2852,22 @@ mod tests {
             }
         });
         let cutoff = now - chrono::Duration::hours(72);
-        let candidates = candidates_from_history(&history, &[], cutoff, now).expect("candidates");
+        let candidates =
+            candidates_from_history(&history, &[], cutoff, now, None).expect("candidates");
         let mut counts = BTreeMap::new();
         // write_requested_projections re-creates the iran_* alias files from
         // the iran_* source files, so seed those first (no probe evidence in
         // this test — the working set stays empty).
-        write_iran_projections(&bridge_dir, &candidates, &[], &mut counts).expect("seed iran");
-        write_requested_projections(&bridge_dir, &candidates, &mut counts).expect("write");
+        write_iran_projections(
+            &bridge_dir,
+            &candidates,
+            &[],
+            &mut counts,
+            &mut BTreeMap::new(),
+        )
+        .expect("seed iran");
+        write_requested_projections(&bridge_dir, &candidates, &mut counts, &mut BTreeMap::new())
+            .expect("write");
 
         let webtunnel =
             std::fs::read_to_string(bridge_dir.join("webtunnel_ipv4_ipv6_all.txt")).expect("file");
@@ -2387,7 +2896,8 @@ mod tests {
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let mut counts = BTreeMap::new();
-        write_iran_projections(&bridge_dir, &[], &[], &mut counts).expect("write projections");
+        write_iran_projections(&bridge_dir, &[], &[], &mut counts, &mut BTreeMap::new())
+            .expect("write projections");
         for name in [
             "iran_likely_working_obfs4.txt",
             "iran_likely_working_vanilla.txt",
@@ -2407,5 +2917,157 @@ mod tests {
             );
         }
         let _ = std::fs::remove_dir_all(&dir);
+    }
+    #[test]
+    fn runner_s1_evidence_fills_tested_projection_while_relay_is_down() {
+        let dir = std::env::temp_dir().join(format!("pub_s1_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let now = Utc::now();
+        let run_floor = Some(now - Duration::hours(2));
+        let line = "webtunnel 89.58.32.179:443 AAAA url=https://front.example ver=0.0.4";
+        let results = serde_json::json!({ "bridges": [{
+            "line": line,
+            "transport": "webtunnel",
+            "iran_status": "iran_unknown",
+            "test_tier": "tier_1_tcp",
+            "test_result": "tcp_reachable_s1",
+            "verification": {
+                "status": "connected",
+                "stage": "S1",
+                "probe_type": "tcp",
+                "observed_at": (now - Duration::minutes(40)).to_rfc3339(),
+                "vantage": {"type": "github_actions_runner"},
+            },
+        }]});
+        let probes = extract_probe_records(&results, now, run_floor).expect("probes");
+        assert!(
+            probes[0].verified_runner_s1plus,
+            "in-run S1 evidence must qualify"
+        );
+        assert!(!probes[0].verified_s2plus, "S1 is not S2+");
+
+        let history = serde_json::json!({
+            "bridge": {"raw": line, "transport": "webtunnel", "last_seen": now.to_rfc3339()}
+        });
+        let candidates =
+            candidates_from_history(&history, &probes, now - Duration::hours(72), now, run_floor)
+                .expect("candidates");
+        let mut counts = BTreeMap::new();
+        let mut tiers = BTreeMap::new();
+        write_iran_projections(&bridge_dir, &candidates, &probes, &mut counts, &mut tiers)
+            .expect("write iran projections");
+        assert_eq!(
+            counts.get("iran_likely_working_webtunnel.txt").copied(),
+            Some(1),
+            "Tier C runner reachability must fill the advisory working set"
+        );
+        assert_eq!(
+            tiers
+                .get("iran_likely_working_webtunnel.txt")
+                .map(String::as_str),
+            Some("tier_1_tcp")
+        );
+        assert_eq!(
+            std::fs::read_to_string(bridge_dir.join("tested_global_webtunnel.txt"))
+                .expect("file")
+                .lines()
+                .count(),
+            1,
+            "tested_global_* uses the same tiered contract"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn stale_s1_evidence_never_fills_tested_projection() {
+        let now = Utc::now();
+        let line = "obfs4 45.10.30.9:443 BBBB cert=y iat-mode=0";
+        let results = serde_json::json!({ "bridges": [{
+            "line": line,
+            "verification": {
+                "status": "connected",
+                "stage": "S1",
+                "probe_type": "tcp",
+                "observed_at": (now - Duration::hours(6)).to_rfc3339(),
+                "vantage": {"type": "github_actions_runner"},
+            },
+        }]});
+        // No run floor: only the bare 10-minute freshness window applies.
+        let probes = extract_probe_records(&results, now, None).expect("probes");
+        assert!(
+            !probes[0].verified_runner_s1plus,
+            "stale S1 evidence must not qualify without a run window"
+        );
+    }
+
+    #[test]
+    fn ipv6_family_is_derived_from_the_endpoint_literal() {
+        let now = Utc::now();
+        let ipv4_line = "vanilla 104.152.210.181:1105 CCCC";
+        let record = serde_json::json!({
+            "raw": ipv4_line,
+            "transport": "vanilla",
+            "ip_version": "ipv6",
+            "last_seen": now.to_rfc3339(),
+        });
+        assert!(
+            !record_is_ipv6(record.as_object().unwrap(), ipv4_line),
+            "an IPv4 endpoint literal must win over a stale ipv6 label"
+        );
+        let ipv6_line = "obfs4 [2001:67c:1234::1]:443 DDDD cert=z iat-mode=0";
+        let record6 = serde_json::json!({
+            "raw": ipv6_line,
+            "transport": "obfs4",
+            "ip_version": "ipv4",
+            "last_seen": now.to_rfc3339(),
+        });
+        assert!(
+            record_is_ipv6(record6.as_object().unwrap(), ipv6_line),
+            "a bracketed IPv6 literal must win over a stale ipv4 label"
+        );
+    }
+
+    #[test]
+    fn reason_code_explains_empty_evidence_files() {
+        // Zero webtunnel history: every webtunnel projection is supply-empty.
+        assert_eq!(
+            empty_file_reason_code("webtunnel_tested.txt", 0, 0, 0, 0, None).as_deref(),
+            Some("NO_UPSTREAM_SUPPLY")
+        );
+        // Supply exists, no evidence, relay down: the evidence file says why.
+        assert_eq!(
+            empty_file_reason_code("webtunnel_tested.txt", 181, 0, 181, 0, Some(false)).as_deref(),
+            Some("RELAY_DOWN")
+        );
+        assert_eq!(
+            empty_file_reason_code("webtunnel_tested.txt", 181, 0, 181, 0, Some(true)).as_deref(),
+            Some("NO_EVIDENCE")
+        );
+        // IPv6-family file with only IPv4 supply.
+        assert_eq!(
+            empty_file_reason_code("meek_lite_ipv6.txt", 2, 0, 2, 0, None).as_deref(),
+            Some("NO_IPV6_SUPPLY")
+        );
+        // 72h file whose transport has no fresh records.
+        assert_eq!(
+            empty_file_reason_code("obfs4_72h.txt", 10, 3, 0, 0, None).as_deref(),
+            Some("NO_FRESH_WITHIN_WINDOW")
+        );
+        // Empty blocklist is truthful, never a defect.
+        assert_eq!(
+            empty_file_reason_code("iran_blocked.txt", 10, 3, 10, 5, Some(true)).as_deref(),
+            Some("NO_EVIDENCE")
+        );
+        // Multi-transport evidence files (all/nin) are documented NO_EVIDENCE.
+        assert_eq!(
+            empty_file_reason_code("iran_likely_working_all.txt", 10, 3, 10, 5, None).as_deref(),
+            Some("NO_EVIDENCE")
+        );
+        assert_eq!(
+            empty_file_reason_code("iran_likely_working_nin.txt", 10, 3, 10, 5, Some(false))
+                .as_deref(),
+            Some("NO_EVIDENCE")
+        );
     }
 }

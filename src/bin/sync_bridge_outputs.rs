@@ -74,6 +74,32 @@ fn next_value(
 fn parse_args() -> Result<Options, Box<dyn std::error::Error>> {
     let mut publication = PublishOptions::default();
     publication.repo_url = env::var("REPO_URL").unwrap_or(publication.repo_url);
+    // Run-window floor (RFC3339): typed observations recorded at or after
+    // this instant count as current evidence (an hourly run probes for up to
+    // ~90 minutes; the bare ten-minute window would silently discard most of
+    // a run's own S1 evidence). Malformed values are rejected loudly.
+    if let Ok(floor) = env::var("TBC_RUN_FLOOR") {
+        let floor = floor.trim().to_string();
+        if !floor.is_empty() {
+            publication.run_floor = Some(
+                chrono::DateTime::parse_from_rfc3339(&floor)
+                    .map_err(|error| invalid(format!("TBC_RUN_FLOOR must be RFC3339: {error}")))?
+                    .with_timezone(&chrono::Utc),
+            );
+        }
+    }
+    // Relay-availability signal for the manifest's RELAY_DOWN reason_code:
+    // "true"/"false"; unset or empty means "not reported".
+    match env::var("TBC_RELAY_AVAILABLE") {
+        Ok(value) => {
+            let value = value.trim().to_ascii_lowercase();
+            if !value.is_empty() {
+                publication.relay_available = Some(parse_bool(&value, "TBC_RELAY_AVAILABLE")?);
+            }
+        }
+        Err(env::VarError::NotPresent) => {}
+        Err(error) => return Err(invalid(format!("TBC_RELAY_AVAILABLE unreadable: {error}"))),
+    }
     let mut telegram_upload = parse_bool(
         &env::var("TELEGRAM_UPLOAD").unwrap_or_else(|_| "false".to_string()),
         "TELEGRAM_UPLOAD",
@@ -122,6 +148,13 @@ fn parse_args() -> Result<Options, Box<dyn std::error::Error>> {
 
     if publication.recent_hours <= 0 {
         return Err(invalid("--recent-hours must be positive"));
+    }
+    if let Some(floor) = publication.run_floor {
+        if floor > chrono::Utc::now() + chrono::Duration::minutes(5) {
+            return Err(invalid(
+                "TBC_RUN_FLOOR must not be more than 5 minutes in the future",
+            ));
+        }
     }
     Ok(Options {
         publication,
