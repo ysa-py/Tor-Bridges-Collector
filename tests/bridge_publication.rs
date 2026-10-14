@@ -567,3 +567,61 @@ fn unresolved_placeholder_endpoint_stays_out_of_consumer_files() {
     );
     let _ = std::fs::remove_dir_all(root);
 }
+
+#[test]
+fn seventy_two_hour_window_excludes_stale_records_when_they_exist() {
+    // Directive v43 §E: a *_72h file may equal its base file ONLY when no
+    // older-than-72h record exists. With a genuinely stale record present,
+    // the window filter must exclude it and the two files must differ.
+    let root = scratch("pub_72h");
+    let bridge = root.join("bridge");
+    let now = Utc::now();
+    let fresh_line = "obfs4 45.10.30.1:443 FRESH1 cert=x iat-mode=0";
+    let stale_line = "obfs4 45.10.30.2:443 STALE2 cert=x iat-mode=0";
+    let history = json!({
+        "fresh": {
+            "raw": fresh_line,
+            "transport": "obfs4",
+            "ip_version": "ipv4",
+            "first_seen": (now - chrono::Duration::hours(1)).to_rfc3339(),
+            "last_seen": (now - chrono::Duration::hours(1)).to_rfc3339()
+        },
+        "stale": {
+            "raw": stale_line,
+            "transport": "obfs4",
+            "ip_version": "ipv4",
+            "first_seen": (now - chrono::Duration::hours(200)).to_rfc3339(),
+            "last_seen": (now - chrono::Duration::hours(200)).to_rfc3339()
+        }
+    });
+    std::fs::write(
+        bridge.join("bridge_history.json"),
+        serde_json::to_string(&history).unwrap(),
+    )
+    .unwrap();
+    // Minimal current probe report (no typed evidence: tested stays empty).
+    std::fs::write(
+        bridge.join("iran_results.json"),
+        serde_json::to_string(&json!({"bridges": []})).unwrap(),
+    )
+    .unwrap();
+
+    let options = options(&root);
+    publish_at(&options, now).unwrap();
+
+    let base = std::fs::read_to_string(bridge.join("obfs4.txt")).unwrap();
+    let window = std::fs::read_to_string(bridge.join("obfs4_72h.txt")).unwrap();
+    assert!(base.contains("FRESH1"), "base inventory keeps both records");
+    assert!(base.contains("STALE2"), "base inventory keeps both records");
+    assert!(
+        !window.contains("STALE2"),
+        "the 72h window must exclude records last seen outside the window: {window}"
+    );
+    assert!(window.contains("FRESH1"));
+    assert_ne!(
+        base, window,
+        "a *_72h file must differ from its base file while older entries exist"
+    );
+    verify_publication(&options).unwrap();
+    let _ = std::fs::remove_dir_all(root);
+}

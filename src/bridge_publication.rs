@@ -487,13 +487,16 @@ fn extract_probe_records(
         let verified_runner_s1plus =
             crate::evidence_stamp::has_runner_verified_s1plus_in_run_at(record, now, run_floor);
         // Stamp-vocabulary tier of the best current evidence on this record.
-        // Prefer the stamped `test_tier` when it is still current; re-derive
-        // with the run window when it is missing or stale.
+        // A stamped label is trusted only when it is a REAL tier label and
+        // the record still carries qualifying evidence; historical data
+        // (verified 2026-10-15) contains `test_tier:"untested"` rows whose
+        // verification is a fresh S1 connect — re-deriving from the actual
+        // evidence keeps the tier honest instead of propagating the stale
+        // stamp.
         let test_tier = match record.get("test_tier").and_then(Value::as_str) {
             Some(stamped)
-                if stamped == crate::evidence_stamp::TIER_UNTESTED
-                    || verified_s2plus
-                    || verified_runner_s1plus =>
+                if stamped != crate::evidence_stamp::TIER_UNTESTED
+                    && (verified_s2plus || verified_runner_s1plus) =>
             {
                 stamped.to_string()
             }
@@ -1573,6 +1576,10 @@ fn write_iran_projections(
 
     let mut all_working = Vec::new();
     let mut nin = Vec::new();
+    let mut all_best_rank = 0_u8;
+    let mut all_best_label = "untested".to_string();
+    let mut nin_best_rank = 0_u8;
+    let mut nin_best_label = "untested".to_string();
     for transport in IRAN_TRANSPORTS {
         let mut entries = working.remove(*transport).unwrap_or_default();
         // Best evidence tier first, then score, then line; the text writer
@@ -1601,6 +1608,26 @@ fn write_iran_projections(
             .map(|(_, label)| label.clone())
             .unwrap_or_else(|| "untested".to_string());
         evidence_tiers.insert(name, best);
+        // The aggregate files span transports; their honest tier label is the
+        // strongest contributing tier across the transports they aggregate.
+        let (rank, label) = working_tiers
+            .get(*transport)
+            .cloned()
+            .unwrap_or((0, "untested".to_string()));
+        if matches!(*transport, "obfs4" | "webtunnel" | "vanilla" | "snowflake")
+            && rank >= all_best_rank
+            && (rank > all_best_rank || all_best_label == "untested")
+        {
+            all_best_rank = rank;
+            all_best_label = label.clone();
+        }
+        if matches!(*transport, "snowflake" | "webtunnel" | "meek_lite")
+            && rank >= nin_best_rank
+            && (rank > nin_best_rank || nin_best_label == "untested")
+        {
+            nin_best_rank = rank;
+            nin_best_label = label;
+        }
     }
 
     // Working projections admit only real evidence: Tier A (OONI-measured),
@@ -1611,8 +1638,10 @@ fn write_iran_projections(
     // records a reason_code for every empty evidence file.
     let all_count = write_lines(&bridge_dir.join("iran_likely_working_all.txt"), all_working)?;
     counts.insert("iran_likely_working_all.txt".to_string(), all_count);
+    evidence_tiers.insert("iran_likely_working_all.txt".to_string(), all_best_label);
     let nin_count = write_lines(&bridge_dir.join("iran_likely_working_nin.txt"), nin)?;
     counts.insert("iran_likely_working_nin.txt".to_string(), nin_count);
+    evidence_tiers.insert("iran_likely_working_nin.txt".to_string(), nin_best_label);
     let blocked_count = write_lines(&bridge_dir.join("iran_blocked.txt"), blocked)?;
     counts.insert("iran_blocked.txt".to_string(), blocked_count);
 
