@@ -8,12 +8,12 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1899,
+      "count": 1921,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1899,
+      "count": 1921,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -28,12 +28,12 @@
       "stage": "relay_success"
     },
     {
-      "count": 1899,
+      "count": 1921,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 763,
+      "count": 786,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-14T11:23:01.607272740+00:00",
+  "generated_at": "2026-10-14T13:23:53.914257414+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -90,11 +90,11 @@
     "tested_global_webtunnel.txt": 0,
     "vanilla.txt": 423,
     "vanilla_tested.txt": 166,
-    "webtunnel.txt": 111,
+    "webtunnel.txt": 133,
     "webtunnel_ipv6.txt": 244
   },
   "relay_coverage": {
-    "candidates": 1899,
+    "candidates": 1921,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
@@ -103,11 +103,11 @@
       "obfs4": 1045,
       "snowflake": 6,
       "vanilla": 488,
-      "webtunnel": 355
+      "webtunnel": 377
     },
-    "unobserved_candidates": 1895,
+    "unobserved_candidates": 1917,
     "unobserved_non_routable": 251,
-    "unobserved_other": 1644
+    "unobserved_other": 1666
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1895
+    "unobserved_candidates": 1917
   },
   "sources": {
     "sources": [
@@ -1346,7 +1346,7 @@
     ],
     "fronts_with_placeholder_endpoints": 244,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 355,
+    "lines_examined": 377,
     "summary": {
       "degraded": 0,
       "healthy": 0,
