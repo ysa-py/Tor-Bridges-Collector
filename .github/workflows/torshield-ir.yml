@@ -102,6 +102,11 @@ env:
 permissions:
   contents: read
   actions: write
+  # Stage 11b opens/updates the degraded-publication tracking issue and the
+  # freshness-SLA watchdog opens the stale-publication issue; with only
+  # contents:read those gh issue calls failed with 403 and were silently
+  # swallowed by continue-on-error (the issue trail never materialized).
+  issues: write
 
 concurrency:
   # Each event/ref is serialized separately. Any non-main validation run
@@ -432,6 +437,14 @@ jobs:
     needs: [quality-gate, build-rust]
     timeout-minutes: 90
     name: scrape-and-test (core)
+    outputs:
+      # Directive v43 §E: the collection job's start instant is the evidence
+      # window floor consumed by the finalize job's Stage 9 publisher (env
+      # does not cross job boundaries; outputs do).
+      pipeline_run_floor: ${{ steps.collection.outputs.pipeline_run_floor }}
+      # Typed relay-availability signal for empty-file reason codes
+      # ("true"/"false"/"not_reported").
+      relay_available: ${{ steps.relay_prep.outputs.relay_available }}
     steps:
     - uses: actions/checkout@v7
       with:
@@ -514,6 +527,14 @@ jobs:
             echo "absent: $f"
           fi
         done
+        # Directive v43 §E: publish the run's observation-window floor. Typed
+        # evidence recorded at or after this instant counts as current at
+        # Stage 9 publish time (an hourly run legitimately probes for up to
+        # ~90 minutes; the bare 10-minute window silently discarded most of a
+        # run's own S1 evidence). Exported BOTH as a step output (consumed by
+        # the finalize job via needs) and as job env (same-job stages).
+        echo "pipeline_run_floor=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+        echo "pipeline_run_floor=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
 
     - name: Remove Vercel secrets (cleanup — additive step, Rust port)
       env:
@@ -961,6 +982,7 @@ jobs:
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
+          echo "relay_available=not_reported" >> "${GITHUB_OUTPUT}"
           exit 0
         fi
         set -euo pipefail
@@ -1181,9 +1203,11 @@ jobs:
         if bash scripts/probe_relay_smoke.sh; then
           echo "✅ Authenticated probe relay content controls passed — Stage 4 will proceed"
           echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
+          echo "relay_available=true" >> "${GITHUB_OUTPUT}"
         else
           echo "::notice::Required probe relay canary did not pass; Stage 4 is explicitly skipped for this run. Collection and publication continue."
           echo "PROBE_RELAY_SKIP=true" >> "${GITHUB_OUTPUT}"
+          echo "relay_available=false" >> "${GITHUB_OUTPUT}"
           mkdir -p data
           printf '[]\n' > data/pt_results.json
           echo "Prior-run PT observations discarded; no relay result is claimed for this run."
@@ -2357,6 +2381,11 @@ jobs:
         TELEGRAM_REPO_VAR: ${{ vars.TELEGRAM_AUTO_UPLOAD }}
         REPO_URL: https://raw.githubusercontent.com/${{ github.repository
           }}/refs/heads/${{ github.ref_name }}
+        # Directive v43 §E: the run's evidence window + relay availability
+        # feed the publisher's tier admission and empty-file reason codes.
+        # Both signals come from the scrape-and-test job via needs outputs.
+        TBC_RUN_FLOOR: ${{ needs.scrape-and-test.outputs.pipeline_run_floor }}
+        TBC_RELAY_AVAILABLE: ${{ needs.scrape-and-test.outputs.relay_available }}
       run: |
         set -euo pipefail
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
@@ -2443,6 +2472,71 @@ jobs:
           --verify-only
         echo "✅ Publication contract verified: every required file present,"
         echo "   manifest hashes match, archive contents byte-identical."
+
+      # Directive v43 §H: freshness SLA + machine-readable metrics.
+      #  * SLA — a published snapshot older than 3 hours at publication time
+      #    means the hourly cadence broke (skipped/coalesced runs); emit a
+      #    loud ::error:: so the run is visibly degraded rather than silently
+      #    late. The 3-hour budget tolerates two missed hourly refreshes.
+      #  * metrics — one deterministic, machine-readable summary of the run
+      #    (funnel counts, evidence tiers, per-transport supply, manifest
+      #    freshness, reason codes) at data/pipeline_metrics.json, consumed
+      #    by dashboards and the post-run auditors instead of log scraping.
+    - name: Stage 9c — Freshness SLA + machine-readable metrics
+      if: ${{ !cancelled() }}
+      timeout-minutes: 3
+      run: |
+        set -euo pipefail
+        metrics_file=data/pipeline_metrics.json
+        mkdir -p data
+        generated_at="$(jq -r '.generated_at // empty' bridge/telegram_manifest.json 2>/dev/null || true)"
+        age_seconds=""
+        if [ -n "${generated_at}" ]; then
+          age_seconds="$(( $(date -u +%s) - $(date -u -d "${generated_at}" +%s) ))"
+        fi
+        sla_breached=false
+        if [ -n "${age_seconds}" ] && [ "${age_seconds}" -gt 10800 ]; then
+          sla_breached=true
+          echo "::error::Freshness SLA breached: the published snapshot was generated ${age_seconds}s ago (>${10800}s / 3h SLA) — the hourly cadence broke. generated_at=${generated_at}"
+        elif [ -n "${age_seconds}" ]; then
+          echo "Freshness SLA ok: snapshot age ${age_seconds}s (<= 3h)."
+        else
+          echo "::warning::Freshness SLA indeterminate: telegram_manifest.json carries no generated_at."
+        fi
+        relay_signal="${{ needs.scrape-and-test.outputs.relay_available }}"
+        relay_signal="${relay_signal:-not_reported}"
+        jq -n \
+          --arg schema_version "1" \
+          --arg generated_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          --arg run_id "${GITHUB_RUN_ID}" \
+          --arg run_url "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}" \
+          --arg manifest_generated_at "${generated_at}" \
+          --arg snapshot_age_seconds "${age_seconds}" \
+          --arg freshness_sla_breached "${sla_breached}" \
+          --arg relay_available "${relay_signal}" \
+          --argjson manifest "$(cat bridge/telegram_manifest.json)" \
+          '{
+            schema_version: ($schema_version | tonumber),
+            kind: "pipeline_metrics",
+            generated_at: $generated_at,
+            run: {id: ($run_id | if length > 0 then tonumber else null end), url: $run_url},
+            publication: {
+              manifest_generated_at: $manifest_generated_at,
+              snapshot_age_seconds: ($snapshot_age_seconds | if length > 0 then tonumber else null end),
+              freshness_sla_breached: ($freshness_sla_breached == "true"),
+              archive_sha256: ($manifest.archive.name | null) // null,
+              file_count: ($manifest.files | length),
+              summary: $manifest.summary
+            },
+            evidence: {
+              relay_available: $relay_available,
+              s2plus_files: ([$manifest.files[] | select(.evidence_tier == "s2plus_handshake") | .name]),
+              runner_tcp_tls_files: ([$manifest.files[] | select(.evidence_tier == "runner_tcp_tls") | .name]),
+              empty_files_with_reasons: ([$manifest.files[] | select(.reason_code != null) | {name: .name, reason_code: .reason_code}])
+            },
+            advisory_only: true
+          }' > "${metrics_file}"
+        echo "wrote ${metrics_file}"
 
       # Do not run the force-populating FAILSAFE after publication: empty
       # *_tested.txt or *_72h*.txt files are truthful when no qualifying
@@ -2669,6 +2763,23 @@ jobs:
         done
         [ "$pushed" = "1" ] || { echo "::error::could not push publication commit after 5 attempts"; exit 1; }
 
+    # Directive v43 §G: verify what the CDN actually serves after the push.
+    # Re-downloads telegram_manifest.json + every payload file from
+    # raw.githubusercontent.com and byte-compares each SHA-256 against the
+    # manifest. Fail-closed after bounded retries; catches manifest/branch
+    # drift that pre-push verification cannot see.
+    - name: Stage 11c — Post-push raw-CDN re-verification
+      if: ${{ !cancelled() && !failure() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      timeout-minutes: 8
+      run: |
+        set -euo pipefail
+        if [ ! -f bridge/telegram_manifest.json ]; then
+          echo "self no-op: no publication contract on this run"
+          exit 0
+        fi
+        bash scripts/post_push_verification.sh bridge
+        echo "- post-push raw-CDN re-verification: passed (all payload files byte-match the manifest)" >> "${GITHUB_STEP_SUMMARY}"
+
     # Self-healing: a degraded publication (empty-output guard restored
     # last-known-good files, or a stage reported degraded) must leave a
     # durable, human-visible trail beyond the run logs. Best-effort: a
@@ -2766,6 +2877,7 @@ jobs:
       with:
         name: bridge-intelligence-report
         path: |
+          data/pipeline_metrics.json
           data/latest-results.json
           data/pt_results.json
           data/best_transports.json

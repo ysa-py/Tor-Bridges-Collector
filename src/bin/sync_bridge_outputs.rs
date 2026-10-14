@@ -89,17 +89,17 @@ fn parse_args() -> Result<Options, Box<dyn std::error::Error>> {
         }
     }
     // Relay-availability signal for the manifest's RELAY_DOWN reason_code:
-    // "true"/"false"; unset or empty means "not reported".
-    match env::var("TBC_RELAY_AVAILABLE") {
-        Ok(value) => {
-            let value = value.trim().to_ascii_lowercase();
-            if !value.is_empty() {
-                publication.relay_available = Some(parse_bool(&value, "TBC_RELAY_AVAILABLE")?);
-            }
-        }
-        Err(env::VarError::NotPresent) => {}
-        Err(error) => return Err(invalid(format!("TBC_RELAY_AVAILABLE unreadable: {error}"))),
-    }
+    // "true"/"false"; anything else (unset, empty, "not_reported" from a
+    // skipped Stage 4-prep) means "not reported" and must never fail a
+    // --verify-only run that merely inherited the job environment.
+    publication.relay_available = match env::var("TBC_RELAY_AVAILABLE") {
+        Ok(value) => match value.trim().to_ascii_lowercase().as_str() {
+            "true" | "1" | "yes" | "on" => Some(true),
+            "false" | "0" | "no" | "off" => Some(false),
+            _ => None,
+        },
+        Err(_) => None,
+    };
     let mut telegram_upload = parse_bool(
         &env::var("TELEGRAM_UPLOAD").unwrap_or_else(|_| "false".to_string()),
         "TELEGRAM_UPLOAD",

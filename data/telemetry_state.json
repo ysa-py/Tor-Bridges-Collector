@@ -1,40 +1,21 @@
 {
   "consecutive_model_failures": 0,
   "counters": {
-    "dpi_blocked": 179,
+    "dpi_blocked": 181,
     "dpi_camouflaged": 4,
-    "dpi_sys_iran": 179,
+    "dpi_sys_iran": 181,
     "dpi_sys_sni_inspector": 2,
     "dpi_sys_utls_rotation": 2,
-    "dpi_total": 183,
-    "failures_recovered": 106,
+    "dpi_total": 185,
+    "failures_recovered": 107,
     "self_heal_registry_refresh": 16,
-    "self_heal_rotated": 90,
-    "self_heal_total": 106,
-    "slot_0_failures": 89,
-    "slot_failures": 89
+    "self_heal_rotated": 91,
+    "self_heal_total": 107,
+    "slot_0_failures": 90,
+    "slot_failures": 90
   },
-  "last_updated": "2026-10-14T20:07:52.663139+00:00",
+  "last_updated": "2026-10-14T20:11:26.708105+00:00",
   "recent_dpi_events": [
-    {
-      "action": "blocked",
-      "details": {},
-      "dpi_system": "iran",
-      "evasion_used": "obfs4",
-      "success": false,
-      "timestamp": "2026-07-01T10:00:34.436632+00:00"
-    },
-    {
-      "action": "blocked",
-      "details": {
-        "bridge": "192.0.2.3:1",
-        "reason": "TLS handshake reset"
-      },
-      "dpi_system": "iran",
-      "evasion_used": "snowflake",
-      "success": false,
-      "timestamp": "2026-07-01T10:00:34.439460+00:00"
-    },
     {
       "action": "blocked",
       "details": {},
@@ -965,16 +946,28 @@
       "evasion_used": "snowflake",
       "success": false,
       "timestamp": "2026-10-14T20:07:52.657133+00:00"
+    },
+    {
+      "action": "blocked",
+      "details": {},
+      "dpi_system": "iran",
+      "evasion_used": "obfs4",
+      "success": false,
+      "timestamp": "2026-10-14T20:11:26.700909+00:00"
+    },
+    {
+      "action": "blocked",
+      "details": {
+        "bridge": "192.0.2.3:1",
+        "reason": "TLS handshake reset"
+      },
+      "dpi_system": "iran",
+      "evasion_used": "snowflake",
+      "success": false,
+      "timestamp": "2026-10-14T20:11:26.701945+00:00"
     }
   ],
   "recent_self_heal_events": [
-    {
-      "action_type": "rotated",
-      "details": {},
-      "recovery_time_ms": 42.0,
-      "success": true,
-      "timestamp": "2026-06-28T02:07:06.444660+00:00"
-    },
     {
       "action_type": "rotated",
       "details": {},
@@ -1723,6 +1716,13 @@
       "recovery_time_ms": 42.0,
       "success": true,
       "timestamp": "2026-10-14T20:07:52.660532+00:00"
+    },
+    {
+      "action_type": "rotated",
+      "details": {},
+      "recovery_time_ms": 42.0,
+      "success": true,
+      "timestamp": "2026-10-14T20:11:26.705386+00:00"
     }
   ],
   "recent_slot_events": [
@@ -2526,9 +2526,18 @@
       "recovery_method": "",
       "slot_index": 0,
       "timestamp": "2026-10-14T20:07:52.662283+00:00"
+    },
+    {
+      "env_var": "CF_API_TOKEN_1",
+      "error_detail": "rate limited",
+      "error_type": "HTTP 429",
+      "recovered": false,
+      "recovery_method": "",
+      "slot_index": 0,
+      "timestamp": "2026-10-14T20:11:26.707415+00:00"
     }
   ],
-  "start_time": 1792008472.6542158,
+  "start_time": 1792008686.698172,
   "successful_requests": 0,
   "total_requests": 0
 }
