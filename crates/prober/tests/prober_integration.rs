@@ -30,6 +30,52 @@ use tbc_transports::obfs4::{
 };
 use tbc_transports::vanilla::{Cell, NetinfoCell, VersionsCell, CELL_LEN};
 
+// TLS fixtures for the TLS-based transports (vanilla ORPort, WebTunnel):
+// the prober upgrades those sockets to TLS before the transport handshake,
+// so the loopback stubs must terminate TLS with a self-signed certificate.
+// Fixture-only material, regenerated for tests, never real network data.
+const TEST_SERVER_CERT_PEM: &str = r#"-----BEGIN CERTIFICATE-----
+MIIBgDCCASegAwIBAgIUdgiBnbj15AqKMzS3Cc1gUW0ziQ8wCgYIKoZIzj0EAwIw
+FjEUMBIGA1UEAwwLcHJvYmVyLXRlc3QwHhcNMjYxMDE0MTI0NjExWhcNMzYxMDEx
+MTI0NjExWjAWMRQwEgYDVQQDDAtwcm9iZXItdGVzdDBZMBMGByqGSM49AgEGCCqG
+SM49AwEHA0IABB+Q82VD3FfI3XJf85UKx8JhkU0FOVgDirA4m4QGLHSoreD7k0NV
+fHK0X9jnnz/sFFGsRUAzfmbf3HZqo1374tWjUzBRMB0GA1UdDgQWBBR6PPe0MCA3
+WrTW1VA1f8YwC6bihjAfBgNVHSMEGDAWgBR6PPe0MCA3WrTW1VA1f8YwC6bihjAP
+BgNVHRMBAf8EBTADAQH/MAoGCCqGSM49BAMCA0cAMEQCIFHN5vitbOfua4n0KlU1
++S1kSjy9KpbuI6n3z7VDprSbAiAOptTUejDI6CRQlSZnDJYhavwDS3S1wAeDNx6e
+NreqDA==
+-----END CERTIFICATE-----"#;
+const TEST_SERVER_KEY_PEM: &str = r#"-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgwr9t4kmAAp80WDDI
+VUb5ZRWevYuTJLRPurgBk5BUS4ChRANCAAQfkPNlQ9xXyN1yX/OVCsfCYZFNBTlY
+A4qwOJuEBix0qK3g+5NDVXxytF/Y558/7BRRrEVAM35m39x2aqNd++LV
+-----END PRIVATE KEY-----"#;
+
+/// A TLS acceptor for the loopback stubs (any client, no client auth).
+fn tls_acceptor() -> tokio_rustls::TlsAcceptor {
+    use rustls::pki_types::{pem::PemObject, CertificateDer, PrivateKeyDer};
+    let certs = CertificateDer::pem_slice_iter(TEST_SERVER_CERT_PEM.as_bytes())
+        .collect::<Result<Vec<_>, _>>()
+        .unwrap();
+    let key = PrivateKeyDer::pem_slice_iter(TEST_SERVER_KEY_PEM.as_bytes())
+        .next()
+        .unwrap()
+        .unwrap();
+    let config = rustls::ServerConfig::builder()
+        .with_no_client_auth()
+        .with_single_cert(certs, key)
+        .unwrap();
+    tokio_rustls::TlsAcceptor::from(Arc::new(config))
+}
+
+/// TLS-accept an inbound loopback connection.
+async fn accept_tls(stream: TcpStream) -> tokio_rustls::server::TlsStream<TcpStream> {
+    tokio::time::timeout(Duration::from_secs(5), tls_acceptor().accept(stream))
+        .await
+        .expect("tls accept timed out")
+        .expect("tls accept failed")
+}
+
 const FINGERPRINT: &str = "0123456789ABCDEF0123456789ABCDEF01234567";
 
 fn test_now() -> DateTime<Utc> {
@@ -106,7 +152,9 @@ fn find_header(text: &str, name: &str) -> Option<String> {
     None
 }
 
-async fn read_until_header_end(stream: &mut TcpStream) -> Result<Vec<u8>, String> {
+async fn read_until_header_end<S: tokio::io::AsyncRead + Unpin>(
+    stream: &mut S,
+) -> Result<Vec<u8>, String> {
     let mut buf = Vec::new();
     loop {
         if buf.windows(4).any(|window| window == b"\r\n\r\n") {
@@ -227,26 +275,48 @@ async fn serve_vanilla() -> (u16, JoinHandle<Result<(), String>>) {
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let handle = tokio::spawn(async move {
-        let (mut stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
-        let mut bytes = [0u8; CELL_LEN];
+        let (stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
+        let mut stream = accept_tls(stream).await;
 
+        // Client VERSIONS: variable-length cell, TWO-byte circuit id
+        // (tor-spec §3).
+        let mut header = [0u8; 5];
         stream
-            .read_exact(&mut bytes)
+            .read_exact(&mut header)
             .await
             .map_err(|e| e.to_string())?;
-        let versions = VersionsCell::from_cell(&Cell::decode(&bytes).map_err(|e| e.to_string())?)
-            .map_err(|e| e.to_string())?;
-        assert!(!versions.versions.is_empty());
-        let response = VersionsCell {
-            versions: vec![3, 4, 5],
+        let command = header[2];
+        if command != 7 {
+            return Err(format!("expected VERSIONS command, got {command}"));
         }
-        .to_cell(0)
-        .map_err(|e| e.to_string())?;
+        let value_len = u16::from_be_bytes([header[3], header[4]]) as usize;
+        let mut value = vec![0u8; value_len];
         stream
-            .write_all(&response.encode())
+            .read_exact(&mut value)
+            .await
+            .map_err(|e| e.to_string())?;
+        let versions = VersionsCell {
+            versions: (0..value_len / 2)
+                .map(|i| u16::from_be_bytes([value[i * 2], value[i * 2 + 1]]))
+                .collect(),
+        };
+        assert!(!versions.versions.is_empty());
+
+        // Responder VERSIONS, same pre-negotiation format.
+        let mut response = vec![0u8, 0, 7];
+        let offered: Vec<u16> = vec![4, 5];
+        response.extend_from_slice(&((offered.len() * 2) as u16).to_be_bytes());
+        for v in &offered {
+            response.extend_from_slice(&v.to_be_bytes());
+        }
+        stream
+            .write_all(&response)
             .await
             .map_err(|e| e.to_string())?;
 
+        // Client NETINFO: post-negotiation fixed-width cell (link v4+:
+        // 514 bytes, four-byte circuit id).
+        let mut bytes = [0u8; CELL_LEN];
         stream
             .read_exact(&mut bytes)
             .await
@@ -275,12 +345,18 @@ async fn serve_not_tor() -> (u16, JoinHandle<Result<(), String>>) {
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let handle = tokio::spawn(async move {
-        let (mut stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
-        let cell = Cell::new(0, 0, &[]).map_err(|e| e.to_string())?;
+        let (stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
+        let mut stream = accept_tls(stream).await;
+        // A TLS peer that is not a Tor responder: a pre-negotiation
+        // fixed-width PADDING cell (512 bytes, two-byte circuit id) with no
+        // VERSIONS ever following, then silence.
+        let padding = vec![0u8; 512];
         stream
-            .write_all(&cell.encode())
+            .write_all(&padding)
             .await
             .map_err(|e| e.to_string())?;
+        // Stay silent afterwards; the probe must not reach a VERSIONS.
+        tokio::time::sleep(Duration::from_secs(2)).await;
         Ok(())
     });
     (port, handle)
@@ -292,7 +368,8 @@ async fn serve_webtunnel(status: u16, wrong_accept: bool) -> (u16, JoinHandle<Re
     let listener = TcpListener::bind(("127.0.0.1", 0)).await.unwrap();
     let port = listener.local_addr().unwrap().port();
     let handle = tokio::spawn(async move {
-        let (mut stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
+        let (stream, _) = listener.accept().await.map_err(|e| e.to_string())?;
+        let mut stream = accept_tls(stream).await;
         let request = read_until_header_end(&mut stream).await?;
         let text = String::from_utf8(request).map_err(|e| e.to_string())?;
         let key = find_header(&text, "Sec-WebSocket-Key").ok_or("missing Sec-WebSocket-Key")?;
