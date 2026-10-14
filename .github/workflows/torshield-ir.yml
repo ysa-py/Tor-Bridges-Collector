@@ -59,7 +59,11 @@ name: TorShield-IR Bridge Intelligence
     branches: ["**"]
   pull_request:
   schedule:
-    - cron: '0 * * * *'
+    # Non-top-of-hour minute: GitHub Actions drops the most frequent crons
+    # in the first minutes of every hour; an offset minute avoids the
+    # throttling window and keeps the hourly cadence (engineering directive
+    # v42 G, issue #257 follow-up).
+    - cron: '17 * * * *'
   workflow_dispatch:
     inputs:
       upload_to_telegram:
@@ -822,34 +826,70 @@ jobs:
           staging_valid=true
         fi
 
-        # (b) Evidence-volume check: S2+ verified observations this run vs the
-        # last-known-good report. A staged report carrying less than 50% of
-        # the previous verified evidence may not replace it (empty-output
-        # guard); fresh evidence from a clean run always may.
-        s2_filter='[.bridges[]? | select(.verification.stage == "S2" or .verification.stage == "S3" or .verification.stage == "S4" or .verification.stage == "S5" or .verification.stage == "S6")] | length'
+        # (b) Evidence-volume check: like-for-like runner-side S1 evidence.
+        #
+        # The gate counts .verification.stage == "S1" (successful runner-side
+        # TCP connects) in BOTH reports. It must NOT count S2+ rows: typed
+        # S2+ evidence is merged at finalize time by Stage 8w
+        # (handshake_probe -> data/pt_results.json -> Stage 9 results join),
+        # so a mid-cycle staged report can never contain S2+ rows, while the
+        # last-known-good report it is compared against carries the previous
+        # cycle's post-merge rows. That apples-to-oranges comparison rejected
+        # every fresh report since the guard shipped (run 38513360053:
+        # "new S2+=0, previous=123" while reachable=466), froze
+        # iran_results.json on stale evidence, and kept issue #257 open.
+        # S1 is the evidence class the Go tester actually produces at this
+        # point of the pipeline, so S1-vs-S1 is the honest volume signal.
+        s1_filter='[.bridges[]? | select(.verification.stage == "S1")] | length'
         old_evidence=0
         if [ -f "$iran_results" ]; then
-          old_evidence=$(jq -r "$s2_filter" "$iran_results" 2>/dev/null || echo 0)
+          old_evidence=$(jq -r "$s1_filter" "$iran_results" 2>/dev/null || echo 0)
         fi
         new_evidence=0
         if [ "$staging_valid" = "true" ]; then
-          new_evidence=$(jq -r "$s2_filter" "$staging" 2>/dev/null || echo 0)
+          new_evidence=$(jq -r "$s1_filter" "$staging" 2>/dev/null || echo 0)
         fi
         minimum_evidence=$(( old_evidence / 2 ))
+        # Captured before the staging file is removed: the staged report's own
+        # deadline verdict for THIS tester run (drives the flag fix-up below).
+        staged_deadline_exceeded=true
+        if [ "$staging_valid" = "true" ]; then
+          staged_deadline_exceeded=$(jq -r '.summary.run_deadline_exceeded // false' "$staging" 2>/dev/null || echo true)
+        fi
 
         if [ "$staging_valid" != "true" ]; then
           degraded_reason="${degraded_reason:-iran_tester produced an invalid staged report}"
           echo "::warning::Stage 2 degraded (${degraded_reason}); staged report did not validate — keeping the last-known-good bridge/iran_results.json"
         elif [ "$new_evidence" -lt "$minimum_evidence" ]; then
           degraded_reason="${degraded_reason:-staged report carries less than 50% of the previous verified evidence}"
-          echo "::warning::Stage 2 degraded (${degraded_reason}); keeping the last-known-good bridge/iran_results.json (new S2+=${new_evidence}, previous=${old_evidence})"
+          echo "::warning::Stage 2 degraded (${degraded_reason}); keeping the last-known-good bridge/iran_results.json (new S1=${new_evidence}, previous=${old_evidence})"
         else
           # Atomic same-directory rename; the temp copy is fsync'd by cp.
           cp "$staging" "${iran_results}.tmp"
           mv "${iran_results}.tmp" "$iran_results"
-          echo "Stage 2 published a fresh iran_results.json (S2+ evidence: ${new_evidence}, previous: ${old_evidence})"
+          echo "Stage 2 published a fresh iran_results.json (S1 evidence: ${new_evidence}, previous: ${old_evidence})"
         fi
         rm -f "$staging" "${iran_results}.tmp"
+
+        # (c) Truthful deadline flag. summary.run_deadline_exceeded must
+        # describe the tester run that produced the LIVE file, not the last
+        # run that ever hit its deadline. A sticky true kept the publication
+        # guard (guard_bridge_publication.sh) reporting "iran_tester run
+        # deadline exceeded" on every subsequent healthy run (signal 1 of
+        # issue #257). On the accept path the live file already carries the
+        # staged report's verdict, so this is a no-op. On the reject path the
+        # retained last-known-good file keeps its bytes, but its stale flag is
+        # re-attested to this run's observation when the tester completed
+        # cleanly inside both budgets; the volume rejection itself stays
+        # recorded in data/run_state.json below.
+        if [ -s "$iran_results" ] \
+           && [ "$status" -eq 0 ] \
+           && [ "$staged_deadline_exceeded" != "true" ] \
+           && [ "$(jq -r '.summary.run_deadline_exceeded // false' "$iran_results" 2>/dev/null)" = "true" ]; then
+          jq '.summary.run_deadline_exceeded = false' "$iran_results" > "${iran_results}.flag.tmp" \
+            && mv "${iran_results}.flag.tmp" "$iran_results"
+          echo "Stage 2 cleared the stale summary.run_deadline_exceeded flag (tester exit status 0; staged report reported no deadline overrun)"
+        fi
 
         # Record the run state for the Stage 11 publication guard and the
         # funnel report. data/run_state.json is committed with data/.
@@ -866,7 +906,7 @@ jobs:
           echo "- degraded: \`${degraded_reason:+true}${degraded_reason:-false}\`"
           [ -n "$degraded_reason" ] && echo "- reason: ${degraded_reason}"
           echo "- staged_valid: \`${staging_valid}\`"
-          echo "- s2plus_evidence: new=\`${new_evidence}\` previous=\`${old_evidence}\`"
+          echo "- s1_evidence: new=\`${new_evidence}\` previous=\`${old_evidence}\` (like-for-like runner-side gate)"
         } >> "${GITHUB_STEP_SUMMARY}"
         exit 0
 
