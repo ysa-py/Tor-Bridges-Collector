@@ -113,8 +113,12 @@ printf 'url = "%s"\n' "$smoke_url" > "$curl_config"
 printf 'X-Probe-Token: %s\n' "$relay_token" > "$header_file"
 chmod 600 "$request_body" "$curl_config" "$header_file"
 
+# Emits "ok" or the name of the FIRST failing typed clause on stdout, so the
+# retry diagnostics can pinpoint a live content mismatch without ever
+# printing targets, endpoints, credentials, or response bodies. Clause names
+# are this repo's own contract identifiers — safe for run logs.
 validate_smoke_response() {
-  jq -e --argjson timeout_controls "$timeout_controls_json" \
+  jq -re --argjson timeout_controls "$timeout_controls_json" \
     --argjson expected_count "$expected_count" --argjson now "$(date -u +%s)" '
     def valid_observed_at:
       (.observed_at | type == "string" and
@@ -140,24 +144,26 @@ validate_smoke_response() {
       (.stats.errored == ([.results[] | select(.status == "error")] | length)) and
       (.stats.success == .stats.connected);
     . as $response |
-    type == "object" and
-    (.results | type == "array" and length == $expected_count) and
-    (.stats | type == "object") and counts_match and
-    ([.results[] | select(.id == "silent-live" and .host == "example.com" and .port == 443 and
-       .status == "connected" and .stage == "S1" and valid_common)] | length == 1) and
-    ([.results[] | select(.id == "closed-port" and .host == "example.com" and .port == 1 and
-       (.status == "refused" or .status == "timeout") and .stage == "S0" and valid_common)] | length == 1) and
-    all($timeout_controls[];
-      . as $control |
-      ([$response.results[] | select(.id == $control.id and .host == $control.host and .port == $control.port and
-        valid_common and
-        ((.status == "timeout" and .stage == "S0") or
-         (.status == "connected" and .stage == "S1") or
-         (.status == "refused" and .stage == "S0") or
-         ((.status == "inconclusive" or .status == "error") and .stage == "S0")))] | length == 1)
-    ) and
-    ([.results[] | select((.id | startswith("timeout-control-")) and .status == "timeout" and .stage == "S0" and valid_common)] | length >= 1)
-  ' "$response_file" >/dev/null 2>&1
+    if (type != "object") then "clause:shape_not_object"
+    elif ((.results | type) != "array" or (.results | length) != $expected_count) then "clause:results_count"
+    elif ((.stats | type) != "object") then "clause:stats_missing"
+    elif (counts_match | not) then "clause:stats_counts_mismatch"
+    elif (([.results[] | select(.id == "silent-live" and .host == "example.com" and .port == 443 and
+            .status == "connected" and .stage == "S1" and valid_common)] | length) != 1) then "clause:silent_live_not_connected_s1"
+    elif (([.results[] | select(.id == "closed-port" and .host == "example.com" and .port == 1 and
+            (.status == "refused" or .status == "timeout" or .status == "error") and .stage == "S0" and valid_common)] | length) != 1) then "clause:closed_port_not_typed_negative"
+    elif (([ $timeout_controls[] | . as $control |
+             ([$response.results[] | select(.id == $control.id and .host == $control.host and .port == $control.port and
+               valid_common and
+               ((.status == "timeout" and .stage == "S0") or
+                (.status == "connected" and .stage == "S1") or
+                (.status == "refused" and .stage == "S0") or
+                ((.status == "inconclusive" or .status == "error") and .stage == "S0")))] | length == 1)
+           ] | all) | not) then "clause:control_target_correlation"
+    elif (([.results[] | select((.id | startswith("timeout-control-")) and .status == "timeout" and .stage == "S0" and valid_common)] | length) < 1) then "clause:fresh_timeout_missing"
+    else "ok"
+    end
+  ' "$response_file" 2>/dev/null || echo "clause:validator_error"
 }
 
 write_success_report() {
@@ -219,7 +225,11 @@ for ((attempt = 1; attempt <= max_attempts; attempt++)); do
   fi
   if [[ ! "$http_code" =~ ^[0-9]{3}$ ]]; then http_code=000; fi
 
-  if (( curl_exit == 0 )) && [[ "$http_code" == 200 ]] && validate_smoke_response "$response_file"; then
+  content_clause=""
+  if (( curl_exit == 0 )) && [[ "$http_code" == 200 ]]; then
+    content_clause="$(validate_smoke_response "$response_file")"
+  fi
+  if (( curl_exit == 0 )) && [[ "$http_code" == 200 ]] && [[ "$content_clause" == "ok" ]]; then
     if ! write_success_report; then
       write_failure_report failed "$attempt" "$http_code" report || true
       echo '::warning::Probe relay content canary passed, but the redacted evidence report could not be written; failing closed.'
@@ -243,7 +253,10 @@ for ((attempt = 1; attempt <= max_attempts; attempt++)); do
   if (( curl_exit != 0 )); then
     last_failure="$(classify_failure "$curl_exit" "$http_code")"
   elif [[ "$http_code" == 200 ]]; then
-    last_failure='relay response content did not match the typed control contract'
+    # Typed, redaction-safe clause name (see validate_smoke_response):
+    # pinpoints WHICH contract requirement the live response violated
+    # without printing any target, endpoint, credential, or body content.
+    last_failure="relay response content did not match the typed control contract (${content_clause:-clause:unknown})"
   else
     last_failure="$(classify_failure "$curl_exit" "$http_code")"
   fi
