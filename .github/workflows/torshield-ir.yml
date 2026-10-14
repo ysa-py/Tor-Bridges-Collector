@@ -131,7 +131,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -242,7 +242,7 @@ jobs:
           echo "Cargo.lock already present"
         fi
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -304,7 +304,7 @@ jobs:
         toolchain: '1.90.0'
         components: rustfmt, clippy
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -448,7 +448,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1304,7 +1304,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1480,7 +1480,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1513,7 +1513,7 @@ jobs:
         data/adaptive_transport_report.json
 
     - name: Restore Zig toolchain cache
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: ${{ runner.temp }}/zig-linux-x86_64-0.14.0
         key: ${{ runner.os }}-zig-toolchain-0.14.0
@@ -1549,7 +1549,7 @@ jobs:
       # incremental no-op instead of a cold rebuild. The scan itself still runs
       # every time and still produces data/zig_scan.json.
     - name: Restore Zig scanner build cache
-      uses: actions/cache@v5
+      uses: actions/cache@v6
       with:
         path: |
           zig-scanner/.zig-cache
@@ -1604,7 +1604,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1714,7 +1714,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1767,7 +1767,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1822,7 +1822,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -1908,7 +1908,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -2059,7 +2059,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       with:
         path: |
           ~/.cargo/registry
@@ -2789,7 +2789,7 @@ jobs:
       with:
         toolchain: '1.90.0'
 
-    - uses: actions/cache@v5
+    - uses: actions/cache@v6
       if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
       with:
         path: |
