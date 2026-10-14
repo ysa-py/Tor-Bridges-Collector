@@ -249,7 +249,7 @@ jobs:
           ~/.cargo/git
           bridge-probe/target
           target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('bridge-probe/Cargo.lock', 
+        key: ${{ runner.os }}-cargo-${{ hashFiles('bridge-probe/Cargo.lock',
           'bridge-probe/Cargo.toml', 'Cargo.toml', 'Cargo.lock') }}
         restore-keys: ${{ runner.os }}-cargo-
 
@@ -310,7 +310,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-parity-${{ hashFiles('Cargo.toml', 
+        key: ${{ runner.os }}-cargo-parity-${{ hashFiles('Cargo.toml',
           'Cargo.lock') }}
         restore-keys: ${{ runner.os }}-cargo-
 
@@ -459,7 +459,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1310,7 +1310,7 @@ jobs:
           ~/.cargo/registry
           ~/.cargo/git
           target
-        key: ${{ runner.os }}-cargo-rerank-${{ hashFiles('Cargo.toml', 
+        key: ${{ runner.os }}-cargo-rerank-${{ hashFiles('Cargo.toml',
           'Cargo.lock') }}
         restore-keys: ${{ runner.os }}-cargo-
 
@@ -1427,7 +1427,7 @@ jobs:
       uses: actions/upload-artifact@v7
       with:
         name: TorShield-IR-Final-Package-${{ github.run_id }}
-        path: 
+        path:
           dist/Tor-Bridges-Collector-main-ultra-quantum-vip-vip-super-ultra-vip-ultra-quantum-ultra-vip-ultra-quantum.tar.gz
         retention-days: 90
 
@@ -1437,7 +1437,7 @@ jobs:
       uses: softprops/action-gh-release@v3
       if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: 
+        files:
           dist/Tor-Bridges-Collector-main-ultra-quantum-vip-vip-super-ultra-vip-ultra-quantum-ultra-vip-ultra-quantum.tar.gz
         token: ${{ secrets.GH_PAT_AUTOFIX }}
 
@@ -1491,7 +1491,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1509,7 +1509,7 @@ jobs:
     - name: Stage 8 — Adaptive transport engine
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --locked --quiet --bin pipeline -- --stage adaptive --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage adaptive --report
         data/adaptive_transport_report.json
 
     - name: Restore Zig toolchain cache
@@ -1615,7 +1615,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1633,7 +1633,7 @@ jobs:
     - name: Stage 8n — JA3/TLS fingerprint rotation engine
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --locked --quiet --bin pipeline -- --stage ja3 --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage ja3 --report
         data/ja3_pipeline_report.json
 
     - name: Stage 8i — Anti-AI DPI scoring
@@ -1665,7 +1665,7 @@ jobs:
         PORTKEY_API_KEY: ${{ secrets.PORTKEY_API_KEY }}
         CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
-      run: cargo run --locked --quiet --bin pipeline -- --stage dpi --stage anti-ai-dpi 
+      run: cargo run --locked --quiet --bin pipeline -- --stage dpi --stage anti-ai-dpi
         --stage rotation --report data/ai_dpi_mutator_report.json
 
       # Bounded 64-worker pool fixes the former sequential 1,584 × 3-second
@@ -1725,7 +1725,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1778,7 +1778,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1791,7 +1791,7 @@ jobs:
     - name: Stage 8h — NIN advanced bypass analysis
       continue-on-error: true
       timeout-minutes: 20
-      run: cargo run --locked --quiet --bin pipeline -- --stage nin-advanced --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-advanced --report
         data/nin_advanced_pipeline_report.json
 
     - uses: actions/upload-artifact@v7
@@ -1833,7 +1833,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1846,13 +1846,13 @@ jobs:
     - name: Stage 8d — NIN internet-cut bridge pack
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --locked --quiet --bin pipeline -- --stage nin-pack --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-pack --report
         data/nin_pack_pipeline_report.json
 
     - name: Stage 8d2 — NIN bypass analysis (ECH/CDN survivability scoring)
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --locked --quiet --bin pipeline -- --stage nin-bypass --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-bypass --report
         data/nin_bypass_pipeline_report.json
 
     - name: Stage 8k — NIN internet-cut survivability tester
@@ -1862,13 +1862,13 @@ jobs:
         NIN_CUT_MAX_WORKERS: '64'
         NIN_CUT_MAX_BRIDGES: '2000'
         NIN_CUT_TIMEOUT_SECS: '3'
-      run: cargo run --locked --quiet --bin pipeline -- --stage nin-cut --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-cut --report
         data/nin_cut_pipeline_report.json
 
     - name: Stage 8p — NIN internet-cut bridge classifier
       continue-on-error: true
       timeout-minutes: 6
-      run: cargo run --locked --quiet --bin pipeline -- --stage nin-classify --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nin-classify --report
         data/nin_classify_pipeline_report.json
 
       # Install Zig 0.14.0 directly — replaces mlugg/setup-zig@v2 (which
@@ -1919,7 +1919,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -1932,37 +1932,37 @@ jobs:
     - name: Stage 8c — Next-gen protocol scan (Hysteria2/REALITY/VLESS)
       continue-on-error: true
       timeout-minutes: 8
-      run: cargo run --locked --quiet --bin pipeline -- --stage nextgen --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage nextgen --report
         data/nextgen_pipeline_report.json
 
     - name: Stage 8e — ECH/post-quantum bridge scoring
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --locked --quiet --bin pipeline -- --stage quantum --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage quantum --report
         data/quantum_pipeline_report.json
 
     - name: Stage 8f — WARP bootstrap check
       continue-on-error: true
       timeout-minutes: 5
-      run: cargo run --locked --quiet --bin pipeline -- --stage warp --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage warp --report
         data/warp_pipeline_report.json
 
     - name: Stage 8l — XTLS-Reality VLESS config generator
       continue-on-error: true
       timeout-minutes: 8
-      run: cargo run --locked --quiet --bin pipeline -- --stage reality --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage reality --report
         data/reality_pipeline_report.json
 
     - name: Stage 8m — eBPF/XDP deployment blueprint generator
       continue-on-error: true
       timeout-minutes: 3
-      run: cargo run --locked --quiet --bin pipeline -- --stage ebpf --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage ebpf --report
         data/ebpf_pipeline_report.json
 
     - name: Stage 8o — Certificate Transparency MITM monitor
       continue-on-error: true
       timeout-minutes: 15
-      run: cargo run --locked --quiet --bin pipeline -- --stage ct --report 
+      run: cargo run --locked --quiet --bin pipeline -- --stage ct --report
         data/ct_pipeline_report.json
 
     - uses: actions/upload-artifact@v7
@@ -1984,6 +1984,8 @@ jobs:
     permissions:
       contents: write
       actions: read
+      # Stage 11b files the degraded-publication tracking issue (best-effort).
+      issues: write
     # Defense-in-depth publication lock: never cancel a run while it is
     # verifying or committing the bridge artifact.
     concurrency:
@@ -2068,7 +2070,7 @@ jobs:
           # 'Cargo.toml'/'Cargo.lock' missed member manifests under crates/,
           # bridge-probe/ and rust/, so an unchanged lockfile with a changed
           # member manifest silently reused a stale compiled target.
-        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml', 
+        key: ${{ runner.os }}-cargo-pipeline-${{ hashFiles('**/Cargo.toml',
           '**/Cargo.lock') }}
         restore-keys: |
           ${{ runner.os }}-cargo-pipeline-
@@ -2246,7 +2248,7 @@ jobs:
       # same bytes. This production stage is main-only (enforced on its parent
       # job and again by the upload guard); PR/non-main runs execute validation
       # jobs but never collect, deploy, publish, or deliver production data.
-    - name: Stage 9 — Dual persist ALL bridge/ files + README.md + Telegram 
+    - name: Stage 9 — Dual persist ALL bridge/ files + README.md + Telegram
         archive
       timeout-minutes: 8
       env:
@@ -2256,7 +2258,7 @@ jobs:
           # string): dispatch input > TELEGRAM_AUTO_UPLOAD repo variable > ON.
         TELEGRAM_INPUT: ${{ github.event.inputs.upload_to_telegram }}
         TELEGRAM_REPO_VAR: ${{ vars.TELEGRAM_AUTO_UPLOAD }}
-        REPO_URL: https://raw.githubusercontent.com/${{ github.repository 
+        REPO_URL: https://raw.githubusercontent.com/${{ github.repository
           }}/refs/heads/${{ github.ref_name }}
       run: |
         set -euo pipefail
@@ -2569,6 +2571,58 @@ jobs:
           sleep $((attempt * 7))
         done
         [ "$pushed" = "1" ] || { echo "::error::could not push publication commit after 5 attempts"; exit 1; }
+
+    # Self-healing: a degraded publication (empty-output guard restored
+    # last-known-good files, or a stage reported degraded) must leave a
+    # durable, human-visible trail beyond the run logs. Best-effort: a
+    # failure here never affects publication itself. Mirrors the verdict
+    # the guard wrote into data/run_manifest.json + the step summary.
+    - name: Stage 11b — degraded publication tracking issue
+      if: ${{ !cancelled() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
+      continue-on-error: true
+      timeout-minutes: 3
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        set -euo pipefail
+        if [ ! -f data/run_manifest.json ]; then
+          echo "no run manifest — run never reached the publication guard; nothing to track"
+          exit 0
+        fi
+        if [ "$(jq -r '.degraded // false' data/run_manifest.json)" != "true" ]; then
+          echo "healthy publication — no tracking issue needed"
+          exit 0
+        fi
+        run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+        reasons="$(jq -r '.degraded_reasons[]?' data/run_manifest.json | sed 's/^/- /' | head -10)"
+        restored="$(jq -r '.restored_last_known_good[]?' data/run_manifest.json | sed 's/^/- /' | head -20)"
+        body="$(mktemp)"
+        {
+          echo "The hourly Bridge Intelligence run published a **degraded** payload:"
+          echo ""
+          echo "- run: ${run_url}"
+          echo "- commit attempted: ${GITHUB_SHA}"
+          echo "- restored last-known-good files (empty-output guard, v42 §A):"
+          if [ -n "${restored}" ]; then echo "${restored}"; else echo "- (none)"; fi
+          echo "- degradation signals:"
+          if [ -n "${reasons}" ]; then echo "${reasons}"; else echo "- (unspecified)"; fi
+          echo ""
+          echo "The published tree stays internally consistent (manifest/ZIP/README"
+          echo "re-attested to the restored bytes), but at least one upstream source"
+          echo "needs attention. Close this issue once the funnel is healthy again."
+          echo ""
+          echo "<!-- degraded-publication-tracking -->"
+        } >"${body}"
+        title="[self-heal] Degraded bridge publication — hourly pipeline"
+        existing="$(gh issue list --state open --search "${title} in:title" --json number --jq '.[0].number' 2>/dev/null || true)"
+        if [ -n "${existing}" ]; then
+          gh issue comment "${existing}" --body-file "${body}"
+          echo "appended degraded-run evidence to tracking issue #${existing}"
+        else
+          gh issue create --title "${title}" --body-file "${body}"
+          echo "opened degraded-publication tracking issue"
+        fi
+        rm -f "${body}"
 
     - uses: actions/upload-artifact@v7
       if: always()

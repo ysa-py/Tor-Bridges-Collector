@@ -1,8 +1,20 @@
 ---
 extends: default
 
+# .github/workflows/*.yml follow the GitHub Actions house style (4-space job
+# indentation, sequences at the parent level). That style is validated by two
+# dedicated gates — `actionlint` and the repo's own Rust `validate_workflows`
+# binary (main-ci "Validate GitHub Actions workflows") — so Python yamllint's
+# default hand-written-YAML indentation expectations are intentionally not
+# applied to them. Every other YAML file in the tree is fully yamllint-enforced.
+ignore: |
+  .github/workflows/*.yml
+
 rules:
   line-length: disable
+  indentation:
+    spaces: 2
+    indent-sequences: false
   comments-indentation: disable
   colons: disable
   document-start: disable

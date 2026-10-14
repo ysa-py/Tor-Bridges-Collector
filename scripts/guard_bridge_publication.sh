@@ -13,6 +13,17 @@
 #      (empty or missing while HEAD holds a non-empty version). Healthy runs
 #      are trusted: deliberate evidence churn (e.g. a publication filter
 #      removing fake supply) is legitimate.
+#   2b. After any restore, re-attests the publication contract
+#      (scripts/publication_contract.sh --rebuild --set-count ...): Stage 9
+#      attested telegram_manifest.json / tor_bridges.zip / README.md against
+#      the PRE-restore payload bytes, so without re-attestation --check
+#      rejects the mixed publication and Stage 11 pushes nothing (the
+#      2026-10-13/14 webtunnel wipe failures, runs 38465273560 and
+#      38477508742, failed exactly here: 12 contract violations, exit 1,
+#      no publication commit). Re-attestation makes the restored publication
+#      internally consistent again: manifest hashes/sizes point at the
+#      restored bytes, the archive is rebuilt deterministically from them,
+#      and the README archive hash is patched.
 #   3. Writes data/run_manifest.json: per-file line count, byte size and
 #      SHA-256 for the complete REQUIRED set, plus the degradation verdict —
 #      the integrity/freshness manifest consumers and the step summary read.
@@ -23,18 +34,21 @@
 # manifest and the archive themselves, so the guard can never drift from the
 # publication contract.
 #
-# Usage: scripts/guard_bridge_publication.sh [--bridge-dir bridge] [--live true|false]
+# Usage: scripts/guard_bridge_publication.sh [--bridge-dir bridge] [--live true|false] [--root DIR]
 # Exit codes: 0 = publication may proceed; 1 = contract violation, which
-# fails the run loudly.
+# fails the run loudly; 2 = re-attestation refused (corrupt payload / usage).
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 BRIDGE_DIR="bridge"
 LIVE="true"
 while [ $# -gt 0 ]; do
   case "$1" in
     --bridge-dir) BRIDGE_DIR="$2"; shift 2 ;;
     --live) LIVE="$2"; shift 2 ;;
+    --root) ROOT="$2"; shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 2 ;;
   esac
 done
@@ -98,6 +112,42 @@ for name in ${required_list}; do
   fi
 done
 
+# ── 2b) Re-attest the publication after any last-known-good restore ──────────
+# Stage 9 attested the manifest/ZIP/README against this run's payload. Once the
+# wipe guard above replaced empty payload files with last-known-good blobs,
+# those attested artifacts describe bytes that are no longer on disk, and the
+# fail-closed contract check in Stage 11 would reject the commit. Re-attest
+# here, exactly the way the contract prescribes: --rebuild --set-count for
+# every restored file. Payload bytes are never rewritten by this step; only
+# the manifest hashes/sizes, the deterministic archive and the README archive
+# hash are re-aligned to what is actually about to be committed.
+if [ "${restored}" -gt 0 ]; then
+  set_counts=()
+  for name in ${restored_list}; do
+    [ -n "${name}" ] || continue
+    path="${BRIDGE_DIR}/${name}"
+    [ -f "${path}" ] || continue
+    case "${name}" in
+      *.json)
+        count="$(jq '(if type == "array" then length
+                      elif has("bridges") then (.bridges | length)
+                      elif has("records") then (.records | length)
+                      elif has("results") then (.results | length)
+                      elif has("entries") then (.entries | length)
+                      else length end)' "${path}" 2>/dev/null || echo 0)" || count=0
+        ;;
+      *)
+        count="$(grep -c . "${path}" 2>/dev/null || true)" || count=0
+        ;;
+    esac
+    count="${count//[$'\t\r\n ']/}"
+    count="${count:-0}"
+    set_counts+=(--set-count "${name}=${count}")
+  done
+  echo "re-attesting publication after restoring ${restored} last-known-good file(s)"
+  bash "${SCRIPT_DIR}/publication_contract.sh" --rebuild --root "${ROOT}" --bridge-dir "${BRIDGE_DIR}" "${set_counts[@]}"
+fi
+
 # ── 3) Run manifest (counts + SHA-256) ───────────────────────────────────────
 mkdir -p data
 manifest_tmp="$(mktemp)"
@@ -136,6 +186,9 @@ if [ -n "${GITHUB_STEP_SUMMARY:-}" ]; then
       echo "- signal: ${reason}"
     done
     echo "- restored_last_known_good: \`${restored}\` file(s)"
+    if [ "${restored}" -gt 0 ]; then
+      echo "- re-attested: manifest/ZIP/README re-aligned to the restored bytes"
+    fi
     echo "- required files: \`${required_count}\`"
     echo "- manifest: \`data/run_manifest.json\` (line count, byte size, SHA-256 per file)"
   } >> "${GITHUB_STEP_SUMMARY}" 2>/dev/null || true

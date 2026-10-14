@@ -108,6 +108,14 @@ jobs:
         run: bash scripts/test_repair_conflict_markers.sh
       - name: Test publication contract gate
         run: bash scripts/test_publication_contract.sh
+      # Fault-injection for the v42 §A wipe guard: a degraded run wipes a
+      # payload file, Stage 9 attests the empty bytes, the guard restores
+      # last-known-good content — the guard must then re-attest the manifest,
+      # ZIP and README to the restored bytes, or Stage 11's fail-closed
+      # --check rejects the commit and nothing is published (the
+      # 2026-10-13/14 webtunnel wipe failures, runs 38465273560/38477508742).
+      - name: Test publication guard restore re-attestation
+        run: bash scripts/test_guard_bridge_publication.sh
       - name: Test self-heal audit bootstrap failure path
         run: bash scripts/test_self_heal.sh
       - name: Test AI self-healing diagnostics summary and failure outputs
