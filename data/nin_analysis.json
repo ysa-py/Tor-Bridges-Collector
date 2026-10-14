@@ -6327,7 +6327,7 @@
     },
     {
       "composite_score": 0.5,
-      "evidence_scope": "WebSocket probe to webtunnel front topwager.bet:443 failed: TCP connect failed: Connection refused (os error 111)",
+      "evidence_scope": "WebSocket probe to webtunnel front topwager.bet:443 failed: TCP connect failed: connection timed out",
       "host": "2001:db8:90af:6d79:cafb:22d:9fc:8ba5",
       "iran_status": "iran_unknown",
       "line": "webtunnel [2001:db8:90af:6d79:cafb:22d:9fc:8ba5]:443 E88DDF7ECA143274DDDC87D552C70110B8702367 url=https://topwager.bet/0a710ccee8e0ab2e2c6841833cb6a63a ver=0.0.4",
@@ -6338,14 +6338,14 @@
       "probe_method": "websocket-upgrade",
       "probe_status": "websocket_failed",
       "tcp_reachable": false,
-      "test_result": "tested_failing",
+      "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-10-13T18:18:53.066307354+00:00",
       "transport": "webtunnel",
       "transport_capable": false,
       "verification": {
-        "detail": "TCP connect failed: Connection refused (os error 111)",
-        "error_class": null,
+        "detail": "TCP connect failed: connection timed out",
+        "error_class": "timeout",
         "observations": [
           {
             "detail": "TCP connection failed",
@@ -6464,7 +6464,7 @@
         "rtt_ms": 10645.776678,
         "source": "webtunnel_front_probe",
         "stage": "S0",
-        "status": "refused",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -9540,34 +9540,6 @@
             "source": "webtunnel_front_probe",
             "stage": "S0",
             "status": "error",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
-            "detail": "TCP connect failed: connection timed out",
-            "error_class": "timeout",
-            "observed_at": "2026-10-14T02:01:07.048908831+00:00",
-            "probe_type": "tcp",
-            "rtt_ms": 10793.357956,
-            "source": "webtunnel_front_probe",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
-            "detail": "TCP connect failed: connection timed out",
-            "error_class": "timeout",
-            "observed_at": "2026-10-14T05:04:06.246324481+00:00",
-            "probe_type": "tcp",
-            "rtt_ms": 10567.752264,
-            "source": "webtunnel_front_probe",
-            "stage": "S0",
-            "status": "timeout",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -13708,7 +13680,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain sexgrueselbox.ch:443. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:2ce3:75bd:2da:f69f:d97a:7874",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.21.65.78:443 CFB5DD5A5CC4AAB0435C1C5B27D46C0E2AB54C6E url=https://sexgrueselbox.ch/Tha8Iequ4Goo9ku ver=0.0.3",
+      "line": "webtunnel 172.67.189.101:443 CFB5DD5A5CC4AAB0435C1C5B27D46C0E2AB54C6E url=https://sexgrueselbox.ch/Tha8Iequ4Goo9ku ver=0.0.3",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -14002,7 +13974,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain transformaforge.com:443. Generic HTTP response received; no transport handshake was verified.",
       "host": "2001:db8:32b:33c3:d919:f00f:8da0:7ed8",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 172.67.175.167:443 6308B7595D50C18A56DCB68F79C96E572595050C url=https://transformaforge.com/ee879925614ee1df9f81fab122c1bb748a7261bb2c44b8e2 ver=0.0.3",
+      "line": "webtunnel 104.21.72.54:443 6308B7595D50C18A56DCB68F79C96E572595050C url=https://transformaforge.com/ee879925614ee1df9f81fab122c1bb748a7261bb2c44b8e2 ver=0.0.3",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -17089,7 +17061,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:4fcd:461f:cbce:edea:fb74:a1e8",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 172.67.208.101:2053 F799A0A458365388600F54BD44A99B5887D54911 url=https://wt.aaronstory2026.xyz:2053/vicmackey ver=0.0.4",
+      "line": "webtunnel 104.21.34.209:2053 F799A0A458365388600F54BD44A99B5887D54911 url=https://wt.aaronstory2026.xyz:2053/vicmackey ver=0.0.4",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -20764,7 +20736,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain tired.social:443. Generic HTTP response received; no transport handshake was verified.",
       "host": "2001:db8:6ebc:2eba:25e:28d6:4d14:6cfa",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.26.14.240:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3",
+      "line": "webtunnel 104.26.15.240:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -25321,7 +25293,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain cz.tradebotz.site:443. Generic HTTP response received; no transport handshake was verified.",
       "host": "2001:db8:90b3:8baf:14bd:bd83:2133:717",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 172.67.130.172:443 DB9E6D6AB7A3C7C47682F31F6A7D5F819BA9276E url=https://cz.tradebotz.site/DmMthZQhWQLaiP6a6pygK3ho ver=0.0.4",
+      "line": "webtunnel 104.21.3.119:443 DB9E6D6AB7A3C7C47682F31F6A7D5F819BA9276E url=https://cz.tradebotz.site/DmMthZQhWQLaiP6a6pygK3ho ver=0.0.4",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -32965,7 +32937,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain anoni.net:443. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:e40f:2e7c:eaa0:a693:c904:6780",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.26.13.124:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
+      "line": "webtunnel 104.26.12.124:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
@@ -35464,7 +35436,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain oldradio.info:443. HTTP 101 was returned without a valid WebSocket accept signature; kept at S1.",
       "host": "2001:db8:f87:9991:eb2c:ee55:9794:8632",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 172.67.208.210:443 1A60FE3FAE97BD5FAE8E8F2E9B94AA697D9467F8 url=https://oldradio.info/9bd85e2a09a7eb00e0d2a542d436fd632143df9e ver=0.0.3",
+      "line": "webtunnel 104.21.15.240:443 1A60FE3FAE97BD5FAE8E8F2E9B94AA697D9467F8 url=https://oldradio.info/9bd85e2a09a7eb00e0d2a542d436fd632143df9e ver=0.0.3",
       "nextgen_proto": null,
       "nin_score": 0.81,
       "ooni_checked": false,
