@@ -96,18 +96,25 @@ curl_stderr_file="$tmp_dir/curl.stderr"
 curl_config="$tmp_dir/curl.conf"
 header_file="$tmp_dir/auth.header"
 
-# The second control is a CLOSED-PORT negative: the worker must report a typed
-# S0 non-connected outcome for an unreachable endpoint, discriminating it from
-# the reachable silent-live control. Both observable closed-port classes are
-# accepted — "refused" (TCP RST) and "timeout" (silent SYN drop) — because the
-# public internet overwhelmingly DROPS closed ports instead of resetting them
-# (measured live 2026-10-14: example.com:1, example.com:81, 8.8.8.8:1,
-# 8.8.4.4:1, 1.0.0.1:1, 9.9.9.9:1 all silently drop; curl exit 28, no RST).
-# Requiring the narrower "refused" class made this canary fail 3/3 on every
-# run with HTTP 200 (Stage 4 chronically skipped, relay_attempted=0).
+# CANARY TARGET SELECTION (root-caused 2026-10-14, runs 38593425957 +
+# 38600087512): both controls must live OUTSIDE Cloudflare's own IP ranges —
+# the Worker probes via cloudflare:sockets, which refuses egress to
+# Cloudflare-owned IPs by policy. example.com migrated to Cloudflare hosting
+# (resolves 104.20.23.154 / 172.66.147.243 as of 2026-10-14), so the original
+# example.com controls were structurally impossible: silent-live could never
+# connect (clause:silent_live_not_connected_s1) and the closed-port control
+# could never produce a genuine network outcome. www.google.com is a stable,
+# globally anycasted, NON-Cloudflare target: TCP-443 accepts (verified live),
+# TCP-1 silently drops (verified live: exit 124 — the dominant closed-port
+# class; the public internet overwhelmingly DROPS closed ports instead of
+# sending RST, also measured on example.com:1/:81, 8.8.8.8:1, 8.8.4.4:1,
+# 1.0.0.1:1, 9.9.9.9:1). The closed-port control therefore accepts the typed
+# S0 negatives {refused, timeout, error}: all three prove a real network
+# attempt failed before any positive stage; "connected"/"inconclusive" are
+# still rejected (no network-differentiation evidence).
 jq -cn --argjson timeout_controls "$timeout_controls_json" '
-  [{id:"silent-live",host:"example.com",port:443,transport:"vanilla"},
-   {id:"closed-port",host:"example.com",port:1,transport:"vanilla"}] + $timeout_controls
+  [{id:"silent-live",host:"www.google.com",port:443,transport:"vanilla"},
+   {id:"closed-port",host:"www.google.com",port:1,transport:"vanilla"}] + $timeout_controls
 ' > "$request_body"
 printf 'url = "%s"\n' "$smoke_url" > "$curl_config"
 printf 'X-Probe-Token: %s\n' "$relay_token" > "$header_file"
@@ -148,9 +155,9 @@ validate_smoke_response() {
     elif ((.results | type) != "array" or (.results | length) != $expected_count) then "clause:results_count"
     elif ((.stats | type) != "object") then "clause:stats_missing"
     elif (counts_match | not) then "clause:stats_counts_mismatch"
-    elif (([.results[] | select(.id == "silent-live" and .host == "example.com" and .port == 443 and
+    elif (([.results[] | select(.id == "silent-live" and .host == "www.google.com" and .port == 443 and
             .status == "connected" and .stage == "S1" and valid_common)] | length) != 1) then "clause:silent_live_not_connected_s1"
-    elif (([.results[] | select(.id == "closed-port" and .host == "example.com" and .port == 1 and
+    elif (([.results[] | select(.id == "closed-port" and .host == "www.google.com" and .port == 1 and
             (.status == "refused" or .status == "timeout" or .status == "error") and .stage == "S0" and valid_common)] | length) != 1) then "clause:closed_port_not_typed_negative"
     elif (([ $timeout_controls[] | . as $control |
              ([$response.results[] | select(.id == $control.id and .host == $control.host and .port == $control.port and

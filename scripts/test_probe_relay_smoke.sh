@@ -85,8 +85,8 @@ grep -Fxq "X-Probe-Token: ${FAKE_CURL_EXPECT_TOKEN:?}" "$header_file" || exit 99
 # Verify exact target correlation in the request without printing target values.
 jq -e --argjson controls "${FAKE_CURL_EXPECT_CONTROLS_JSON:?}" '
   type == "array" and length == ($controls|length) + 2 and
-  .[0].id == "silent-live" and .[0].host == "example.com" and .[0].port == 443 and
-  .[1].id == "closed-port" and .[1].host == "example.com" and .[1].port == 1 and
+  .[0].id == "silent-live" and .[0].host == "www.google.com" and .[0].port == 443 and
+  .[1].id == "closed-port" and .[1].host == "www.google.com" and .[1].port == 1 and
   .[2:] == $controls and all(.[]; .transport == "vanilla")
 ' "$request_file" >/dev/null || exit 100
 
