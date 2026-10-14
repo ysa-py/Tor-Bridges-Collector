@@ -1065,7 +1065,7 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
+    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
     "error_class": null,
     "line": "Bridge 118.241.190.171:45883 086208823845DA4F5272C483644FB4BCC5514179",
     "observed_at": "2026-10-14T18:49:08.761733Z",
@@ -3525,7 +3525,7 @@
     }
   },
   {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
+    "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 141.95.183.246:28496 A44F9C6A4528CDD4A11DB7F23411D1772D94A03B cert=9U4Nm+Oeh9/pCi6VBKRqKs0Jq2iNJaQIQcbOfTrBe0OIhBkxvCLmL+Z74D4VtK2Hph7wLw iat-mode=0",
     "observed_at": "2026-10-14T18:49:12.225780Z",
@@ -3877,8 +3877,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5903,22 +5903,7 @@
     "rtt_ms": 0.0,
     "source": "handshake-probe",
     "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "handshake authentication failed (webtunnel): missing Sec-WebSocket-Accept header",
-    "error_class": "webtunnel:handshake_auth_fail",
-    "line": "webtunnel 104.26.13.124:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
-    "observed_at": "2026-10-14T18:32:24.748474Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
