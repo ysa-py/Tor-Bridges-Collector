@@ -1,7 +1,10 @@
 //! WebTunnel HTTP/WebSocket upgrade probe.
 //!
-//! A WebTunnel bridge is reached by an RFC 6455 §4.2.1 HTTP upgrade request.
-//! This probe drives the `tbc-transports` WebTunnel codec over a socket: it
+//! A WebTunnel bridge is reached by an RFC 6455 §4.2.1 HTTP upgrade request
+//! served **over TLS** on the `url=` front domain (the CDN routes by SNI, so
+//! the TLS session must name the same host the request does). The engine
+//! establishes that TLS session (`crate::tls`) before this probe runs. This
+//! probe drives the `tbc-transports` WebTunnel codec over the socket: it
 //! sends the upgrade request derived from the bridge's `url=` parameter, then
 //! verifies both the `101 Switching Protocols` status and the
 //! `Sec-WebSocket-Accept` header (SHA-1 of the client nonce plus the RFC

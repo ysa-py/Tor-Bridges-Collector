@@ -29,3 +29,12 @@ tokio = { workspace = true, features = ["net"] }
 chrono = { workspace = true }
 hmac = "=0.12.1"
 sha2 = "=0.10.9"
+
+# TLS-based transport probes (vanilla ORPort link protocol, WebTunnel HTTPS
+# upgrade) need a client TLS stack. Mirror the root crate's target gate: the
+# ARM-musl CI job is a type-check with no C toolchain, so ring must stay out
+# of that target; on every runtime target (x86_64 glibc/musl, ARM GNU) the
+# same rustls/tokio-rustls versions as the root crate are linked.
+[target.'cfg(not(all(target_arch = "arm", target_env = "musl")))'.dependencies]
+tokio-rustls = { version = "=0.26.4", default-features = false, features = ["ring", "tls12"] }
+rustls = { workspace = true }

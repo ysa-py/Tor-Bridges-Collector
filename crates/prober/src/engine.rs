@@ -17,6 +17,7 @@ use crate::probe;
 use crate::result::{BridgeProbeResult, ProbeDetail, ProbeOutcome, ProbeReport};
 use crate::retry;
 use crate::socket::Socket;
+use crate::tls;
 
 /// A handshake-level bridge prober with retry and budget policy.
 #[derive(Debug, Clone)]
@@ -119,6 +120,13 @@ impl Prober {
     ) -> Result<ProbeDetail, ProbeError> {
         let started = Instant::now();
         let mut socket = Socket::connect(host, port, self.config.connect_timeout).await?;
+        // TLS-based transports (vanilla ORPort, WebTunnel front) speak their
+        // protocol inside a TLS session; probing them plaintext always failed
+        // with typed resets/HTTP 400s (see `crate::tls` for the trust
+        // boundary). Transports without a TLS layer skip the upgrade.
+        if let Some(server_name) = tls::server_name_for(bridge) {
+            tls::start_tls(&mut socket, &server_name, self.config.connect_timeout).await?;
+        }
         let evidence =
             probe::handshake(bridge, &mut socket, &self.config, self.clock.as_ref()).await?;
         let rtt_ms = u64::try_from(started.elapsed().as_millis()).unwrap_or(u64::MAX);

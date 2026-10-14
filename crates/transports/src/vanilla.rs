@@ -116,36 +116,39 @@ impl VersionsCell {
     }
 }
 
-/// A link-layer address carried in `NETINFO` cells.
+/// A link-layer address carried in `NETINFO` cells (tor-spec §4.5).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Addr {
-    /// `ATYPE` 0x04: 4-byte IPv4 address + 2-byte port.
-    Ipv4([u8; 4], u16),
-    /// `ATYPE` 0x06: 16-byte IPv6 address + 2-byte port.
-    Ipv6([u8; 16], u16),
+    /// `ATYPE` 0x04: 4-byte IPv4 address.
+    Ipv4([u8; 4]),
+    /// `ATYPE` 0x06: 16-byte IPv6 address.
+    Ipv6([u8; 16]),
 }
 
 impl Addr {
     /// The tor-spec address type byte.
     pub fn atype(&self) -> u8 {
         match self {
-            Self::Ipv4(_, _) => 0x04,
-            Self::Ipv6(_, _) => 0x06,
+            Self::Ipv4(_) => 0x04,
+            Self::Ipv6(_) => 0x06,
         }
     }
 
     fn encode_into(&self, out: &mut Vec<u8>) {
         out.push(self.atype());
         match self {
-            Self::Ipv4(octets, port) => {
-                out.push(6);
+            // tor-spec §4.5: "ALEN MUST be 4 when ATYPE is 0x04 (IPv4) and
+            // 16 when ATYPE is 0x06 (IPv6)" — the wire form carries the bare
+            // address with no port. The previous 6/18-byte encoding (with a
+            // port) was a spec violation that made our NETINFO cells
+            // unparseable for real responders.
+            Self::Ipv4(octets) => {
+                out.push(4);
                 out.extend_from_slice(octets);
-                out.extend_from_slice(&port.to_be_bytes());
             }
-            Self::Ipv6(octets, port) => {
-                out.push(18);
+            Self::Ipv6(octets) => {
+                out.push(16);
                 out.extend_from_slice(octets);
-                out.extend_from_slice(&port.to_be_bytes());
             }
         }
     }
@@ -160,15 +163,13 @@ impl Addr {
             available: bytes.len().saturating_sub(offset + 1),
         })? as usize;
         match (atype, alen) {
-            (0x04, 6) => {
+            (0x04, 4) => {
                 let addr = take_array::<4>(bytes, offset + 2)?;
-                let port = read_u16(bytes, offset + 6)?;
-                Ok((Self::Ipv4(addr, port), offset + 8))
+                Ok((Self::Ipv4(addr), offset + 6))
             }
-            (0x06, 18) => {
+            (0x06, 16) => {
                 let addr = take_array::<16>(bytes, offset + 2)?;
-                let port = read_u16(bytes, offset + 18)?;
-                Ok((Self::Ipv6(addr, port), offset + 20))
+                Ok((Self::Ipv6(addr), offset + 18))
             }
             _ => Err(TransportError::Cell("unsupported NETINFO address type")),
         }
@@ -255,6 +256,64 @@ fn read_u16(bytes: &[u8], offset: usize) -> Result<u16, TransportError> {
     Ok(u16::from_be_bytes(take_array::<2>(bytes, offset)?))
 }
 
+/// Encode a `VERSIONS` cell in the pre-negotiation variable-length wire
+/// format (tor-spec §3 and §4.1).
+///
+/// The `VERSIONS` cell is the negotiation anchor itself: the post-negotiation
+/// fixed-width cell format only exists *after* a link version has been
+/// agreed, so a fixed-width `VERSIONS` cell is a protocol violation. Real
+/// responders read a variable-length cell and reset connections that send
+/// anything else there.
+///
+/// Per tor-spec §3, "The first VERSIONS cell, and any cells sent before the
+/// first VERSIONS cell, always have CIRCID_LEN == 2 for backward
+/// compatibility" — the circuit id is TWO bytes on this first cell, not the
+/// four-byte width of link protocol v4+. (The previous four-byte-circid
+/// encoding made the responder parse our cell as a PADDING cell and wait
+/// forever; observed against live bridges as silent read timeouts.)
+///
+/// Returns the exact bytes to write for the client's opening `VERSIONS` cell.
+///
+/// # Errors
+/// [`TransportError::Cell`] when `versions` is empty or the value does not
+/// fit the 2-byte length field.
+pub fn versions_variable_cell(versions: &[u16]) -> Result<Vec<u8>, TransportError> {
+    if versions.is_empty() {
+        return Err(TransportError::Cell(
+            "VERSIONS cell needs at least one link version",
+        ));
+    }
+    let value_len =
+        u16::try_from(versions.len() * 2).map_err(|_| TransportError::Cell("too many versions"))?;
+    let mut out = Vec::with_capacity(5 + versions.len() * 2);
+    // Circuit id 0 at the pre-negotiation TWO-byte width (tor-spec §3).
+    out.extend_from_slice(&0u16.to_be_bytes());
+    out.push(CMD_VERSIONS);
+    out.extend_from_slice(&value_len.to_be_bytes());
+    for version in versions {
+        out.extend_from_slice(&version.to_be_bytes());
+    }
+    Ok(out)
+}
+
+/// Decode the payload of a server `VERSIONS` variable-length cell (the bytes
+/// after its 2-byte value length) into the advertised link versions.
+///
+/// # Errors
+/// [`TransportError::Cell`] when the value length is odd or the value is
+/// truncated.
+pub fn versions_from_variable_payload(value: &[u8]) -> Result<Vec<u16>, TransportError> {
+    if value.len() % 2 != 0 {
+        return Err(TransportError::Cell(
+            "VERSIONS value length must be a whole number of two-byte versions",
+        ));
+    }
+    Ok(value
+        .chunks_exact(2)
+        .map(|pair| u16::from_be_bytes([pair[0], pair[1]]))
+        .collect())
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
@@ -310,18 +369,34 @@ mod tests {
     fn netinfo_cell_round_trips_v4_and_v6() {
         let netinfo = NetinfoCell {
             timestamp: 1_700_000_000,
-            other_addr: Some(Addr::Ipv4([192, 0, 2, 1], 9001)),
+            other_addr: Some(Addr::Ipv4([192, 0, 2, 1])),
             my_addrs: vec![
-                Addr::Ipv4([198, 51, 100, 7], 443),
-                Addr::Ipv6(
-                    [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
-                    9001,
-                ),
+                Addr::Ipv4([198, 51, 100, 7]),
+                Addr::Ipv6([0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]),
             ],
         };
         let cell = netinfo.to_cell(0).unwrap();
         assert_eq!(cell.command, CMD_NETINFO);
         assert_eq!(NetinfoCell::from_cell(&cell).unwrap(), netinfo);
+    }
+
+    // Regression (tor-spec §4.5): "ALEN MUST be 4 when ATYPE is 0x04 (IPv4)
+    // and 16 when ATYPE is 0x06 (IPv6)" — the wire form carries the bare
+    // address, with no port. The previous 6/18-byte encoding made our
+    // NETINFO cells unparseable for spec-compliant responders.
+    #[test]
+    fn netinfo_addr_wire_form_has_no_port() {
+        let netinfo = NetinfoCell {
+            timestamp: 0,
+            other_addr: Some(Addr::Ipv4([192, 0, 2, 1])),
+            my_addrs: vec![],
+        };
+        let encoded = netinfo.to_cell(0).unwrap().encode();
+        // payload: timestamp(4) + ATYPE + ALEN + AVAL(4) + NMYADDR
+        assert_eq!(encoded[5], 0x04, "ATYPE");
+        assert_eq!(encoded[6], 4, "ALEN MUST be 4 for IPv4");
+        assert_eq!(&encoded[7..11], &[192, 0, 2, 1]);
+        assert_eq!(encoded[11], 0, "NMYADDR");
     }
 
     #[test]

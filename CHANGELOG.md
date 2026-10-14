@@ -1,5 +1,82 @@
 # Changelog
 
+## [Session 29b] — 2026-10-14 — Vanilla ORPort probe now speaks the real Tor link protocol (TLS + variable-length VERSIONS + spec-shaped NETINFO)
+
+Live end-to-end result after the fixes: **10-11 of 40 sampled vanilla bridges
+complete the full Tor link handshake (link v5, `VERSIONS` + `NETINFO`)** with
+the prober — before this session the vanilla probe could not complete a single
+handshake (177 consecutive failures in run 38524232542; 130/130 failures in
+run 38553205773). Root causes were three independent protocol violations,
+each verified against the authoritative tor-spec and live bridges:
+
+### Fixed
+- **Vanilla probes never established TLS**
+  (`crates/prober/src/{socket,tls,engine}.rs`, new `tls` module). The
+  ORPort link protocol runs *inside* a TLS session (tor-spec §2); the probe
+  sent plaintext cells at a TLS listener and every bridge reset the
+  connection (`connection_reset during read` for all 130 vanilla candidates
+  in run 38553205773). The engine now upgrades vanilla and WebTunnel
+  sockets to TLS before the transport handshake (`tokio-rustls`/`rustls`,
+  pinned to the root crate's versions and gated off the ARM-musl CI
+  type-check exactly like the root crate). The TLS layer accepts any server
+  certificate — a deliberate liveness/protocol-shape trust boundary
+  documented in `crates/prober/src/tls.rs`; bridge identity remains the
+  line's fingerprint, and no authentication claim is ever stamped beyond
+  the transport handshake. WebTunnel probes now TLS-upgrade to the `url=`
+  front domain (SNI = front host) instead of sending plaintext upgrades
+  that CDNs answered with HTTP 400/526/302.
+- **The opening `VERSIONS` cell violated tor-spec §3**
+  (`crates/transports/src/vanilla.rs`, new `versions_variable_cell`;
+  `crates/prober/src/probe/vanilla.rs`). The probe sent a fixed-width
+  514-byte `VERSIONS` cell with a four-byte circuit id. The spec is explicit:
+  the fixed-width format only exists *after* a link version is agreed, and
+  "The first VERSIONS cell, and any cells sent before the first VERSIONS
+  cell, always have CIRCID_LEN == 2". With the four-byte form the responder
+  parsed our cell as `PADDING` and went silently idle (all 12 sampled
+  bridges: TLS ok, then zero response for the full read timeout). The probe
+  now sends the variable-length cell (2-byte circid, command 7, 2-byte
+  value length, then the two-byte versions) and offers link protocols
+  4 and 5, so the post-negotiation fixed-width framing is uniformly the
+  514-byte / 4-byte-circid form the codec already implements.
+- **`NETINFO` addresses carried a port and the client timestamp was
+  fingerprintable**
+  (`crates/transports/src/vanilla.rs`, `Addr`; prober `vanilla.rs`).
+  tor-spec §4.5: "ALEN MUST be 4 when ATYPE is 0x04 (IPv4) and 16 when
+  ATYPE is 0x06 (IPv6)" — the previous encoding wrote ALEN 6/18 with a
+  trailing port, which a spec-compliant responder cannot parse (and the
+  prober's own decoder rejected real server `NETINFO` cells for the same
+  reason). Addresses are now bare 4/16-byte values on the wire, the client
+  sends timestamp 0 ("Clients SHOULD send 0 as their timestamp, to avoid
+  fingerprinting"), and the cell carries a parseable `other_addr` (the
+  endpoint actually connected to) with an empty my-addr list.
+- **Fixed-width cell re-framing off-by-two** (prober `vanilla.rs`). The
+  pre-negotiation (512-byte) and post-negotiation (514-byte) fixed cells
+  are read through a shared header + remainder path; the remainder was
+  copied into the wrong offset (a `copy_from_slice` length mismatch panic
+  on the first live server response). Both re-frame paths now place the
+  header-carried payload bytes explicitly, and both readers tolerate
+  variable-length `VPADDING` cells on either side of the negotiation.
+- **`Socket` flush for TLS carriers** (prober `socket.rs`). rustls buffers
+  plaintext until an explicit flush; the TLS arm of `write_all` now flushes
+  so short cells (a 9-byte `VERSIONS`) always reach the wire.
+
+### Verified (live, from this environment)
+- `handshake_probe` against 40 sampled vanilla bridges:
+  `connected=11 (S3, "link v5 VERSIONS + NETINFO handshake completed")`,
+  21 honest timeouts (bridges down or anti-probe tarpitting of this
+  environment's IP), 5 refusals, 3 inconclusive — real typed evidence on
+  every outcome.
+- `cargo test --locked --all-features`: 48 targets, 0 failures (new
+  regressions: variable-format VERSIONS bytes, NETINFO wire shape,
+  two-byte-circid decoding, spec-shaped server NETINFO, TLS upgrade
+  classifications against silent/resetting peers, per-transport server-name
+  selection).
+- `cargo clippy --all-features --all-targets -- -D warnings` clean;
+  `cargo fmt --check` clean; `go vet`/`go test` clean;
+  `sync_bridge_outputs --verify-only` verified; `validate_workflows`
+  7 files, 0 violations.
+
+
 ## [Session 29] — 2026-10-14 — Issue #257 follow-up: stratified S2+ coverage, honest run-window evidence labels, vanilla transport fix, self-closing tracking issue
 
 Verified against live run 38524232542 (merge push of PR #262, all 14 jobs green):

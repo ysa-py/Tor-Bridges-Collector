@@ -10,10 +10,14 @@
 //! | Transport | What is actually performed |
 //! |---|---|
 //! | obfs4 | identity decode, a well-formed `clientRequest` with correct `M_C`/`MAC_C` marks, and verification of the server `M_S`/`MAC_S` (see the honest boundary below) |
-//! | WebTunnel | RFC 6455 HTTP upgrade request, `101` response parse, and `Sec-WebSocket-Accept` verification |
-//! | vanilla ORPort | tor-spec `VERSIONS` + `NETINFO` link-cell exchange |
+//! | WebTunnel | client TLS session to the `url=` front domain, RFC 6455 HTTP upgrade request, `101` response parse, and `Sec-WebSocket-Accept` verification |
+//! | vanilla ORPort | client TLS session to the ORPort (tor-spec §2), then the `VERSIONS` + `NETINFO` link-cell exchange inside TLS (tor-spec §3/§4) |
 //! | meek | domain-fronted `POST` envelope and response status parse |
 //! | Snowflake | broker rendezvous poll (`/client`) and response parse |
+//!
+//! TLS-based probes establish the TLS session through [`tls::start_tls`] with
+//! any-server-certificate acceptance — a deliberate liveness/protocol-shape
+//! trust boundary documented in [`tls`].
 //!
 //! ## Honest scope boundary (obfs4)
 //!
@@ -42,6 +46,7 @@ pub mod probe;
 pub mod result;
 pub mod retry;
 pub mod socket;
+pub mod tls;
 
 pub use config::ProbeConfig;
 pub use engine::Prober;
