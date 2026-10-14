@@ -1,5 +1,70 @@
 # Changelog
 
+## [Session 29] — 2026-10-14 — Issue #257 follow-up: stratified S2+ coverage, honest run-window evidence labels, vanilla transport fix, self-closing tracking issue
+
+Verified against live run 38524232542 (merge push of PR #262, all 14 jobs green):
+Stage 2 accepted the fresh report ("S1 evidence: 461, previous: 340"), the
+four webtunnel projections publish probe-resolved IPv4 endpoints (111 lines),
+and the publication guard stayed silent. Four residual defects remained.
+
+### Fixed
+- **Vanilla bridges carried a `host:port` pseudo-transport label**
+  (`internal/bridge/bridge.go`, `ParseLine`). Prefix-less vanilla lines start
+  directly with the endpoint; the parser stored `tokens[0]` (the endpoint
+  token) as the transport type, so all 488 vanilla records in
+  `bridge/iran_results.json` surfaced distinct `transport` values such as
+  `"104.152.210.181:1105"` and per-transport aggregation silently scattered
+  them. Endpoint-shaped first tokens are now classified `vanilla`
+  (`knownTransportToken`/`endpointToken` helpers); transport-prefixed lines
+  keep their explicit type. Verified end-to-end with the built binary against
+  a mixed sample (vanilla/obfs4/webtunnel/snowflake).
+- **S2+ handshake quota starved every family except obfs4**
+  (`src/bin/handshake_probe.rs`, `select_candidates`/`run`). The reachable-
+  first global take plus a 300-bridge quota let the largest family absorb the
+  whole budget: run 38524232542 selected 300 candidates and produced
+  `connected=123` — all obfs4 — leaving vanilla (166 TCP-reachable),
+  webtunnel (188 TCP-reachable), snowflake, and meek with zero S2+
+  observations and permanently empty `*_tested.txt` /
+  `tested_global_*.txt` projections. Selection is now stratified
+  round-robin per transport family (reachable-first, score-descending inside
+  each family, deterministic alphabetical rotation) with per-family counts in
+  the run summary (`selected_by_transport=[...]`), and the workflow quota was
+  raised to 400 (worst-case ~400s < the 480s budget).
+- **This run's own S1 evidence was relabeled "untested (rate-limited)"**
+  (`src/evidence_stamp.rs`, `derive_result_at`/`stamp_results`; 
+  `src/bin/pipeline.rs`, results stage). The near-now freshness window is ten
+  minutes, but the tester may spend its whole watchdog probing 1700+
+  candidates and the results stage stamps the report only after the relay
+  merge and webtunnel front probes. In run 38524232542, 1242 of 1786 records
+  were stamped `untested (rate-limited)` — a false claim for probes that
+  actually succeeded (649 records carried `tcp_reachable=true`). Stamping now
+  accepts typed observations made inside the current run's observation window
+  (tester `generated_at` minus a 15-minute watchdog floor) via
+  `derive_result_in_run_at`/`stamp_results_in_run_at`; anything older (a
+  previous hourly run) stays rejected, and future-dated observations remain
+  rejected beyond the standard skew.
+- **Healthy runs never closed the degraded-publication tracking issue**
+  (`.github/workflows/torshield-ir.yml`, Stage 11b). The issue text promises
+  "Close this issue once the funnel is healthy again", but the healthy branch
+  exited without touching the thread, so issue #257 stayed open for hours
+  after the funnel recovered. The healthy path now closes the open tracking
+  issue with a comment carrying the run URL, published commit, restored-file
+  list, contract file count, and evidence-backed tested/advisory totals.
+
+### Verification
+- `cargo fmt --all -- --check` — clean
+- `cargo clippy --locked --all-features --all-targets -- -D warnings` — clean
+- `cargo test --locked --all-features` — 48 targets, 0 failures (includes new
+  stratification, run-window, and budget-label regression tests)
+- `gofmt` clean; `go vet ./...` clean; `go test -race ./...` — all packages ok
+- `CGO_ENABLED=0 go build -o iran_tester ./cmd/iran_tester/` + live sample run:
+  vanilla lines classify `transport="vanilla"`; two real vanilla bridges
+  TCP-reachable
+- `cargo run --locked --release --bin sync_bridge_outputs -- --bridge-dir
+  bridge --verify-only` — verified
+- `cargo run --locked --bin validate_workflows` — 7 files, 0 violations
+
+
 ## [Session 28] — 2026-10-14 — Issue #257: like-for-like Stage 2 evidence gate + resolved webtunnel endpoints
 
 Root causes fixed (all verified against run 38513360053 logs and committed data):
