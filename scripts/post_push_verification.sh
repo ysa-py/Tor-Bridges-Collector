@@ -21,9 +21,8 @@ BRIDGE_DIR="${1:-bridge}"
 BRANCH="${POST_PUSH_VERIFY_BRANCH:-main}"
 ATTEMPTS="${POST_PUSH_VERIFY_ATTEMPTS:-5}"
 SLEEP_SECS="${POST_PUSH_VERIFY_SLEEP_SECS:-10}"
-# Sample size for payload re-download (0 = all files). The manifest itself is
-# always fetched, and every file listed in it is verified when SAMPLE=0.
-SAMPLE="${POST_PUSH_VERIFY_SAMPLE:-0}"
+# Every payload file listed in the manifest is verified (no sampling): the
+# payload is small text files and the whole point is byte-level certainty.
 
 repo="${GITHUB_REPOSITORY:-ysa-py/Tor-Bridges-Collector}"
 base_url="https://raw.githubusercontent.com/${repo}/refs/heads/${BRANCH}"
