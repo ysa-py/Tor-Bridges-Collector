@@ -625,10 +625,23 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     }
 
     // ECHOED SCRIPT SOURCE, not an emitted annotation: CI steps print their
-    // own command text (`echo "::error::..."`, `{ echo "::error::..."; exit 1; }`)
-    // when listing/verifying script bodies. A REAL annotation has `::error::`
-    // at the start of the message; an echo of it is source code.
-    if message_lower.contains("echo \"::error::") || message_lower.contains("echo \"::warning::") {
+    // own command text (`echo "::error::..."`, `print(f"::error::...")`,
+    // `{ echo "::error::..."; exit 1; }`) when listing/verifying script
+    // bodies. A REAL annotation has `::error::` at the START of the message
+    // (after optional GitHub styling); an echo of it is source code.
+    if message_lower.contains("echo \"::error::")
+        || message_lower.contains("echo \"::warning::")
+        || message_lower.contains("print(\"::error::")
+        || message_lower.contains("print(f\"::error::")
+        || message_lower.contains("print(\"::warning::")
+        || message_lower.contains("print(f\"::warning::")
+    {
+        return None;
+    }
+    // Explicit success markers ("[PASS] C9 no-panic-traps — clean") are
+    // success evidence even when their LABEL contains alarming substrings
+    // ("no-panic-traps" matched the panic rule).
+    if message_lower.contains("[pass]") || message_lower.contains("✓ passed") {
         return None;
     }
     // Shell/Makefile comment lines from echoed script bodies are never
