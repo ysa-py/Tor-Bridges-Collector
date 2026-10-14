@@ -9,69 +9,57 @@
         {
           "attempt": 1,
           "method": "GET",
-          "status": 403
-        },
-        {
-          "attempt": 2,
-          "method": "GET+browser-headers",
-          "status": 403
-        },
-        {
-          "attempt": 3,
-          "method": "HEAD",
-          "status": 403
+          "status": 200
         }
       ],
+      "bytes": 1237,
       "doc": "rdsys-readme",
-      "error": "non-2xx",
-      "status": 403,
-      "url": "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/README.md"
+      "mechanism_tokens": [
+        "distributor",
+        "https",
+        "moat"
+      ],
+      "status": 200,
+      "url": "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Frdsys/repository/files/README%2Emd/raw?ref=main"
     },
     {
       "attempts": [
         {
           "attempt": 1,
           "method": "GET",
-          "status": 403
-        },
-        {
-          "attempt": 2,
-          "method": "GET+browser-headers",
-          "status": 403
-        },
-        {
-          "attempt": 3,
-          "method": "HEAD",
-          "status": 403
+          "status": 200
         }
       ],
+      "bytes": 5528,
       "doc": "rdsys-distributor-config",
-      "error": "non-2xx",
-      "status": 403,
-      "url": "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/config/rdsys.yaml"
+      "mechanism_tokens": [
+        "distributor",
+        "email",
+        "gettor",
+        "https",
+        "moat",
+        "telegram",
+        "webtunnel"
+      ],
+      "status": 200,
+      "url": "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Frdsys/repository/files/conf%2Fconfig%2Ejson/raw?ref=main"
     },
     {
       "attempts": [
         {
           "attempt": 1,
           "method": "GET",
-          "status": 403
-        },
-        {
-          "attempt": 2,
-          "method": "GET+browser-headers",
-          "status": 403
-        },
-        {
-          "attempt": 3,
-          "method": "HEAD",
-          "status": 403
+          "status": 200
         }
       ],
+      "bytes": 1644,
       "doc": "webtunnel-project-readme",
-      "error": "non-2xx",
-      "status": 403,
-      "url": "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel/-/raw/main/README.md"
+      "mechanism_tokens": [
+        "https",
+        "webtunnel"
+      ],
+      "status": 200,
+      "url": "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Fpluggable-transports%2Fwebtunnel/repository/files/README%2Emd/raw?ref=main"
     },
     {
       "attempts": [
@@ -88,7 +76,7 @@
       "url": "https://bridges.torproject.org/"
     }
   ],
-  "generated_at": "2026-10-14T13:58:28.552371434+00:00",
+  "generated_at": "2026-10-14T16:07:30.548042657+00:00",
   "relay_observations": {
     "by_host": {},
     "by_transport": {},
@@ -101,16 +89,23 @@
       "requests": 4,
       "responses_ok": 4,
       "source": "webtunnel_html_rotation"
+    },
+    {
+      "added_records": 0,
+      "fetched_lines": 0,
+      "requests": 2,
+      "responses_ok": 0,
+      "source": "webtunnel_html_edge"
     }
   ],
   "webtunnel_family_counts": {
     "added_by_webtunnel_source": {},
     "after": {
-      "webtunnel": 147,
+      "webtunnel": 157,
       "webtunnel_ipv6": 244
     },
     "before": {
-      "webtunnel": 147,
+      "webtunnel": 157,
       "webtunnel_ipv6": 244
     }
   }
