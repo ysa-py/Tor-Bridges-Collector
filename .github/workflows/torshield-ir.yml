@@ -1251,6 +1251,13 @@ jobs:
       env:
         WEBTUNNEL_EXTRA_DRAWS: '1'
         WEBTUNNEL_DOCS_AUDIT: 'true'
+        # v2.9 edge-vantage fallback: when the runner's direct BridgeDB draw
+        # is vantage-gated (empty interstitial), the module re-draws the same
+        # canonical pages through the authenticated probe-relay Worker's
+        # POST /page endpoint. Same secrets as Stage 4-prep/4; no new secret.
+        # The fallback stays off unless both vars are present and valid.
+        PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+        PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"

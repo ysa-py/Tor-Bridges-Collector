@@ -46,10 +46,23 @@
 # Additive-only policy enforced in AutoDebugEngine.apply_patch_to_repo().
 name: AI Self-Healing Engine
 
-# Serialize diagnosis per upstream ref while allowing independent branches to
-# heal concurrently; cancel obsolete callbacks to avoid queue amplification.
+# Serialize re-diagnosis of the SAME parent run while allowing independent
+# parent runs to diagnose concurrently; cancel only obsolete callbacks.
+#
+# GROUP-KEY FIX (2026-10-14): the previous group used
+# `github.event.workflow_run.head_branch` — a single "main" bucket shared by
+# EVERY upstream completion. The repo's own pipeline fires a burst of
+# workflow_run completions per push (Bridge Intelligence, Main CI, AI Bridge
+# Re-Ranker, CI contract, Package, Cleanup, …), so each newly triggered
+# self-heal run CANCELLED the previous one mid-flight, producing the recurring
+# "Canceling since a higher priority waiting request for AI
+# Self-Healing Engine-main exists" + "The operation was canceled" error
+# annotations (runs 38573433638, 38573194161, 38577722966, …). Keying the
+# group by the parent run id keeps one self-heal execution per parent run:
+# independent parents diagnose concurrently; only a genuinely stale
+# re-diagnosis of the same parent is cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.head_branch || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id || github.ref }}
   cancel-in-progress: true
 
 env:

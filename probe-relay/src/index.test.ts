@@ -1134,6 +1134,137 @@ describe("protected /probe handler", () => {
   });
 });
 
+// ─── v2.9: edge-vantaged allowlisted page fetch (POST /page) ────────────────
+
+describe("POST /page (v2.9 edge-vantaged BridgeDB supply fetch)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const pageUrl = "https://bridges.torproject.org/bridges?transport=webtunnel";
+
+  function makePageRequest(body: string, token: string | null = "test-relay-secret") {
+    const headers: Record<string, string> = { "Content-Type": "application/json" };
+    if (token !== null) headers["X-Probe-Token"] = token;
+    return new Request("https://relay.example/page", { method: "POST", headers, body });
+  }
+
+  it("requires the same auth, media type, and path discipline as /probe", async () => {
+    const noToken = await worker.fetch(makePageRequest(JSON.stringify({ url: pageUrl }), null), {
+      PROBE_RELAY_TOKEN: "test-relay-secret",
+    });
+    expect(noToken.status).toBe(401);
+    const wrongMedia = await worker.fetch(
+      new Request("https://relay.example/page", {
+        method: "POST",
+        headers: { "Content-Type": "text/plain", "X-Probe-Token": "test-relay-secret" },
+        body: JSON.stringify({ url: pageUrl }),
+      }),
+      { PROBE_RELAY_TOKEN: "test-relay-secret" },
+    );
+    expect(wrongMedia.status).toBe(415);
+    const unknownPath = await worker.fetch(
+      new Request("https://relay.example/pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Probe-Token": "test-relay-secret" },
+        body: JSON.stringify({ url: pageUrl }),
+      }),
+      { PROBE_RELAY_TOKEN: "test-relay-secret" },
+    );
+    expect(unknownPath.status).toBe(404);
+  });
+
+  it("rejects non-allowlisted targets and malformed bodies without any network activity", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    const invalidBodies = [
+      JSON.stringify({ url: "https://evil.example/internal" }),
+      JSON.stringify({ url: "https://bridges.torproject.org/bridges?transport=obfs4" }),
+      JSON.stringify({ url: "https://bridges.torproject.org/bridges?transport=webtunnel&extra=1" }),
+      JSON.stringify({ target: pageUrl }),
+      JSON.stringify({ url: 42 }),
+      JSON.stringify([pageUrl]),
+      "{",
+      JSON.stringify({ url: pageUrl, extra: "field" }),
+    ];
+    for (const body of invalidBodies) {
+      const response = await worker.fetch(makePageRequest(body), {
+        PROBE_RELAY_TOKEN: "test-relay-secret",
+      });
+      expect(response.status).toBe(400);
+      expect(await response.json()).toHaveProperty("error");
+    }
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("returns the capped upstream page text on success", async () => {
+    const pageText = '<html><div id="bridgelines">webtunnel [2001:db8::1]:443 f</div></html>';
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(pageText, { status: 200 })),
+    );
+    const response = await worker.fetch(makePageRequest(JSON.stringify({ url: pageUrl })), {
+      PROBE_RELAY_TOKEN: "test-relay-secret",
+    });
+    expect(response.status).toBe(200);
+    const body: any = await response.json();
+    expect(body).toMatchObject({
+      url: pageUrl,
+      status: 200,
+      bytes: pageText.length,
+      truncated: false,
+      text: pageText,
+    });
+  });
+
+  it("truncates oversized upstream bodies at the page cap and keeps typing", async () => {
+    const oversized = "x".repeat(256 * 1024 + 4096);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(oversized, { status: 200 })),
+    );
+    const response = await worker.fetch(makePageRequest(JSON.stringify({ url: pageUrl })), {
+      PROBE_RELAY_TOKEN: "test-relay-secret",
+    });
+    expect(response.status).toBe(200);
+    const body: any = await response.json();
+    expect(body.truncated).toBe(true);
+    expect(body.bytes).toBe(oversized.length);
+    expect(body.text.length).toBeLessThanOrEqual(256 * 1024);
+  });
+
+  it("maps upstream transport failure to a typed 502 without echoing the URL", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("connect https://secret-host.internal failed");
+      }),
+    );
+    const response = await worker.fetch(makePageRequest(JSON.stringify({ url: pageUrl })), {
+      PROBE_RELAY_TOKEN: "test-relay-secret",
+    });
+    expect(response.status).toBe(502);
+    const body: any = await response.json();
+    expect(body.error).toBe("page_fetch_failed");
+    expect(JSON.stringify(body)).not.toContain("secret-host");
+  });
+
+  it("forwards a browser-like UA and never follows redirects off the allowlist", async () => {
+    const fetchSpy = vi.fn(async (_url: string, _init: RequestInit) => new Response("moved", { status: 302, headers: { Location: "https://evil.example/" } }));
+    vi.stubGlobal("fetch", fetchSpy);
+    const response = await worker.fetch(makePageRequest(JSON.stringify({ url: pageUrl })), {
+      PROBE_RELAY_TOKEN: "test-relay-secret",
+    });
+    expect(response.status).toBe(200);
+    const body: any = await response.json();
+    expect(body.status).toBe(302);
+    expect(body.text).toBe("moved");
+    const [, init]: [string, RequestInit] = fetchSpy.mock.calls[0];
+    expect(init.redirect).toBe("manual");
+    expect((init.headers as Record<string, string>)["User-Agent"]).toContain("Firefox");
+  });
+});
+
 // ─── v2.8: deploy-version identity on the unauthenticated 405 path ──────────
 // The version-safe deploy guard in torshield-ir.yml Stage 4-prep reads
 // GET / → 405 → {version: {git_sha, git_ts}} to decide whether this run's

@@ -1,6 +1,11 @@
 export const MAX_REQUEST_BODY_BYTES = 64 * 1024;
 export const MAX_BRIDGES_PER_REQUEST = 6;
 export const MAX_HOST_BYTES = 253;
+/** v2.9: response-page budget for the edge-vantaged BridgeDB documentation
+ *  fetch (`POST /page`). The largest observed BridgeDB page is ~27 KB; the
+ *  cap is generous but bounded so a mutated upstream can never stream an
+ *  unbounded body through the Worker. */
+export const MAX_PAGE_BYTES = 256 * 1024;
 
 export type AllowedTransport =
   | "obfs4"
@@ -412,6 +417,47 @@ export function validateBridgeList(value: unknown, maxBridges = MAX_BRIDGES_PER_
     bridges.push(checked.bridge);
   }
   return { ok: true, bridges };
+}
+
+/** v2.9: the FIXED allowlist of public Tor Project documentation/supply
+ *  pages the Worker will fetch from the edge vantage (`POST /page`).
+ *
+ *  The Worker is a security-hardened probe relay; it must never become a
+ *  general-purpose proxy. Exact string equality against this list is the
+ *  entire access-control model for the page fetcher — no redirects are
+ *  followed (`redirect: "manual"`), no other URL is ever fetched, and the
+ *  response is size-capped. The two targets are the canonical BridgeDB
+ *  WebTunnel pages the CI supply pipeline already draws directly; the edge
+ *  vantage exists because BridgeDB gates its HTML interface per client
+ *  IP reputation and the GitHub Actions vantage consistently receives an
+ *  empty interstitial (measured run 38574505786). */
+export const ALLOWED_PAGE_TARGETS: readonly string[] = [
+  "https://bridges.torproject.org/bridges?transport=webtunnel",
+  "https://bridges.torproject.org/bridges?transport=webtunnel&ipv6=yes",
+];
+
+export type PageTargetResult =
+  | { ok: true; url: string }
+  | { ok: false; status: 400 | 413; error: "page_object_required" | "page_url_required" | "page_target_not_allowed" };
+
+/** Validate a `POST /page` JSON body of the shape `{ "url": "<allowlisted>" }`. */
+export function validatePageTarget(value: unknown): PageTargetResult {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return { ok: false, status: 400, error: "page_object_required" };
+  }
+  const object = value as Record<string, unknown>;
+  const keys = Object.keys(object);
+  if (keys.length !== 1 || keys[0] !== "url") {
+    return { ok: false, status: 400, error: "page_url_required" };
+  }
+  const url = object.url;
+  if (typeof url !== "string") {
+    return { ok: false, status: 400, error: "page_url_required" };
+  }
+  if (!ALLOWED_PAGE_TARGETS.includes(url)) {
+    return { ok: false, status: 400, error: "page_target_not_allowed" };
+  }
+  return { ok: true, url };
 }
 
 /** Compare token bytes without returning early when a content byte differs. */

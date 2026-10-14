@@ -86,7 +86,7 @@ grep -Fxq "X-Probe-Token: ${FAKE_CURL_EXPECT_TOKEN:?}" "$header_file" || exit 99
 jq -e --argjson controls "${FAKE_CURL_EXPECT_CONTROLS_JSON:?}" '
   type == "array" and length == ($controls|length) + 2 and
   .[0].id == "silent-live" and .[0].host == "example.com" and .[0].port == 443 and
-  .[1].id == "refused-port" and .[1].host == "example.com" and .[1].port == 1 and
+  .[1].id == "closed-port" and .[1].host == "example.com" and .[1].port == 1 and
   .[2:] == $controls and all(.[]; .transport == "vanilla")
 ' "$request_file" >/dev/null || exit 100
 
@@ -112,16 +112,30 @@ jq -c --arg mode "$body_mode" --arg observed_at "$(date -u +'%Y-%m-%dT%H:%M:%S.1
       port: $b.port,
       success: ($b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-")))),
       status: (if $b.id == "silent-live" then "connected"
-               elif $b.id == "refused-port" then "refused"
+               elif $b.id == "closed-port" then (if $mode == "closed-port-drops" then "timeout"
+                                                 elif $mode == "inconclusive-closed" then "inconclusive"
+                                                 else "refused" end)
                elif $mode == "no-timeout" then "connected"
                else "timeout" end),
       stage: (if $b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-"))) then "S1" else "S0" end),
       vantage: {type:"cloudflare_worker",colo:"TEST"},
       observed_at: (if $mode == "stale" then "2020-01-01T00:00:00Z" else $observed_at end),
       rtt_ms: (if $b.id == "timeout-control-1" then null else 3 end),
-      detail: (if $b.id == "silent-live" then "TCP connection established" elif $b.id == "refused-port" then "connection refused" else "probe timed out" end),
-      error_class: (if $b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-"))) then null elif $b.id == "refused-port" then "connection_refused" else "tcp_connect_timeout" end),
-      error: (if $b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-"))) then null elif $b.id == "refused-port" then "connection refused" else "probe timed out" end)
+      detail: (if $b.id == "silent-live" then "TCP connection established"
+               elif $b.id == "closed-port" then (if $mode == "closed-port-drops" then "probe timed out"
+                                                 elif $mode == "inconclusive-closed" then "probe cancelled by caller"
+                                                 else "connection refused" end)
+               else "probe timed out" end),
+      error_class: (if $b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-"))) then null
+                    elif $b.id == "closed-port" then (if $mode == "closed-port-drops" then "tcp_connect_timeout"
+                                                      elif $mode == "inconclusive-closed" then "caller_cancelled"
+                                                      else "connection_refused" end)
+                    else "tcp_connect_timeout" end),
+      error: (if $b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-"))) then null
+              elif $b.id == "closed-port" then (if $mode == "closed-port-drops" then "probe timed out"
+                                                elif $mode == "inconclusive-closed" then "probe cancelled by caller"
+                                                else "connection refused" end)
+              else "probe timed out" end)
     } ] as $results |
   {results:$results,
    stats:{attempted:($results|length),completed:($results|length),
@@ -134,7 +148,7 @@ jq -c --arg mode "$body_mode" --arg observed_at "$(date -u +'%Y-%m-%dT%H:%M:%S.1
    marker:"response-body-secret-must-not-be-logged"}
 ' "$request_file" > "$output_file"
 if [[ "$body_mode" == wrong-content ]]; then
-  jq '(.results[] | select(.id == "refused-port") | .status) = "connected"' "$output_file" > "${output_file}.tmp"
+  jq '(.results[] | select(.id == "closed-port") | .status) = "connected"' "$output_file" > "${output_file}.tmp"
   mv "${output_file}.tmp" "$output_file"
 elif [[ "$body_mode" == wrong-target ]]; then
   jq '(.results[] | select(.id == "timeout-control-1") | .host) = "203.0.113.99"' "$output_file" > "${output_file}.tmp"
@@ -211,17 +225,37 @@ printf '["1.1.1.1:443 malformed-result"]\n' > "$tmp_dir/malformed-primary.json"
 fallback_selected="$(bash "$selector" "$tmp_dir/malformed-primary.json" "$bridge_candidates" 2>/dev/null)" || fail 'selector did not fall back from malformed primary results'
 jq -e 'length == 2 and map(.host) == ["93.184.216.34","8.8.8.8"]' <<< "$fallback_selected" >/dev/null || fail 'malformed primary result was incorrectly treated as a timeout candidate'
 
+# The closed-port control reporting a silent SYN drop (timeout, not RST) is the
+# REAL-WORLD dominant closed-port class — the canary must accept it. This is
+# the exact regression that failed Stage 4 3/3 with HTTP 200 on every run.
+printf '200 0 closed-port-drops\n' > "$sequence_file"
+: > "$count_file"
+if PROBE_RELAY_SMOKE_REPORT_PATH="$report_file" run_smoke > "$log_file" 2>&1; then :; else fail 'a silent SYN drop on the closed-port control must still satisfy the typed contract'; fi
+[[ "$(cat "$count_file")" == 1 ]] || fail 'expected one request for the closed-port-drops case'
+jq -e '([.controls[]|select(.id == "closed-port" and .status == "timeout" and .stage == "S0")]|length)==1' "$report_file" >/dev/null || fail 'closed-port drop was not recorded as a typed S0 timeout'
+assert_redacted
+
+# A closed-port control claiming "inconclusive" (no typed negative at all) is
+# still rejected — acceptance is limited to refused|timeout.
+printf '200 0 inconclusive-closed\n' > "$sequence_file"
+: > "$count_file"
+if PROBE_RELAY_SMOKE_MAX_ATTEMPTS=1 run_smoke > "$log_file" 2>&1; then
+  fail 'an untyped closed-port outcome was accepted as canary evidence'
+fi
+[[ "$(cat "$count_file")" == 1 ]] || fail 'inconclusive closed-port should use one request'
+assert_redacted
+
 # A transient transport error is retried; the redacted report records only typed live-style fields.
 printf '000 28 transport-error\n200 0 valid\n' > "$sequence_file"
 : > "$count_file"
 if PROBE_RELAY_SMOKE_REPORT_PATH="$report_file" run_smoke > "$log_file" 2>&1; then :; else fail 'expected safe retry followed by valid typed controls'; fi
 [[ "$(cat "$count_file")" == 2 ]] || fail 'expected exactly two curl attempts after recovery'
 grep -Fq 'retrying' "$log_file" || fail 'missing safe retry diagnostic'
-grep -Fq 'silent-live S1, refused-port S0, 1 freshly timed-out public control(s) S0' "$log_file" || fail 'smoke failed to name the observed outcome classes'
+grep -Fq 'silent-live S1, closed-port S0, 1 freshly timed-out public control(s) S0' "$log_file" || fail 'smoke failed to name the observed outcome classes'
 jq -e '.schema_version == 1 and .kind == "probe_relay_smoke" and .evidence_class == "mock" and
   .result == "passed" and .stats.attempted == 3 and .stats.current_timeout_controls == 1 and
   ([.controls[]|select(.id == "silent-live" and .status == "connected" and .stage == "S1" and .vantage.type == "cloudflare_worker")]|length)==1 and
-  ([.controls[]|select(.id == "refused-port" and .status == "refused" and .stage == "S0")]|length)==1 and
+  ([.controls[]|select(.id == "closed-port" and .status == "refused" and .stage == "S0")]|length)==1 and
   ([.controls[]|select(.id == "timeout-control-1" and .status == "timeout" and .stage == "S0" and .rtt_ms == null)]|length)==1 and
   all(.controls[]; (has("host")|not) and (has("port")|not) and (has("detail")|not) and (has("error")|not))
 ' "$report_file" >/dev/null || fail 'redacted evidence report did not preserve measured status/stage/vantage/RTT'

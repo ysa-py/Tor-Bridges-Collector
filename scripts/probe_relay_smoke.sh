@@ -96,9 +96,18 @@ curl_stderr_file="$tmp_dir/curl.stderr"
 curl_config="$tmp_dir/curl.conf"
 header_file="$tmp_dir/auth.header"
 
+# The second control is a CLOSED-PORT negative: the worker must report a typed
+# S0 non-connected outcome for an unreachable endpoint, discriminating it from
+# the reachable silent-live control. Both observable closed-port classes are
+# accepted — "refused" (TCP RST) and "timeout" (silent SYN drop) — because the
+# public internet overwhelmingly DROPS closed ports instead of resetting them
+# (measured live 2026-10-14: example.com:1, example.com:81, 8.8.8.8:1,
+# 8.8.4.4:1, 1.0.0.1:1, 9.9.9.9:1 all silently drop; curl exit 28, no RST).
+# Requiring the narrower "refused" class made this canary fail 3/3 on every
+# run with HTTP 200 (Stage 4 chronically skipped, relay_attempted=0).
 jq -cn --argjson timeout_controls "$timeout_controls_json" '
   [{id:"silent-live",host:"example.com",port:443,transport:"vanilla"},
-   {id:"refused-port",host:"example.com",port:1,transport:"vanilla"}] + $timeout_controls
+   {id:"closed-port",host:"example.com",port:1,transport:"vanilla"}] + $timeout_controls
 ' > "$request_body"
 printf 'url = "%s"\n' "$smoke_url" > "$curl_config"
 printf 'X-Probe-Token: %s\n' "$relay_token" > "$header_file"
@@ -136,8 +145,8 @@ validate_smoke_response() {
     (.stats | type == "object") and counts_match and
     ([.results[] | select(.id == "silent-live" and .host == "example.com" and .port == 443 and
        .status == "connected" and .stage == "S1" and valid_common)] | length == 1) and
-    ([.results[] | select(.id == "refused-port" and .host == "example.com" and .port == 1 and
-       .status == "refused" and .stage == "S0" and valid_common)] | length == 1) and
+    ([.results[] | select(.id == "closed-port" and .host == "example.com" and .port == 1 and
+       (.status == "refused" or .status == "timeout") and .stage == "S0" and valid_common)] | length == 1) and
     all($timeout_controls[];
       . as $control |
       ([$response.results[] | select(.id == $control.id and .host == $control.host and .port == $control.port and
@@ -225,7 +234,7 @@ for ((attempt = 1; attempt <= max_attempts; attempt++)); do
       } >> "$GITHUB_STEP_SUMMARY"
     fi
     timeout_count="$(jq '[.results[]|select((.id|startswith("timeout-control-")) and .status=="timeout")]|length' "$response_file")"
-    echo "Probe relay content canaries passed: silent-live S1, refused-port S0, ${timeout_count} freshly timed-out public control(s) S0 (HTTP 200; authenticated; targets and credentials redacted)."
+    echo "Probe relay content canaries passed: silent-live S1, closed-port S0, ${timeout_count} freshly timed-out public control(s) S0 (HTTP 200; authenticated; targets and credentials redacted)."
     exit 0
   fi
 

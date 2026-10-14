@@ -2,10 +2,12 @@
 import { connect } from "cloudflare:sockets";
 import {
   MAX_BRIDGES_PER_REQUEST,
+  MAX_PAGE_BYTES,
   constantTimeTokenEqual,
   configuredInteger,
   readJsonRequestBody,
   validateBridgeList,
+  validatePageTarget,
 } from "./security";
 
 // Local socket interface matching cloudflare:sockets Socket at runtime.
@@ -340,7 +342,7 @@ export default {
       }
 
       const url = new URL(request.url);
-      if (url.pathname !== "/probe") {
+      if (url.pathname !== "/probe" && url.pathname !== "/page") {
         return jsonResponse(404, { error: "not_found" });
       }
 
@@ -367,6 +369,12 @@ export default {
 
       const body = await readJsonRequestBody(request);
       if (!body.ok) return jsonResponse(body.status, { error: body.error });
+
+      // v2.9: edge-vantaged documentation/supply page fetch. Strictly
+      // allowlisted, size-capped, and authenticated — see handlePageRequest.
+      if (url.pathname === "/page") {
+        return await handlePageRequest(body.value);
+      }
 
       const maxBridges = configuredInteger(
         env.MAX_BRIDGES_PER_REQUEST,
@@ -454,6 +462,100 @@ export default {
     }
   },
 };
+
+// ─── v2.9: Edge-Vantaged Page Fetch (allowlisted BridgeDB supply) ───
+
+const PAGE_FETCH_TIMEOUT_MS = 15000;
+const PAGE_USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64; rv:128.0) Gecko/20100101 Firefox/128.0 TorShieldIR-EdgeSupply/2.9";
+
+/**
+ * Fetch one allowlisted public page from the Worker's edge vantage.
+ *
+ * WHY (measured, run 38574505786): BridgeDB gates its HTML interface per
+ * client IP reputation — the GitHub Actions vantage consistently receives
+ * an HTTP 200 interstitial with zero bridge lines while the same URL serves
+ * real bridge lines elsewhere. This endpoint lets the CI pipeline re-draw
+ * those pages from Cloudflare's edge, a materially different IP class.
+ *
+ * SECURITY MODEL (unchanged probe-relay posture):
+ *   - same `X-Probe-Token` shared secret and media-type checks as `/probe`;
+ *   - the target must EXACTLY match `ALLOWED_PAGE_TARGETS` (no redirects are
+ *     followed — `redirect: "manual"` — so a mutated upstream cannot bounce
+ *     the fetch off the allowlist);
+ *   - response body is hard-capped at `MAX_PAGE_BYTES` (stream is cancelled
+ *     beyond the cap; `truncated: true` reports it);
+ *   - bounded 15s fetch deadline via AbortController;
+ *   - no request/URL/target content is ever echoed into error text.
+ *
+ * Response shape (200):
+ *   { url, status, bytes, truncated, text }
+ * `status` is the UPSTREAM page's HTTP status (the CI client re-checks it);
+ * `text` is the raw page body, lossily UTF-8 decoded, capped.
+ */
+export async function handlePageRequest(body: unknown): Promise<Response> {
+  const checked = validatePageTarget(body);
+  if (!checked.ok) {
+    return jsonResponse(checked.status, { error: checked.error });
+  }
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PAGE_FETCH_TIMEOUT_MS);
+  try {
+    const response = await fetch(checked.url, {
+      method: "GET",
+      redirect: "manual",
+      signal: controller.signal,
+      headers: {
+        "User-Agent": PAGE_USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+      },
+    });
+
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+    let truncated = false;
+    if (reader) {
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        totalBytes += value.byteLength;
+        if (totalBytes > MAX_PAGE_BYTES) {
+          truncated = true;
+          try { void reader.cancel().catch(() => {}); } catch { /* stream already closed */ }
+          break;
+        }
+        chunks.push(value);
+      }
+    }
+
+    const kept = Math.min(totalBytes, MAX_PAGE_BYTES);
+    const merged = new Uint8Array(kept);
+    let offset = 0;
+    for (const chunk of chunks) {
+      if (offset >= kept) break;
+      const slice = chunk.byteLength > kept - offset ? chunk.subarray(0, kept - offset) : chunk;
+      merged.set(slice, offset);
+      offset += slice.byteLength;
+    }
+    const text = new TextDecoder("utf-8", { fatal: false, ignoreBOM: false }).decode(merged);
+    console.log(`[probe-relay] page_fetch target=allowlisted upstream_status=${response.status} bytes=${totalBytes} truncated=${truncated}`);
+    return jsonResponse(200, {
+      url: checked.url,
+      status: response.status,
+      bytes: totalBytes,
+      truncated,
+      text,
+    });
+  } catch {
+    // Do not serialize raw exceptions: abort/fetch messages can embed URLs.
+    console.error("[probe-relay] page_fetch error_class=internal");
+    return jsonResponse(502, { error: "page_fetch_failed" });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 // ─── Concurrency-Limited Probing Engine ─────────────────────────────
 

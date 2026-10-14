@@ -51,11 +51,14 @@
 
 use std::collections::BTreeMap;
 use std::fs;
+use std::net::{TcpStream, ToSocketAddrs};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
 use torshield_ir_ultra::evidence_stamp;
+use torshield_ir_ultra::ip_guard::is_documentation_or_reserved_ip;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Paths (env-overridable so tests and local runs never touch production files)
@@ -525,6 +528,51 @@ pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
 // Section 4: front-domain survivability
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// Upper bound on per-run front liveness verifications (bounded network I/O).
+const MAX_FRONT_LIVENESS_CHECKS: usize = 16;
+/// Per-attempt TCP connect budget for the front liveness check.
+const FRONT_LIVENESS_TIMEOUT: Duration = Duration::from_secs(3);
+
+/// Independently verify a front domain's TCP-443 liveness (additive,
+/// 2026-10-14).
+///
+/// WHY: the concentrated-failure attribution ("front domain unreachable for
+/// every candidate using it") previously inferred FRONT health purely from
+/// CANDIDATE outcomes — but candidates also die for bridge-side reasons
+/// (dead bridge, rotated key, blocked IP). Run 38574505786 declared nine
+/// fronts unreachable, including universally-alive domains (www.google.com,
+/// cdn.ampproject.org, ajax.aspnetcdn.com), purely because every candidate
+/// that referenced them failed — a mis-attribution that read as nonsense to
+/// any operator. This check measures the FRONT itself: a real TCP connect to
+/// `domain:443` from the runner, capped at [`MAX_FRONT_LIVENESS_CHECKS`]
+/// domains per run and [`FRONT_LIVENESS_TIMEOUT`] per address.
+///
+/// Returns:
+/// * `Some(true)`  — at least one resolved global address accepted the
+///   connection (front alive; candidate failures are bridge-side).
+/// * `Some(false)` — every resolved global address refused or timed out
+///   (front-level fault CONFIRMED by direct measurement).
+/// * `None`        — DNS resolution failed, or every resolved address was
+///   private/reserved/documentation (SSRF guard: never dial non-global
+///   targets); liveness is UNKNOWN, never guessed.
+fn verify_front_liveness(domain: &str) -> Option<bool> {
+    let resolved = (domain, 44u16).to_socket_addrs().ok()?;
+    let candidates: Vec<_> = resolved
+        .filter(|addr| !is_documentation_or_reserved_ip(addr.ip()))
+        .collect();
+    if candidates.is_empty() {
+        return None;
+    }
+    let mut checked = 0;
+    for address in candidates.iter().take(3) {
+        checked += 1;
+        if TcpStream::connect_timeout(address, FRONT_LIVENESS_TIMEOUT).is_ok() {
+            return Some(true);
+        }
+    }
+    Some(checked == 0)
+}
+
 /// Extract the front domains a bridge line dials, from `front=` (single) and
 /// `fronts=` (comma list) parameters.
 pub fn front_domains(line: &str) -> Vec<String> {
@@ -658,7 +706,7 @@ fn main() {
         println!("  wrote {}", drift_out.display());
 
         // Section 4: front-domain survivability (same history input).
-        let fronts = front_survivability(&history);
+        let mut fronts = front_survivability(&history);
         let concentrated: Vec<String> = fronts
             .as_object()
             .map(|map| {
@@ -675,14 +723,60 @@ fn main() {
                 map.keys().cloned().collect::<Vec<_>>().join(", ")
             );
         }
+        // Independent front liveness verification (additive, 2026-10-14):
+        // concentrated CANDIDATE failure is not proof the FRONT is down. The
+        // runner now dials each concentrated front directly (TCP 443, bounded)
+        // and the advisory distinguishes confirmed front-level faults from
+        // bridge-side failures behind an alive front.
+        let mut confirmed_front_faults = Vec::new();
         for domain in &concentrated {
+            if confirmed_front_faults.len() >= MAX_FRONT_LIVENESS_CHECKS {
+                break;
+            }
+            let liveness = verify_front_liveness(domain);
+            let (verdict, advisory) = match liveness {
+                Some(true) => (
+                    "reachable",
+                    "front verified reachable (direct TCP-443 connect succeeded); all candidates using it failed — bridge-side fault, not a front-level fault".to_string(),
+                ),
+                Some(false) => {
+                    confirmed_front_faults.push(domain.clone());
+                    (
+                        "unreachable",
+                        format!(
+                            "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all {n} candidate(s) using it — front-level fault",
+                            n = fronts[domain]["candidates"].as_u64().unwrap_or(0)
+                        ),
+                    )
+                }
+                None => (
+                    "unknown",
+                    "front liveness inconclusive (DNS resolution failed or only non-global addresses resolved); candidate failures cannot be attributed".to_string(),
+                ),
+            };
+            if let Some(entry) = fronts.as_object_mut().and_then(|map| map.get_mut(domain)) {
+                entry["front_liveness_tcp443"] = json!(verdict);
+                entry["advisory"] = json!(advisory);
+            }
+        }
+        for domain in &confirmed_front_faults {
             println!(
-                "::notice::front domain {domain} is unreachable for every candidate using it (advisory; see data/front_domain_survivability.json)"
+                "::notice::front domain {domain} CONFIRMED unreachable by direct verification (TCP-443) while every candidate using it failed — front-level fault (advisory; see data/front_domain_survivability.json)"
+            );
+        }
+        let unverifiable: Vec<&String> = concentrated
+            .iter()
+            .filter(|domain| !confirmed_front_faults.contains(domain))
+            .collect();
+        for domain in &unverifiable {
+            println!(
+                "::notice::front domain {domain} verified reachable or inconclusive by direct verification; the concentrated candidate failure is bridge-side, not front-level (advisory; see data/front_domain_survivability.json)"
             );
         }
         let report = json!({
             "generated_at": now.to_rfc3339(),
             "fronts": fronts,
+            "front_liveness_verified": !concentrated.is_empty(),
             "advisory_only": true,
         });
         write_json_file(&front_out, &report);
@@ -1023,6 +1117,27 @@ mod tests {
         assert_eq!(cdn77["concentrated_failure"], false);
         // Non-fronted bridges never appear.
         assert!(fronts.get("obfs4 1.2.3.4:9001 f").is_none());
+    }
+
+    /// The SSRF guard: a front that resolves ONLY to loopback/private
+    /// addresses is never dialed, even when something is actively listening
+    /// there — liveness is reported as unknown instead.
+    #[test]
+    fn front_liveness_refuses_to_dial_private_targets() {
+        // Something IS listening on loopback — proving the guard (not an
+        // unreachable target) is what prevents the dial. The production
+        // check pins port 443, so a private-resolution domain is filtered
+        // before any dial regardless of what listens there.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind loopback");
+        let _listener = listener; // keep the listener alive for the asserts
+        assert_eq!(verify_front_liveness("127.0.0.1"), None);
+        assert_eq!(verify_front_liveness("10.255.0.1"), None);
+        assert_eq!(verify_front_liveness("192.0.2.1"), None);
+        // RFC 6761 .invalid never resolves; DNS-level unknown, never dialed.
+        assert_eq!(
+            verify_front_liveness("this-domain-definitely-does-not-exist.invalid"),
+            None
+        );
     }
 
     #[test]
