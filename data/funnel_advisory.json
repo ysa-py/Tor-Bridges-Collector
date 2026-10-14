@@ -8,12 +8,12 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1783,
+      "count": 1785,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1783,
+      "count": 1785,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-14T00:50:38.911641672+00:00",
+  "generated_at": "2026-10-14T02:00:27.292394461+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -83,31 +83,31 @@
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 0,
     "iran_likely_working_webtunnel.txt": 0,
-    "obfs4.txt": 696,
+    "obfs4.txt": 698,
     "obfs4_tested.txt": 0,
     "tested_global_obfs4.txt": 0,
     "tested_global_vanilla.txt": 0,
     "tested_global_webtunnel.txt": 0,
     "vanilla.txt": 423,
-    "vanilla_tested.txt": 165,
+    "vanilla_tested.txt": 164,
     "webtunnel.txt": 244,
     "webtunnel_ipv6.txt": 244
   },
   "relay_coverage": {
-    "candidates": 1783,
+    "candidates": 1785,
     "relay_observations": 0,
     "relay_success": 0,
     "unobserved_by_transport": {
       "meek_lite": 1,
       "no_literal_endpoint": 4,
-      "obfs4": 1040,
+      "obfs4": 1042,
       "snowflake": 6,
       "vanilla": 488,
       "webtunnel": 244
     },
-    "unobserved_candidates": 1779,
+    "unobserved_candidates": 1781,
     "unobserved_non_routable": 251,
-    "unobserved_other": 1528
+    "unobserved_other": 1530
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 1779
+    "unobserved_candidates": 1781
   },
   "sources": {
     "sources": [
@@ -189,7 +189,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2193,
+        "fetched_lines": 2197,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
