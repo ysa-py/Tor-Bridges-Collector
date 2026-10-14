@@ -23,6 +23,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math/rand/v2"
 	"net"
 	"os"
 	"runtime"
@@ -264,9 +265,7 @@ func classifyBridge(
 	result.Transport = b.Type
 
 	// ── Step 1: TCP reachability ──────────────────────────────────────────
-	bridgeCtx, cancel := context.WithTimeout(ctx, timeout)
-	defer cancel()
-	tcpObservation := tcpProbeWithContext(bridgeCtx, b, timeout)
+	tcpObservation := tcpProbeWithContext(ctx, b, timeout)
 	tcpOK := tcpObservation.Reachable
 	result.TCPReachable = tcpOK
 	observedAt := tcpObservation.ObservedAt
@@ -534,9 +533,25 @@ func lineForTransport(b *bridge.Transport) string {
 	return net.JoinHostPort(b.Host, fmt.Sprintf("%d", b.Port))
 }
 
+// dialTCP is the per-connection dial primitive used by tcpProbeWithContext.
+// It is a package-level variable so tests can substitute a deterministic
+// fake without touching the network; production code always uses the
+// default net.Dialer below.
+var dialTCP = func(ctx context.Context, timeout time.Duration, addr string) (net.Conn, error) {
+	dialer := net.Dialer{Timeout: timeout}
+	return dialer.DialContext(ctx, "tcp", addr)
+}
+
 // tcpProbeWithContext performs only an S1 TCP connect and records a typed
 // result. It deliberately does not infer transport capability or Iran reachability.
-func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.Duration) TCPObservation {
+//
+// Engineering directive v42 §C: connect timeouts are retried exactly once
+// with bounded jitter before the timeout verdict is recorded. A single
+// dropped SYN is common on middlebox paths and must not sink a reachable
+// bridge. Refusals and other errors are terminal and are never retried.
+// The retry stays inside the per-connection budget and the caller-owned run
+// context, so a slow host can never mislabel the whole batch.
+func tcpProbeWithContext(runCtx context.Context, b *bridge.Transport, timeout time.Duration) TCPObservation {
 	observedAt := time.Now().UTC().Format(time.RFC3339Nano)
 	if b.Host == "" || b.Port == 0 {
 		return TCPObservation{
@@ -547,11 +562,39 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 			ObservedAt: observedAt,
 		}
 	}
-	started := time.Now()
 	vantage := &ProbeVantage{Type: "github_actions_runner"}
-	dialer := net.Dialer{Timeout: timeout}
-	conn, err := dialer.DialContext(ctx, "tcp", lineForTransport(b))
+
+	started := time.Now()
+	dialCtx, cancelDial := context.WithTimeout(runCtx, timeout)
+	conn, err := dialTCP(dialCtx, timeout, lineForTransport(b))
 	observedAt = time.Now().UTC().Format(time.RFC3339Nano)
+	if err != nil && isConnectTimeout(err) {
+		// One retry with bounded jitter. If the run context expired in
+		// the meantime the retry is skipped: the caller already labels
+		// outstanding work as budget-exhausted, and adding a dial to a
+		// cancelled context would misreport the cause.
+		if runCtx.Err() == nil {
+			jitter := time.Duration(rand.Int64N(int64(maxRetryJitterMS))) * time.Millisecond
+			select {
+			case <-time.After(jitter):
+			case <-runCtx.Done():
+				return TCPObservation{
+					Status:     "inconclusive",
+					Stage:      "S0",
+					Vantage:    vantage,
+					Detail:     "TCP probe was cancelled during the timeout retry backoff",
+					ErrorClass: "probe_cancelled",
+					ObservedAt: time.Now().UTC().Format(time.RFC3339Nano),
+				}
+			}
+			started = time.Now()
+			cancelDial()
+			dialCtx, cancelDial = context.WithTimeout(runCtx, timeout)
+			conn, err = dialTCP(dialCtx, timeout, lineForTransport(b))
+			observedAt = time.Now().UTC().Format(time.RFC3339Nano)
+		}
+	}
+	cancelDial()
 	if err != nil {
 		status := "error"
 		errorClass := "tcp_connect_error"
@@ -560,10 +603,15 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 		switch {
 		case errors.Is(err, syscall.ECONNREFUSED):
 			status, errorClass, detail = "refused", "connection_refused", "TCP connection was refused"
-		case errors.Is(err, context.DeadlineExceeded) || errors.As(err, &netErr) && netErr.Timeout():
-			status, errorClass, detail = "timeout", "tcp_connect_timeout", "TCP connection timed out"
-		case errors.Is(err, context.Canceled):
+		case runCtx.Err() != nil || errors.Is(err, context.Canceled):
+			// The caller-owned run context expired or was cancelled:
+			// this dial outcome reflects budget exhaustion or
+			// cancellation, not a per-connection network verdict.
+			// Labeling it as a connect timeout would misattribute
+			// slow hosts (v42 C-directive).
 			status, errorClass, detail = "inconclusive", "probe_cancelled", "TCP probe was cancelled"
+		case errors.Is(err, context.DeadlineExceeded) || errors.As(err, &netErr) && netErr.Timeout():
+			status, errorClass, detail = "timeout", "tcp_connect_timeout", "TCP connection timed out after one jittered retry"
 		}
 		// S1 is reached only after a successful TCP connect. A refusal,
 		// timeout, or error is an S0 attempt with an explicit runner vantage.
@@ -581,6 +629,24 @@ func tcpProbeWithContext(ctx context.Context, b *bridge.Transport, timeout time.
 		ObservedAt: observedAt,
 	}
 }
+
+// isConnectTimeout reports whether the dial error is a per-connection
+// timeout (as opposed to refusal, unresolvable host, or cancellation).
+func isConnectTimeout(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	return errors.As(err, &netErr) && netErr.Timeout()
+}
+
+// maxRetryJitterMS bounds the retry backoff (milliseconds): short enough to
+// keep the whole batch inside the run budget, long enough to desynchronize
+// worker retries against the same middlebox.
+const maxRetryJitterMS = 250
 
 func main() {
 	inputFlag := flag.String("input", "bridge/bridge_list_for_testing.json", "JSON array of bridge strings")

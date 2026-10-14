@@ -1,5 +1,82 @@
 # Changelog
 
+## [Session 28] — 2026-10-14 — Issue #257: like-for-like Stage 2 evidence gate + resolved webtunnel endpoints
+
+Root causes fixed (all verified against run 38513360053 logs and committed data):
+
+### Fixed
+- **Stage 2 evidence guard structural false positive**
+  (`.github/workflows/torshield-ir.yml`, Stage 2 step). The gate counted
+  `.verification.stage ∈ {S2..S6}` in the staged report, but the Go
+  `iran_tester` only emits S0/S1 rows (S1 = successful runner-side TCP
+  connect); typed S2+ evidence is merged at finalize time by Stage 8w
+  (`handshake_probe` → `data/pt_results.json` → Stage 9 results join). A
+  mid-cycle staged report can therefore never contain S2+ rows, while the
+  last-known-good report it was compared against carries the previous
+  cycle's post-merge rows (123 S3). Result: every hourly run degraded
+  (`new S2+=0, previous=123`), fresh `iran_results.json` was never accepted,
+  and the publication stayed frozen. The gate now compares like-for-like
+  runner-side S1 evidence (the class the tester actually produces at this
+  pipeline point) with the same 50% collapse threshold and the same
+  schema validation.
+- **Sticky `summary.run_deadline_exceeded`**
+  (`guard_bridge_publication.sh` signal 1). Once true (an earlier deadline
+  hit), the flag survived forever because rejected fresh reports never
+  replaced the retained file and no stage reset it, so every subsequent
+  healthy run was marked degraded. Stage 2 now re-attests the live
+  summary to the staged run's own verdict whenever the tester completed
+  cleanly inside both budgets; the accept path is a no-op because the
+  live file already is the staged report.
+- **Webtunnel placeholder-endpoint publication loop**
+  (`src/bridge_publication.rs`, `candidates_from_history`). BridgeDB
+  substitutes RFC 3849 `2001:db8::/32` placeholders for webtunnel
+  endpoints; all 244 collected records are classified `ip_version=ipv6`
+  from that synthetic literal. The transport front probe resolves the real
+  endpoint from `url=` (173/244 → IPv4 CDN addresses in run 38513360053),
+  but the resolved form was only used for evidence-gated `_tested`
+  projections, so every inventory projection excluded all placeholder-raw
+  lines (strict reserved-endpoint filter) and the four webtunnel IPv6
+  files collapsed to empty on each run — which the publication guard then
+  "restored" from grandfathered bytes containing the same placeholders,
+  keeping issue #257 open. The publisher now adopts the fingerprint-joined
+  probe-resolved dialable form for placeholder-raw candidates in ALL
+  projections and classifies IPv4/IPv6 by the real endpoint (v42 §C). The
+  canonical history keeps the originally collected form; unresolved
+  placeholders stay out of consumer files (honest zero-yield).
+- **Honest result labels** (`src/evidence_stamp.rs`). Observed timeouts are
+  now `untested (tcp timeout)`, generic errors `untested (probe error)`,
+  run-budget exhaustion `untested (budget exhausted)`; the
+  `untested (rate-limited)` tag remains only for inconclusive/missing
+  evidence with no typed cause. A real timeout was previously labeled
+  rate-limited (v42 §C: never mislabel a timeout).
+- **Run-context cancellation misattribution**
+  (`cmd/iran_tester/main.go`). When the shared run deadline fired, in-flight
+  dials failed with context errors that were classified as per-connection
+  `tcp_connect_timeout`, misattributing budget exhaustion to the network.
+  The probe now separates the run context from the per-attempt dial
+  context and labels run-context expiry as `probe_cancelled`.
+- **Timeout probes get exactly one jittered retry**
+  (`cmd/iran_tester/main.go`). Connect timeouts retry once with 0–250 ms
+  bounded jitter inside the per-connection budget; refusals and other
+  errors stay terminal. A single dropped SYN no longer sinks a reachable
+  bridge, and the retry attribution is recorded in the typed detail.
+- **Hourly cron moved off the top of the hour**
+  (`.github/workflows/torshield-ir.yml` schedule `0 * * * *` → `17 * * * *`,
+  invariant C14 updated in lockstep): GitHub Actions throttles crons that
+  land in the first minutes of the hour, which delayed publications by
+  hours; the offset minute keeps the same hourly cadence inside the
+  execution window.
+
+### Tests
+- `resolved_placeholder_endpoint_publishes_real_endpoint_and_family` and
+  `unresolved_placeholder_endpoint_stays_out_of_consumer_files`
+  (tests/bridge_publication.rs) pin the webtunnel resolution contract.
+- `budget_exhaustion_is_labeled_explicitly` and the updated neutral-result
+  assertions (src/evidence_stamp.rs) pin the honest labels.
+- Four new Go tests (cmd/iran_tester/main_test.go) pin the retry contract:
+  exactly one retry on timeout, S1 success after retry, refusals terminal,
+  cancelled runs never re-dial.
+
 ## [Session 27] — 2026-09-06 — Stop Stage 0b silent truncation + raise probe concurrency
 
 - Live run `34010772126` showed Stage 0b stops at exactly 11:00 because the

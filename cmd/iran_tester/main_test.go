@@ -2,8 +2,10 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
+	"syscall"
 	"testing"
 	"time"
 
@@ -311,5 +313,130 @@ func TestClassifyLinesHonorsRunDeadlineAndPreservesInconclusiveRows(t *testing.T
 	}
 	if deadlineRows < len(lines)-2 {
 		t.Fatalf("deadline rows=%d, want at least %d unstarted rows to be emitted without network work", deadlineRows, len(lines)-2)
+	}
+}
+
+// dialOutcome is one scripted dial attempt: exactly one of conn or err.
+type dialOutcome struct {
+	conn net.Conn
+	err  error
+}
+
+// fakeDialer counts dial attempts and plays a scripted list of outcomes.
+type fakeDialer struct {
+	attempts int
+	outcomes []dialOutcome
+}
+
+func (f *fakeDialer) dial(_ context.Context, _ time.Duration, _ string) (net.Conn, error) {
+	idx := f.attempts
+	f.attempts++
+	if idx < len(f.outcomes) {
+		return f.outcomes[idx].conn, f.outcomes[idx].err
+	}
+	return nil, errors.New("fake dialer exhausted")
+}
+
+func timeoutDialError(d time.Duration) error {
+	return &timeoutError{d: d}
+}
+
+type timeoutError struct{ d time.Duration }
+
+func (e *timeoutError) Error() string   { return "i/o timeout" }
+func (e *timeoutError) Timeout() bool   { return true }
+func (e *timeoutError) Temporary() bool { return true }
+
+func webtunnelProbeTarget() *bridge.Transport {
+	parsed, err := bridge.ParseLine("webtunnel 192.0.2.1:443 0000000000000000000000000000000000000000 url=https://example.com/x ver=0.0.3")
+	if err != nil {
+		panic(err)
+	}
+	return parsed
+}
+
+// v42 §C: a connect timeout is retried exactly once with bounded jitter; a
+// second timeout records the explicit retry in the typed detail.
+func TestTCPProbeRetriesConnectTimeoutExactlyOnce(t *testing.T) {
+	fake := &fakeDialer{outcomes: []dialOutcome{{err: timeoutDialError(time.Second)}, {err: timeoutDialError(time.Second)}}}
+	original := dialTCP
+	dialTCP = fake.dial
+	defer func() { dialTCP = original }()
+
+	observation := tcpProbeWithContext(context.Background(), webtunnelProbeTarget(), 300*time.Millisecond)
+
+	if fake.attempts != 2 {
+		t.Fatalf("dial attempts=%d, want exactly 2 (initial + one retry)", fake.attempts)
+	}
+	if observation.Status != "timeout" || observation.ErrorClass != "tcp_connect_timeout" {
+		t.Fatalf("status=%q error_class=%q, want typed timeout", observation.Status, observation.ErrorClass)
+	}
+	if observation.Stage != "S0" {
+		t.Fatalf("stage=%q, want S0 after a failed retry", observation.Stage)
+	}
+	if observation.Detail != "TCP connection timed out after one jittered retry" {
+		t.Fatalf("detail=%q, want explicit retry attribution", observation.Detail)
+	}
+}
+
+// v42 §C: when the retry connects, the observation is a genuine S1 success.
+func TestTCPProbeRetrySucceedsAfterTimeout(t *testing.T) {
+	client, server := net.Pipe()
+	defer server.Close()
+	fake := &fakeDialer{outcomes: []dialOutcome{{err: timeoutDialError(time.Second)}, {conn: client}}}
+	original := dialTCP
+	dialTCP = fake.dial
+	defer func() { dialTCP = original }()
+
+	observation := tcpProbeWithContext(context.Background(), webtunnelProbeTarget(), 300*time.Millisecond)
+
+	if fake.attempts != 2 {
+		t.Fatalf("dial attempts=%d, want exactly 2", fake.attempts)
+	}
+	if !observation.Reachable || observation.Stage != "S1" || observation.Status != "connected" {
+		t.Fatalf("observation=%#v, want S1 connected after successful retry", observation)
+	}
+	if observation.RTTMS == nil || *observation.RTTMS < 0 {
+		t.Fatalf("rtt=%v, want a measured non-negative value", observation.RTTMS)
+	}
+	client.Close()
+}
+
+// v42 §C: refusals are terminal and are never retried.
+func TestTCPProbeDoesNotRetryRefusedConnections(t *testing.T) {
+	fake := &fakeDialer{outcomes: []dialOutcome{{err: syscall.ECONNREFUSED}}}
+	original := dialTCP
+	dialTCP = fake.dial
+	defer func() { dialTCP = original }()
+
+	observation := tcpProbeWithContext(context.Background(), webtunnelProbeTarget(), 300*time.Millisecond)
+
+	if fake.attempts != 1 {
+		t.Fatalf("dial attempts=%d, want exactly 1 (refusals are terminal)", fake.attempts)
+	}
+	if observation.Status != "refused" || observation.ErrorClass != "connection_refused" {
+		t.Fatalf("status=%q error_class=%q, want typed refusal", observation.Status, observation.ErrorClass)
+	}
+}
+
+// A timeout whose run context expired before the retry backoff must stay
+// inconclusive (probe_cancelled) instead of dialing into a dead context.
+func TestTCPProbeSkipsRetryWhenRunContextExpired(t *testing.T) {
+	fake := &fakeDialer{outcomes: []dialOutcome{{err: timeoutDialError(time.Second)}}}
+	original := dialTCP
+	dialTCP = fake.dial
+	defer func() { dialTCP = original }()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	time.Sleep(30 * time.Millisecond) // let the shared run deadline expire
+
+	observation := tcpProbeWithContext(ctx, webtunnelProbeTarget(), 300*time.Millisecond)
+
+	if fake.attempts != 1 {
+		t.Fatalf("dial attempts=%d, want exactly 1 (cancelled runs must not re-dial)", fake.attempts)
+	}
+	if observation.Status != "inconclusive" || observation.ErrorClass != "probe_cancelled" {
+		t.Fatalf("status=%q error_class=%q, want probe_cancelled", observation.Status, observation.ErrorClass)
 	}
 }

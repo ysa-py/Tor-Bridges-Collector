@@ -928,7 +928,12 @@ mod tests {
             .to_string();
         torshield_ir_ultra::evidence_stamp::stamp_entry(&mut result, &run_timestamp);
         assert_eq!(result["test_tier"], "tier_0_attempt");
-        assert_eq!(result["test_result"], "untested (rate-limited)");
+        // A real timeout must be labeled as a timeout, not as rate limiting
+        // (engineering directive v42 §C).
+        assert_eq!(
+            result["test_result"],
+            torshield_ir_ultra::evidence_stamp::RESULT_TIMEOUT
+        );
     }
 
     #[test]

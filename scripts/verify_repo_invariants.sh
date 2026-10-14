@@ -342,7 +342,7 @@ def c14_workflow_automation_gates():
     workflow = open(path, encoding="utf-8").read()
     hourly = bool(
         re.search(
-            r"(?m)^\s*-\s*cron:\s*['\"]?0 \* \* \* \*['\"]?\s*$",
+            r"(?m)^\s*-\s*cron:\s*['\"]?17 \* \* \* \*['\"]?\s*$",
             workflow,
         )
     )
