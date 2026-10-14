@@ -160,6 +160,32 @@ fn read_bridges(input: &Path) -> Option<Vec<Value>> {
         .or_else(|| root.as_array().cloned())
 }
 
+/// Lower bound of the current run's observation window, derived from the
+/// iran_tester report's own `generated_at` (the completion time of THIS run's
+/// tester stage).
+///
+/// The tester may legitimately spend its whole watchdog budget probing a large
+/// candidate list, and the results stage stamps the report after the relay
+/// merge and webtunnel front probes. Stamping therefore happens well past the
+/// ten-minute near-now freshness window, which previously relabeled most of a
+/// run's own S1 TCP evidence as `untested (rate-limited)`. Accepting
+/// observations made inside the run window keeps those typed results honest;
+/// the floor (tester end minus its watchdog budget plus margin, capped by the
+/// `RUN_OBSERVATION_FLOOR_MINUTES` default below) still rejects anything from
+/// a previous hourly run.
+const RUN_OBSERVATION_FLOOR_MINUTES: i64 = 15;
+
+fn run_observation_floor(input: &Path) -> Option<chrono::DateTime<chrono::Utc>> {
+    let text = std::fs::read_to_string(input).ok()?;
+    let root: Value = serde_json::from_str(&text).ok()?;
+    let generated_at = root.get("generated_at").and_then(Value::as_str)?;
+    let parsed = chrono::DateTime::parse_from_rfc3339(generated_at).ok()?;
+    Some(
+        parsed.with_timezone(&chrono::Utc)
+            - chrono::Duration::minutes(RUN_OBSERVATION_FLOOR_MINUTES),
+    )
+}
+
 /// Outcome of a single stage.
 enum Outcome {
     Ok(Value),
@@ -247,7 +273,11 @@ fn stage_results(input: &Path) -> StageResult {
                         );
                     }
                 }
-                stamp = evidence_stamp::stamp_results(&mut root, &run_timestamp);
+                stamp = evidence_stamp::stamp_results_in_run_at(
+                    &mut root,
+                    &run_timestamp,
+                    run_observation_floor(input),
+                );
                 if let Some(obj) = root.as_object_mut() {
                     obj.insert(
                         "evidence".to_string(),

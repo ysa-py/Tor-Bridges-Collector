@@ -123,6 +123,42 @@ pub fn observation_is_fresh_at(entry: &Value, now: DateTime<Utc>) -> bool {
         .is_some_and(|timestamp| timestamp_is_fresh_at(timestamp, now, OBSERVATION_MAX_AGE_SECONDS))
 }
 
+/// True when the observation timestamp is either near-now (the standard
+/// freshness window) or falls inside the current pipeline run's observation
+/// window.
+///
+/// Run-window acceptance exists because an hourly run legitimately produces
+/// observations over a longer span than [`OBSERVATION_MAX_AGE_SECONDS`]: the
+/// iran_tester may spend its whole watchdog budget probing a large candidate
+/// list, and the results stage stamps the report after the downstream merge
+/// steps. Under the bare ten-minute rule, most of a run's own S1 evidence was
+/// older than the window by stamping time and was silently relabeled
+/// `untested (rate-limited)` — a dishonest label for a probe that actually
+/// succeeded. The run window bounds acceptance to observations made no
+/// earlier than `run_floor` and never in the future beyond the standard skew,
+/// so evidence from previous runs is still rejected.
+fn observation_fresh_or_in_run_at(
+    evidence: &Value,
+    now: DateTime<Utc>,
+    run_floor: Option<DateTime<Utc>>,
+) -> bool {
+    let Some(timestamp) = evidence.get("observed_at").and_then(Value::as_str) else {
+        return false;
+    };
+    if timestamp_is_fresh_at(timestamp, now, OBSERVATION_MAX_AGE_SECONDS) {
+        return true;
+    }
+    let Some(floor) = run_floor else {
+        return false;
+    };
+    let Ok(observed_at) = DateTime::parse_from_rfc3339(timestamp) else {
+        return false;
+    };
+    let observed_at = observed_at.with_timezone(&Utc);
+    observed_at >= floor - Duration::seconds(OBSERVATION_FUTURE_SKEW_SECONDS)
+        && observed_at <= now + Duration::seconds(OBSERVATION_FUTURE_SKEW_SECONDS)
+}
+
 /// True only for positive S2+ protocol evidence from a recognized vantage
 /// whose observation is current at `now`. S1 TCP, static fallback, malformed
 /// timestamps, stale evidence, and observations too far in the future fail.
@@ -524,8 +560,20 @@ pub fn derive_tier(entry: &Value) -> String {
 /// evidence is visible in `verification` but is not counted as a current tier.
 #[must_use]
 pub fn derive_tier_at(entry: &Value, now: DateTime<Utc>) -> String {
+    derive_tier_in_run_at(entry, now, None)
+}
+
+/// Run-window variant of [`derive_tier_at`]: typed observations made at or
+/// after `run_floor` count as current while deriving the tier. See
+/// [`observation_fresh_or_in_run_at`].
+#[must_use]
+pub fn derive_tier_in_run_at(
+    entry: &Value,
+    now: DateTime<Utc>,
+    run_floor: Option<DateTime<Utc>>,
+) -> String {
     let verification = default_verification(entry, "");
-    if !observation_is_fresh_at(&verification, now) {
+    if !observation_fresh_or_in_run_at(&verification, now, run_floor) {
         return TIER_UNTESTED.to_string();
     }
     let status = verification
@@ -576,8 +624,23 @@ pub fn derive_result(entry: &Value) -> String {
 /// Deterministic-clock variant of [`derive_result`].
 #[must_use]
 pub fn derive_result_at(entry: &Value, now: DateTime<Utc>) -> String {
+    derive_result_in_run_at(entry, now, None)
+}
+
+/// Deterministic-clock variant of [`derive_result`] that also accepts typed
+/// observations made inside the current pipeline run (at or after `run_floor`)
+/// as current, even when they exceed the bare near-now window.
+///
+/// `None` reproduces [`derive_result_at`] exactly. See
+/// [`observation_fresh_or_in_run_at`] for the freshness semantics.
+#[must_use]
+pub fn derive_result_in_run_at(
+    entry: &Value,
+    now: DateTime<Utc>,
+    run_floor: Option<DateTime<Utc>>,
+) -> String {
     let verification = default_verification(entry, "");
-    if !observation_is_fresh_at(&verification, now) {
+    if !observation_fresh_or_in_run_at(&verification, now, run_floor) {
         return RESULT_UNTESTED.to_string();
     }
     let stage = verification
@@ -610,6 +673,17 @@ pub fn derive_result_at(entry: &Value, now: DateTime<Utc>) -> String {
 /// `tested_at`, `test_tier`, and `test_result` from that same evidence.
 /// Returns `true` if any field was added or changed.
 pub fn stamp_entry(entry: &mut Value, run_timestamp: &str) -> bool {
+    stamp_entry_in_run(entry, run_timestamp, None)
+}
+
+/// Run-window variant of [`stamp_entry`]: typed observations made at or after
+/// `run_floor` count as current while being stamped. See
+/// [`derive_result_in_run_at`].
+pub fn stamp_entry_in_run(
+    entry: &mut Value,
+    run_timestamp: &str,
+    run_floor: Option<DateTime<Utc>>,
+) -> bool {
     if !entry.is_object() {
         return false;
     }
@@ -627,7 +701,7 @@ pub fn stamp_entry(entry: &mut Value, run_timestamp: &str) -> bool {
         .map(|timestamp| timestamp.with_timezone(&Utc))
         .unwrap_or_else(|_| Utc::now());
     let tier = derive_tier_at(entry, now);
-    let result = derive_result_at(entry, now);
+    let result = derive_result_in_run_at(entry, now, run_floor);
     let object = entry.as_object_mut().expect("checked object above");
     let tier_changed =
         !matches!(object.get("test_tier"), Some(Value::String(existing)) if existing == &tier);
@@ -662,6 +736,17 @@ pub struct StampSummary {
 /// `generated_at` only when no valid run timestamp was supplied. Source-fetch
 /// timestamps may predate probes and must not make fresh observations look future-dated.
 pub fn stamp_results(doc: &mut Value, run_timestamp: &str) -> StampSummary {
+    stamp_results_in_run_at(doc, run_timestamp, None)
+}
+
+/// Run-window variant of [`stamp_results`]: typed observations made at or
+/// after `run_floor` count as current while being stamped. See
+/// [`derive_result_in_run_at`].
+pub fn stamp_results_in_run_at(
+    doc: &mut Value,
+    run_timestamp: &str,
+    run_floor: Option<DateTime<Utc>>,
+) -> StampSummary {
     let supplied_timestamp = DateTime::parse_from_rfc3339(run_timestamp)
         .ok()
         .map(|_| run_timestamp.to_string());
@@ -685,12 +770,12 @@ pub fn stamp_results(doc: &mut Value, run_timestamp: &str) -> StampSummary {
 
     if let Some(bridges) = doc.get_mut("bridges").and_then(Value::as_array_mut) {
         for entry in bridges.iter_mut() {
-            if stamp_entry(entry, &run_timestamp) {
+            if stamp_entry_in_run(entry, &run_timestamp, run_floor) {
                 summary.stamped += 1;
             }
-            let tier = derive_tier_at(entry, now);
+            let tier = derive_tier_in_run_at(entry, now, run_floor);
             *summary.tiers.entry(tier).or_insert(0) += 1;
-            let result = derive_result_at(entry, now);
+            let result = derive_result_in_run_at(entry, now, run_floor);
             *summary.results.entry(result).or_insert(0) += 1;
         }
     }
@@ -791,6 +876,119 @@ mod tests {
         let now = Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap();
         assert_eq!(derive_result_at(&entry, now), RESULT_BUDGET);
         assert_eq!(scoring_reachability(&entry), None);
+    }
+
+    fn typed_at(status: &str, stage: &str, vantage: Option<&str>, observed_at: &str) -> Value {
+        let vantage = vantage.map(|kind| json!({ "type": kind, "region": null }));
+        json!({
+            "status": status,
+            "stage": stage,
+            "vantage": vantage,
+            "rtt_ms": 12.5,
+            "probe_type": "tcp",
+            "detail": "test observation",
+            "error_class": null,
+            "observed_at": observed_at,
+        })
+    }
+
+    // Regression (issue #257 follow-up): the iran_tester may spend its whole
+    // watchdog budget probing 1700+ candidates, so by the time the results
+    // stage stamps the report, early observations legitimately exceed the
+    // ten-minute near-now window. They must keep their honest typed labels
+    // (tcp_reachable_s1 / tier_1_tcp) instead of being relabeled
+    // "untested (rate-limited)" — which is a false claim for a probe that
+    // actually succeeded. Observations from a previous run (older than the
+    // run floor) stay rejected.
+    #[test]
+    fn run_window_keeps_this_run_s1_evidence_typed() {
+        let now = Utc.with_ymd_and_hms(2026, 10, 14, 7, 12, 0).unwrap();
+        // Observation made 14 minutes before stamping: outside the bare
+        // near-now window, inside this run's observation window.
+        let observed = "2026-10-14T06:58:00Z";
+        let entry = json!({ "verification": typed_at("connected", "S1", Some("github_actions_runner"), observed) });
+        let floor = now - chrono::Duration::minutes(30);
+
+        // Without a run floor: stale by the bare window (unchanged behavior).
+        assert_eq!(derive_result_at(&entry, now), RESULT_UNTESTED);
+        assert_eq!(derive_tier_at(&entry, now), TIER_UNTESTED);
+
+        // With the run floor: honest S1 labels are retained.
+        assert_eq!(
+            derive_result_in_run_at(&entry, now, Some(floor)),
+            RESULT_REACHABLE_S1
+        );
+        assert_eq!(derive_tier_in_run_at(&entry, now, Some(floor)), TIER_1_TCP);
+    }
+
+    #[test]
+    fn run_window_still_rejects_previous_run_evidence() {
+        let now = Utc.with_ymd_and_hms(2026, 10, 14, 7, 12, 0).unwrap();
+        // Two hours old: from a previous run, before any sane run floor.
+        let observed = "2026-10-14T05:00:00Z";
+        let entry = json!({ "verification": typed_at("connected", "S1", Some("github_actions_runner"), observed) });
+        let floor = now - chrono::Duration::minutes(30);
+        assert_eq!(
+            derive_result_in_run_at(&entry, now, Some(floor)),
+            RESULT_UNTESTED
+        );
+        assert_eq!(
+            derive_tier_in_run_at(&entry, now, Some(floor)),
+            TIER_UNTESTED
+        );
+    }
+
+    #[test]
+    fn run_window_never_accepts_future_evidence() {
+        let now = Utc.with_ymd_and_hms(2026, 10, 14, 7, 12, 0).unwrap();
+        // Five minutes in the future: beyond the accepted skew.
+        let observed = "2026-10-14T07:17:00Z";
+        let entry = json!({ "verification": typed_at("connected", "S1", Some("github_actions_runner"), observed) });
+        let floor = now - chrono::Duration::minutes(30);
+        assert_eq!(
+            derive_result_in_run_at(&entry, now, Some(floor)),
+            RESULT_UNTESTED
+        );
+    }
+
+    #[test]
+    fn run_window_preserves_budget_exhaustion_labeling() {
+        let now = Utc.with_ymd_and_hms(2026, 10, 14, 7, 12, 0).unwrap();
+        let observed = "2026-10-14T06:59:00Z";
+        let entry = json!({ "verification": {
+            "status": "inconclusive", "stage": "S0", "probe_type": "none",
+            "detail": "overall run deadline exceeded before this bridge was classified",
+            "error_class": "run_deadline_exceeded",
+            "vantage": null,
+            "observed_at": observed
+        } });
+        let floor = now - chrono::Duration::minutes(30);
+        assert_eq!(
+            derive_result_in_run_at(&entry, now, Some(floor)),
+            RESULT_BUDGET
+        );
+    }
+
+    #[test]
+    fn stamp_results_in_run_counts_run_window_evidence() {
+        let now = Utc.with_ymd_and_hms(2026, 10, 14, 7, 12, 0).unwrap();
+        let mut doc = json!({
+            "generated_at": "2026-10-14T06:58:00Z",
+            "bridges": [
+                { "line": "obfs4 192.0.2.1:443 A",
+                  "verification": typed_at("connected", "S1", Some("github_actions_runner"), "2026-10-14T06:58:10Z") },
+                { "line": "obfs4 192.0.2.2:443 B",
+                  "verification": typed_at("connected", "S1", Some("github_actions_runner"), "2026-10-14T05:00:00Z") }
+            ]
+        });
+        let run_timestamp = now.to_rfc3339();
+        let floor = now - chrono::Duration::minutes(30);
+        let summary = stamp_results_in_run_at(&mut doc, &run_timestamp, Some(floor));
+        assert_eq!(summary.stamped, 2);
+        assert_eq!(summary.results.get(RESULT_REACHABLE_S1), Some(&1));
+        assert_eq!(summary.results.get(RESULT_UNTESTED), Some(&1));
+        assert_eq!(summary.tiers.get(TIER_1_TCP), Some(&1));
+        assert_eq!(summary.tiers.get(TIER_UNTESTED), Some(&1));
     }
 
     #[test]

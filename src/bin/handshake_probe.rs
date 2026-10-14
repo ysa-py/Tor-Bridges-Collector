@@ -36,7 +36,7 @@
 //! honest boundary in `crates/prober/src/lib.rs`), so it is stamped S3, not
 //! S4. No S4 evidence is ever emitted by this binary.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::io::Write as _;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -91,14 +91,25 @@ struct Candidate {
     /// likely to complete a transport handshake within the run budget.
     tcp_reachable: bool,
     score: f64,
+    /// Canonical transport family of the parsed line (issue #257 follow-up:
+    /// drives stratified selection so every supported family gets S2+
+    /// coverage within the run quota instead of the largest family absorbing
+    /// the whole budget).
+    transport: TransportKind,
 }
 
 fn main() -> std::process::ExitCode {
     let args = Args::parse();
     match run(args) {
         Ok(summary) => {
+            let by_transport = summary
+                .selected_by_transport
+                .iter()
+                .map(|(transport, count)| format!("{transport}={count}"))
+                .collect::<Vec<_>>()
+                .join(",");
             eprintln!(
-                "handshake-probe: connected={} reachable_s1={} failed={} skipped_unsupported={} parse_errors={} selected={}",
+                "handshake-probe: connected={} reachable_s1={} failed={} skipped_unsupported={} parse_errors={} selected={} selected_by_transport=[{by_transport}]",
                 summary.connected,
                 summary.reachable_s1,
                 summary.failed,
@@ -122,13 +133,28 @@ struct RunSummary {
     skipped_unsupported: usize,
     parse_errors: usize,
     selected: usize,
+    /// Per-family selected counts, printed for run observability so the
+    /// stratified quota is auditable from the CI log alone.
+    selected_by_transport: std::collections::BTreeMap<String, usize>,
 }
 
 fn run(args: Args) -> Result<RunSummary, String> {
     let raw = std::fs::read_to_string(&args.input)
         .map_err(|error| format!("read {}: {error}", args.input.display()))?;
     let (candidates, parse_errors, skipped_unsupported) = select_candidates(&raw);
-    let selected: Vec<Candidate> = candidates.into_iter().take(args.max_bridges).collect();
+    // Stratified quota: round-robin across transport families (reachable-first
+    // within each family) so the fixed bridge quota buys evidence for EVERY
+    // supported family. The previous reachable-first global take let the
+    // largest family (obfs4) absorb the whole budget, which left vanilla,
+    // webtunnel, snowflake, and meek with zero S2+ observations and their
+    // evidence-gated *_tested.txt projections permanently empty.
+    let selected: Vec<Candidate> = stratify_candidates(candidates, args.max_bridges);
+    let mut selected_by_transport: BTreeMap<String, usize> = BTreeMap::new();
+    for candidate in &selected {
+        *selected_by_transport
+            .entry(candidate.transport.to_string())
+            .or_insert(0) += 1;
+    }
     let selected_count = selected.len();
 
     let runtime = tokio::runtime::Builder::new_multi_thread()
@@ -165,7 +191,58 @@ fn run(args: Args) -> Result<RunSummary, String> {
         skipped_unsupported,
         parse_errors,
         selected: selected_count,
+        selected_by_transport,
     })
+}
+
+/// Interleave per-transport sorted groups into one quota-bounded list.
+///
+/// Each group keeps its own publication-value order (S1-reachable first, then
+/// descending score). One candidate is taken from each family per rotation in
+/// a deterministic (alphabetical) family order, so families present in the
+/// input always receive proportional representation and no family can be
+/// starved below one rotation slot by a larger family. Deterministic: equal
+/// inputs produce equal outputs.
+fn stratify_candidates(candidates: Vec<Candidate>, quota: usize) -> Vec<Candidate> {
+    let mut groups: BTreeMap<String, std::collections::VecDeque<Candidate>> = BTreeMap::new();
+    for candidate in candidates {
+        groups
+            .entry(candidate.transport.to_string())
+            .or_default()
+            .push_back(candidate);
+    }
+    for queue in groups.values_mut() {
+        let mut group: Vec<Candidate> = queue.drain(..).collect();
+        group.sort_by(|a, b| {
+            b.tcp_reachable.cmp(&a.tcp_reachable).then(
+                b.score
+                    .partial_cmp(&a.score)
+                    .unwrap_or(std::cmp::Ordering::Equal),
+            )
+        });
+        *queue = group.into();
+    }
+    let mut selected = Vec::with_capacity(quota);
+    while selected.len() < quota && !groups.is_empty() {
+        let mut progressed = false;
+        let mut next: BTreeMap<String, std::collections::VecDeque<Candidate>> = BTreeMap::new();
+        for (name, mut queue) in groups {
+            if selected.len() < quota {
+                if let Some(candidate) = queue.pop_front() {
+                    selected.push(candidate);
+                    progressed = true;
+                }
+            }
+            if !queue.is_empty() {
+                next.insert(name, queue);
+            }
+        }
+        groups = next;
+        if !progressed {
+            break;
+        }
+    }
+    selected
 }
 
 /// Parse the input into ordered candidates plus honest accounting of what was
@@ -207,6 +284,7 @@ fn select_candidates(raw: &str) -> (Vec<Candidate>, usize, usize) {
             line: trimmed,
             tcp_reachable,
             score,
+            transport: bridge.transport,
         });
     }
 
@@ -542,6 +620,120 @@ mod tests {
         assert_eq!(skipped, 1);
         assert_eq!(candidates.len(), 1);
         assert_eq!(candidates[0].line, "Bridge 192.0.2.9:443 B");
+    }
+
+    fn candidate(line: &str, transport: &str, reachable: bool, score: f64) -> Candidate {
+        Candidate {
+            line: line.to_owned(),
+            tcp_reachable: reachable,
+            score,
+            transport: transport.parse().unwrap(),
+        }
+    }
+
+    // Regression (issue #257 follow-up): the fixed bridge quota must be spread
+    // across transport families. Previously a reachable-first global take let
+    // obfs4 (the largest family) absorb the entire quota, leaving vanilla and
+    // webtunnel with zero S2+ observations and permanently empty *_tested.txt
+    // projections.
+    #[test]
+    fn stratified_selection_gives_every_family_quota_slots() {
+        let mut candidates = Vec::new();
+        for index in 0..10 {
+            candidates.push(candidate(
+                &format!("obfs4 192.0.2.{index}:443 A"),
+                "obfs4",
+                true,
+                1.0,
+            ));
+        }
+        for index in 0..10 {
+            candidates.push(candidate(
+                &format!("vanilla 192.0.2.{index}:443 A"),
+                "vanilla",
+                true,
+                0.9,
+            ));
+        }
+        candidates.push(candidate(
+            "webtunnel 192.0.2.200:443 A",
+            "webtunnel",
+            true,
+            0.8,
+        ));
+        candidates.push(candidate(
+            "webtunnel 192.0.2.201:443 B",
+            "webtunnel",
+            false,
+            0.8,
+        ));
+        candidates.push(candidate(
+            "snowflake 192.0.2.210:443 A",
+            "snowflake",
+            true,
+            0.7,
+        ));
+
+        let selected = stratify_candidates(candidates, 6);
+        let lines: Vec<&str> = selected.iter().map(|c| c.line.as_str()).collect();
+        assert_eq!(
+            lines,
+            vec![
+                "obfs4 192.0.2.0:443 A",
+                "snowflake 192.0.2.210:443 A",
+                "vanilla 192.0.2.0:443 A",
+                "webtunnel 192.0.2.200:443 A",
+                "obfs4 192.0.2.1:443 A",
+                "vanilla 192.0.2.1:443 A",
+            ]
+        );
+    }
+
+    #[test]
+    fn stratified_selection_within_family_is_reachable_first_then_score() {
+        let candidates = vec![
+            candidate("obfs4 192.0.2.2:443 C", "obfs4", false, 0.99),
+            candidate("obfs4 192.0.2.1:443 B", "obfs4", true, 0.10),
+            candidate("obfs4 192.0.2.0:443 A", "obfs4", true, 0.50),
+        ];
+        let selected = stratify_candidates(candidates, 10);
+        let lines: Vec<&str> = selected.iter().map(|c| c.line.as_str()).collect();
+        assert_eq!(
+            lines,
+            vec![
+                "obfs4 192.0.2.0:443 A",
+                "obfs4 192.0.2.1:443 B",
+                "obfs4 192.0.2.2:443 C",
+            ]
+        );
+    }
+
+    #[test]
+    fn stratified_selection_is_deterministic_and_quota_bounded() {
+        let build = || {
+            let mut candidates = Vec::new();
+            for index in 0..5 {
+                candidates.push(candidate(
+                    &format!("obfs4 192.0.2.{index}:443 A"),
+                    "obfs4",
+                    true,
+                    1.0,
+                ));
+                candidates.push(candidate(
+                    &format!("vanilla 192.0.2.{index}:443 A"),
+                    "vanilla",
+                    false,
+                    1.0,
+                ));
+            }
+            candidates
+        };
+        let first = stratify_candidates(build(), 4);
+        let second = stratify_candidates(build(), 4);
+        let first_lines: Vec<&str> = first.iter().map(|c| c.line.as_str()).collect();
+        let second_lines: Vec<&str> = second.iter().map(|c| c.line.as_str()).collect();
+        assert_eq!(first_lines, second_lines);
+        assert_eq!(first.len(), 4);
     }
 
     #[test]

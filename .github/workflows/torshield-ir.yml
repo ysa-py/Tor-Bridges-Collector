@@ -2267,11 +2267,15 @@ jobs:
           exit 0
         fi
         set -euo pipefail
+        # Quota 400 with stratified per-transport selection (handshake_probe):
+        # worst-case wall clock is 400/24 waves * (connect+write+read = 3*8s)
+        # ~ 400s < the 480s budget, and the probe loop stops at the budget
+        # deadline, so an overrun degrades coverage honestly instead of lying.
         cargo run --locked --quiet --bin handshake_probe -- \
           --input bridge/iran_results.json \
           --output data/handshake_results.json \
           --merge-into data/pt_results.json \
-          --max-bridges 300 \
+          --max-bridges 400 \
           --workers 24 \
           --timeout-secs 8 \
           --budget-seconds 480
@@ -2629,8 +2633,48 @@ jobs:
           echo "no run manifest — run never reached the publication guard; nothing to track"
           exit 0
         fi
+        title="[self-heal] Degraded bridge publication — hourly pipeline"
         if [ "$(jq -r '.degraded // false' data/run_manifest.json)" != "true" ]; then
-          echo "healthy publication — no tracking issue needed"
+          # Healthy publication: the tracking issue promises "Close this issue
+          # once the funnel is healthy again". Honor that promise automatically
+          # so a recovered funnel never leaves a stale degradation thread open
+          # (issue #257 stayed open for hours after the funnel healed).
+          echo "healthy publication — closing any open degraded-publication tracking issue"
+          existing="$(gh issue list --state open --search "${title} in:title" --json number --jq '.[0].number' 2>/dev/null || true)"
+          if [ -n "${existing}" ]; then
+            restored="$(jq -r '.restored_last_known_good[]?' data/run_manifest.json | sed 's/^/- /' | head -20)"
+            files="$(jq -r '.files | length' data/run_manifest.json 2>/dev/null || echo 0)"
+            tested_total=0
+            for name in obfs4_tested.txt vanilla_tested.txt webtunnel_tested.txt \
+                        snowflake_tested.txt meek_lite_tested.txt conjure_tested.txt \
+                        meek-azure_tested.txt iran_likely_working_all.txt; do
+              count="$(jq -r --arg n "${name}" '.files[$n].count // .files[$n].lines // 0' data/run_manifest.json 2>/dev/null || echo 0)"
+              case "${count}" in ''|*[!0-9]*) count=0 ;; esac
+              tested_total=$((tested_total + count))
+            done
+            body="$(mktemp)"
+            {
+              echo "The hourly Bridge Intelligence run published a **healthy** payload — the funnel recovered, so this tracking issue is being closed automatically."
+              echo ""
+              echo "- healthy run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+              echo "- commit published: ${GITHUB_SHA}"
+              echo "- restored last-known-good files this run: ${restored:-(none)}"
+              echo "- publication contract files: ${files}"
+              echo "- evidence-backed tested/advisory entries this run: ${tested_total}"
+              echo ""
+              echo "Evidence remains runner-side and advisory. If a later run degrades"
+              echo "again, a new comment will be appended here or a fresh tracking issue"
+              echo "will be opened."
+              echo ""
+              echo "<!-- degraded-publication-tracking -->"
+            } >"${body}"
+            gh issue close "${existing}" --comment "$(cat "${body}")" || \
+              echo "::warning::failed to close tracking issue #${existing} automatically"
+            rm -f "${body}"
+            echo "closed degraded-publication tracking issue #${existing} (healthy run)"
+          else
+            echo "no open degraded-publication tracking issue"
+          fi
           exit 0
         fi
         run_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

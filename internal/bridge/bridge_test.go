@@ -290,3 +290,79 @@ func TestSplitHostPortDNS(t *testing.T) {
 		t.Errorf("got host=%s port=%d af=%s", h, p, af)
 	}
 }
+
+// Regression (issue #257 follow-up): prefix-less vanilla bridge lines must be
+// classified with transport type "vanilla", not with the raw endpoint token
+// (the previous code stored tokens[0] — "host:port" — as the transport name,
+// which leaked into iran_results.json as 488 distinct pseudo-transports and
+// broke per-transport aggregation downstream).
+func TestParseLineVanillaTypeIsVanilla(t *testing.T) {
+	cases := []string{
+		"Bridge 104.152.210.181:1105 ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234",
+		"104.152.210.181:1105 ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234",
+		"118.241.190.171:45883",
+		"[2001:db8::1]:9001 ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234",
+		"cdn.example.com:443 ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234",
+	}
+	for _, line := range cases {
+		tr, err := ParseLine(line)
+		if err != nil {
+			t.Fatalf("ParseLine(%q) unexpected error: %v", line, err)
+		}
+		if tr.Type != "vanilla" {
+			t.Errorf("ParseLine(%q) type = %q, want %q", line, tr.Type, "vanilla")
+		}
+	}
+}
+
+func TestParseLineVanillaEndpointFieldsPreserved(t *testing.T) {
+	tr, err := ParseLine("Bridge 104.152.210.181:1105 ABCD1234ABCD1234ABCD1234ABCD1234ABCD1234")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tr.Host != "104.152.210.181" || tr.Port != 1105 || tr.AddressFamily != "ipv4" {
+		t.Errorf("endpoint not preserved: host=%s port=%d af=%s", tr.Host, tr.Port, tr.AddressFamily)
+	}
+}
+
+// Transport-prefixed lines must keep their explicit type (no regression).
+func TestParseLinePrefixedTypesUnchanged(t *testing.T) {
+	obfs4, err := ParseLine("obfs4 192.0.2.1:443 ABCD cert=abc iat-mode=0")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if obfs4.Type != "obfs4" {
+		t.Errorf("obfs4 type = %q", obfs4.Type)
+	}
+	sn, err := ParseLine("snowflake 192.0.2.1:443 ABCD fingerprint=ABCD")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if sn.Type != "snowflake" {
+		t.Errorf("snowflake type = %q", sn.Type)
+	}
+}
+
+func TestKnownTransportToken(t *testing.T) {
+	for _, known := range []string{"obfs4", "webtunnel", "snowflake", "meek_lite", "meek-azure", "conjure", "vanilla"} {
+		if !knownTransportToken(known) {
+			t.Errorf("knownTransportToken(%q) = false, want true", known)
+		}
+	}
+	for _, endpoint := range []string{"192.0.2.1:443", "[2001:db8::1]:443", "cdn.example.com:443"} {
+		if knownTransportToken(endpoint) {
+			t.Errorf("knownTransportToken(%q) = true, want false", endpoint)
+		}
+	}
+}
+
+func TestEndpointToken(t *testing.T) {
+	for _, endpoint := range []string{"192.0.2.1:443", "[2001:db8::1]:443", "cdn.example.com:443"} {
+		if !endpointToken(endpoint) {
+			t.Errorf("endpointToken(%q) = false, want true", endpoint)
+		}
+	}
+	if endpointToken("obfs4") || endpointToken("cert=abc") || endpointToken("plainword") {
+		t.Error("endpointToken matched a non-endpoint token")
+	}
+}

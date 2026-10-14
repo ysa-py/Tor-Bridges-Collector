@@ -362,7 +362,22 @@ func ParseLine(line string) (*Transport, error) {
 	}
 	tokens := strings.Fields(trimmed)
 	if len(tokens) > 0 {
-		t.Type = strings.ToLower(tokens[0])
+		first := strings.ToLower(tokens[0])
+		if knownTransportToken(first) {
+			t.Type = first
+		} else if endpointToken(tokens[0]) {
+			// Vanilla bridges carry no transport prefix: the line
+			// starts directly with the endpoint (IP:port,
+			// [IPv6]:port, or FQDN:port). The previous behavior
+			// stored that endpoint token as the transport type,
+			// so every vanilla record surfaced a "host:port"
+			// transport label downstream. Classify it honestly
+			// as vanilla and let the endpoint loop below parse
+			// the address.
+			t.Type = "vanilla"
+		} else {
+			t.Type = first
+		}
 	}
 
 	for i := 0; i < len(tokens); i++ {
@@ -413,4 +428,30 @@ func ParseLine(line string) (*Transport, error) {
 	}
 
 	return t, nil
+}
+
+// knownTransportToken reports whether the first token of a bridge line names
+// a pluggable transport (or a modern URI-based protocol parsed elsewhere).
+// Vanilla bridges have no such prefix, so any endpoint-shaped first token is
+// classified as vanilla instead of being stored as a pseudo transport name.
+func knownTransportToken(token string) bool {
+	switch token {
+	case "obfs4", "webtunnel", "snowflake", "meek_lite", "meek-lite",
+		"meek-azure", "conjure", "vanilla", "vless", "hysteria2",
+		"hysteria", "tuic", "shadow-tls":
+		return true
+	default:
+		return false
+	}
+}
+
+// endpointToken reports whether a token looks like a dialable endpoint
+// (IPv4:port, [IPv6]:port, or FQDN:port). Used to detect prefix-less
+// vanilla bridge lines whose first token is the endpoint itself.
+func endpointToken(token string) bool {
+	if ipv4PortRE.MatchString(token) || ipv6PortRE.MatchString(token) {
+		return true
+	}
+	matches := fqdnPortRE.FindStringSubmatch(token)
+	return len(matches) == 4 && isDNSName(matches[1])
 }
