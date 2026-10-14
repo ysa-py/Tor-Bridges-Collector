@@ -392,11 +392,14 @@ mod tests {
             my_addrs: vec![],
         };
         let encoded = netinfo.to_cell(0).unwrap().encode();
-        // payload: timestamp(4) + ATYPE + ALEN + AVAL(4) + NMYADDR
-        assert_eq!(encoded[5], 0x04, "ATYPE");
-        assert_eq!(encoded[6], 4, "ALEN MUST be 4 for IPv4");
-        assert_eq!(&encoded[7..11], &[192, 0, 2, 1]);
-        assert_eq!(encoded[11], 0, "NMYADDR");
+        // Wire: circid(4) + cmd(1) | payload: timestamp(4) + ATYPE(1) +
+        // ALEN(1) + AVAL(4) + NMYADDR(1).
+        assert_eq!(encoded[4], CMD_NETINFO, "command");
+        assert_eq!(&encoded[5..9], &[0, 0, 0, 0], "timestamp 0");
+        assert_eq!(encoded[9], 0x04, "ATYPE");
+        assert_eq!(encoded[10], 4, "ALEN MUST be 4 for IPv4");
+        assert_eq!(&encoded[11..15], &[192, 0, 2, 1]);
+        assert_eq!(encoded[15], 0, "NMYADDR");
     }
 
     #[test]
