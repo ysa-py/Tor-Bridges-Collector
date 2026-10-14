@@ -1,21 +1,23 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-14T05:32:57.081098460+00:00",
+  "generated_at": "2026-10-14T07:00:02.588677367+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 174,
-            "tested_failing": 9,
-            "untested (rate-limited)": 1595
+            "tcp_reachable_s1": 635,
+            "tested_failing": 192,
+            "untested (probe error)": 382,
+            "untested (rate-limited)": 4,
+            "untested (tcp timeout)": 573
           },
-          "stamped": 302,
+          "stamped": 1786,
           "tiers": {
-            "tier_0_attempt": 56,
-            "tier_1_tcp": 188,
-            "untested": 1534
+            "tier_0_attempt": 1133,
+            "tier_1_tcp": 649,
+            "untested": 4
           }
         },
         "files": {
@@ -44,7 +46,7 @@
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-14T05:32:30.553712578+00:00",
+      "started_at": "2026-10-14T06:59:36.636402433+00:00",
       "status": "ok"
     }
   ],
