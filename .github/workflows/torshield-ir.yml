@@ -1134,10 +1134,17 @@ jobs:
         fi
 
         # ── Live smoke test: bounded, redacted gate ─────────────────
-        # The helper sends authenticated live-open/refused and repository-derived
+        # The helper sends authenticated live-open/closed and repository-derived
         # timeout-candidate controls. It requires a fresh Worker-vantage timeout,
         # correlates every echoed target, and validates typed content while
         # redacting endpoints, tokens, bodies, raw curl stderr, and bridge IDs.
+        # ENDPOINT CONSISTENCY (2026-10-14): the URL the canary validated is
+        # exported as a step output so Stage 4 and Stage 4b dial EXACTLY the
+        # endpoint the smoke test proved live — never a stale configured custom
+        # endpoint whose DNS may be dead (measured run 38593425957: the
+        # canary passed its transport checks against the workers.dev endpoint
+        # while Stage 4b's edge fallback failed to connect to the custom one).
+        echo "effective_probe_relay_url=${PROBE_RELAY_URL}" >> "${GITHUB_OUTPUT}"
         if bash scripts/probe_relay_smoke.sh; then
           echo "✅ Authenticated probe relay content controls passed — Stage 4 will proceed"
           echo "PROBE_RELAY_SKIP=false" >> "${GITHUB_OUTPUT}"
@@ -1187,7 +1194,11 @@ jobs:
       if: steps.relay_prep.outputs.PROBE_RELAY_SKIP != 'true'
       timeout-minutes: 25
       env:
-        PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+        # Dial exactly the endpoint the Stage 4-prep canary validated (the
+        # workers.dev URL when the configured custom DNS was bypassed), not
+        # the raw secret, so the smoke gate and the production probes always
+        # share one proven endpoint.
+        PROBE_RELAY_URL: ${{ steps.relay_prep.outputs.effective_probe_relay_url || secrets.PROBE_RELAY_URL }}
         PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
         # Six descriptors per invocation match the Worker's six-socket ceiling
         # and keep each invocation to one bounded wave. Eight request-level
@@ -1254,9 +1265,11 @@ jobs:
         # v2.9 edge-vantage fallback: when the runner's direct BridgeDB draw
         # is vantage-gated (empty interstitial), the module re-draws the same
         # canonical pages through the authenticated probe-relay Worker's
-        # POST /page endpoint. Same secrets as Stage 4-prep/4; no new secret.
-        # The fallback stays off unless both vars are present and valid.
-        PROBE_RELAY_URL: ${{ secrets.PROBE_RELAY_URL }}
+        # POST /page endpoint. Uses the endpoint the Stage 4-prep canary
+        # validated (falls back to the configured secret URL on non-main
+        # runs where relay_prep did not export one). Same secret as Stage 4;
+        # no new secret. The fallback stays off unless both vars are valid.
+        PROBE_RELAY_URL: ${{ steps.relay_prep.outputs.effective_probe_relay_url || secrets.PROBE_RELAY_URL }}
         PROBE_RELAY_TOKEN: ${{ secrets.PROBE_RELAY_TOKEN }}
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
