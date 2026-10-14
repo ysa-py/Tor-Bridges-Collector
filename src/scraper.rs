@@ -1355,6 +1355,55 @@ pub fn merge_raw_into_history(
     merge_raw_into_history_with_now(history, lines, Utc::now())
 }
 
+/// Provenance-tagged merge (directive v43 §I): identical admission rules to
+/// [`merge_raw_into_history_with_now`], but every NEW record carries a
+/// `source` field naming the non-first-party origin (e.g.
+/// `community_mirror:center2055/OnionHop-Bridges-Collector`).
+///
+/// Existing records are never tagged or retagged: a bridge already collected
+/// from a first-party source keeps its first-party status, so a provenance
+/// consumer can always distinguish "mirror-only" supply from first-party
+/// supply, and a mirror line can never outrank or overwrite first-party
+/// evidence. Merge stays opt-in via `COMMUNITY_MIRRORS_MERGE=true`; the
+/// advisory default is unchanged.
+pub fn merge_raw_into_history_with_provenance(
+    history: &mut Value,
+    lines: &[(String, String, String)],
+    now: DateTime<Utc>,
+    source: &str,
+) -> Result<(), ScraperError> {
+    merge_raw_into_history_with_now(history, lines, now)?;
+    if source.trim().is_empty() {
+        return Ok(());
+    }
+    let actual = type_name_of_value(history);
+    let map = history
+        .as_object_mut()
+        .ok_or(ScraperError::HistoryNotObject { actual })?;
+    let mut tagged = 0_usize;
+    for (raw_line, transport, _) in lines {
+        if crate::ip_guard::check_endpoint(raw_line).is_some() {
+            continue;
+        }
+        let key = normalize_for_history(raw_line, transport);
+        if let Some(entry) = map.get_mut(&key) {
+            let actual = type_name_of_value(entry);
+            let obj = entry
+                .as_object_mut()
+                .ok_or(ScraperError::HistoryNotObject { actual })?;
+            // First-party provenance (no source field) is never overwritten.
+            if !obj.contains_key("source") {
+                obj.insert("source".to_string(), Value::String(source.to_string()));
+                tagged += 1;
+            }
+        }
+    }
+    if tagged > 0 {
+        tracing::info!("merge_raw_into_history: provenance-tagged {tagged} record(s) as {source}");
+    }
+    Ok(())
+}
+
 /// Mirror of `prune_history(history)` with injectable `now` and
 /// `retention_days`.
 ///
