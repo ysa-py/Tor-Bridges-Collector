@@ -626,11 +626,28 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
 
     // ECHOED SCRIPT SOURCE, not an emitted annotation: CI steps print their
     // own command text (`echo "::error::..."`, `print(f"::error::...")`,
+    // `echo '::error::...'`, `printf '::error::...'`,
     // `{ echo "::error::..."; exit 1; }`) when listing/verifying script
-    // bodies. A REAL annotation has `::error::` at the START of the message
-    // (after optional GitHub styling); an echo of it is source code.
+    // bodies. A REAL annotation has `::error::` / `::warning::` at the START
+    // of the message (after optional GitHub `##[...]` styling); anything else
+    // containing an annotation token plus a shell/word prefix is source code.
+    if message_lower.contains("::error::") || message_lower.contains("::warning::") {
+        let starts_annotation = message_trimmed.starts_with("::error::")
+            || message_trimmed.starts_with("::warning::")
+            || message_trimmed.starts_with("##[error]")
+            || message_trimmed.starts_with("##[warning]");
+        if !starts_annotation {
+            return None;
+        }
+    }
     if message_lower.contains("echo \"::error::")
         || message_lower.contains("echo \"::warning::")
+        || message_lower.contains("echo '::error::")
+        || message_lower.contains("echo '::warning::")
+        || message_lower.contains("printf \"::error::")
+        || message_lower.contains("printf '::error::")
+        || message_lower.contains("printf \"::warning::")
+        || message_lower.contains("printf '::warning::")
         || message_lower.contains("print(\"::error::")
         || message_lower.contains("print(f\"::error::")
         || message_lower.contains("print(\"::warning::")
@@ -643,6 +660,19 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     // ("no-panic-traps" matched the panic rule).
     if message_lower.contains("[pass]") || message_lower.contains("✓ passed") {
         return None;
+    }
+    // A REAL emitted error annotation outranks every evidence rule below:
+    // GitHub emits `::error::`/`##[error]` at the start of the message only
+    // for genuine step/tool failures, so nothing may downgrade it (a line
+    // like `::error::connection timed out` is a failure, not probe data).
+    if message_trimmed.starts_with("::error::")
+        || message_trimmed.starts_with("##[error]")
+    {
+        return Some((
+            AnomalyKind::HardFailure,
+            Severity::Error,
+            trimmed.to_string(),
+        ));
     }
     // Shell/Makefile comment lines from echoed script bodies are never
     // runtime events ("# a non-zero byte count — `test -s` previously
@@ -778,9 +808,15 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("skipping stage")
         || lower.contains("stage 8q") && lower.contains("skip")
     {
+        // Directive v43 §F recalibration: optional-stage skips are typed,
+        // documented, by-design degradations ("Stage 4 will be skipped for
+        // this run; collection and publication continue") — they never gate
+        // publication and the pipeline prints them as warnings/notices. A
+        // skip that actually breaks a step emits its own ::error:: line,
+        // which still carries Error severity below.
         return Some((
             AnomalyKind::SkippedStage,
-            Severity::Error,
+            Severity::Warning,
             trimmed.to_string(),
         ));
     }
@@ -808,28 +844,49 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || lower.contains("only 3 bridges")
         || lower.contains("only 4 bridges")
     {
+        // Directive v43 §F recalibration: low-yield advisories (e.g.
+        // evidence_fusion verdict lines "below minimum") describe the honest
+        // supply/evidence state, and the pipeline continues by design with
+        // the verified subset. A hard gate failure emits ::error:: itself.
         return Some((
             AnomalyKind::ShortOutput,
-            Severity::Error,
+            Severity::Warning,
             trimmed.to_string(),
         ));
     }
 
-    if let Some(code) = parse_exit_code(&lower) {
-        if code != 0 {
-            return Some((
-                AnomalyKind::NonZeroExit,
-                Severity::Error,
-                format!("{} (exit code {})", trimmed, code),
-            ));
+    // Exit-code mentions are WARNING evidence unless they are the GitHub
+    // runner's own fatal form (matched exactly below). The 2026-10-14 audit
+    // (run 38579293985) proved that treating every `exit code N` / `status
+    // code N` substring as an Error fabricates failures from retry notes,
+    // per-chunk summaries, and HTTP status echoes ("status code 200/404")
+    // inside an otherwise green run. A step that actually dies emits
+    // "Process completed with exit code" or an ::error:: annotation, both
+    // still classified as Errors below — so lines carrying those signals
+    // fall through this rule instead of being downgraded by it.
+    let hard_failure_signal = lower.contains("::error::")
+        || lower.starts_with("error:")
+        || message_trimmed.starts_with("error:")
+        || lower.contains(" process completed with exit code ")
+        || lower.contains("##[error]")
+        || lower.contains("fatal:")
+        || message_trimmed.starts_with("panic:")
+        || message_trimmed.starts_with("panicked at")
+        || (lower.contains("panicked at") && lower.contains("thread"))
+        || message_lower.contains(" ... failed")
+        || message_lower.starts_with("test result: failed.");
+    if !hard_failure_signal {
+        if let Some(code) = parse_exit_code(&lower) {
+            if code != 0 {
+                return Some((
+                    AnomalyKind::NonZeroExit,
+                    Severity::Warning,
+                    format!("{} (exit code {})", trimmed, code),
+                ));
+            }
         }
     }
-    if lower.contains("::error::")
-        || lower.starts_with("error:")
-        || lower.contains(" process completed with exit code ")
-        || lower.contains("panic")
-        || lower.contains("fatal:")
-    {
+    if hard_failure_signal {
         return Some((
             AnomalyKind::HardFailure,
             Severity::Error,
@@ -861,7 +918,9 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
 }
 
 fn parse_exit_code(line: &str) -> Option<i64> {
-    for marker in ["exit code", "exit_code", "status code"] {
+    // "status code" is an HTTP status, never a process exit: the 2026-10-14
+    // audit proved benign `status code 200/404` echoes fabricated errors.
+    for marker in ["exit code", "exit_code"] {
         let Some(start) = line.find(marker) else {
             continue;
         };
@@ -1050,5 +1109,51 @@ mod tests {
         let report = analyze_log(log, "fixture");
         assert!(report.errors >= 3, "expected real failures as errors");
         assert_eq!(report.status, "failed");
+    }
+
+    /// Directive v43 \u00a7F recalibration (2026-10-15): the exact line shapes
+    /// from runs 38613981417/38616637805 that the previous rules fabricated
+    /// into 724-947 "errors" on GREEN runs. Skips, low-yield verdicts,
+    /// per-chunk exit notes, HTTP status echoes, echoed `printf
+    /// '::error::...'` script sources, and non-panic tooling strings are
+    /// warnings or noise — a step that truly dies emits its own ::error:: /
+    /// runner-fatal line, which stays an Error.
+    #[test]
+    fn green_run_advisories_are_never_errors() {
+        let log = concat!(
+            "scrape-and-test (core)\tStage 4-prep\t2026-10-14T14:00:00.0000000Z Warning: Probe relay canary unavailable after 3 attempt(s): relay response content did not match the typed control contract (HTTP 200, curl exit 0). Stage 4 will be skipped for this run; collection and publication continue.\n",
+            "scrape-and-test (core)\tStage 8q\t2026-10-14T14:01:00.0000000Z Zig not available \u{2014} skipping Stage 8q\n",
+            "scrape-and-test (core)\tStage 6\t2026-10-14T14:02:00.0000000Z verdict below minimum for transport webtunnel\n",
+            "scrape-and-test (core)\tStage 4\t2026-10-14T14:03:00.0000000Z Chunk 2 failed (exit code 1); retrying with backoff\n",
+            "scrape-and-test (core)\tStage 4b\t2026-10-14T14:04:00.0000000Z DOC_AUDIT webtunnel-project-readme: status code 403 on attempt 1\n",
+            "scripts\tValidate secrets\t2026-10-14T14:05:00.0000000Z printf '::error::Stage 4 secret validator failed unexpectedly.'\n",
+            "analytics-static\tInventory\t2026-10-14T14:06:00.0000000Z [PASS] C9 no-panic-traps \u{2014} clean\n",
+        );
+        let report = analyze_log(log, "fixture");
+        assert_eq!(
+            report.errors, 0,
+            "by-design advisories must not fabricate errors: {:?}",
+            report
+                .events
+                .iter()
+                .filter(|e| e.severity == Severity::Error)
+                .map(|e| &e.raw_line)
+                .collect::<Vec<_>>()
+        );
+        assert_eq!(report.status, "degraded");
+        assert!(report.warnings >= 4);
+    }
+
+    /// Emitted error annotations always stay Errors — even when their text
+    /// contains otherwise-warning vocabulary (timeout, exit code, skipped).
+    #[test]
+    fn emitted_error_annotations_outrank_evidence_rules() {
+        let report = analyze_log(
+            "build-r\tBuild\t2026-10-14T13:50:00.0000000Z ::error::probe step timed out after exit code 1\n",
+            "fixture",
+        );
+        assert_eq!(report.errors, 1);
+        assert_eq!(report.status, "failed");
+        assert_eq!(report.events[0].kind, AnomalyKind::HardFailure);
     }
 }
