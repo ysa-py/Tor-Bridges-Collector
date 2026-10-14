@@ -105,3 +105,50 @@ Deliver a **zero-error** state for the TorShield-IR bridge-collector:
 
 > The next GitHub Actions run on the merged result is **all-green**, achieved by
 > removing failure modes — never by removing features.
+
+---
+
+## 7. Addendum — directive v43 (2026-10-15): tiered evidence & honest empties
+
+Extends the zero-error discipline to the evidence contract itself. These rules
+are binding for every future session touching `bridge_publication.rs`,
+`evidence_stamp.rs`, `pipeline_diagnostics.rs`, or the relay canary:
+
+1. **Evidence tiers are ordered and labeled.** `relay-verified >
+   runner TCP/TLS-verified > capability-only > unverified`, stored per record
+   in `iran_results.json` (`verification.stage`, `test_tier`, `test_result`).
+   `*_tested.txt` / `tested_global_*` admit runner TCP/TLS-or-better typed
+   evidence with the strongest tier first; `iran_likely_working_*` ranks
+   OONI-measured > S2+ handshake > runner TCP/TLS. A lower tier is never
+   presented as a higher one — the manifest records each file's
+   `evidence_tier` and the per-record tier stays in the JSON.
+2. **Every empty file must explain itself.** No empty evidence projection may
+   ship without a `reason_code` in `telegram_manifest.json`
+   (`NO_UPSTREAM_SUPPLY`, `NO_IPV6_SUPPLY`, `NO_FRESH_WITHIN_WINDOW`,
+   `NO_EVIDENCE`, `RELAY_DOWN`). Filling files with invented rows remains
+   forbidden; the tiered admission is the only honest way they fill.
+3. **Run-window evidence.** An hourly run's own observations are current for
+   the whole run: `TBC_RUN_FLOOR` (job output of the collection step) bounds
+   the evidence window at publish time. The bare 10-minute rule must never
+   silently discard a run's own typed evidence again.
+4. **Classifier discipline.** The whole-run diagnostics classifier is
+   annotation-first: only emitted `::error::`/`##[error]` annotations, the
+   runner's fatal exit line, real panic forms, failing cargo/test summaries,
+   and digest mismatches are Errors. By-design skips, low-yield verdicts,
+   exit-code retries, and HTTP status echoes are warnings or noise. A green
+   run must classify `errors=0`; the fixtures from runs 38613981417 /
+   38616637805 are regression tests.
+5. **Canary contract.** The relay canary proves honest dialing (silent-live
+   connects, closed-port reports a typed negative, every target correlated
+   with fresh timestamps and matching stats). A recovered control honestly
+   reported as connected is not a failure. After a deploy, wait (bounded)
+   for the edge to report the deployed SHA before canarying.
+6. **Direct measurement beats inference.** Front/domain liveness claims
+   require a real dial of the measured target with error-kind classification;
+   environment-level failures (`NetworkUnreachable`, missing route, DNS) are
+   `unknown`, never "confirmed unreachable".
+7. **Verify past the push.** Publication is not done until the raw CDN serves
+   the verified bytes: Stage 11c re-downloads the manifest + every payload
+   file and byte-compares SHA-256s, fail-closed.
+8. **Freshness SLA.** A published snapshot older than 3 hours at publication
+   time is an `::error::` (Stage 9c), not a silent coalesce.
