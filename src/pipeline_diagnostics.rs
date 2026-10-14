@@ -665,9 +665,7 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     // GitHub emits `::error::`/`##[error]` at the start of the message only
     // for genuine step/tool failures, so nothing may downgrade it (a line
     // like `::error::connection timed out` is a failure, not probe data).
-    if message_trimmed.starts_with("::error::")
-        || message_trimmed.starts_with("##[error]")
-    {
+    if message_trimmed.starts_with("::error::") || message_trimmed.starts_with("##[error]") {
         return Some((
             AnomalyKind::HardFailure,
             Severity::Error,
@@ -1131,7 +1129,8 @@ mod tests {
         );
         let report = analyze_log(log, "fixture");
         assert_eq!(
-            report.errors, 0,
+            report.errors,
+            0,
             "by-design advisories must not fabricate errors: {:?}",
             report
                 .events

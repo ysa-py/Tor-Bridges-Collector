@@ -24,6 +24,8 @@ fn options(root: &std::path::Path) -> PublishOptions {
         readme_path: root.join("README.md"),
         repo_url: "https://raw.example.invalid/org/repo/refs/heads/main".to_string(),
         recent_hours: 72,
+        run_floor: None,
+        relay_available: None,
     }
 }
 
@@ -311,7 +313,7 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
         &std::fs::read_to_string(options.bridge_dir.join("telegram_manifest.json")).unwrap(),
     )
     .unwrap();
-    assert_eq!(manifest["schema_version"], 2);
+    assert_eq!(manifest["schema_version"], 3);
     assert_eq!(manifest["required_files_present"], true);
     assert_eq!(
         manifest["required_files"].as_array().unwrap().len(),
