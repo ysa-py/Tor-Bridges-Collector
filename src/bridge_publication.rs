@@ -448,7 +448,7 @@ fn candidates_from_history(
         let Some(record) = value.as_object() else {
             continue;
         };
-        let raw = record
+        let mut raw = record
             .get("raw")
             .and_then(Value::as_str)
             .unwrap_or(key)
@@ -461,6 +461,42 @@ fn candidates_from_history(
             .get(&bridge_key(&raw))
             .copied()
             .or_else(|| fingerprint_of(&raw).and_then(|fp| probe_by_fingerprint.get(&fp).copied()));
+        // Family classification from the collected form; may be reclassified
+        // below when the probe resolves a placeholder to its real endpoint.
+        let mut ipv6 = record_is_ipv6(record, &raw);
+        // Placeholder-endpoint resolution (issue #257 root cause 3).
+        //
+        // Domain-fronted transports (webtunnel) are collected with an IETF
+        // documentation-prefix endpoint placeholder (BridgeDB anti-
+        // enumeration substitutes `[2001:db8:…]:PORT` for the real endpoint).
+        // The dialable truth is the endpoint resolved by the transport front
+        // probe (TLS to the host carried in `url=`). When the collected raw
+        // endpoint is a reserved placeholder and the fingerprint-joined probe
+        // carries a dialable (non-reserved) endpoint, publish the resolved
+        // form in ALL projections and classify the IP family by the real
+        // endpoint (engineering directive v42 §C: "classify IPv4/IPv6 by the
+        // real endpoint"). Without this, `filtered_family_lines` excludes
+        // every placeholder-raw line from consumer files, the webtunnel
+        // family projections collapse to empty on each run, and the
+        // publication guard restores grandfathered last-known-good bytes —
+        // the degradation loop that kept issue #257 open. The canonical
+        // history keeps the originally collected form; only the publication
+        // projection is resolved.
+        if let Some(entry) = probe {
+            let resolved = entry.line.trim();
+            if !resolved.is_empty()
+                && crate::ip_guard::contains_documentation_or_reserved_endpoint(&raw)
+                && !crate::ip_guard::contains_documentation_or_reserved_endpoint(resolved)
+            {
+                raw = resolved.to_string();
+                // The placeholder was classified by its synthetic literal
+                // (BridgeDB substitutes IPv6 documentation addresses); the
+                // resolved endpoint is the real one and decides the family
+                // (v42 §C). Fall back to the recorded classification only
+                // when the resolved form carries no parseable endpoint.
+                ipv6 = static_line_ip_version(&raw).unwrap_or(ipv6);
+            }
+        }
         // Only an explicit, positive S2+ observation with an observing
         // vantage qualifies for evidence-labeled *_tested projections. Legacy
         // TCP booleans, counters, and `test_pass` fields do not encode the
@@ -483,7 +519,7 @@ fn candidates_from_history(
         };
         candidates.push(Candidate {
             transport: normalise_transport(&raw, record.get("transport").and_then(Value::as_str)),
-            ipv6: record_is_ipv6(record, &raw),
+            ipv6,
             fresh: record_is_fresh(record, cutoff),
             raw,
             tested,

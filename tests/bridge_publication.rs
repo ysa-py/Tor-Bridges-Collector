@@ -414,3 +414,154 @@ fn fingerprint_join_upgrades_history_records_with_rewritten_lines() {
     assert!(tested_global.contains(fp));
     let _ = std::fs::remove_dir_all(root);
 }
+
+/// Issue #257 root cause 3: BridgeDB substitutes RFC 3849 documentation-
+/// prefix endpoints (`[2001:db8:…]:PORT`) for webtunnel bridges, and the
+/// collected record is classified `ip_version: "ipv6"` from that synthetic
+/// literal. The transport front probe resolves the REAL endpoint from
+/// `url=` (typically an IPv4 CDN address). The publisher must adopt the
+/// resolved dialable form in ALL projections and reclassify the IP family
+/// from the real endpoint (v42 §C); otherwise the strict reserved-endpoint
+/// filter empties every webtunnel family file on each run and the
+/// publication guard keeps restoring grandfathered bytes.
+#[test]
+fn resolved_placeholder_endpoint_publishes_real_endpoint_and_family() {
+    let root = scratch("webtunnel-resolved");
+    let bridge = root.join("bridge");
+    let now = "2026-08-01T23:30:00Z";
+    let observed_at = "2026-08-01T23:55:00Z";
+    let fp = "68674E54A17AEB1C9ADE878BBBB46C6975DD3105";
+    let placeholder_line = format!(
+        "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 {fp} url=https://front.example/t"
+    );
+    let resolved_line = format!("webtunnel 172.67.201.245:443 {fp} url=https://front.example/t");
+    let history = json!({
+        "webtunnel placeholder form": {
+            "raw": placeholder_line,
+            "transport": "webtunnel",
+            "ip_version": "ipv6",
+            "first_seen": now,
+            "last_seen": now,
+            "score": 0.45
+        }
+    });
+    let results = json!({
+        "bridges": [
+            {
+                "line": resolved_line,
+                "transport": "webtunnel",
+                "tcp_reachable": true,
+                "iran_status": "iran_unknown",
+                "verification": {"status":"connected", "stage":"S1", "vantage":{"type":"github_actions_runner", "region":null}, "probe_type":"websocket-front-check", "observed_at":observed_at},
+                "composite_score": 0.45
+            }
+        ]
+    });
+    std::fs::write(
+        bridge.join("bridge_history.json"),
+        serde_json::to_string_pretty(&history).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        bridge.join("iran_results.json"),
+        serde_json::to_string_pretty(&results).unwrap(),
+    )
+    .unwrap();
+
+    let options = options(&root);
+    publish_at(&options, Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap()).unwrap();
+
+    let ipv4 = std::fs::read_to_string(bridge.join("webtunnel_ipv4.txt")).unwrap();
+    assert!(
+        ipv4.contains("172.67.201.245:443"),
+        "resolved webtunnel endpoint must publish in the IPv4 family file, got: {ipv4:?}"
+    );
+    let all = std::fs::read_to_string(bridge.join("webtunnel_ipv4_ipv6_all.txt")).unwrap();
+    assert!(all.contains("172.67.201.245:443"));
+    let ipv6 = std::fs::read_to_string(bridge.join("webtunnel_ipv6.txt")).unwrap();
+    assert!(
+        !ipv6.contains("172.67.201.245:443") && !ipv6.contains("2001:db8"),
+        "resolved IPv4 endpoint must not publish in the IPv6 family file, got: {ipv6:?}"
+    );
+    let testing = std::fs::read_to_string(bridge.join("bridge_list_for_testing.json")).unwrap();
+    assert!(
+        testing.contains("172.67.201.245:443"),
+        "the probing list must carry the dialable resolved form, got: {testing:?}"
+    );
+    // Canonical history keeps the originally collected placeholder form.
+    let history_after = std::fs::read_to_string(bridge.join("bridge_history.json")).unwrap();
+    assert!(history_after.contains("2001:db8"));
+    assert!(!history_after.contains("172.67.201.245"));
+    let _ = std::fs::remove_dir_all(root);
+}
+
+/// A placeholder-raw webtunnel whose front probe produced no resolved
+/// endpoint stays out of every consumer file (strict reserved-endpoint
+/// filter); it remains in the canonical history for probing and census.
+/// This is the honest zero-yield state — it must not be "fixed" by
+/// publishing undialable placeholder endpoints.
+#[test]
+fn unresolved_placeholder_endpoint_stays_out_of_consumer_files() {
+    let root = scratch("webtunnel-unresolved");
+    let bridge = root.join("bridge");
+    let now = "2026-08-01T23:30:00Z";
+    let observed_at = "2026-08-01T23:55:00Z";
+    let fp = "68674E54A17AEB1C9ADE878BBBB46C6975DD3105";
+    let placeholder_line = format!(
+        "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 {fp} url=https://front.example/t"
+    );
+    let history = json!({
+        "webtunnel placeholder form": {
+            "raw": placeholder_line.clone(),
+            "transport": "webtunnel",
+            "ip_version": "ipv6",
+            "first_seen": now,
+            "last_seen": now,
+            "score": 0.45
+        }
+    });
+    let results = json!({
+        "bridges": [
+            {
+                "line": placeholder_line,
+                "transport": "webtunnel",
+                "tcp_reachable": false,
+                "iran_status": "iran_unknown",
+                "verification": {"status":"error", "stage":"S0", "vantage":{"type":"github_actions_runner", "region":null}, "probe_type":"tcp", "error_class":"tcp_connect_error", "observed_at":observed_at},
+                "composite_score": 0.0
+            }
+        ]
+    });
+    std::fs::write(
+        bridge.join("bridge_history.json"),
+        serde_json::to_string_pretty(&history).unwrap(),
+    )
+    .unwrap();
+    std::fs::write(
+        bridge.join("iran_results.json"),
+        serde_json::to_string_pretty(&results).unwrap(),
+    )
+    .unwrap();
+
+    let options = options(&root);
+    publish_at(&options, Utc.with_ymd_and_hms(2026, 8, 2, 0, 0, 0).unwrap()).unwrap();
+
+    for name in [
+        "webtunnel_ipv4_ipv6_all.txt",
+        "webtunnel_ipv4.txt",
+        "webtunnel_ipv6.txt",
+        "webtunnel_72h_ipv6.txt",
+    ] {
+        let body = std::fs::read_to_string(bridge.join(name)).unwrap();
+        assert!(
+            !body.contains("2001:db8") && !body.contains(fp),
+            "{name} must not publish undialable placeholder endpoints, got: {body:?}"
+        );
+    }
+    let history_after = std::fs::read_to_string(bridge.join("bridge_history.json")).unwrap();
+    assert!(
+        history_after.contains("2001:db8"),
+        "the canonical history must retain the placeholder record for probing and census"
+    );
+    let _ = std::fs::remove_dir_all(root);
+}
