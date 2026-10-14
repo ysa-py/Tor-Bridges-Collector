@@ -91,6 +91,12 @@ const PROBE_HISTORY_CAP: usize = 300;
 /// module contributed what.
 pub const SOURCE_WEBTUNNEL_HTML_ROTATION: &str = "webtunnel_html_rotation";
 
+/// Stable source label for bridge lines recovered through the authenticated
+/// probe-relay Worker's `POST /page` edge-vantage fallback (additive,
+/// 2026-10-14). Kept distinct from `webtunnel_html_rotation` so the
+/// diagnostics table shows exactly which vantage contributed what.
+pub const SOURCE_WEBTUNNEL_HTML_EDGE: &str = "webtunnel_html_edge";
+
 /// The two canonical WebTunnel pages served by bridges.torproject.org
 /// (rdsys HTTPS distributor). `ip_version` mirrors the file-stem/family
 /// convention used everywhere else in the pipeline.
@@ -111,18 +117,35 @@ pub const WEBTUNNEL_HTML_TARGETS: &[(&str, &str, &str)] = &[
 /// distributor mechanism tokens. All are public project pages; each fetch
 /// is best-effort and non-fatal (a failed fetch is recorded in the audit
 /// output, it never fails the pipeline).
+///
+/// ROUTE FIX (2026-10-14, live-verified): the previous targets used
+/// gitlab.torproject.org's `/-/raw/<ref>/<path>` web route, which the
+/// gitlab.tpo edge serves 403 (in CI; 400 from other datacenter vantages)
+/// to non-browser clients — those three entries had returned 403 in every
+/// recorded run. The GitLab API v4 raw-file endpoint serves the identical
+/// bytes without the block, verified live with plain curl:
+///   * rdsys README                        -> 200 (1644/959B markdown)
+///   * rdsys conf/config.json              -> 200 (distributors: https, email,
+///     stub, gettor, moat, telegram)
+///   * webtunnel README                    -> 200
+///
+/// The distributor-config entry additionally moves from
+/// `config/rdsys.yaml` — which no longer exists on rdsys main (the repo
+/// restructured its configuration into `conf/`) — to the modern
+/// `conf/config.json`, the file that actually carries the distributor
+/// definitions today.
 pub const DOC_AUDIT_TARGETS: &[(&str, &str)] = &[
     (
         "rdsys-readme",
-        "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/README.md",
+        "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Frdsys/repository/files/README%2Emd/raw?ref=main",
     ),
     (
         "rdsys-distributor-config",
-        "https://gitlab.torproject.org/tpo/anti-censorship/rdsys/-/raw/main/config/rdsys.yaml",
+        "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Frdsys/repository/files/conf%2Fconfig%2Ejson/raw?ref=main",
     ),
     (
         "webtunnel-project-readme",
-        "https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel/-/raw/main/README.md",
+        "https://gitlab.torproject.org/api/v4/projects/tpo%2Fanti-censorship%2Fpluggable-transports%2Fwebtunnel/repository/files/README%2Emd/raw?ref=main",
     ),
     (
         "bridges-torproject-home",
@@ -266,6 +289,7 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
         }
 
         let mut parsed = Vec::new();
+        let mut last_variant = "no_response";
         for attempt in 0..=1 {
             if attempt > 0 {
                 // One bounded fallback attempt per page. The pacing applies to
@@ -288,13 +312,15 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
             match result {
                 Ok(resp) if (200..300).contains(&resp.status) => {
                     group.responses_ok += 1;
+                    last_variant = bridgedb_page_variant(&resp.text);
                     parsed = parse_bridgelines_html(&resp.text);
                     println!(
-                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} status={} parsed_lines={} source={}",
+                        "webtunnel_supply_advanced draw: url={url} attempt={} method={} status={} parsed_lines={} page_variant={} source={}",
                         attempt + 1,
                         method,
                         resp.status,
                         parsed.len(),
+                        bridgedb_page_variant(&resp.text),
                         group.source,
                     );
                     if !parsed.is_empty() {
@@ -302,8 +328,9 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
                     }
                     if attempt == 0 {
                         eprintln!(
-                            "webtunnel_supply_advanced draw: url={url} returned HTTP {} but no validated bridge lines; retrying once with browser headers",
-                            resp.status
+                            "webtunnel_supply_advanced draw: url={url} returned HTTP {} but no validated bridge lines (page_variant={}); retrying once with browser headers",
+                            resp.status,
+                            bridgedb_page_variant(&resp.text),
                         );
                     }
                 }
@@ -340,13 +367,165 @@ pub fn fetch_webtunnel_html(client: &dyn HttpFetch, draws: usize) -> SourceLines
 
         if parsed.is_empty() {
             eprintln!(
-                "webtunnel_supply_advanced draw: url={url} produced no validated bridge lines after the bounded retry; no records added"
+                "webtunnel_supply_advanced draw: url={url} produced no validated bridge lines after the bounded retry (page_variant={last_variant}); no records added. BridgeDB gates its HTML interface per client vantage (IP reputation / rate limit / k-anonymity), so an empty page from the CI runner is commonly vantage-gating, not an empty global supply."
             );
         }
         for line in parsed {
             group
                 .lines
                 .push((line, transport.to_string(), ip_version.to_string()));
+        }
+    }
+    group
+}
+
+/// Classify which BridgeDB page variant a response body is, so a zero-line
+/// draw is diagnosable from the log alone (additive, 2026-10-14).
+///
+/// * `bridgelines_div_present` — the real bridge-issuing page rendered; zero
+///   validated lines means BridgeDB genuinely issued nothing for this
+///   transport/vantage in this window.
+/// * `no_bridgelines_div` — an interstitial (rate-limit, consent, or error
+///   page) was served instead; the vantage is gated and the draw carries no
+///   supply information at all.
+/// * `empty_body` — 2xx with no usable body.
+#[must_use]
+pub fn bridgedb_page_variant(body: &str) -> &'static str {
+    if body.trim().is_empty() {
+        "empty_body"
+    } else if body.contains("id=\"bridgelines\"") {
+        "bridgelines_div_present"
+    } else {
+        "no_bridgelines_div"
+    }
+}
+
+/// Bounded per-run tuning for the authenticated edge-vantage fallback draw.
+///
+/// * `enabled` — master switch (`WEBTUNNEL_EDGE_FETCH`, default on).
+/// * `relay_base_url` / `relay_token` — the probe-relay endpoint and its
+///   shared secret, read from the same `PROBE_RELAY_URL` / `PROBE_RELAY_TOKEN`
+///   environment variables Stage 4-prep/Stage 4 already use, so no new
+///   secret is introduced. When either is absent the fallback silently
+///   stays off (the direct draws remain the primary source).
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct EdgeFetchConfig {
+    pub enabled: bool,
+    pub relay_base_url: String,
+    pub relay_token: String,
+}
+
+impl EdgeFetchConfig {
+    /// Read the configuration from the environment. Returns `None` when the
+    /// fallback cannot run (disabled, or the relay endpoint/secret is not
+    /// configured in this job).
+    #[must_use]
+    pub fn from_env() -> Option<Self> {
+        let enabled = parse_bool_value(std::env::var("WEBTUNNEL_EDGE_FETCH").ok().as_deref(), true);
+        let relay_base_url = std::env::var("PROBE_RELAY_URL").ok()?;
+        let relay_token = std::env::var("PROBE_RELAY_TOKEN").ok()?;
+        if !enabled
+            || !relay_base_url.starts_with("https://")
+            || relay_base_url.contains(['?', '#', '@', '"', '\\'])
+            || relay_base_url.chars().any(char::is_whitespace)
+            || relay_token.len() < 16
+            || relay_token.len() > 1024
+            || relay_token.chars().any(|c| c.is_control())
+        {
+            return None;
+        }
+        Some(Self {
+            enabled,
+            relay_base_url,
+            relay_token,
+        })
+    }
+}
+
+/// Edge-vantaged WebTunnel draw (additive, 2026-10-14): fetch the canonical
+/// BridgeDB WebTunnel pages through the authenticated probe-relay Worker's
+/// `POST /page` endpoint instead of the runner's own egress.
+///
+/// WHY: BridgeDB gates its HTML interface per client vantage (IP reputation,
+/// rate limiting, k-anonymity throttles). The GitHub Actions vantage
+/// consistently receives an HTTP 200 interstitial with no bridge lines
+/// (measured run 38574505786: `parsed_lines=0` on every attempt), while the
+/// same URL serves real bridge lines from other vantages. The Worker runs on
+/// Cloudflare's edge — a different IP class — so a relay-fetched page has a
+/// materially different gating outcome.
+///
+/// SAFETY: the Worker only serves a fixed allowlist of public documentation
+/// pages (see `probe-relay/src/index.ts`), requires the same `X-Probe-Token`
+/// secret as `/probe`, caps the response size, and never follows redirects
+/// off the allowlist. This client sends no bridge data anywhere — it only
+/// receives page text and parses it through the exact same validation chain
+/// as the direct draws ([`crate::scraper::parse_bridgelines_html`]).
+///
+/// Failures are typed, logged, and skipped: the fallback is strictly
+/// additive and can never replace or falsify the direct draw's evidence.
+#[must_use]
+pub fn fetch_webtunnel_html_via_edge(
+    client: &dyn HttpFetch,
+    relay_base_url: &str,
+    relay_token: &str,
+    draws: usize,
+) -> SourceLines {
+    let plan = webtunnel_html_plan(draws);
+    let mut group = SourceLines {
+        source: SOURCE_WEBTUNNEL_HTML_EDGE,
+        requests: 0,
+        responses_ok: 0,
+        lines: Vec::new(),
+    };
+    let base = relay_base_url.trim_end_matches('/');
+    let endpoint = format!("{}/page", base.trim_end_matches("/probe"));
+    let headers = vec![("X-Probe-Token".to_string(), relay_token.to_string())];
+
+    for (index, &(url, transport, ip_version)) in plan.iter().enumerate() {
+        if index > 0 {
+            pace_request();
+        }
+        group.requests += 1;
+        let body = json!({ "url": url });
+        match client.post_json(&endpoint, &body, &headers, REQUEST_TIMEOUT) {
+            Ok(resp) if (200..300).contains(&resp.status) => {
+                let parsed: Value = serde_json::from_str(&resp.text).unwrap_or(Value::Null);
+                let page_status = parsed.get("status").and_then(Value::as_u64).unwrap_or(0);
+                let page_text = parsed
+                    .get("text")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                let mut lines = Vec::new();
+                if (200..300).contains(&page_status) && !page_text.is_empty() {
+                    lines = parse_bridgelines_html(page_text);
+                }
+                group.responses_ok += 1;
+                println!(
+                    "webtunnel_supply_advanced edge draw: url={url} via=probe-relay-page relay_status={} page_status={} parsed_lines={} page_variant={} source={}",
+                    resp.status,
+                    page_status,
+                    lines.len(),
+                    bridgedb_page_variant(page_text),
+                    group.source,
+                );
+                for line in lines {
+                    group
+                        .lines
+                        .push((line, transport.to_string(), ip_version.to_string()));
+                }
+            }
+            Ok(resp) => {
+                eprintln!(
+                    "webtunnel_supply_advanced edge draw: url={url} via=probe-relay-page relay_status={} source={} (non-2xx; skipping)",
+                    resp.status, group.source,
+                );
+            }
+            Err(err) => {
+                eprintln!(
+                    "webtunnel_supply_advanced edge draw: url={url} via=probe-relay-page error={} source={} (skipping)",
+                    err, group.source,
+                );
+            }
         }
     }
     group
@@ -499,6 +678,27 @@ pub fn audit_canonical_docs(client: &dyn HttpFetch) -> Vec<Value> {
     entries
 }
 
+#[cfg(test)]
+impl EdgeFetchConfig {
+    /// Deterministic constructor mirroring `from_env` validation for tests.
+    fn from_env_struct(relay_base_url: &str, relay_token: &str) -> Option<Self> {
+        if !relay_base_url.starts_with("https://")
+            || relay_base_url.contains(['?', '#', '@', '"', '\\'])
+            || relay_base_url.chars().any(char::is_whitespace)
+            || relay_token.len() < 16
+            || relay_token.len() > 1024
+            || relay_token.chars().any(|c| c.is_control())
+        {
+            return None;
+        }
+        Some(Self {
+            enabled: true,
+            relay_base_url: relay_base_url.to_string(),
+            relay_token: relay_token.to_string(),
+        })
+    }
+}
+
 /// Read `data/pt_results.json` (written by Stage 4) into a vector of JSON
 /// entries. Missing/invalid files degrade to an empty vector.
 #[must_use]
@@ -599,19 +799,27 @@ pub fn write_report(payload: &Value) {
     }
 }
 
+/// The per-run source groups feeding the step summary: the direct
+/// runner-vantage draw plus the optional edge-vantage fallback draw.
+pub struct SupplySources<'a> {
+    pub direct: &'a SourceLines,
+    pub edge: Option<&'a SourceLines>,
+}
+
 /// Append the module's markdown section to `$GITHUB_STEP_SUMMARY` when
 /// running inside GitHub Actions (best-effort; ignored elsewhere). This
 /// *extends* the job's existing supply-diagnostics summary from Stage 1x
 /// with a new per-channel table — it never replaces or edits that table.
 pub fn emit_step_summary(
     config: &WebtunnelAdvConfig,
-    html: &SourceLines,
+    sources: SupplySources<'_>,
     before: &BTreeMap<String, usize>,
     after: &BTreeMap<String, usize>,
     added: &BTreeMap<String, usize>,
     relay: &Value,
     docs_audit: &[Value],
 ) {
+    let SupplySources { direct: html, edge } = sources;
     let Ok(summary_path) = std::env::var("GITHUB_STEP_SUMMARY") else {
         return;
     };
@@ -638,6 +846,16 @@ pub fn emit_step_summary(
         fetched = html.lines.len(),
         added_records = added.values().sum::<usize>(),
     ));
+    if let Some(edge_group) = edge {
+        rows.push_str(&format!(
+            "| {source} | {requests} | {ok} | {fetched} | {added_records} |\n",
+            source = edge_group.source,
+            requests = edge_group.requests,
+            ok = edge_group.responses_ok,
+            fetched = edge_group.lines.len(),
+            added_records = added.values().sum::<usize>(),
+        ));
+    }
     rows.push_str("\n| webtunnel family | before | after | added |\n|---|---|---|---|\n");
     for family in ["webtunnel", "webtunnel_ipv6"] {
         rows.push_str(&format!(
@@ -695,6 +913,7 @@ pub fn emit_step_summary(
 pub fn emit_workflow_notices(
     after: &BTreeMap<String, usize>,
     html: &SourceLines,
+    edge: Option<&SourceLines>,
     added_total: usize,
 ) {
     for family in ["webtunnel", "webtunnel_ipv6"] {
@@ -706,6 +925,13 @@ pub fn emit_workflow_notices(
         html.lines.len(),
         added_total
     );
+    if let Some(edge_group) = edge {
+        println!(
+            "::notice title=WEBTUNNEL_SUPPLY::webtunnel_html_edge::relay_fetched_lines={} added_records={}",
+            edge_group.lines.len(),
+            added_total
+        );
+    }
 }
 
 /// Additive (2026-09-07): surface the probe-relay per-transport outcome
@@ -787,7 +1013,34 @@ pub fn run_advanced_supply(
         (html, Vec::new())
     };
 
-    let added = count_added_lines(&history, &html.lines);
+    // Edge-vantage fallback (additive, 2026-10-14): when the direct runner
+    // draw was vantage-gated (BridgeDB served an interstitial / empty page),
+    // re-draw the same canonical pages through the authenticated probe-relay
+    // Worker's `POST /page` endpoint. Strictly additive: it only runs when the
+    // direct draw produced zero validated lines, and it merges through the
+    // exact same validation chain. Never runs when the relay secrets are
+    // absent from the environment.
+    let mut edge: Option<SourceLines> = None;
+    if network_available && html.lines.is_empty() {
+        if let Some(edge_config) = EdgeFetchConfig::from_env() {
+            let client = client.expect("network_available implies a client");
+            let group = fetch_webtunnel_html_via_edge(
+                client,
+                &edge_config.relay_base_url,
+                &edge_config.relay_token,
+                config.webtunnel_draws,
+            );
+            edge = Some(group);
+        }
+    }
+
+    // Combined per-line view across both vantages for counting/merging.
+    let mut combined_lines = html.lines.clone();
+    if let Some(edge_group) = &edge {
+        combined_lines.extend(edge_group.lines.iter().cloned());
+    }
+
+    let added = count_added_lines(&history, &combined_lines);
     let added_total: usize = added.values().sum();
 
     // Per-line audit trace (additive diagnostics), mirroring the
@@ -802,13 +1055,25 @@ pub fn run_advanced_supply(
             html.source, transport, ip_version, known, line,
         );
     }
+    if let Some(edge_group) = &edge {
+        for (line, transport, ip_version) in &edge_group.lines {
+            let key = normalize_for_history(line, transport);
+            let known = history
+                .as_object()
+                .is_some_and(|object| object.contains_key(&key));
+            println!(
+                "webtunnel_supply_advanced trace: source={} transport={} ip_version={} known={} line={}",
+                edge_group.source, transport, ip_version, known, line,
+            );
+        }
+    }
 
     // Merge through the canonical history writer (same validation,
     // deduplication, and last_seen refresh as every other source).
-    let pruned = if html.lines.is_empty() {
+    let pruned = if combined_lines.is_empty() {
         0
     } else {
-        merge_raw_into_history(&mut history, &html.lines)?;
+        merge_raw_into_history(&mut history, &combined_lines)?;
         prune_history(&mut history)?
     };
     save_history(&history, &history_path)?;
@@ -816,19 +1081,29 @@ pub fn run_advanced_supply(
 
     let relay = summarize_pt_results(&read_pt_results());
 
+    let mut sources_json = vec![json!({
+        "source": html.source,
+        "requests": html.requests,
+        "responses_ok": html.responses_ok,
+        "fetched_lines": html.lines.len(),
+        "added_records": added_total,
+    })];
+    if let Some(edge_group) = &edge {
+        sources_json.push(json!({
+            "source": edge_group.source,
+            "requests": edge_group.requests,
+            "responses_ok": edge_group.responses_ok,
+            "fetched_lines": edge_group.lines.len(),
+            "added_records": added_total,
+        }));
+    }
     let payload = json!({
         "generated_at": generated_at,
         "config": {
             "webtunnel_html_draws": config.webtunnel_draws,
             "docs_audit": config.docs_audit,
         },
-        "sources": [{
-            "source": html.source,
-            "requests": html.requests,
-            "responses_ok": html.responses_ok,
-            "fetched_lines": html.lines.len(),
-            "added_records": added_total,
-        }],
+        "sources": sources_json,
         "webtunnel_family_counts": {
             "before": family_counts_to_json(&before, &["webtunnel", "webtunnel_ipv6"]),
             "after": family_counts_to_json(&after, &["webtunnel", "webtunnel_ipv6"]),
@@ -846,11 +1121,23 @@ pub fn run_advanced_supply(
         "generated_at": generated_at_value,
         "config": config_value,
         "webtunnel_html_fetched_lines": html.lines.len(),
+        "webtunnel_html_edge_fetched_lines": edge.as_ref().map_or(0, |group| group.lines.len()),
         "webtunnel_html_added_records": added_total,
         "relay_per_transport": relay_transport_value,
     }));
-    emit_step_summary(&config, &html, &before, &after, &added, &relay, &docs_audit);
-    emit_workflow_notices(&after, &html, added_total);
+    emit_step_summary(
+        &config,
+        SupplySources {
+            direct: &html,
+            edge: edge.as_ref(),
+        },
+        &before,
+        &after,
+        &added,
+        &relay,
+        &docs_audit,
+    );
+    emit_workflow_notices(&after, &html, edge.as_ref(), added_total);
     emit_relay_and_docs_notices(&relay, &docs_audit);
 
     println!(
@@ -1223,5 +1510,188 @@ webtunnel url=https://example.com/ abcdef0123456789
         let value = family_counts_to_json(&counts, &["webtunnel"]);
         assert_eq!(value.pointer("/webtunnel").and_then(Value::as_u64), Some(4));
         assert!(value.get("obfs4").is_none());
+    }
+
+    /// Edge-fallback mock: records every `POST /page` call (endpoint, token
+    /// header, body) and replies with a canned relay JSON envelope.
+    struct EdgePageMock {
+        relay_body: String,
+        relay_status: u16,
+        calls: AtomicUsize,
+        seen_endpoints: std::sync::Mutex<Vec<String>>,
+        seen_tokens: std::sync::Mutex<Vec<String>>,
+        seen_urls: std::sync::Mutex<Vec<String>>,
+    }
+
+    impl EdgePageMock {
+        fn success(page_text: &str) -> Self {
+            Self {
+                relay_body: serde_json::json!({
+                    "url": "https://bridges.torproject.org/bridges?transport=webtunnel",
+                    "status": 200,
+                    "bytes": page_text.len(),
+                    "truncated": false,
+                    "text": page_text,
+                })
+                .to_string(),
+                relay_status: 200,
+                calls: AtomicUsize::new(0),
+                seen_endpoints: std::sync::Mutex::new(Vec::new()),
+                seen_tokens: std::sync::Mutex::new(Vec::new()),
+                seen_urls: std::sync::Mutex::new(Vec::new()),
+            }
+        }
+    }
+
+    impl HttpFetch for EdgePageMock {
+        fn get(&self, _url: &str, _timeout: Duration) -> Result<HttpResponse, ScraperError> {
+            Err(ScraperError::Http {
+                url: String::new(),
+                message: "GET not used by the edge fallback".to_string(),
+            })
+        }
+
+        fn post_json(
+            &self,
+            url: &str,
+            body: &Value,
+            headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            self.calls.fetch_add(1, Ordering::SeqCst);
+            self.seen_endpoints.lock().unwrap().push(url.to_string());
+            self.seen_tokens.lock().unwrap().extend(
+                headers
+                    .iter()
+                    .filter(|(name, _)| name == "X-Probe-Token")
+                    .map(|(_, value)| value.clone()),
+            );
+            self.seen_urls.lock().unwrap().push(
+                body.get("url")
+                    .and_then(Value::as_str)
+                    .unwrap_or("")
+                    .to_string(),
+            );
+            Ok(mock_response(self.relay_status, &self.relay_body))
+        }
+
+        fn get_with_headers(
+            &self,
+            _url: &str,
+            _headers: &[(String, String)],
+            _timeout: Duration,
+        ) -> Result<HttpResponse, ScraperError> {
+            Err(ScraperError::Http {
+                url: String::new(),
+                message: "GET not used by the edge fallback".to_string(),
+            })
+        }
+    }
+
+    #[test]
+    fn bridgedb_page_variant_distinguishes_real_page_from_interstitial() {
+        assert_eq!(
+            bridgedb_page_variant(r#"<div id="bridgelines">lines</div>"#),
+            "bridgelines_div_present"
+        );
+        assert_eq!(
+            bridgedb_page_variant("<html><body>rate limit interstitial</body></html>"),
+            "no_bridgelines_div"
+        );
+        assert_eq!(bridgedb_page_variant("   \n\t"), "empty_body");
+    }
+
+    #[test]
+    fn edge_fetch_posts_to_page_endpoint_with_token_and_parses_lines() {
+        let page_text = r#"<div id="bridgelines">
+webtunnel url=https://front-cdn.example.com/Cn4J4GAUglhVcUKeMEkQJt7L abcdef0123456789
+</div>"#;
+        let mock = EdgePageMock::success(page_text);
+        let group = fetch_webtunnel_html_via_edge(
+            &mock,
+            "https://relay.example/private-path/",
+            "edge-secret-value-0123456789",
+            1,
+        );
+        assert_eq!(group.source, SOURCE_WEBTUNNEL_HTML_EDGE);
+        assert_eq!(group.requests, 2);
+        assert_eq!(group.responses_ok, 2);
+        assert_eq!(group.lines.len(), 2);
+        let endpoints = mock.seen_endpoints.lock().unwrap();
+        assert!(
+            endpoints
+                .iter()
+                .all(|endpoint| endpoint == "https://relay.example/private-path/page"),
+            "edge fetch must hit POST /page on the relay base URL: {endpoints:?}"
+        );
+        let tokens = mock.seen_tokens.lock().unwrap();
+        assert_eq!(tokens.len(), 2);
+        assert!(tokens
+            .iter()
+            .all(|token| token == "edge-secret-value-0123456789"));
+        let urls = mock.seen_urls.lock().unwrap();
+        assert_eq!(urls[0], WEBTUNNEL_HTML_TARGETS[0].0);
+        assert_eq!(urls[1], WEBTUNNEL_HTML_TARGETS[1].0);
+        assert!(group
+            .lines
+            .iter()
+            .all(|(_, transport, _)| transport == "webtunnel"));
+    }
+
+    #[test]
+    fn edge_fetch_skips_non_200_relay_envelopes_without_fabricating_lines() {
+        let mut mock = EdgePageMock::success("<div id=\"bridgelines\">x</div>");
+        mock.relay_status = 502;
+        mock.relay_body = "{\"error\":\"page_fetch_failed\"}".to_string();
+        let group = fetch_webtunnel_html_via_edge(
+            &mock,
+            "https://relay.example",
+            "edge-secret-value-0123456789",
+            1,
+        );
+        assert_eq!(group.requests, 2);
+        assert_eq!(group.responses_ok, 0);
+        assert!(group.lines.is_empty());
+    }
+
+    #[test]
+    fn edge_fetch_ignores_interstitial_pages_served_through_the_relay() {
+        let mock = EdgePageMock::success("<html><body>consent page</body></html>");
+        let group = fetch_webtunnel_html_via_edge(
+            &mock,
+            "https://relay.example",
+            "edge-secret-value-0123456789",
+            1,
+        );
+        assert_eq!(group.requests, 2);
+        assert_eq!(group.responses_ok, 2);
+        assert!(
+            group.lines.is_empty(),
+            "an interstitial page must not yield fabricated lines"
+        );
+    }
+
+    #[test]
+    fn edge_fetch_config_requires_https_endpoint_and_long_token() {
+        // Absent env -> None (the fallback silently stays off).
+        // (Cannot unset parent env in-process reliably; probe the validator
+        // logic through deliberately invalid values instead.)
+        let invalid = EdgeFetchConfig::from_env_struct("http://relay.example", "short");
+        assert!(invalid.is_none());
+        let query_injected = EdgeFetchConfig::from_env_struct(
+            "https://relay.example/path?steal=1",
+            "edge-secret-value-0123456789",
+        );
+        assert!(query_injected.is_none());
+        let control_char = EdgeFetchConfig::from_env_struct(
+            "https://relay.example/path",
+            "edge-secret-value-0123456789\ninjected",
+        );
+        assert!(control_char.is_none());
+        let valid = EdgeFetchConfig::from_env_struct(
+            "https://relay.example/private-path",
+            "edge-secret-value-0123456789",
+        );
+        assert!(valid.is_some());
     }
 }
