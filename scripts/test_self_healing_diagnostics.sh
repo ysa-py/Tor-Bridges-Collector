@@ -55,8 +55,34 @@ NORMALIZER="$ROOT/scripts/normalize_self_heal_conclusion.sh"
   echo "FAIL: healthy diagnostics must preserve a successful parent conclusion" >&2
   exit 1
 }
-[ "$(bash "$NORMALIZER" success ok 0 1)" = "failure" ] || {
-  echo "FAIL: unresolved findings must prevent false success" >&2
+# GATE RECALIBRATION (2026-10-14, PR #265): a failed diagnostics STATUS is
+# still an error-severity signal and must override a green parent, even with
+# zero explicitly counted errors (belt-and-braces parity with the Rust
+# classifier, whose status=failed <=> errors>0 by construction).
+[ "$(bash "$NORMALIZER" success failed 0 1)" = "failure" ] || {
+  echo "FAIL: failed-status findings must prevent false success" >&2
+  exit 1
+}
+# The old gate also flipped on `unresolved > 0` — i.e. on ANY diagnostic
+# event, including the typed by-design advisories every healthy run
+# legitimately prints (probe timeout evidence, failsafe self-heal lines,
+# MOAT empty windows). That re-labelled every green pipeline run
+# "failure" (measured: 1975 advisory events on a 15/15-jobs-successful
+# run, warning annotation on every self-heal trigger). Advisory-only
+# findings now stay visible in the step summary and the uploaded
+# whole_run_diagnostics.json artifact WITHOUT flipping the parent
+# conclusion; only Error-severity findings (status=failed or errors>0)
+# normalize a green parent to failure.
+[ "$(bash "$NORMALIZER" success ok 0 1)" = "success" ] || {
+  echo "FAIL: advisory-only findings must not flip a successful parent conclusion" >&2
+  exit 1
+}
+[ "$(bash "$NORMALIZER" success degraded 0 1975)" = "success" ] || {
+  echo "FAIL: degraded-with-zero-errors (advisory) diagnostics must preserve success" >&2
+  exit 1
+}
+[ "$(bash "$NORMALIZER" success degraded 3 1975)" = "failure" ] || {
+  echo "FAIL: error-severity findings must flip a successful parent conclusion" >&2
   exit 1
 }
 [ "$(bash "$NORMALIZER" failure ok 0 0)" = "failure" ] || {
