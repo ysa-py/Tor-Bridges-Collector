@@ -1417,6 +1417,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 38.6.219.92:443 3FBF86ADCC8D39D30B3BE340FB0D87F64E64E7EE url=https://hongkong.dagestani.eu/thismustallbefakenews ver=0.0.3",
+      "host": "hongkong.dagestani.eu",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 38.6.219.92:443 3FBF86ADCC8D39D30B3BE340FB0D87F64E64E7EE url=https://hongkong.dagestani.eu/thismustallbefakenews ver=0.0.4",
       "host": "hongkong.dagestani.eu",
       "nin_flags": [
@@ -1838,6 +1850,18 @@
     },
     {
       "bridge_line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.6",
+      "host": "pod01.oneclickhost.eu",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.7",
       "host": "pod01.oneclickhost.eu",
       "nin_flags": [
         "webtunnel_cdn_fronted",
@@ -9268,17 +9292,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 72.18.53.189:9111 A216B2017C64AA3BAB144B3B9458CD24A39F53B1",
-      "host": "72.18.53.189",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9111,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 76.228.104.143:9333 AF2CA04E5F0DB92EC5322564A4FBAE3E6BB71C99",
       "host": "76.228.104.143",
       "nin_flags": [
@@ -9374,6 +9387,17 @@
       ],
       "nin_score": 0.15,
       "port": 9001,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 84.22.109.77:1312 CEF423251E83353BD875CB5327B458F4C8751170",
+      "host": "84.22.109.77",
+      "nin_flags": [
+        "tcp_alive"
+      ],
+      "nin_score": 0.15,
+      "port": 1312,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -20567,6 +20591,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 72.18.53.189:9111 A216B2017C64AA3BAB144B3B9458CD24A39F53B1",
+      "host": "72.18.53.189",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9111,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 72.18.53.189:9321 98275F666091EC734EA052FFEC8BA859FAB416C3",
       "host": "72.18.53.189",
       "nin_flags": [],
@@ -20914,15 +20947,6 @@
       "nin_flags": [],
       "nin_score": 0.05,
       "port": 6666,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 84.22.109.77:1312 CEF423251E83353BD875CB5327B458F4C8751170",
-      "host": "84.22.109.77",
-      "nin_flags": [],
-      "nin_score": 0.05,
-      "port": 1312,
       "tcp_reachable": false,
       "transport": "vanilla"
     },
@@ -21648,11 +21672,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1967,
-    "candidates_probed": 395,
-    "candidates_scored": 1967,
+    "candidates_input": 1969,
+    "candidates_probed": 397,
+    "candidates_scored": 1969,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 615.054
+    "probe_elapsed_secs": 614.305
   }
 }

@@ -987,6 +987,14 @@
     {
       "ip": "38.6.219.92",
       "port": 443,
+      "raw": "webtunnel 38.6.219.92:443 3FBF86ADCC8D39D30B3BE340FB0D87F64E64E7EE url=https://hongkong.dagestani.eu/thismustallbefakenews ver=0.0.3",
+      "sni": "hongkong.dagestani.eu",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "38.6.219.92",
+      "port": 443,
       "raw": "webtunnel 38.6.219.92:443 3FBF86ADCC8D39D30B3BE340FB0D87F64E64E7EE url=https://hongkong.dagestani.eu/thismustallbefakenews ver=0.0.4",
       "sni": "hongkong.dagestani.eu",
       "tier": "YELLOW",
@@ -1273,6 +1281,14 @@
       "transport": "webtunnel"
     },
     {
+      "ip": "85.215.163.16",
+      "port": 443,
+      "raw": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.7",
+      "sni": "pod01.oneclickhost.eu",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
       "ip": "85.215.180.86",
       "port": 443,
       "raw": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.3",
@@ -1526,10 +1542,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-14T18:37:39.922977+00:00",
+  "generated_at": "2026-10-14T22:04:20.982435+00:00",
   "green_count": 11,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 190,
-  "yellow_count": 179
+  "total_bridges": 192,
+  "yellow_count": 181
 }
