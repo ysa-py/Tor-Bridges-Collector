@@ -400,6 +400,21 @@ pub fn bridgedb_page_variant(body: &str) -> &'static str {
     }
 }
 
+/// Classify a non-JSON relay reply by SHAPE only (redaction-safe: the body
+/// content itself is never logged, only a structural class).
+fn relay_envelope_shape_class(body: &str) -> &'static str {
+    let trimmed = body.trim_start();
+    if trimmed.is_empty() {
+        "empty"
+    } else if trimmed.starts_with('<') {
+        "html_like"
+    } else if trimmed.starts_with('{') || trimmed.starts_with('[') {
+        "json_like_but_unparsed"
+    } else {
+        "text_like"
+    }
+}
+
 /// Bounded per-run tuning for the authenticated edge-vantage fallback draw.
 ///
 /// * `enabled` — master switch (`WEBTUNNEL_EDGE_FETCH`, default on).
@@ -500,9 +515,27 @@ pub fn fetch_webtunnel_html_via_edge(
                     lines = parse_bridgelines_html(page_text);
                 }
                 group.responses_ok += 1;
+                // Envelope-shape diagnosis (additive, 2026-10-14): run
+                // 38600087512 saw relay 200 with a body that was NOT the
+                // expected {url,status,bytes,truncated,text} JSON envelope
+                // (page_status=0, empty page). Classify the shape — typed
+                // classes only, never body content — so the next run pins
+                // down whether the relay path returned HTML (e.g. a
+                // redirect/interstitial followed by the HTTP client), an
+                // error envelope, or an unexpected JSON shape.
+                let envelope_shape = if parsed.is_null() {
+                    relay_envelope_shape_class(&resp.text)
+                } else if parsed.get("status").is_some() && parsed.get("text").is_some() {
+                    "expected_envelope"
+                } else if parsed.as_object().is_some() {
+                    "unexpected_json_object"
+                } else {
+                    "unexpected_json_value"
+                };
                 println!(
-                    "webtunnel_supply_advanced edge draw: url={url} via=probe-relay-page relay_status={} page_status={} parsed_lines={} page_variant={} source={}",
+                    "webtunnel_supply_advanced edge draw: url={url} via=probe-relay-page relay_status={} envelope_shape={} page_status={} parsed_lines={} page_variant={} source={}",
                     resp.status,
+                    envelope_shape,
                     page_status,
                     lines.len(),
                     bridgedb_page_variant(page_text),
