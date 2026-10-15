@@ -204,6 +204,12 @@ jobs:
       run: bash scripts/test_validate_probe_relay_secrets.sh
     - name: Test probe relay smoke retries and redaction
       run: bash scripts/test_probe_relay_smoke.sh
+    # v6 relay client contract: descriptor-level chunking (never exceeds the
+    # Worker's 6-descriptor ceiling), placeholder rendezvous resolution, and
+    # client-side dialability skips (root causes of the permanently empty
+    # fronted-transport advisory files, run 38702901771).
+    - name: Test probe relay client chunking and placeholder resolution
+      run: bash scripts/test_probe_relay.sh
 
     - name: Optional secret availability
       id: secret_presence
