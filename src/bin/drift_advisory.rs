@@ -530,6 +530,19 @@ pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
 
 /// Upper bound on per-run front liveness verifications (bounded network I/O).
 const MAX_FRONT_LIVENESS_CHECKS: usize = 16;
+/// The port a front-domain liveness verification dials. The docstring, the
+/// JSON field (`front_liveness_tcp443`), and every advisory text say
+/// "TCP-443" — and 443 is what a CDN front actually serves. The original
+/// implementation passed the bare literal `44u16` here (commit 9114127), so
+/// for weeks every verification dialed port **44**, which the fronts do not
+/// serve: the connects timed out with the same `TimedOut` kind as a genuine
+/// front outage, and nine alive fronts (www.google.com, cdn.ampproject.org,
+/// ajax.aspnetcdn.com, …) were "CONFIRMED unreachable" on every run
+/// (38613981417 / 38670602651 / 38680880616 / 38694956484) while the
+/// same-runner bash matrix (`/dev/tcp/H/443`, dispatched diagnostic run
+/// 38699534013) and DoH ground truth showed 13-35 ms connects. Named so the
+/// port is a testable contract, never a bare literal again.
+const FRONT_LIVENESS_PORT: u16 = 443;
 /// Per-attempt TCP connect budget for the front liveness check.
 const FRONT_LIVENESS_TIMEOUT: Duration = Duration::from_secs(4);
 /// Upper bound on resolved IPv4 addresses dialed per front (bounded + diverse).
@@ -604,8 +617,18 @@ impl FrontLiveness {
 ///    unreachable even though no IPv4 address was ever successfully
 ///    measured. Only IPv4 dials are a trustworthy front measurement from a
 ///    GitHub-hosted runner.
+/// 5. THE decisive root cause, found by a dispatched runner-vantage matrix
+///    (run 38699534013, session 32): the resolution used the bare literal
+///    `44u16` — port **44**, not 443 — so every verification dialled a
+///    port the fronts do not serve and timed out (bash `/dev/tcp/H/443`
+///    on the same runner image connected in 13-35 ms; verified live after
+///    the fix: all ten fronts resolve to Reachable). The nine "CONFIRMED
+///    unreachable" fronts were alive the whole time; the advisories were
+///    an artifact of the wrong port. The port is now the named,
+///    test-pinned [`FRONT_LIVENESS_PORT`] = 443.
 ///
-/// Now: the verdict is decided by IPv4 attempts ONLY — dial up to
+/// Now: the verdict is decided by IPv4 attempts on
+/// [`FRONT_LIVENESS_PORT`] only — dial up to
 /// [`MAX_FRONT_ADDRESSES_PER_DOMAIN`] global A-record addresses; `Ok`
 /// anywhere means [`FrontLiveness::Reachable`], all failed means
 /// [`FrontLiveness::Unreachable`], and no A record at all means
@@ -614,7 +637,7 @@ impl FrontLiveness {
 /// unreachable IPv4 verdict, and their outcome (any error kind, including
 /// timeouts caused by an un-routed family) never changes the verdict.
 fn verify_front_liveness(domain: &str) -> (FrontLiveness, usize, Option<String>) {
-    let resolved = match (domain, 44u16).to_socket_addrs() {
+    let resolved = match (domain, FRONT_LIVENESS_PORT).to_socket_addrs() {
         Ok(addrs) => addrs.collect::<Vec<_>>(),
         Err(_) => {
             return (
@@ -1298,6 +1321,30 @@ mod tests {
         assert_eq!(verdict, FrontLiveness::Inconclusive);
         assert_eq!(attempted, 0);
         assert_eq!(reason.as_deref(), Some("dns_resolution_failed"));
+    }
+
+    // Regression (runs 38613981417 / 38670602651 / 38680880616 /
+    // 38694956484): the front liveness verification dialed port 44 while
+    // every docstring, JSON field, and advisory text promised TCP-443 —
+    // the nine "CONFIRMED unreachable" fronts (incl. www.google.com) were
+    // alive and serving 443; the bare `44u16` typo measured a port the
+    // fronts do not serve. The port is now a named contract pinned by
+    // this test.
+    #[test]
+    fn front_liveness_dials_tcp_port_443() {
+        assert_eq!(FRONT_LIVENESS_PORT, 443);
+        // And the resolution helper actually binds that port to the dial
+        // targets: a literal IPv4 resolves to a :443 socket address.
+        let resolved: Vec<std::net::SocketAddr> = ("198.252.206.17", FRONT_LIVENESS_PORT)
+            .to_socket_addrs()
+            .expect("literal resolution")
+            .collect();
+        assert!(
+            resolved
+                .iter()
+                .all(|addr| addr.port() == 443 && addr.is_ipv4()),
+            "front liveness must dial :443, got {resolved:?}"
+        );
     }
 
     // Regression (run 38680880616): a global IPv6-only resolution must be
