@@ -1981,6 +1981,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.5",
+      "host": "pod01.oneclickhost.eu",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.6",
       "host": "pod01.oneclickhost.eu",
       "nin_flags": [
@@ -8644,6 +8656,17 @@
       ],
       "nin_score": 0.15,
       "port": 1356,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 145.40.181.255:9001 DC6F85EC1BF41FD9CCBB3429C0FDF10D4985FA37",
+      "host": "145.40.181.255",
+      "nin_flags": [
+        "tcp_alive"
+      ],
+      "nin_score": 0.15,
+      "port": 9001,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -19333,15 +19356,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 145.40.181.255:9001 DC6F85EC1BF41FD9CCBB3429C0FDF10D4985FA37",
-      "host": "145.40.181.255",
-      "nin_flags": [],
-      "nin_score": 0.05,
-      "port": 9001,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 151.242.69.163:4455 7E746D17548D2FF61AEF2CDE43EC8F5781D0A8D6",
       "host": "151.242.69.163",
       "nin_flags": [],
@@ -21926,11 +21940,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1991,
+    "candidates_input": 1992,
     "candidates_probed": 390,
-    "candidates_scored": 1991,
+    "candidates_scored": 1992,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 616.654
+    "probe_elapsed_secs": 615.707
   }
 }
