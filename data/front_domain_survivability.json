@@ -1,12 +1,12 @@
 {
   "advisory_only": true,
-  "front_liveness_verified": true,
+  "front_liveness_verified": false,
   "fronts": {
     "ajax.aspnetcdn.com": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 1 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 4 address(es), every attempt failed with a front-observable error) for all 1 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
           "tcp_reachable": false,
           "transport": "meek-azure"
@@ -15,20 +15,22 @@
       "candidates": 1,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 4,
+      "front_liveness_last_error_class": "environment:network unreachable",
       "front_liveness_tcp443": "unreachable",
       "mean_candidate_health": 0.0
     },
     "app.datapacket.com": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 2 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 1 address(es), every attempt failed with a front-observable error) for all 2 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -37,14 +39,16 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 1,
+      "front_liveness_last_error_class": "front:timed out",
       "front_liveness_tcp443": "unreachable",
-      "mean_candidate_health": 0.005
+      "mean_candidate_health": 0.004
     },
     "assets.cloud.censys.io": {
-      "advisory": "front liveness inconclusive (DNS resolution failed or only non-global addresses resolved); candidate failures cannot be attributed",
+      "advisory": "front liveness inconclusive (DNS resolution failed, only non-global addresses resolved, or the runner has no route to the resolved address family); candidate failures cannot be attributed",
       "candidate_details": [
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
           "tcp_reachable": false,
           "transport": "conjure"
@@ -53,20 +57,22 @@
       "candidates": 1,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 0,
+      "front_liveness_last_error_class": "dns_resolution_failed",
       "front_liveness_tcp443": "unknown",
       "mean_candidate_health": 0.0
     },
     "cdn.ampproject.org": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 2 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 2 address(es), every attempt failed with a front-observable error) for all 2 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -75,14 +81,16 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 2,
+      "front_liveness_last_error_class": "environment:network unreachable",
       "front_liveness_tcp443": "unreachable",
-      "mean_candidate_health": 0.005
+      "mean_candidate_health": 0.004
     },
     "cdn.sstatic.net": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 1 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 1 address(es), every attempt failed with a front-observable error) for all 1 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
           "tcp_reachable": false,
           "transport": "conjure"
@@ -91,20 +99,22 @@
       "candidates": 1,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 1,
+      "front_liveness_last_error_class": "front:timed out",
       "front_liveness_tcp443": "unreachable",
       "mean_candidate_health": 0.0
     },
     "cdn.zk.mk": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 2 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 2 address(es), every attempt failed with a front-observable error) for all 2 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -113,20 +123,22 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 2,
+      "front_liveness_last_error_class": "environment:network unreachable",
       "front_liveness_tcp443": "unreachable",
-      "mean_candidate_health": 0.005
+      "mean_candidate_health": 0.004
     },
     "www.cdn77.com": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 2 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 2 address(es), every attempt failed with a front-observable error) for all 2 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -135,20 +147,22 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 2,
+      "front_liveness_last_error_class": "environment:network unreachable",
       "front_liveness_tcp443": "unreachable",
       "mean_candidate_health": 0.0
     },
     "www.datapacket.com": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 2 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 1 address(es), every attempt failed with a front-observable error) for all 2 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -157,20 +171,22 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 1,
+      "front_liveness_last_error_class": "front:timed out",
       "front_liveness_tcp443": "unreachable",
-      "mean_candidate_health": 0.005
+      "mean_candidate_health": 0.004
     },
     "www.google.com": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 2 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 8 address(es), every attempt failed with a front-observable error) for all 2 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -179,11 +195,13 @@
       "candidates": 2,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 8,
+      "front_liveness_last_error_class": "front:timed out",
       "front_liveness_tcp443": "unreachable",
-      "mean_candidate_health": 0.005
+      "mean_candidate_health": 0.004
     },
     "www.phpmyadmin.net": {
-      "advisory": "front confirmed unreachable (direct TCP-443 connect failed for every resolved address) for all 5 candidate(s) using it — front-level fault",
+      "advisory": "front confirmed unreachable (direct TCP-443 connect attempted 8 address(es), every attempt failed with a front-observable error) for all 5 candidate(s) using it — front-level fault",
       "candidate_details": [
         {
           "health_score": 0.08388608000000006,
@@ -192,25 +210,25 @@
           "transport": "meek-azure"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.004611686018427393,
+          "health_score": 0.0036893488147419144,
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
         },
         {
-          "health_score": 0.0004951760157141529,
+          "health_score": 0.0003961408125713224,
           "raw": "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
           "tcp_reachable": false,
           "transport": "snowflake"
@@ -219,9 +237,11 @@
       "candidates": 5,
       "concentrated_failure": true,
       "currently_reachable": 0,
+      "front_liveness_attempted_addresses": 8,
+      "front_liveness_last_error_class": "environment:network unreachable",
       "front_liveness_tcp443": "unreachable",
-      "mean_candidate_health": 0.019
+      "mean_candidate_health": 0.018
     }
   },
-  "generated_at": "2026-10-15T01:03:02.084781729+00:00"
+  "generated_at": "2026-10-15T02:59:02.833216769+00:00"
 }

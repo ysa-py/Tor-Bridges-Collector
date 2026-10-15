@@ -1,22 +1,6 @@
 {
   "activations": [
     {
-      "file": "meek_lite_tested.txt",
-      "lines": 3,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_projection",
-      "timestamp": "2026-10-05T00:21:41.693302724+00:00",
-      "transport": "meek_lite"
-    },
-    {
-      "file": "meek_lite_ipv6.txt",
-      "lines": 3,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_projection",
-      "timestamp": "2026-10-05T00:21:41.701068113+00:00",
-      "transport": "meek_lite"
-    },
-    {
       "file": "meek_lite_72h_ipv6.txt",
       "lines": 3,
       "producer": "bridge_publication",
@@ -3717,8 +3701,23 @@
       "reason": "empty_transport_projection",
       "timestamp": "2026-10-15T01:05:00.615320344+00:00",
       "transport": "meek-azure"
+    },
+    {
+      "file": "meek_lite.txt",
+      "lines": 3,
+      "reason": "empty_or_missing_projection",
+      "timestamp": "2026-10-15T02:31:33.393260377+00:00",
+      "transport": "meek_lite"
+    },
+    {
+      "file": "meek-azure.txt",
+      "lines": 1,
+      "producer": "bridge_publication",
+      "reason": "empty_transport_projection",
+      "timestamp": "2026-10-15T03:01:09.557856258+00:00",
+      "transport": "meek-azure"
     }
   ],
-  "generated_at": "2026-10-15T01:05:00.615342886+00:00",
+  "generated_at": "2026-10-15T03:01:09.557869858+00:00",
   "note": "Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data."
 }

@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-10-15T01:05:00Z` · **Archive payload SHA-256:** `4e135e56a097d9ca4d476c737d0721eaeee8d8a84de5291efe06e4893c65b919`
+> **Last publication:** `2026-10-15T03:01:09Z` · **Archive payload SHA-256:** `7d569e94fb02108b32464e1721eaad10692e0fbc2c2399cec5314293c6ed6a1f`
 
 ## Quick use for Iran
 
@@ -15,11 +15,11 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `244` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `118` | obfs4-oriented fallback for conventional DPI |
-| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `0` | WebTunnel candidates |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `632` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `287` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `190` | WebTunnel candidates |
 | [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `0` | Snowflake capability candidates |
-| [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `0` | NIN/cut-mode priority candidates |
+| [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `190` | NIN/cut-mode priority candidates |
 | [iran_blocked.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_blocked.txt) | `0` | Observations classified as blocked |
 | [tor_bridges.zip](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tor_bridges.zip) | `78` files | Same verified payload used for Telegram delivery |
 | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | — | SHA-256 inventory, evidence scope, and archive contract |
@@ -66,7 +66,10 @@ Telegram delivery uses a bot token and distributes a bridge inventory outside Gi
 
 ## Evidence and safety notes
 
-- `*_tested.txt` is restricted to typed, positive S2+ protocol evidence. An S1 TCP connection is recorded as `tcp_reachable_s1` but is only a prefilter; it is not a working bridge and does **not** prove a full Tor circuit or Iranian reachability.
+- Evidence tiers (strongest first): **relay-verified → runner TCP/TLS-verified → capability-only → unverified**, stored per record in `bridge/iran_results.json` (`verification.stage`, `test_tier`, `test_result`).
+- `*_tested.txt` and `tested_global_*.txt` admit typed, positive evidence at **runner TCP/TLS-verified or better** (stage S1 `tcp_reachable_s1`, or the stronger S2+ `tested_working` handshake core; strongest tier first). An S1 TCP/TLS connect proves the endpoint answered from the recorded vantage — it does **not** prove a pluggable-transport handshake or Iranian reachability.
+- `iran_likely_working_*` ranks the best available tier per bridge: **Tier A** OONI-measured working > **Tier B** S2+ handshake > **Tier C** runner TCP/TLS reachability. Tier C membership is reachability evidence only; per-record confidence stays in `iran_results.json`.
+- `telegram_manifest.json` records an `evidence_tier` per evidence file and a `reason_code` for every empty file (`NO_UPSTREAM_SUPPLY`, `NO_IPV6_SUPPLY`, `NO_FRESH_WITHIN_WINDOW`, `NO_EVIDENCE`, `RELAY_DOWN`) — an empty file means no qualifying observation, never a fabricated one.
 - `iran_likely_working_*` and anti-DPI scores are decision aids, not guarantees. Censorship conditions vary by ISP, region, time, and Tor Browser version.
 - The AI/DPI-labelled reports in `data/` are deterministic scoring/telemetry analyses. They are not a promise that an AI system can defeat filtering or DPI.
 - Never place personal credentials in bridge files, commit messages, workflow inputs, or Telegram captions.
