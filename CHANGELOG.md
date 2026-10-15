@@ -1,5 +1,29 @@
 # Changelog
 
+## [Session 32b] — 2026-10-15 — THE front-liveness root cause: the probe dialled port 44, not 443
+
+Follow-up to Session 32 with a dispatched runner-vantage matrix (run
+38699534013) and a live after-fix verification.
+
+### Fixed
+- **Every "front domain CONFIRMED unreachable" advisory was an artifact of
+  the wrong port** — `drift_advisory::verify_front_liveness` resolved the
+  front with the bare literal `44u16` while every docstring, the JSON field
+  (`front_liveness_tcp443`), and the advisory texts promise TCP-443. CDN
+  fronts do not serve port 44, so the connects timed out with the same
+  `TimedOut` error kind as a genuine front outage and nine alive fronts
+  (www.google.com, cdn.ampproject.org, ajax.aspnetcdn.com, cdn.sstatic.net,
+  www.cdn77.com, www.datapacket.com, www.phpmyadmin.net, cdn.zk.mk,
+  app.datapacket.com) were "CONFIRMED unreachable" on every run since the
+  check was introduced (commit 9114127; runs 38613981417 / 38670602651 /
+  38680880616 / 38694956484). Evidence chain: a dispatched bash matrix on
+  the same runner image connected to all ten fronts on :443 in 13-35 ms
+  (`/dev/tcp/H/443`, DNS via system + DoH agreeing); python connected to
+  the same addresses on :443 in 10 ms while :44 timed out; after the fix,
+  a live `drift_advisory` run over the committed history flips all ten
+  fronts to "verified reachable … bridge-side, not front-level". The port
+  is now the named, regression-test-pinned `FRONT_LIVENESS_PORT = 443`.
+
 ## [Session 32] — 2026-10-15 — Official WebTunnel placeholder publication, IPv4-only front verdicts, literal-endpoint ingestion labels
 
 Root causes found with verbatim log/evidence forensics on run 38680880616
