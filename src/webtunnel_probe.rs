@@ -108,6 +108,41 @@ fn build_websocket_upgrade_request(host: &str, port: u16, path_and_query: &str) 
     )
 }
 
+/// Canonical WebTunnel upgrade-echo detection over a raw HTTP response.
+///
+/// The reference webtunnel server answers `101` with exactly
+/// `Connection: upgrade` + `Upgrade: websocket` (no `Sec-WebSocket-Accept`).
+/// Both header names/values are matched case-insensitively, and `Connection`
+/// is accepted as a comma-separated token list because CDNs commonly append
+/// `keep-alive` when re-emitting the response.
+fn has_canonical_upgrade_echo(response: &str) -> bool {
+    let mut upgrade_websocket = false;
+    let mut connection_upgrade = false;
+    for line in response.split("\r\n").skip(1) {
+        let Some((name, value)) = line.split_once(':') else {
+            if line.is_empty() {
+                break;
+            }
+            continue;
+        };
+        let name = name.trim().to_ascii_lowercase();
+        let value = value.trim().to_ascii_lowercase();
+        match name.as_str() {
+            "upgrade" => {
+                upgrade_websocket = value.split(',').any(|token| token.trim() == "websocket");
+            }
+            "connection" => {
+                connection_upgrade = value.split(',').any(|token| token.trim() == "upgrade");
+            }
+            _ => {}
+        }
+        if upgrade_websocket && connection_upgrade {
+            return true;
+        }
+    }
+    false
+}
+
 /// Strip any existing IP:PORT or [IPv6]:PORT endpoint from the beginning
 /// of a webtunnel bridge body (the part after "webtunnel ").
 /// Returns the remainder after the fingerprint/url/ver fields.
@@ -364,11 +399,22 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                 .split_ascii_whitespace()
                 .nth(1)
                 .is_some_and(|status| status == "101");
+            // Canonical WebTunnel contract (reference `transport/httpupgrade`
+            // implementation): a real webtunnel server answers
+            // `101 Switching Protocols` + `Upgrade: websocket` +
+            // `Connection: upgrade` and sends NO `Sec-WebSocket-Accept`
+            // header. A bare 101 without that echo is not the webtunnel
+            // contract; the echo without the RFC 6455 signature IS a real
+            // deployed bridge, so it earns S2 (runs 38613981417/38660732712
+            // kept 185 live webtunnel bridges at S1 despite successful
+            // upgrades purely because of the absent signature).
+            let canonical_upgrade_echo = returned_101 && has_canonical_upgrade_echo(&response);
+            let upgrade_verified = signature_verified || canonical_upgrade_echo;
             let mut result = bridge.clone();
             if let Some(obj) = result.as_object_mut() {
                 obj.insert("iran_status".to_string(), json!("iran_unknown"));
                 obj.insert("tcp_reachable".to_string(), json!(true));
-                obj.insert("transport_capable".to_string(), json!(signature_verified));
+                obj.insert("transport_capable".to_string(), json!(upgrade_verified));
                 obj.insert(
                     "websocket_signature_verified".to_string(),
                     json!(signature_verified),
@@ -377,6 +423,8 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                     "probe_status".to_string(),
                     json!(if signature_verified {
                         "websocket_101"
+                    } else if canonical_upgrade_echo {
+                        "websocket_101_canonical"
                     } else {
                         "http_response"
                     }),
@@ -390,8 +438,10 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                         port,
                         if signature_verified {
                             "HTTP 101 and the RFC 6455 WebSocket accept signature were validated."
+                        } else if canonical_upgrade_echo {
+                            "HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected)."
                         } else if returned_101 {
-                            "HTTP 101 was returned without a valid WebSocket accept signature; kept at S1."
+                            "HTTP 101 was returned without the canonical WebSocket upgrade echo; kept at S1."
                         } else {
                             "Generic HTTP response received; no transport handshake was verified."
                         }
@@ -399,7 +449,7 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                 );
                 obj.insert(
                     "composite_score".to_string(),
-                    json!(if signature_verified { 0.7 } else { 0.45 }),
+                    json!(if upgrade_verified { 0.7 } else { 0.45 }),
                 );
                 // Rebuild the bridge line to include the resolved IP:PORT.
                 // Domain-fronted webtunnel bridges from upstream lack the
@@ -438,6 +488,11 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
                 )
                 .to_string();
             let (stage, probe_type) = if signature_verified {
+                ("S2", "websocket-101")
+            } else if canonical_upgrade_echo {
+                // Canonical contract without the optional RFC 6455 signature:
+                // a typed S2 webtunnel upgrade, same tier as the signature
+                // path but with an honestly weaker verification note.
                 ("S2", "websocket-101")
             } else {
                 ("S1", "websocket-front-check")
@@ -772,9 +827,9 @@ pub fn probe_all_webtunnel_bridges(
     let mut succeeded = 0usize;
     let mut failed = 0usize;
     for (index, host, port, updated, probe_status, evidence) in completed {
-        if probe_status == "websocket_101" {
+        if probe_status == "websocket_101" || probe_status == "websocket_101_canonical" {
             succeeded += 1;
-            println!("webtunnel-probe: {host}:{port} => HTTP 101 (front check only)");
+            println!("webtunnel-probe: {host}:{port} => HTTP 101 ({probe_status})");
         } else {
             failed += 1;
             println!("webtunnel-probe: {host}:{port} => {probe_status}: {evidence}");
@@ -807,6 +862,53 @@ pub fn probe_all_webtunnel_bridges(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn canonical_upgrade_echo_is_detected_without_accept_header() {
+        // The exact response the reference webtunnel server writes.
+        let response = "HTTP/1.1 101 Switching Protocols\r\n\
+                        Connection: upgrade\r\n\
+                        Upgrade: websocket\r\n\
+                        \r\n";
+        assert!(has_canonical_upgrade_echo(response));
+    }
+
+    #[test]
+    fn canonical_upgrade_echo_is_case_and_list_tolerant() {
+        let response = "HTTP/1.1 101 Switching Protocols\r\n\
+                        Connection: keep-alive, Upgrade\r\n\
+                        UPGRADE: WebSocket\r\n\
+                        \r\n";
+        assert!(has_canonical_upgrade_echo(response));
+    }
+
+    #[test]
+    fn non_101_or_foreign_headers_have_no_upgrade_echo() {
+        // The helper checks header SHAPE only; the caller ANDs it with the
+        // 101 status gate (this is why a 302 carrying upgrade-shaped headers
+        // can never become evidence: `returned_101 && echo` is false).
+        let bare = "HTTP/1.1 101 Switching Protocols\r\n\
+                    X-Proxy: middlebox\r\n\
+                    \r\n";
+        assert!(!has_canonical_upgrade_echo(bare));
+
+        let redirected = "HTTP/1.1 302 Found\r\n\
+                          Upgrade: websocket\r\n\
+                          Connection: upgrade\r\n\
+                          \r\n";
+        let returned_101 = redirected
+            .split("\r\n")
+            .next()
+            .unwrap_or_default()
+            .split_ascii_whitespace()
+            .nth(1)
+            .is_some_and(|status| status == "101");
+        assert!(has_canonical_upgrade_echo(redirected));
+        assert!(
+            !(returned_101 && has_canonical_upgrade_echo(redirected)),
+            "the caller's 101 gate must keep a redirect from verifying"
+        );
+    }
 
     #[test]
     fn result_collector_honors_deadline_with_open_sender() {
