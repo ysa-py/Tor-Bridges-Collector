@@ -366,8 +366,7 @@ pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
 fn publication_placeholder_transport(transport: &str) -> bool {
     matches!(
         transport.to_ascii_lowercase().as_str(),
-        "snowflake" | "meek" | "meek_lite" | "meek-lite" | "meek-azure" | "meek_azure"
-            | "conjure"
+        "snowflake" | "meek" | "meek_lite" | "meek-lite" | "meek-azure" | "meek_azure" | "conjure"
     )
 }
 
@@ -394,9 +393,7 @@ fn publication_placeholder_transport(transport: &str) -> bool {
 /// including WebTunnel, whose client dials the literal endpoint — keep the
 /// strict check.
 pub fn publication_blocks_endpoint(transport: &str, line: &str) -> bool {
-    if publication_placeholder_transport(transport)
-        && check_ingestion_endpoint(line).is_none()
-    {
+    if publication_placeholder_transport(transport) && check_ingestion_endpoint(line).is_none() {
         return false;
     }
     contains_documentation_or_reserved_endpoint(line)

@@ -262,7 +262,9 @@ mod tests {
         // current Tor default set is the single CDN77 rendezvous line.
         assert_eq!(MEEK_BRIDGES.len(), 1);
         assert!(MEEK_BRIDGES[0].contains("1603026938.rsc.cdn77.org"));
-        assert!(!fallback_lines("meek_lite").iter().any(|line| line.contains("azureedge")));
+        assert!(!fallback_lines("meek_lite")
+            .iter()
+            .any(|line| line.contains("azureedge")));
     }
 
     #[test]
