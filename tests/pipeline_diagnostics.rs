@@ -17,7 +17,14 @@ Process completed with exit code 0
     let report = analyze_log(log, "run-31004820127");
 
     assert_eq!(report.total_lines, 6);
-    assert_eq!(report.status, "failed");
+    // Directive v43 §F recalibration: these are all typed, by-design supply
+    // advisories and evidence lines — the run is NOT healthy (degraded), but
+    // none of them is a failure, so the status must not read "failed" either.
+    // A real failure emits its own ::error:: / runner-fatal line, which the
+    // real_failures tests below cover.
+    assert_eq!(report.status, "degraded");
+    assert_eq!(report.errors, 0);
+    assert!(report.warnings >= 4);
     assert!(report.failsafe_triggers >= 1);
     for kind in [
         AnomalyKind::MoatEmpty,

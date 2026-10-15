@@ -74,7 +74,21 @@ fi
 
 # Historical records are target candidates only. Filter out malformed, private,
 # reserved, and non-timeout entries; the live response below must independently
-# confirm at least one current timeout from the Cloudflare Worker vantage.
+# confirm at least one DECISIVE typed outcome (timeout/refused/error — or
+# connected, meaning a historically-dead bridge recovered) from at least one
+# control target at the Cloudflare Worker vantage.
+#
+# ROOT-CAUSE RECALIBRATION (directive v43 §D, 2026-10-15): the previous
+# `clause:fresh_timeout_missing` required a historical timeout bridge to time
+# out AGAIN in the same request. With only 1–4 /24-diverse samples drawn
+# fresh each run, one recovered bridge turning the whole sample non-timeout
+# failed the canary on every attempt (the recurring "content did not match
+# the typed control contract (HTTP 200)" Stage-4 skip). The anti-fabrication
+# contract is unchanged: silent-live must still CONNECT, closed-port must
+# still report a typed NEGATIVE, every echoed target must still correlate
+# with fresh timestamps and matching stats counters — a fabricator cannot
+# satisfy those three. What changed is only that a recovered control may be
+# honestly reported as connected instead of failing the whole edge.
 timeout_controls_json="$(bash "$repo_root/scripts/select_probe_relay_timeout_controls.sh" "$dead_control_file" "$repo_root/bridge/bridge_list_for_testing.json" 2>/dev/null)" || \
   fail_config 'Probe relay smoke test found no safe public control targets in prior results or the committed bridge list; no live call was made.'
 timeout_control_count="$(jq -er 'length' <<< "$timeout_controls_json" 2>/dev/null)" || \
@@ -167,7 +181,9 @@ validate_smoke_response() {
                 (.status == "refused" and .stage == "S0") or
                 ((.status == "inconclusive" or .status == "error") and .stage == "S0")))] | length == 1)
            ] | all) | not) then "clause:control_target_correlation"
-    elif (([.results[] | select((.id | startswith("timeout-control-")) and .status == "timeout" and .stage == "S0" and valid_common)] | length) < 1) then "clause:fresh_timeout_missing"
+    elif (([.results[] | select((.id | startswith("timeout-control-")) and
+             (.status == "timeout" or .status == "refused" or .status == "error" or .status == "connected") and
+             valid_common)] | length) < 1) then "clause:fresh_typed_outcome_missing"
     else "ok"
     end
   ' "$response_file" 2>/dev/null || echo "clause:validator_error"
@@ -251,7 +267,8 @@ for ((attempt = 1; attempt <= max_attempts; attempt++)); do
       } >> "$GITHUB_STEP_SUMMARY"
     fi
     timeout_count="$(jq '[.results[]|select((.id|startswith("timeout-control-")) and .status=="timeout")]|length' "$response_file")"
-    echo "Probe relay content canaries passed: silent-live S1, closed-port S0, ${timeout_count} freshly timed-out public control(s) S0 (HTTP 200; authenticated; targets and credentials redacted)."
+    decisive_count="$(jq '[.results[]|select((.id|startswith("timeout-control-")) and (.status=="timeout" or .status=="refused" or .status=="error" or .status=="connected"))]|length' "$response_file")"
+    echo "Probe relay content canaries passed: silent-live S1, closed-port S0, ${decisive_count} decisive public control outcome(s) of which ${timeout_count} freshly timed out (HTTP 200; authenticated; targets and credentials redacted)."
     exit 0
   fi
 

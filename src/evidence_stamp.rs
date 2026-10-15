@@ -183,6 +183,46 @@ pub fn has_verified_s2plus_at(entry: &Value, now: DateTime<Utc>) -> bool {
         && observation_is_fresh_at(entry, now)
 }
 
+/// True only for positive TCP/TLS-or-better evidence (stage >= S1, status
+/// `connected`) from a recognized observing vantage whose observation is
+/// current at `now`, or that was recorded inside the current pipeline run
+/// window (`run_floor`).
+///
+/// This is the runner-side reachability tier admitted by the tiered
+/// `*_tested.txt` / `tested_global_*` contract and by Tier C of
+/// `iran_likely_working_*` (engineering directive v43 §E: evidence tiers are
+/// `relay-verified > runner TCP/TLS-verified > capability-only > unverified`,
+/// and evidence-gated files must not stay empty just because the optional
+/// relay is down). It proves the endpoint answered at the recorded stage from
+/// the recorded vantage — it does NOT prove a pluggable-transport handshake
+/// (that is [`has_verified_s2plus_at`]) or Iranian reachability.
+#[must_use]
+pub fn has_runner_verified_s1plus_in_run_at(
+    entry: &Value,
+    now: DateTime<Utc>,
+    run_floor: Option<DateTime<Utc>>,
+) -> bool {
+    let Some(evidence) = verification(entry) else {
+        return false;
+    };
+    evidence.get("status").and_then(Value::as_str) == Some("connected")
+        && evidence
+            .get("stage")
+            .and_then(Value::as_str)
+            .and_then(stage_rank)
+            .is_some_and(|stage| stage >= 1)
+        && has_observing_vantage(evidence)
+        && observation_fresh_or_in_run_at(evidence, now, run_floor)
+}
+
+/// Check against the current UTC wall clock with no run window. Use
+/// [`has_runner_verified_s1plus_in_run_at`] when a caller has an injected run
+/// clock or run floor.
+#[must_use]
+pub fn has_runner_verified_s1plus(entry: &Value) -> bool {
+    has_runner_verified_s1plus_in_run_at(entry, Utc::now(), None)
+}
+
 /// Check against the current UTC wall clock. Use [`has_verified_s2plus_at`]
 /// when a caller has an injected run clock.
 #[must_use]

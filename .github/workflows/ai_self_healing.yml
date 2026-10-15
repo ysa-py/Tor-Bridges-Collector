@@ -62,7 +62,14 @@ name: AI Self-Healing Engine
 # independent parents diagnose concurrently; only a genuinely stale
 # re-diagnosis of the same parent is cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.workflow_run.id || github.ref }}
+  # GROUP-KEY FIX v2 (directive v43 §F): the previous key used
+  # `github.event.workflow_run.id || github.ref` — an improvement over the
+  # original single "main" bucket, but schedule AND push triggers both fall
+  # back to `refs/heads/main`, so a push arriving while the 6-hourly
+  # heartbeat ran still cancelled its diagnostics mid-flight. Keying push
+  # events by `github.event.after` (the pushed commit) gives every push its
+  # own bucket; only a genuinely stale re-diagnosis is cancelled now.
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id || github.event.after || github.ref }}
   cancel-in-progress: true
 
 env:

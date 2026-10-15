@@ -74,6 +74,32 @@ fn next_value(
 fn parse_args() -> Result<Options, Box<dyn std::error::Error>> {
     let mut publication = PublishOptions::default();
     publication.repo_url = env::var("REPO_URL").unwrap_or(publication.repo_url);
+    // Run-window floor (RFC3339): typed observations recorded at or after
+    // this instant count as current evidence (an hourly run probes for up to
+    // ~90 minutes; the bare ten-minute window would silently discard most of
+    // a run's own S1 evidence). Malformed values are rejected loudly.
+    if let Ok(floor) = env::var("TBC_RUN_FLOOR") {
+        let floor = floor.trim().to_string();
+        if !floor.is_empty() {
+            publication.run_floor = Some(
+                chrono::DateTime::parse_from_rfc3339(&floor)
+                    .map_err(|error| invalid(format!("TBC_RUN_FLOOR must be RFC3339: {error}")))?
+                    .with_timezone(&chrono::Utc),
+            );
+        }
+    }
+    // Relay-availability signal for the manifest's RELAY_DOWN reason_code:
+    // "true"/"false"; anything else (unset, empty, "not_reported" from a
+    // skipped Stage 4-prep) means "not reported" and must never fail a
+    // --verify-only run that merely inherited the job environment.
+    publication.relay_available = match env::var("TBC_RELAY_AVAILABLE") {
+        Ok(value) => match value.trim().to_ascii_lowercase().as_str() {
+            "true" | "1" | "yes" | "on" => Some(true),
+            "false" | "0" | "no" | "off" => Some(false),
+            _ => None,
+        },
+        Err(_) => None,
+    };
     let mut telegram_upload = parse_bool(
         &env::var("TELEGRAM_UPLOAD").unwrap_or_else(|_| "false".to_string()),
         "TELEGRAM_UPLOAD",
@@ -122,6 +148,13 @@ fn parse_args() -> Result<Options, Box<dyn std::error::Error>> {
 
     if publication.recent_hours <= 0 {
         return Err(invalid("--recent-hours must be positive"));
+    }
+    if let Some(floor) = publication.run_floor {
+        if floor > chrono::Utc::now() + chrono::Duration::minutes(5) {
+            return Err(invalid(
+                "TBC_RUN_FLOOR must not be more than 5 minutes in the future",
+            ));
+        }
     }
     Ok(Options {
         publication,

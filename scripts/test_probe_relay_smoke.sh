@@ -116,6 +116,7 @@ jq -c --arg mode "$body_mode" --arg observed_at "$(date -u +'%Y-%m-%dT%H:%M:%S.1
                                                  elif $mode == "inconclusive-closed" then "inconclusive"
                                                  else "refused" end)
                elif $mode == "no-timeout" then "connected"
+               elif $mode == "inconclusive-controls" then "inconclusive"
                else "timeout" end),
       stage: (if $b.id == "silent-live" or ($mode == "no-timeout" and ($b.id | startswith("timeout-control-"))) then "S1" else "S0" end),
       vantage: {type:"cloudflare_worker",colo:"TEST"},
@@ -251,7 +252,7 @@ printf '000 28 transport-error\n200 0 valid\n' > "$sequence_file"
 if PROBE_RELAY_SMOKE_REPORT_PATH="$report_file" run_smoke > "$log_file" 2>&1; then :; else fail 'expected safe retry followed by valid typed controls'; fi
 [[ "$(cat "$count_file")" == 2 ]] || fail 'expected exactly two curl attempts after recovery'
 grep -Fq 'retrying' "$log_file" || fail 'missing safe retry diagnostic'
-grep -Fq 'silent-live S1, closed-port S0, 1 freshly timed-out public control(s) S0' "$log_file" || fail 'smoke failed to name the observed outcome classes'
+grep -Fq 'silent-live S1, closed-port S0, 1 decisive public control outcome(s) of which 1 freshly timed out' "$log_file" || fail 'smoke failed to name the observed outcome classes'
 jq -e '.schema_version == 1 and .kind == "probe_relay_smoke" and .evidence_class == "mock" and
   .result == "passed" and .stats.attempted == 3 and .stats.current_timeout_controls == 1 and
   ([.controls[]|select(.id == "silent-live" and .status == "connected" and .stage == "S1" and .vantage.type == "cloudflare_worker")]|length)==1 and
@@ -288,17 +289,29 @@ printf '200 0 valid\n' > "$sequence_file"
 if PROBE_RELAY_SMOKE_DEAD_CONTROL_FILE="$multi_control_file" \
    FAKE_CURL_EXPECT_CONTROLS_JSON="$multi_expected" run_smoke > "$log_file" 2>&1; then :; else fail 'multi-control live response should match'; fi
 [[ "$(cat "$count_file")" == 1 ]] || fail 'expected one request for the bounded multi-control batch'
-grep -Fq '4 freshly timed-out public control(s)' "$log_file" || fail 'multi-control run did not confirm timeout outcomes'
+grep -Fq '4 decisive public control outcome(s) of which 4 freshly timed out' "$log_file" || fail 'multi-control run did not confirm timeout outcomes'
 assert_redacted
 
-# HTTP 200 without any fresh timeout is not accepted as the known-dead control.
-printf '200 0 no-timeout\n200 0 no-timeout\n' > "$sequence_file"
+# Directive v43 §D recalibration: a historical timeout-control that honestly
+# RECOVERED (typed connected S1) is accepted — the anti-fabrication proof
+# (silent-live connect + closed-port typed negative + correlation) is intact.
+printf '200 0 no-timeout\n' > "$sequence_file"
+: > "$count_file"
+if ! PROBE_RELAY_SMOKE_MAX_ATTEMPTS=1 run_smoke > "$log_file" 2>&1; then
+  fail 'a recovered timeout control reported as typed connected must be accepted'
+fi
+grep -Fq 'decisive public control outcome(s)' "$log_file" || fail 'missing decisive-outcome confirmation'
+assert_redacted
+
+# HTTP 200 whose timeout-controls carry NO decisive typed outcome (all
+# inconclusive) is not accepted: a relay that dials nothing decisive fails closed.
+printf '200 0 inconclusive-controls\n200 0 inconclusive-controls\n' > "$sequence_file"
 : > "$count_file"
 if PROBE_RELAY_SMOKE_MAX_ATTEMPTS=2 run_smoke > "$log_file" 2>&1; then
-  fail 'a batch without a current timeout control must fail closed'
+  fail 'a batch without any decisive control outcome must fail closed'
 fi
-[[ "$(cat "$count_file")" == 2 ]] || fail 'expected bounded retries for a missing timeout control'
-grep -Fq 'content did not match the typed control contract' "$log_file" || fail 'missing timeout-control failure diagnostic'
+[[ "$(cat "$count_file")" == 2 ]] || fail 'expected bounded retries for a missing decisive outcome'
+grep -Fq 'content did not match the typed control contract' "$log_file" || fail 'missing fresh-outcome failure diagnostic'
 assert_redacted
 
 # HTTP 200 with a target/response mismatch is rejected (not just status checked).

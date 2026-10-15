@@ -1,5 +1,97 @@
 # Changelog
 
+## [Session 30] — 2026-10-15 — Tiered evidence contract, honest empties, classifier recalibration, canary resilience, front-probe fix
+
+Live result of the session's changes, measured by running the rebuilt
+publisher against the real `main` snapshot (1967 history records, 1967 probe
+records, run window covering the committed evidence):
+
+| file | before | after | why |
+| --- | ---: | ---: | --- |
+| `webtunnel_tested.txt` | 0 | **173** | tiered contract admits runner TCP/TLS evidence |
+| `tested_global_webtunnel.txt` | 0 | **192** | same |
+| `iran_likely_working_webtunnel.txt` | 0 | **192** | Tier C admission |
+| `iran_likely_working_nin.txt` | 0 | **192** | same |
+| `obfs4_tested.txt` | 118 | **285** | S2+ (118) + runner TCP (167) |
+| `vanilla_tested.txt` | 103 | **158** | S2+ (125) + runner TCP (33) |
+| `iran_likely_working_all.txt` | 243 | **635** | Tier C across transports |
+| `vanilla_ipv6.txt` | 65 (IPv4 literals!) | **0** (`NO_IPV6_SUPPLY`) | family now derived from the endpoint literal |
+| empty files without a reason | 24 | **0** | every empty `.txt` carries a `reason_code` |
+
+### Added
+- **Tiered evidence contract (directive v43 §E)** — evidence tiers are
+  `relay-verified > runner TCP/TLS-verified > capability-only > unverified`,
+  stored per record. `*_tested.txt` / `tested_global_*` / `*_ipv6_tested`
+  admit typed runner-side TCP/TLS-or-better evidence (stage S1, connected,
+  recognized vantage, current-or-in-run) alongside the S2+ handshake core,
+  strongest tier first; `iran_likely_working_*` ranks OONI-measured (A) >
+  S2+ handshake (B) > runner TCP/TLS reachability (C). Evidence-gated files
+  no longer stay empty just because the optional relay edge is down, and a
+  lower tier is never presented as a higher one (manifest `evidence_tier`
+  per file; README documents the semantics).
+- **Per-file `reason_code` in `telegram_manifest.json` (schema v3)** — every
+  empty file explains itself: `NO_UPSTREAM_SUPPLY`, `NO_IPV6_SUPPLY`,
+  `NO_FRESH_WITHIN_WINDOW`, `NO_EVIDENCE`, `RELAY_DOWN`.
+- **Run-window evidence floor** — `PublishOptions.run_floor`
+  (`TBC_RUN_FLOOR`, exported by the collection job as a job output) admits
+  typed observations recorded anywhere inside the current run; the bare
+  10-minute window silently discarded most of a run's own S1 evidence.
+- **Stage 9c — freshness SLA + `data/pipeline_metrics.json`** — a snapshot
+  older than 3 h at publication time is a loud `::error::`; a deterministic
+  machine-readable run summary (freshness, archive SHA-256, tier file
+  lists, empty-file reasons) is written every run.
+- **Stage 11c — post-push raw-CDN re-verification** — re-downloads the
+  manifest and every payload file from `raw.githubusercontent.com` and
+  byte-compares each SHA-256 (fail-closed, bounded retries). Verified live
+  against current `main`: 77/77 files matched.
+- **Per-mirror provenance tags** — community-mirror merges (opt-in via
+  `COMMUNITY_MIRRORS_MERGE=true`) now tag new history records
+  `source=community_mirror:<owner/name>`; first-party records are never
+  retagged, so mirror-only supply stays distinguishable from and never
+  ranked above first-party evidence.
+- `issues: write` permission so the Stage 11b degraded-publication tracking
+  issue (and the SLA issue trail) can actually be created.
+
+### Fixed
+- **Whole-run diagnostics no longer fabricate 700-900 "errors" from a green
+  run (the recurring "Whole-run diagnostics failed despite parent
+  conclusion=success" warning).** The classifier is annotation-first:
+  emitted `::error::`/`##[error]` annotations outrank every evidence rule;
+  by-design stage skips and low-yield verdicts demote to warnings;
+  `exit code N` mentions are warnings (and `status code N` — HTTP statuses
+  — no longer parse as exits at all); `panic` detection is restricted to
+  real panic forms. The exact line shapes from runs 38613981417 /
+  38616637805 are regression fixtures now.
+- **Relay canary resilience (directive v43 §D)** — a historically-dead
+  control that honestly recovers (typed connected S1) no longer fails the
+  whole edge every run (`clause:fresh_typed_outcome_missing`); the
+  anti-fabrication core is unchanged (silent-live must connect, closed-port
+  must report a typed negative, every target correlated with fresh
+  timestamps and matching stats). After a fresh deploy the pipeline waits
+  (bounded 12×5 s) for the workers.dev edge to report the exact deployed
+  SHA before running the canary, and retries the typed contract up to 4
+  times with 3 s backoff.
+- **Front-liveness probe false "CONFIRMED unreachable"** — the old probe
+  tried only the first 3 getaddrinfo results (on a dual-stack runner with
+  AAAA-first ordering and no v6 egress, 3 instant ENETUNREACH dials
+  "confirmed" universally-alive fronts unreachable) and never classified
+  error kinds. It now dials IPv4-first across up to 8 addresses, classifies
+  `NetworkUnreachable`/`HostUnreachable` as ENVIRONMENT (verdict
+  `unknown`), and claims "unreachable" only when a global address was
+  genuinely attempted and every attempt failed with a front-observable
+  error; per-front JSON records attempted-address and error-class details.
+- **`vanilla_ipv6.txt` leaked IPv4 lines** — IP family is now derived from
+  the endpoint literal first (directive v42 §C), falling back to the
+  recorded label; stale `ip_version:"ipv6"` labels can no longer route
+  IPv4-literal lines into IPv6 projections.
+- **Stale `test_tier:"untested"` stamps no longer propagate** — the
+  publisher re-derives the tier from the live verification object whenever
+  a stamped label is missing or contradicted by current evidence.
+- **AI Self-Healing concurrency** — push events key the concurrency group by
+  `github.event.after`, so the 6-hourly heartbeat and pushes no longer
+  cancel each other's diagnostics mid-flight.
+
+
 ## [Session 29b] — 2026-10-14 — Vanilla ORPort probe now speaks the real Tor link protocol (TLS + variable-length VERSIONS + spec-shaped NETINFO)
 
 Live end-to-end result after the fixes: **10-11 of 40 sampled vanilla bridges

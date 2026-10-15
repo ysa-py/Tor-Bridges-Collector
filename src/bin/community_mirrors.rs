@@ -19,7 +19,7 @@ use std::time::Duration;
 use serde_json::Value;
 
 use torshield_ir_ultra::scraper::{
-    load_history, merge_raw_into_history, prune_history, save_history,
+    load_history, merge_raw_into_history_with_provenance, prune_history, save_history,
 };
 #[cfg(feature = "network")]
 use torshield_ir_ultra::sources_community_mirrors::fetch_mirror;
@@ -57,18 +57,26 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     if !outcomes.is_empty() {
         let bridge_dir = Path::new("bridge");
         let history_path = bridge_dir.join("bridge_history.json");
-        let mut lines: Vec<(String, String, String)> = Vec::new();
-        for outcome in &outcomes {
-            lines.extend(outcome.lines.iter().cloned());
-        }
+        // Per-mirror line batches: merging per mirror lets every record
+        // carry the exact source repo (`community_mirror:<owner/name>`)
+        // instead of a generic tag (directive v43 §I).
         if merge_enabled {
             let mut history = load_history(&history_path)?;
-            added = count_new_lines(&history, &lines);
-            merge_raw_into_history(&mut history, &lines)?;
+            for outcome in &outcomes {
+                for (family, count) in count_new_lines(&history, &outcome.lines) {
+                    *added.entry(family).or_default() += count;
+                }
+                merge_raw_into_history_with_provenance(
+                    &mut history,
+                    &outcome.lines,
+                    chrono::Utc::now(),
+                    &format!("community_mirror:{}", outcome.repo),
+                )?;
+            }
             let pruned = prune_history(&mut history)?;
             save_history(&history, &history_path)?;
             println!(
-                "community_mirrors: merged validated lines into history (pruned {pruned} stale records)"
+                "community_mirrors: merged validated lines into history with per-mirror provenance tags (pruned {pruned} stale records)"
             );
         } else {
             // Advisory mode (v42 §2.4 gap fix, 2026-09-09): compute the
@@ -81,7 +89,11 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
             // docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §2.4 had to
             // recompute it). Merge behaviour is unchanged.
             let history = load_history(&history_path)?;
-            added = count_new_lines(&history, &lines);
+            for outcome in &outcomes {
+                for (family, count) in count_new_lines(&history, &outcome.lines) {
+                    *added.entry(family).or_default() += count;
+                }
+            }
         }
     }
 
