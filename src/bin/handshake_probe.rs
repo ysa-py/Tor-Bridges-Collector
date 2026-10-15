@@ -25,7 +25,9 @@
 //! |------------|------------------------------------------------------|-------|-------------------|
 //! | vanilla    | tor-spec `VERSIONS` + `NETINFO` link-cell exchange   | S3    | `tor-handshake`   |
 //! | obfs4      | framing handshake, server `M_S`/`MAC_S` verified     | S3    | `obfs4-framing`   |
-//! | webtunnel  | RFC 6455 upgrade + `Sec-WebSocket-Accept` verified   | S2    | `websocket-101`   |
+//! | webtunnel  | HTTP upgrade per the canonical contract: `101` +        | S2    | `websocket-101`   |
+//! |            | `Upgrade: websocket` + `Connection: upgrade` echo; the  |       |                   |
+//! |            | `Sec-WebSocket-Accept` echo is verified when present    |       |                   |
 //! | meek       | domain-fronted POST envelope parsed                  | S2    | `meek-envelope`   |
 //! | snowflake  | broker rendezvous response parsed                    | S2    | `snowflake-broker`|
 //!
