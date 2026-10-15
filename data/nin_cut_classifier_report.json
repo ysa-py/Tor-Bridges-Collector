@@ -803,6 +803,14 @@
     {
       "ip": "192.67.197.242",
       "port": 443,
+      "raw": "webtunnel 192.67.197.242:443 05D0531304F2DB161921D6D03CE38DB1CA2332D6 url=https://pod03.oneclickhost.eu/d0NbsV36v0Q4MDdDTs3ZhCCJ ver=0.0.5",
+      "sni": "pod03.oneclickhost.eu",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "192.67.197.242",
+      "port": 443,
       "raw": "webtunnel 192.67.197.242:443 05D0531304F2DB161921D6D03CE38DB1CA2332D6 url=https://pod03.oneclickhost.eu/d0NbsV36v0Q4MDdDTs3ZhCCJ ver=0.0.6",
       "sni": "pod03.oneclickhost.eu",
       "tier": "YELLOW",
@@ -997,6 +1005,14 @@
       "port": 443,
       "raw": "webtunnel 217.154.164.27:443 5AA94C138A5B9CCDB96EA0C7D6C587AF18230158 url=https://cdn.seo-manager.info/jXh2ONiCuMLsUyzJWq3HJaeE ver=0.0.3",
       "sni": "cdn.seo-manager.info",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "38.242.197.12",
+      "port": 443,
+      "raw": "webtunnel 38.242.197.12:443 C9AB6F207432161589F1B994F44FFE28FBF211E2 url=https://www.jarlaxle.de/wzZhcKoNURYF5JUssKhC25Cg ver=0.0.3",
+      "sni": "www.jarlaxle.de",
       "tier": "YELLOW",
       "transport": "webtunnel"
     },
@@ -1598,10 +1614,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-15T07:09:57.049761+00:00",
+  "generated_at": "2026-10-15T08:23:11.887704+00:00",
   "green_count": 9,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 199,
-  "yellow_count": 190
+  "total_bridges": 201,
+  "yellow_count": 192
 }
