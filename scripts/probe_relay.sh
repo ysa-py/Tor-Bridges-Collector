@@ -8,6 +8,42 @@
 # is accepted or aggregated. Secrets, raw response bodies, and peer errors
 # are never written to the job log.
 #
+# v6 CHANGES (2026-10-15) — descriptor-level chunking + placeholder
+# resolution, the root-cause fix for the permanently empty fronted-transport
+# advisory files (run 38702901771 evidence):
+#   - ROOT CAUSE 1: chunks were split by LINES (split -l 6) while fronted
+#     lines expand to one descriptor PER ADVERTISED FRONT (v5.2), so a chunk
+#     of 6 snowflake/meek/conjure lines could carry 9-10 descriptors. The
+#     Worker enforces MAX_BRIDGES_PER_REQUEST=6 and answers HTTP 413
+#     (too_many_bridges); after the 3 retries the WHOLE chunk was recorded
+#     as relay_unreachable. Because only a handful of fronted candidates
+#     exist per run, those 2-3 chunks held EVERY snowflake/meek_lite/conjure
+#     descriptor — so iran_likely_working_snowflake.txt, meek_lite_tested.txt,
+#     conjure_tested.txt and meek-azure_tested.txt were structurally empty
+#     on every run. v6 parses every line FIRST, then chunks the descriptor
+#     stream into bounded ≤CHUNK_SIZE arrays, so a request can never exceed
+#     the Worker contract no matter how many fronts a line advertises.
+#   - ROOT CAUSE 2: placeholder-endpoint descriptors were sent to the
+#     Worker and rejected (webtunnel [2001:db8::/32] → 400
+#     invalid_or_non_public_host) or wasted a probe on a dead TEST-NET
+#     literal (snowflake 192.0.2.3:80 — TEST-NET-1 passes the Worker's
+#     per-host ipv4IsPublic check), killing the whole chunk again. v6
+#     mirrors the Rust publisher's placeholder-endpoint resolution
+#     (src/bridge_publication.rs, engineering directive v42 §C): when a
+#     Format-1 endpoint is an IETF documentation/reserved literal AND the
+#     line carries url=, the parser emits the dialable rendezvous
+#     descriptors (url host + one per advertised front) instead of the
+#     dead literal. Placeholders with no url= are skipped client-side with
+#     a typed relay_skipped_placeholder S0 record — the Worker never sees a
+#     non-dialable host again.
+#   - The descriptor→source-line mapping (used to stamp results with the
+#     original bridge line) is now built deterministically from the single
+#     global parse instead of re-parsing each chunk line by line; a line
+#     with several descriptors yields several typed observations and
+#     evidence_stamp::merge_relay_results_at keeps the best one per line.
+#   - Summary adds descriptors_parsed / placeholders_skipped and keeps
+#     every existing counter, so the funnel reconciliation stays auditable.
+#
 # v5.5 CHANGES (2026-09-07) — strictly additive:
 #   - Format-4 descriptors now carry the url= path (e.g. a webtunnel line's
 #     per-bridge token path /83c1327e…, or conjure's /api) in a new optional
@@ -207,7 +243,73 @@ echo "[stage=extract] extracted=${LINE_COUNT}"
 #   3. "[IPv6]:PORT ..."           — IPv6 IP:PORT-only (no transport prefix)
 #   4. "webtunnel FINGERPRINT url=https://..." — URL-only webtunnel (no IP:port)
 # All other formats are dropped with a per-transport count.
-read -r -d '' PARSE_BRIDGE_JQ <<'JQEOF' || true
+read -r -d '' PARSE_DEFS_JQ <<'JQEOF' || true
+# ── Endpoint dialability predicates (v6) ──────────────────────────────────
+# True for endpoints that must NOT be sent to the Worker: IETF
+# documentation / reserved literals (BridgeDB anti-enumeration placeholders),
+# non-canonical numeric forms the Worker rejects, and malformed hosts.
+# Mirrors the Worker's normalizeAndValidatePublicHost (security.ts) so the
+# client and the relay agree on dialability and no request is ever rejected
+# wholesale. Domain hosts (Format 4 rendezvous targets) never match unless
+# malformed.
+def is_canonical_ipv4_literal:
+  (split(".") | map(select(test("^([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])$"))) | length) == 4;
+def is_numeric_address_like:
+  test("^[0-9.]+$") or test("^0x[0-9a-fA-F]+$");
+def is_placeholder_ipv4:
+  is_canonical_ipv4_literal
+  and ((split(".") | map(tonumber)) as $p
+       | (
+           $p[0] == 0 or $p[0] == 10 or $p[0] == 127 or $p[0] >= 224
+        or ($p[0] == 100 and $p[1] >= 64 and $p[1] <= 127)
+        or ($p[0] == 169 and $p[1] == 254)
+        or ($p[0] == 172 and $p[1] >= 16 and $p[1] <= 31)
+        or ($p[0] == 192 and ($p[1] == 168 or ($p[1] == 0 and ($p[2] == 0 or $p[2] == 2))))
+        or ($p[0] == 198 and ($p[1] == 18 or $p[1] == 19 or ($p[1] == 51 and $p[2] == 100)))
+        or ($p[0] == 203 and $p[1] == 0 and $p[2] == 113)
+         ));
+def is_placeholder_ipv6:
+  ascii_downcase as $h
+  | ($h == "::" or $h == "::1"
+     or ($h | startswith("2001:db8")) or ($h | startswith("2002:"))
+     or ($h | startswith("::ffff:"))
+     or ($h | startswith("fc")) or ($h | startswith("fd"))
+     or ($h | startswith("fe8")) or ($h | startswith("fe9"))
+     or ($h | startswith("fea")) or ($h | startswith("feb")));
+def is_valid_domain_host:
+  (ascii_downcase | sub("\\.$"; ""))
+  | test("^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
+  and (length <= 253);
+def is_placeholder_host:
+  (if startswith("[") and endswith("]") then .[1:length-1] else . end)
+  | (if test(":") then is_placeholder_ipv6
+     elif is_numeric_address_like then (if is_canonical_ipv4_literal then is_placeholder_ipv4 else true end)
+     else (is_valid_domain_host | not) end);
+
+# ── url=/front= rendezvous descriptors (v5.2/v5.5 body, v6-named) ─────────
+# Emits the base url= descriptor plus one extra descriptor per advertised
+# front for non-webtunnel transports. Used both by the URL-only Format-4 arm
+# and by the v6 Format-1 placeholder fallthrough.
+def url_rendezvous_descriptors($transport):
+    (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?(?<path>/[^\\s]*)?") //
+     {host: "webtunnel-cdn", port: "443"}) as $raw
+    | ((($raw.path // "/") | if . == "" then "/" else . end) // "/") as $path
+    | (capture("(?i)fronts?=(?<frontlist>[^ ]+)")? // {frontlist: ""}) as $fr
+    | (($fr.frontlist | split(",")) | map(select(length > 0 and . != $raw.host)) | unique) as $fronts
+    | ( { host: $raw.host,
+          port: (($raw.port // "443") | tonumber),
+          transport: $transport,
+          path: $path,
+          id: ($transport + "-url-" + $raw.host + "-" + ($raw.port // "443")) },
+        (if $transport != "webtunnel" then
+           $fronts[] | { host: $raw.host,
+                         port: (($raw.port // "443") | tonumber),
+                         transport: $transport,
+                         path: $path,
+                         sni: .,
+                         id: ($transport + "-url-" + $raw.host + "-front-" + .) }
+         else empty end) );
+
 def parse_bridge:
   # Detect transport from the first token
   (split(" ") | .[0]) as $first
@@ -217,13 +319,29 @@ def parse_bridge:
      then $first else "unknown" end) as $transport
   |
   # Format 1: "transport IP:PORT ..." or "transport [IPv6]:PORT ..."
+  # v6 placeholder fallthrough: when the literal endpoint is an IETF
+  # documentation/reserved placeholder (BridgeDB anti-enumeration literals:
+  # snowflake/meek 192.0.2.x TEST-NET-1, webtunnel [2001:db8::]/32) and the
+  # line carries a url= rendezvous, emit the dialable rendezvous descriptors
+  # (url host + one per advertised front) instead of the dead literal — the
+  # same resolution the Rust publisher applies to webtunnel placeholders
+  # (directive v42 §C). Without this, snowflake lines were probed at
+  # 192.0.2.3:80 (never connectable) while their real fronts were never
+  # probed, and webtunnel placeholders were rejected by the Worker (400
+  # invalid_or_non_public_host), failing the whole chunk.
   if test("^[a-zA-Z][a-zA-Z0-9_-]* +[0-9a-fA-F.:\\[\\]]+:[0-9]+ ") then
     split(" ") as $parts
     | ($parts[1] | split(":")) as $addr
-    | { host: (if ($addr | length) > 2 then ($addr[:-1] | join(":")) else $addr[0] end),
-        port: ($addr[-1] | tonumber),
-        transport: $parts[0],
-        id: ("line-" + $parts[0] + "-" + (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) + "-" + ($addr[-1])) }
+    | (if ($addr | length) > 2 then ($addr[:-1] | join(":")) else $addr[0] end) as $host
+    | (if ($addr | length) > 2 then ($addr[:-1] | join("_")) else $addr[0] end) as $host_id
+    | if ($host | is_placeholder_host) and $transport != "unknown" and test("url=";"i") then
+        url_rendezvous_descriptors($transport)
+      else
+        { host: $host,
+          port: ($addr[-1] | tonumber),
+          transport: $parts[0],
+          id: ("line-" + $parts[0] + "-" + $host_id + "-" + ($addr[-1])) }
+      end
   # Format 4: "transport FINGERPRINT url=https://cdn.example.com/path ..."
   # URL-only bridge lines (no literal IP:port) for every transport BridgeDB
   # can distribute without a literal endpoint — webtunnel, snowflake,
@@ -240,33 +358,7 @@ def parse_bridge:
   # into their own buckets and are relay-probed per their class (TLS for
   # snowflake/meek/conjure — see probe-relay/src/index.ts classifyProbe).
   elif $transport != "unknown" and test("url=";"i") then
-    # v5.5 (ADDITIVE): the url= capture also extracts the request path
-    # (webtunnel per-bridge token paths, conjure's /api, …); descriptors
-    # carry it in an optional `path` field so the relay's fetch probes hit
-    # the real endpoint instead of always the site root. Defaults to "/".
-    (capture("(?i)https?://(?<host>[^/:\\s]+)(?::(?<port>\\d+))?(?<path>/[^\\s]*)?") //
-     {host: "webtunnel-cdn", port: "443"}) as $raw
-    | ((($raw.path // "/") | if . == "" then "/" else . end) // "/") as $path
-    | (capture("(?i)fronts?=(?<frontlist>[^ ]+)")? // {frontlist: ""}) as $fr
-    | (($fr.frontlist | split(",")) | map(select(length > 0 and . != $raw.host)) | unique) as $fronts
-    | ( { host: $raw.host,
-          port: (($raw.port // "443") | tonumber),
-          transport: $transport,
-          path: $path,
-          id: ($transport + "-url-" + $raw.host + "-" + ($raw.port // "443")) },
-        # v5.2 (ADDITIVE): when a non-webtunnel line advertises front=
-        # / fronts= hosts, emit one extra descriptor per front (host stays
-        # the url= CDN host, SNI is the advertised front) so every
-        # advertised front is relay-probed before a bridge is concluded
-        # unreachable. Webtunnel output stays byte-identical to v5/v5.1.
-        (if $transport != "webtunnel" then
-           $fronts[] | { host: $raw.host,
-                         port: (($raw.port // "443") | tonumber),
-                         transport: $transport,
-                         path: $path,
-                         sni: .,
-                         id: ($transport + "-url-" + $raw.host + "-front-" + .) }
-         else empty end) )
+    url_rendezvous_descriptors($transport)
   # Format 2: "IPv4:PORT ..." (no transport prefix)
   # (Note: an obfs4/vanilla line never carries url=, so Format 4 cannot
   # misfire on IP:port forms — Format 1 already matched those above.)
@@ -288,8 +380,18 @@ def parse_bridge:
   else
     empty
   end;
-split("\n") | map(select(length > 0) | parse_bridge)
 JQEOF
+
+# Backward-compatible whole-program forms composed from the shared defs:
+#   PARSE_BRIDGE_JQ — array of descriptors for a newline-separated input
+#                     (unchanged shape; still used by the audit trail).
+#   PARSE_PAIRS_JQ  — v6 global parse: one {line_index, placeholder,
+#                     descriptor} record per descriptor, in input order.
+PARSE_BRIDGE_JQ="${PARSE_DEFS_JQ}"$'\n''split("\n") | map(select(length > 0) | parse_bridge)'
+# PARSE_PAIRS_JQ operates on the JSON array of extracted source lines.
+PARSE_PAIRS_JQ="${PARSE_DEFS_JQ}"$'\n''to_entries
+| map(.key as $i | (.value | [parse_bridge]) as $ds
+      | $ds[] | {line_index: $i, placeholder: (.host | is_placeholder_host), descriptor: .})'
 
 # ── Per-candidate parse audit (ADDITIVE v5.1) ─────────────────────────────────
 # Pure diagnostics. Emits bounded, sanitized transport/host/port parse outcomes
@@ -361,7 +463,75 @@ chmod 600 "$CURL_CONFIG" "$TOKEN_HEADER_FILE"
 AUTH_HEADER=(--header "@${TOKEN_HEADER_FILE}")
 
 CHUNK_IDX=0
-echo "$BRIDGE_LINES" | split -l "$CHUNK_SIZE" - "$TMP_DIR/chunk_"
+
+# ── v6 global parse: descriptors first, then bounded descriptor chunks ───────
+# Parse every extracted line ONCE into {line_index, placeholder, descriptor}
+# records, then split the SENDABLE descriptor stream into chunks of at most
+# CHUNK_SIZE descriptors. Line-based splitting (v5) let fronted lines expand
+# to one descriptor per advertised front and exceed the Worker's
+# MAX_BRIDGES_PER_REQUEST=6, failing whole chunks with HTTP 413 and losing
+# every fronted candidate's evidence (the root cause of the permanently
+# empty snowflake/meek/conjure advisory files).
+SOURCE_LINES_FILE="$TMP_DIR/source_lines.json"
+printf '%s\n' "$BRIDGE_LINES" | jq -R -s 'split("\n") | map(select(length > 0))' > "$SOURCE_LINES_FILE"
+chmod 600 "$SOURCE_LINES_FILE"
+
+ALL_PAIRS="$TMP_DIR/all_pairs.json"
+PAIRS_ERR=$(mktemp)
+jq "$PARSE_PAIRS_JQ" "$SOURCE_LINES_FILE" > "$ALL_PAIRS" 2>"$PAIRS_ERR" || { echo '[]' > "$ALL_PAIRS"; }
+if [ -s "$PAIRS_ERR" ]; then
+  echo "[stage=parse] global descriptor parse reported errors (details redacted); continuing with what parsed."
+fi
+rm -f "$PAIRS_ERR"
+
+TOTAL_DESCRIPTORS=$(jq 'length' "$ALL_PAIRS" 2>/dev/null || echo 0)
+TOTAL_DESCRIPTORS=${TOTAL_DESCRIPTORS//[$'\t\r\n ']/}
+TOTAL_DESCRIPTORS=${TOTAL_DESCRIPTORS:-0}
+
+# Placeholder / non-dialable endpoints never reach the Worker: they are
+# typed client-side as relay_skipped_placeholder S0 observations (neutral,
+# like every non-connected outcome) so the per-line audit trail stays
+# complete without risking a request-level rejection.
+SKIP_RECORDS="$TMP_DIR/skip_records.json"
+jq --slurpfile src "$SOURCE_LINES_FILE" --arg observed_at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" '
+  [ .[] | select(.placeholder)
+  | { line: $src[0][.line_index],
+      success: false, status: "inconclusive", stage: "S0",
+      vantage: null, rtt_ms: null, latency_ms: null,
+      observed_at: $observed_at,
+      error: "relay_skipped_placeholder", error_class: "relay_skipped_placeholder",
+      detail: "documentation/reserved placeholder endpoint: not relay-probed (no dialable url= rendezvous)" } ]
+' "$ALL_PAIRS" > "$SKIP_RECORDS" 2>/dev/null || echo '[]' > "$SKIP_RECORDS"
+PLACEHOLDERS_SKIPPED=$(jq 'length' "$SKIP_RECORDS" 2>/dev/null || echo 0)
+PLACEHOLDERS_SKIPPED=${PLACEHOLDERS_SKIPPED//[$'\t\r\n ']/}
+PLACEHOLDERS_SKIPPED=${PLACEHOLDERS_SKIPPED:-0}
+if [ "$PLACEHOLDERS_SKIPPED" -gt 0 ]; then
+  echo "[stage=parse] ${PLACEHOLDERS_SKIPPED} placeholder/non-dialable endpoint descriptor(s) skipped client-side (typed relay_skipped_placeholder S0 records; Worker never sees a non-dialable host)."
+fi
+
+SENDABLE="$TMP_DIR/sendable_pairs.json"
+jq 'map(select(.placeholder | not))' "$ALL_PAIRS" > "$SENDABLE" 2>/dev/null || echo '[]' > "$SENDABLE"
+SENDABLE_COUNT=$(jq 'length' "$SENDABLE" 2>/dev/null || echo 0)
+SENDABLE_COUNT=${SENDABLE_COUNT//[$'\t\r\n ']/}
+SENDABLE_COUNT=${SENDABLE_COUNT:-0}
+
+DESCRIPTORS_FILE="$TMP_DIR/descriptors.json"
+DESCRIPTOR_LINES_FILE="$TMP_DIR/descriptor_line_index.json"
+jq 'map(.descriptor)' "$SENDABLE" > "$DESCRIPTORS_FILE" 2>/dev/null || echo '[]' > "$DESCRIPTORS_FILE"
+jq 'map(.line_index)' "$SENDABLE" > "$DESCRIPTOR_LINES_FILE" 2>/dev/null || echo '[]' > "$DESCRIPTOR_LINES_FILE"
+chmod 600 "$DESCRIPTORS_FILE" "$DESCRIPTOR_LINES_FILE"
+
+# Descriptor-level chunking: every request carries at most CHUNK_SIZE
+# descriptors regardless of how many fronts each source line advertises.
+if [ "$SENDABLE_COUNT" -gt 0 ]; then
+  offset=0
+  while [ "$offset" -lt "$SENDABLE_COUNT" ]; do
+    CHUNK_IDX=$((CHUNK_IDX + 1))
+    jq --argjson o "$offset" --argjson n "$CHUNK_SIZE" '.[$o:($o + $n)]' "$DESCRIPTORS_FILE" > "$TMP_DIR/chunk_${CHUNK_IDX}.json"
+    jq --argjson o "$offset" --argjson n "$CHUNK_SIZE" '.[$o:($o + $n)]' "$DESCRIPTOR_LINES_FILE" > "$TMP_DIR/chunklines_${CHUNK_IDX}.json"
+    offset=$((offset + CHUNK_SIZE))
+  done
+fi
 
 ALL_RESULTS="$TMP_DIR/all_results.json"
 echo '[]' > "$ALL_RESULTS"
@@ -468,65 +638,49 @@ process_chunk() {
   local res="$TMP_DIR/res_${idx}.json"
   local stat="$TMP_DIR/stat_${idx}.json"
   local request_file="$TMP_DIR/request_${idx}.json"
+  # v6: the descriptor chunk and its parallel source-line mapping are both
+  # precomputed by the global parse; process_chunk performs no parsing.
+  local chunk_lines_file="$TMP_DIR/chunklines_${idx}.json"
   local source_lines_file="$TMP_DIR/source_lines_${idx}.json"
   exec >"$log" 2>&1
 
-  local BRIDGES_IN_FILE BRIDGES_PARSED
-  BRIDGES_IN_FILE=$(grep -c . "$chunk_file" 2>/dev/null || echo 0)
-  BRIDGES_IN_FILE=${BRIDGES_IN_FILE//[$'\t\r\n ']/}
-  BRIDGES_IN_FILE=${BRIDGES_IN_FILE:-0}
-
-  local PARSE_ERR CHUNK_JSON
-  PARSE_ERR=$(mktemp)
-  CHUNK_JSON=$(jq -R -s "$PARSE_BRIDGE_JQ" "$chunk_file" 2>"$PARSE_ERR") || CHUNK_JSON='[]'
-  if [ -s "$PARSE_ERR" ]; then
-    echo "[stage=parse] Chunk $idx parser rejected malformed input (details redacted)."
-  fi
-  rm -f "$PARSE_ERR"
-
-  BRIDGES_PARSED=$(echo "$CHUNK_JSON" | jq 'length' 2>/dev/null || echo 0)
+  local BRIDGES_PARSED
+  BRIDGES_PARSED=$(jq 'length' "$chunk_file" 2>/dev/null || echo 0)
   BRIDGES_PARSED=${BRIDGES_PARSED//[$'\t\r\n ']/}
   BRIDGES_PARSED=${BRIDGES_PARSED:-0}
-  if [ "$BRIDGES_PARSED" -lt "$BRIDGES_IN_FILE" ]; then
-    DROPPED=$((BRIDGES_IN_FILE - BRIDGES_PARSED))
-    echo "[stage=parse] Chunk $idx: ${BRIDGES_PARSED}/${BRIDGES_IN_FILE} lines parsed (${DROPPED} dropped — malformed or unsupported)."
-  fi
 
   local CHUNK_FAILURES=0 MERGE_FAILURES=0 SENT=0 ATTEMPTED=0 COMPLETED=0
   local CONNECTED=0 REFUSED=0 TIMEDOUT=0 INCONCLUSIVE=0 ERRORED=0 CURL_SUCCESS=0
   local SUCCESS=false RETRY=0 HTTP_CODE CURL_EXIT=0
   if [ "$BRIDGES_PARSED" -eq 0 ]; then
-    echo "[stage=parse] Chunk $idx: no valid descriptors; skipping network activity."
+    echo "[stage=parse] Chunk $idx: no sendable descriptors; skipping network activity."
     echo '[]' > "$res"
     printf '{"parsed":0,"sent":0,"attempted":0,"completed":0,"connected":0,"refused":0,"timedout":0,"inconclusive":0,"errored":0,"chunk_failures":0,"merge_failures":0,"curl_success":0}\n' > "$stat"
     return
   fi
-  printf '%s\n' "$CHUNK_JSON" > "$request_file"
+  cp "$chunk_file" "$request_file"
   chmod 600 "$request_file"
 
-  # Preserve an input-line mapping locally without sending bridge credentials
+  # Preserve the input-line mapping locally without sending bridge credentials
   # or fingerprints to the Worker. The response contract already guarantees
-  # descriptor order and identity, including multiple front descriptors per line.
-  local SOURCE_LINES=()
-  local bridge_line descriptor_count
-  while IFS= read -r bridge_line; do
-    [ -z "$bridge_line" ] && continue
-    descriptor_count=$(printf '%s\n' "$bridge_line" | jq -R "$PARSE_BRIDGE_JQ" 2>/dev/null | jq 'length' 2>/dev/null || echo 0)
-    descriptor_count=${descriptor_count//[$'\t\r\n ']/}
-    if [[ "$descriptor_count" =~ ^[1-9][0-9]*$ ]]; then
-      for ((descriptor_index = 0; descriptor_index < descriptor_count; descriptor_index++)); do
-        SOURCE_LINES+=("$bridge_line")
-      done
-    fi
-  done < "$chunk_file"
-  if [ "${#SOURCE_LINES[@]}" -ne "$BRIDGES_PARSED" ]; then
+  # descriptor order and identity, including multiple front descriptors per
+  # line. v6: derived from the single global parse (deterministic) instead of
+  # re-parsing each chunk line.
+  local SOURCE_LINES
+  SOURCE_LINES=$(jq -n --slurpfile idx "$chunk_lines_file" --slurpfile src "$SOURCE_LINES_FILE" \
+    '$idx[0] | map($src[0][.])' 2>/dev/null) || SOURCE_LINES='[]'
+  printf '%s\n' "$SOURCE_LINES" > "$source_lines_file"
+  chmod 600 "$source_lines_file"
+  local SOURCE_LINE_COUNT
+  SOURCE_LINE_COUNT=$(jq 'length' "$source_lines_file" 2>/dev/null || echo 0)
+  SOURCE_LINE_COUNT=${SOURCE_LINE_COUNT//[$'\t\r\n ']/}
+  SOURCE_LINE_COUNT=${SOURCE_LINE_COUNT:-0}
+  if [ "$SOURCE_LINE_COUNT" -ne "$BRIDGES_PARSED" ]; then
     echo "[stage=merge] Chunk $idx could not map every descriptor to its source bridge line."
     echo '[]' > "$res"
     printf '{"parsed":%s,"sent":0,"attempted":0,"completed":0,"connected":0,"refused":0,"timedout":0,"inconclusive":0,"errored":0,"chunk_failures":0,"merge_failures":1,"curl_success":0}\n' "$BRIDGES_PARSED" > "$stat"
     return
   fi
-  printf '%s\n' "${SOURCE_LINES[@]}" | jq -R . | jq -s . > "$source_lines_file"
-  chmod 600 "$source_lines_file"
 
   while [ "$RETRY" -le "$MAX_RETRIES" ]; do
     echo "[stage=probe] Chunk $idx — sending ${BRIDGES_PARSED} descriptors (attempt $((RETRY + 1))/$((MAX_RETRIES + 1)))..."
@@ -597,51 +751,35 @@ process_chunk() {
   else
     CHUNK_FAILURES=1
     echo "[stage=probe] WARNING: Chunk $idx failed after $((MAX_RETRIES + 1)) attempts; recording inconclusive outcomes only."
-    local ALL_RES=()
-    local SKIPPED_UNPARSED=0
+    # v6: one neutral relay_unreachable S0 record per DESCRIPTOR, stamped
+    # with its own source line from the precomputed mapping (no re-parse).
     local OBSERVED_AT
     OBSERVED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-    while IFS= read -r bridge_line; do
-      [ -z "$bridge_line" ] && continue
-      local PARSED WITH_ERR PARSED_COUNT
-      PARSED=$(printf '%s\n' "$bridge_line" | jq -R "$PARSE_BRIDGE_JQ" 2>/dev/null || echo '[]')
-      PARSED_COUNT=$(echo "$PARSED" | jq 'length' 2>/dev/null || echo 0)
-      PARSED_COUNT=${PARSED_COUNT//[$'\t\r\n ']/}
-      if [[ "$PARSED_COUNT" =~ ^[1-9][0-9]*$ ]]; then
-        while IFS= read -r WITH_ERR; do
-          [ -n "$WITH_ERR" ] && ALL_RES+=("$WITH_ERR")
-        done < <(echo "$PARSED" | jq -c --arg line "$bridge_line" --arg observed_at "$OBSERVED_AT" '
-          map(. + {line:$line,success:false,status:"inconclusive",stage:"S0",vantage:null,rtt_ms:null,latency_ms:null,observed_at:$observed_at,error:"relay_unreachable",error_class:"relay_unreachable",detail:"relay unavailable; no probe result"})[]
-        ' 2>/dev/null)
-      else
-        # Unparseable inputs are source candidates, not relay observations.
-        SKIPPED_UNPARSED=$((SKIPPED_UNPARSED + 1))
-      fi
-    done < "$chunk_file"
-    if [ "${#ALL_RES[@]}" -gt 0 ]; then
-      printf '[%s]\n' "$(IFS=,; echo "${ALL_RES[*]}")" > "$res"
-    else
-      printf '[]\n' > "$res"
-    fi
-    if [ "$SKIPPED_UNPARSED" -gt 0 ]; then
-      echo "[stage=probe] Chunk $idx omitted ${SKIPPED_UNPARSED} unparsed source candidate(s) from relay observations."
-    fi
+    jq -n --slurpfile src "$source_lines_file" --arg observed_at "$OBSERVED_AT" '
+      [ $src[0][] |
+        { line: .,
+          success: false, status: "inconclusive", stage: "S0",
+          vantage: null, rtt_ms: null, latency_ms: null,
+          observed_at: $observed_at,
+          error: "relay_unreachable", error_class: "relay_unreachable",
+          detail: "relay unavailable; no probe result" } ]
+    ' > "$res" 2>/dev/null || printf '[]\n' > "$res"
   fi
 
   printf '{"parsed":%s,"sent":%s,"attempted":%s,"completed":%s,"connected":%s,"refused":%s,"timedout":%s,"inconclusive":%s,"errored":%s,"chunk_failures":%s,"merge_failures":%s,"curl_success":%s}\n' \
     "$BRIDGES_PARSED" "$SENT" "$ATTEMPTED" "$COMPLETED" "$CONNECTED" "$REFUSED" "$TIMEDOUT" "$INCONCLUSIVE" "$ERRORED" "$CHUNK_FAILURES" "$MERGE_FAILURES" "$CURL_SUCCESS" > "$stat"
 }
 
-# Gather chunk files (sorted for deterministic order).
-mapfile -t CHUNK_FILES < <(printf '%s\n' "$TMP_DIR"/chunk_* | sort)
-for chunk_file in "${CHUNK_FILES[@]}"; do
-  CHUNK_IDX=$((CHUNK_IDX + 1))
-  process_chunk "$chunk_file" "$CHUNK_IDX" &
-  if (( CHUNK_IDX % PROBE_RELAY_PARALLELISM == 0 )); then
+# Submit every descriptor chunk (deterministic 1..N order; v6 chunk files
+# are precomputed JSON arrays named chunk_<N>.json with chunklines_<N>.json
+# parallel source-line mappings — no glob ambiguity with chunklines_*).
+for idx in $(seq 1 "$CHUNK_IDX"); do
+  process_chunk "$TMP_DIR/chunk_${idx}.json" "$idx" &
+  if (( idx % PROBE_RELAY_PARALLELISM == 0 )); then
     if ! wait; then
       echo "[stage=probe] A relay worker exited unexpectedly; preserving every completed chunk."
     fi
-    if ! write_results_snapshot "$CHUNK_IDX"; then
+    if ! write_results_snapshot "$idx"; then
       echo "::warning::partial-result snapshot update failed; keeping the last valid output file"
     fi
   fi
@@ -659,8 +797,9 @@ for idx in $(seq 1 "$CHUNK_IDX"); do
   [ -f "$TMP_DIR/log_${idx}.txt" ] && cat "$TMP_DIR/log_${idx}.txt"
 done
 
-# Aggregate numeric stats across chunks.
-TOTAL_PARSED=0
+# Aggregate numeric stats across chunks. `parsed`/`sent` are DESCRIPTOR
+# counts in v6 (per-chunk request arrays); their totals reconcile with
+# descriptors_sendable above.
 TOTAL_SENT=0
 TOTAL_ATTEMPTED=0
 TOTAL_COMPLETED=0
@@ -673,7 +812,6 @@ TOTAL_MERGE_FAILURES=0
 TOTAL_CHUNK_FAILURES=0
 for stat_file in "$TMP_DIR"/stat_*.json; do
   [ -f "$stat_file" ] || continue
-  TOTAL_PARSED=$((TOTAL_PARSED + $(jq -r '.parsed // 0' "$stat_file")))
   TOTAL_SENT=$((TOTAL_SENT + $(jq -r '.sent // 0' "$stat_file")))
   TOTAL_ATTEMPTED=$((TOTAL_ATTEMPTED + $(jq -r '.attempted // 0' "$stat_file")))
   TOTAL_COMPLETED=$((TOTAL_COMPLETED + $(jq -r '.completed // 0' "$stat_file")))
@@ -686,59 +824,61 @@ for stat_file in "$TMP_DIR"/stat_*.json; do
   TOTAL_CHUNK_FAILURES=$((TOTAL_CHUNK_FAILURES + $(jq -r '.chunk_failures // 0' "$stat_file")))
 done
 
-# Recompute per-transport counters deterministically from disk (chunk files +
-# result files) — identical to the sequential per-chunk accounting.
+# Recompute per-transport counters deterministically from disk (v6: the
+# global parse artifacts + per-chunk request files) — identical to the
+# sequential per-chunk accounting.
 declare -A PT_EXTRACTED
 declare -A PT_PARSED
 declare -A PT_SENT
 declare -A PT_DROPPED
-for idx in $(seq 1 "$CHUNK_IDX"); do
-  chunk_file="${CHUNK_FILES[$((idx-1))]}"
-  BRIDGES_IN_FILE=$(grep -c . "$chunk_file" 2>/dev/null || echo 0)
-  BRIDGES_IN_FILE=${BRIDGES_IN_FILE//[$'\t\r\n ']/}
-  BRIDGES_IN_FILE=${BRIDGES_IN_FILE:-0}
-  while IFS= read -r raw_line; do
-    [ -z "$raw_line" ] && continue
-    t=$(echo "$raw_line" | awk '{print $1}')
-    case "$t" in
-      obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
-      *) t="other" ;;
-    esac
-    PT_EXTRACTED[$t]=$((${PT_EXTRACTED[$t]:-0} + 1))
-  done < "$chunk_file"
-  chunk_file="${CHUNK_FILES[$((idx-1))]}"
-  CHUNK_JSON=$(jq -R -s "$PARSE_BRIDGE_JQ" "$chunk_file" 2>/dev/null || echo '[]')
-  BRIDGES_PARSED=$(echo "$CHUNK_JSON" | jq 'length' 2>/dev/null || echo 0)
-  BRIDGES_PARSED=${BRIDGES_PARSED//[$'\t\r\n ']/}
-  BRIDGES_PARSED=${BRIDGES_PARSED:-0}
-  if [ "$BRIDGES_PARSED" -gt 0 ]; then
-    while IFS= read -r pt; do
-      [ -z "$pt" ] && continue
-      PT_PARSED[$pt]=$((${PT_PARSED[$pt]:-0} + 1))
-    done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
+declare -A PT_SKIPPED
+transport_of_line() {
+  case "$1" in
+    obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) printf '%s' "$1" ;;
+    *) printf '%s' "other" ;;
+  esac
+}
+# Extracted: per source line (first token).
+while IFS= read -r raw_line; do
+  [ -z "$raw_line" ] && continue
+  t=$(transport_of_line "$(printf '%s' "$raw_line" | awk '{print $1}')")
+  PT_EXTRACTED[$t]=$((${PT_EXTRACTED[$t]:-0} + 1))
+done < <(jq -r '.[]' "$SOURCE_LINES_FILE" 2>/dev/null || true)
+# Parsed + skipped: per descriptor from the global parse.
+while IFS= read -r pt_line; do
+  [ -z "$pt_line" ] && continue
+  transport="${pt_line%%$'\t'*}"
+  flag="${pt_line##*$'\t'}"
+  PT_PARSED[$transport]=$((${PT_PARSED[$transport]:-0} + 1))
+  if [ "$flag" = "placeholder" ]; then
+    PT_SKIPPED[$transport]=$((${PT_SKIPPED[$transport]:-0} + 1))
   fi
+done < <(jq -r '.[] | .descriptor.transport + "\t" + (if .placeholder then "placeholder" else "sendable" end)' "$ALL_PAIRS" 2>/dev/null || true)
+# Sent: per descriptor from the per-chunk request files whose POST succeeded.
+for idx in $(seq 1 "$CHUNK_IDX"); do
   CURL_SUCCESS=$(jq -r '.curl_success // 0' "$TMP_DIR/stat_${idx}.json" 2>/dev/null || echo 0)
-  if [ "${CURL_SUCCESS//[$'\t\r\n ']/}" = "1" ] && [ "$BRIDGES_PARSED" -gt 0 ]; then
+  if [ "${CURL_SUCCESS//[$'\t\r\n ']/}" = "1" ]; then
     while IFS= read -r pt; do
       [ -z "$pt" ] && continue
       PT_SENT[$pt]=$((${PT_SENT[$pt]:-0} + 1))
-    done < <(echo "$CHUNK_JSON" | jq -r '.[].transport // "unknown"' 2>/dev/null || true)
-  fi
-  # Dropped approximation (raw per-transport minus parsed) -- same as original.
-  if [ "$BRIDGES_PARSED" -lt "$BRIDGES_IN_FILE" ]; then
-    while IFS= read -r raw_line; do
-      [ -z "$raw_line" ] && continue
-      t=$(echo "$raw_line" | awk '{print $1}')
-      case "$t" in
-        obfs4|webtunnel|vanilla|snowflake|meek_lite|meek-azure|conjure|meek) ;;
-        *) t="other" ;;
-      esac
-      PT_DROPPED[$t]=$((${PT_DROPPED[$t]:-0} + 1))
-    done < "$chunk_file"
+    done < <(jq -r '.[].transport // "unknown"' "$TMP_DIR/chunk_${idx}.json" 2>/dev/null || true)
   fi
 done
+# Dropped: source lines that produced no descriptor at all.
+while IFS= read -r dropped_pair; do
+  [ -z "$dropped_pair" ] && continue
+  t=$(transport_of_line "$(printf '%s' "$dropped_pair" | awk '{print $1}')")
+  PT_DROPPED[$t]=$(( ${PT_DROPPED[$t]:-0} + 1 ))
+done < <(jq -r --slurpfile src "$SOURCE_LINES_FILE" '
+  [.[].line_index] as $used
+  | [ range(0; ($src[0] | length)) as $i
+      | select(($used | index($i)) | not)
+      | $src[0][$i] ]
+' "$ALL_PAIRS" 2>/dev/null || true)
 
-# Merge per-chunk results IN CHUNK ORDER (deterministic).
+# Merge per-chunk results IN CHUNK ORDER (deterministic), then append the
+# client-side placeholder skip records so every source candidate keeps a
+# typed observation for this run.
 : > "$TMP_DIR/merge_input.jsonl"
 for idx in $(seq 1 "$CHUNK_IDX"); do
   if [ -f "$TMP_DIR/res_${idx}.json" ]; then
@@ -746,6 +886,10 @@ for idx in $(seq 1 "$CHUNK_IDX"); do
     printf '\n' >> "$TMP_DIR/merge_input.jsonl"
   fi
 done
+if [ -s "$SKIP_RECORDS" ]; then
+  cat "$SKIP_RECORDS" >> "$TMP_DIR/merge_input.jsonl"
+  printf '\n' >> "$TMP_DIR/merge_input.jsonl"
+fi
 jq -s 'add // []' "$TMP_DIR/merge_input.jsonl" > "$TMP_DIR/all_results_tmp.json"
 mv "$TMP_DIR/all_results_tmp.json" "$ALL_RESULTS"
 
@@ -799,8 +943,10 @@ echo ""
 echo "═══ PROBE RELAY SUMMARY ═══"
 echo "[stage=summary] chunks_processed=${CHUNK_IDX}"
 echo "[stage=summary] bridge_lines_extracted=${LINE_COUNT}"
-echo "[stage=summary] bridges_parsed_total=${TOTAL_PARSED}"
-echo "[stage=summary] bridges_sent_to_worker=${TOTAL_SENT}"
+echo "[stage=summary] descriptors_parsed_total=${TOTAL_DESCRIPTORS}"
+echo "[stage=summary] placeholders_skipped_client_side=${PLACEHOLDERS_SKIPPED}"
+echo "[stage=summary] descriptors_sendable=${SENDABLE_COUNT}"
+echo "[stage=summary] descriptors_sent_to_worker=${TOTAL_SENT}"
 echo "[stage=summary] worker_attempted=${TOTAL_ATTEMPTED}"
 echo "[stage=summary] worker_completed=${TOTAL_COMPLETED}"
 echo "[stage=summary] worker_connected=${TOTAL_CONNECTED}"
@@ -827,12 +973,13 @@ echo "═══ PER-TRANSPORT BREAKDOWN ═══"
 for pt in obfs4 webtunnel vanilla snowflake meek_lite meek-azure conjure meek other; do
   extracted=${PT_EXTRACTED[$pt]:-0}
   parsed=${PT_PARSED[$pt]:-0}
+  skipped=${PT_SKIPPED[$pt]:-0}
   sent=${PT_SENT[$pt]:-0}
   connected=${PT_RESULT_CONNECTED[$pt]:-0}
   s2plus=${PT_RESULT_S2PLUS[$pt]:-0}
   if [ "$extracted" -gt 0 ] || [ "$parsed" -gt 0 ] || [ "$sent" -gt 0 ]; then
-    printf "  %-12s  extracted=%-5s  parsed=%-5s  sent=%-5s  connected=%-5s  S2+=%-5s\n" \
-      "$pt" "$extracted" "$parsed" "$sent" "$connected" "$s2plus"
+    printf "  %-12s  extracted=%-5s  parsed=%-5s  skipped=%-4s  sent=%-5s  connected=%-5s  S2+=%-5s\n" \
+      "$pt" "$extracted" "$parsed" "$skipped" "$sent" "$connected" "$s2plus"
   fi
 done
 # ── Bucket reconciliation (ADDITIVE v5.1) ─────────────────────────────────────
@@ -859,7 +1006,7 @@ for pt in $(printf '%s\n' "${!PT_EXTRACTED[@]}" "${!PT_PARSED[@]}" "${!PT_SENT[@
   fi
 done
 echo "═══════════════════════════════"
-echo "[stage=summary] reconciliation: named buckets + \"unknown\" above sum to parsed_total=${TOTAL_PARSED}; relay observations written=${RESULT_COUNT}"
+echo "[stage=summary] reconciliation: named buckets + \"unknown\" above sum to descriptors_parsed_total=${TOTAL_DESCRIPTORS}; relay observations written=${RESULT_COUNT}"
 
 # ── Structured diagnostics for zero results ──────────────────────────────────
 if [ "$RESULT_COUNT" -eq 0 ]; then
@@ -870,12 +1017,12 @@ if [ "$RESULT_COUNT" -eq 0 ]; then
     echo "  ❌ ALL ${CHUNK_IDX} chunks failed — Worker is unreachable or auth is wrong"
   elif [ "$TOTAL_MERGE_FAILURES" -gt 0 ]; then
     echo "  ❌ ${TOTAL_MERGE_FAILURES} merge failures — Worker response format may have changed"
-  elif [ "$TOTAL_PARSED" -eq 0 ]; then
-    echo "  ❌ 0 bridges parsed from ${LINE_COUNT} lines — all lines in non-parseable format"
+  elif [ "$TOTAL_DESCRIPTORS" -eq 0 ]; then
+    echo "  ❌ 0 descriptors parsed from ${LINE_COUNT} lines — all lines in non-parseable format"
   elif [ "$TOTAL_CONNECTED" -eq 0 ] && [ "$TOTAL_SENT" -gt 0 ]; then
     echo "  ⚠️  Worker recorded 0 connected outcomes across ${TOTAL_SENT} descriptors; inspect typed status counts, egress policy, and targets."
   else
-    echo "  ⚠️  PARSED=${TOTAL_PARSED} SENT=${TOTAL_SENT} CONNECTED=${TOTAL_CONNECTED} but RESULT_COUNT=0"
+    echo "  ⚠️  PARSED=${TOTAL_DESCRIPTORS} SENT=${TOTAL_SENT} CONNECTED=${TOTAL_CONNECTED} but RESULT_COUNT=0"
     echo "  This is a BUG — successful probes were dropped between Worker response and final merge"
   fi
   echo "═══════════════════════════════"

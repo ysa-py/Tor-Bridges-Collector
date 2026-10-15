@@ -56,13 +56,21 @@ url="$(sed -n 's/^url = "\(.*\)"$/\1/p' "$config_file")"
 [[ "$url" == "${FAKE_RELAY_EXPECT_URL:?}" ]] || exit 98
 grep -Fxq "X-Probe-Token: ${FAKE_RELAY_EXPECT_TOKEN:?}" "$header_file" || exit 99
 
-jq -e '
-  type == "array" and length == 4 and
-  any(.[]; .id == "line-vanilla-93.184.216.34-443" and .host == "93.184.216.34" and .port == 443 and .transport == "vanilla") and
-  any(.[]; .transport == "webtunnel" and .host == "example.com" and .path == "/private-token-path") and
-  (map(select(.transport == "conjure")) | length == 2) and
-  all(.[]; (.host | type == "string") and (.port | type == "number"))
-' "$request_file" >/dev/null || exit 100
+# v6 per-test request validation: when FAKE_RELAY_VALIDATE_FILE is set, its
+# jq program is the authoritative request-body contract for that test (used
+# by the v6 placeholder/chunking tests whose request shapes differ); the
+# original hardcoded shape below only applies to the default mixed-input run.
+if [[ -n "${FAKE_RELAY_VALIDATE_FILE:-}" ]]; then
+  jq -e --from-file "${FAKE_RELAY_VALIDATE_FILE:?}" "$request_file" >/dev/null || exit 102
+else
+  jq -e '
+    type == "array" and length == 4 and
+    any(.[]; .id == "line-vanilla-93.184.216.34-443" and .host == "93.184.216.34" and .port == 443 and .transport == "vanilla") and
+    any(.[]; .transport == "webtunnel" and .host == "example.com" and .path == "/private-token-path") and
+    (map(select(.transport == "conjure")) | length == 2) and
+    all(.[]; (.host | type == "string") and (.port | type == "number"))
+  ' "$request_file" >/dev/null || exit 100
+fi
 
 count=0
 if [[ -s "${FAKE_RELAY_COUNT_FILE:?}" ]]; then read -r count < "$FAKE_RELAY_COUNT_FILE"; fi
@@ -215,6 +223,107 @@ for guard_case in chunk_size retries; do
   [[ ! -s "$count_file" ]] || fail "$guard_case validation reached curl"
   assert_redacted
 done
+
+# ── v6 placeholder-endpoint resolution + client-side skip ──────────────────
+# A snowflake/meek line whose endpoint is a BridgeDB documentation literal
+# (192.0.2.x TEST-NET-1, [2001:db8::]/32) and which carries url= must be
+# probed at its DIALABLE rendezvous (url host + one descriptor per
+# advertised front) instead of the dead placeholder; a placeholder line
+# WITHOUT url= must never reach the Worker and yields a typed
+# relay_skipped_placeholder S0 record instead (root cause of the
+# permanently empty fronted-transport advisory files, run 38702901771).
+placeholder_input="$tmp_dir/placeholder-input.json"
+placeholder_output="$tmp_dir/placeholder-results.json"
+cat > "$placeholder_input" <<'JSON'
+[
+  "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://cdn-rendezvous.example.org/ front=front-one.example.com,front-two.example.com ice=stun:stun.example.com:3478",
+  "webtunnel [2001:db8:1218:1de7:3a91:22cc:8d7f:197c]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://webtunnel-front.example.xyz/tokentoken ver=0.0.3",
+  "snowflake 192.0.2.99:80 1111111111111111111111111111111111111111"
+]
+JSON
+
+placeholder_validation="$tmp_dir/placeholder-validate.jq"
+cat > "$placeholder_validation" <<'JQ'
+  type == "array" and length == 4 and
+  # No descriptor may carry a documentation/reserved endpoint.
+  (map(select(.host == "192.0.2.3" or .host == "192.0.2.99" or (.host | startswith("2001:db8")))) | length == 0) and
+  # Snowflake rendezvous: url host descriptor + one per advertised front.
+  (map(select(.transport == "snowflake" and .host == "cdn-rendezvous.example.org")) | length == 3) and
+  any(.[]; .transport == "snowflake" and .host == "cdn-rendezvous.example.org" and .sni == "front-one.example.com") and
+  any(.[]; .transport == "snowflake" and .host == "cdn-rendezvous.example.org" and .sni == "front-two.example.com") and
+  # Webtunnel placeholder resolves to the url= front with its token path.
+  any(.[]; .transport == "webtunnel" and .host == "webtunnel-front.example.xyz" and .path == "/tokentoken") and
+  all(.[]; (.port | type) == "number")
+JQ
+
+printf '200 0 valid\n' > "$sequence_file"
+: > "$count_file"
+PATH="$fake_bin:$PATH" \
+PROBE_RELAY_URL='https://relay.example/credential-path-secret' \
+PROBE_RELAY_TOKEN='relay-token-secret-marker-123456' \
+PROBE_RELAY_CHUNK_SIZE=6 \
+PROBE_RELAY_MAX_RETRIES=2 \
+PROBE_RELAY_PARALLELISM=2 \
+FAKE_RELAY_SEQUENCE_FILE="$sequence_file" \
+FAKE_RELAY_COUNT_FILE="$count_file" \
+FAKE_RELAY_EXPECT_URL='https://relay.example/credential-path-secret/probe' \
+FAKE_RELAY_EXPECT_TOKEN='relay-token-secret-marker-123456' \
+FAKE_RELAY_VALIDATE_FILE="$placeholder_validation" \
+  bash "$relay_script" "$placeholder_input" "$placeholder_output" > "$log_file" 2>&1 \
+  || fail 'placeholder rendezvous run should pass'
+[[ "$(cat "$count_file")" == 1 ]] || fail 'placeholder rendezvous expected exactly one request'
+# 4 typed Worker outcomes (3 snowflake rendezvous + 1 webtunnel front) plus
+# 1 client-side placeholder skip record for the no-url snowflake line.
+jq -e 'length == 5 and
+  ([.[] | select(.error_class == "relay_skipped_placeholder")] | length) == 1 and
+  ([.[] | select(.error_class == "relay_skipped_placeholder") | .line] | first) == "snowflake 192.0.2.99:80 1111111111111111111111111111111111111111" and
+  all(.[]; (.line | type == "string"))' "$placeholder_output" >/dev/null \
+  || fail 'placeholder skip record was not typed onto its source line'
+grep -Fq 'placeholders_skipped_client_side=1' "$log_file" \
+  || fail 'placeholder skip accounting is missing from the summary'
+assert_redacted
+
+# ── v6 descriptor-level chunking ─────────────────────────────────────────────
+# Front expansion must never exceed the Worker's 6-descriptor ceiling: one
+# snowflake line advertising 8 fronts expands to 9 descriptors, so with
+# PROBE_RELAY_CHUNK_SIZE=3 the client must send 3 bounded requests instead of
+# one 9-descriptor request the Worker would reject with HTTP 413 (the run
+# 38702901771 failure class that lost every fronted candidate's evidence).
+chunk_input="$tmp_dir/chunk-input.json"
+chunk_output="$tmp_dir/chunk-results.json"
+jq -n '["snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://chunk-rendezvous.example.net/ fronts=f1.example.com,f2.example.com,f3.example.com,f4.example.com,f5.example.com,f6.example.com,f7.example.com,f8.example.com"]' > "$chunk_input"
+
+chunk_validation="$tmp_dir/chunk-validate.jq"
+cat > "$chunk_validation" <<'JQ'
+  type == "array" and length <= 3 and length >= 1
+JQ
+
+printf '200 0 valid\n200 0 valid\n200 0 valid\n' > "$sequence_file"
+: > "$count_file"
+PATH="$fake_bin:$PATH" \
+PROBE_RELAY_URL='https://relay.example/credential-path-secret' \
+PROBE_RELAY_TOKEN='relay-token-secret-marker-123456' \
+PROBE_RELAY_CHUNK_SIZE=3 \
+PROBE_RELAY_MAX_RETRIES=2 \
+PROBE_RELAY_PARALLELISM=1 \
+FAKE_RELAY_SEQUENCE_FILE="$sequence_file" \
+FAKE_RELAY_COUNT_FILE="$count_file" \
+FAKE_RELAY_EXPECT_URL='https://relay.example/credential-path-secret/probe' \
+FAKE_RELAY_EXPECT_TOKEN='relay-token-secret-marker-123456' \
+FAKE_RELAY_VALIDATE_FILE="$chunk_validation" \
+  bash "$relay_script" "$chunk_input" "$chunk_output" > "$log_file" 2>&1 \
+  || fail 'descriptor-chunked run should pass'
+[[ "$(cat "$count_file")" == 3 ]] || fail 'expected exactly 3 bounded requests (9 descriptors / chunk size 3)'
+# 9 rendezvous descriptors (url host + 8 fronts) → 9 typed outcomes, every
+# one stamped with the source line (the fake relay answers snowflake
+# descriptors as inconclusive S1 by design; the assertion is about complete,
+# line-labeled coverage across the bounded chunks).
+jq -e 'length == 9 and
+  all(.[]; (.status == "connected" or .status == "inconclusive") and (.line | type == "string")) and
+  ([.[] | select(.line | startswith("snowflake 192.0.2.4:80"))] | length) == 9' "$chunk_output" >/dev/null \
+  || fail 'descriptor-level chunking lost or mislabeled outcomes'
+grep -Fq 'chunk_failures=0' "$log_file" || fail 'descriptor chunking reported failures'
+assert_redacted
 
 # A timed-out later group must leave the prior completed group's typed results,
 # not a stale output file or an empty replacement.

@@ -38,7 +38,7 @@
 #   same run whose Stage 11 commits the payload to git ("dual persist":
 #   GitHub and Telegram always receive the same bytes).
 #   Full bridge collection/publication and Telegram delivery run only on the
-#   main branch (hourly schedule, main push, or main dispatch); pull_request and
+#   main branch (hourly-or-better schedule, main push, or main dispatch); pull_request and
 #   non-main refs run validation without production collection or deployment.
 #   Delivery is ON by default for eligible main runs. It can be disabled per-run
 #   with upload_to_telegram=false or repo-wide with TELEGRAM_AUTO_UPLOAD=false.
@@ -48,7 +48,10 @@
 #   shapes, every SHA-256 manifest entry, byte-identical ZIP contents), and
 #   Stage 10 reads that inventory from telegram_manifest.json and fails the
 #   run if any contract file is missing — a broken publication cannot commit.
-#   Collection/publication is scheduled hourly (UTC). Runs targeting the same
+#   Collection/publication is scheduled at :17 and :47 (UTC) — two
+#   independent chances per hour after GitHub's scheduler dropped single
+#   hourly slots under queue pressure (5 of 24 fired 2026-10-14→15). Runs
+#   targeting the same
 #   branch serialize without cancellation so every artifact starts from the
 #   latest committed state; a full run over an hour can delay/coalesce refreshes.
 # ══════════════════════════════════════════════════════════════════════════
@@ -64,6 +67,20 @@ name: TorShield-IR Bridge Intelligence
     # throttling window and keeps the hourly cadence (engineering directive
     # v42 G, issue #257 follow-up).
     - cron: '17 * * * *'
+    # Cadence redundancy (2026-10-15, issue #270 follow-up): the scheduler
+    # drops single hourly slots under queue pressure — only 5 of 24
+    # scheduled Bridge-Intelligence runs fired 2026-10-14→15, so bridge/
+    # went up to 6 hours without a refresh. A second, mid-hour slot gives
+    # every hour two independent chances to run the FULL pipeline. Both
+    # slots intentionally run the complete collect → test → publish cycle
+    # (no freshness short-circuit): the validation-noop path empties the
+    # core job's bridge/ evidence, which flows into the finalize artifact
+    # merge, so a collection-skipped run would publish aged-out evidence
+    # and flap against the previous hour's bytes. GitHub-hosted standard
+    # runners are free for public repositories, so the redundant run costs
+    # no billing; the same-branch concurrency group serializes the slots so
+    # every artifact still starts from the latest committed state.
+    - cron: '47 * * * *'
   workflow_dispatch:
     inputs:
       upload_to_telegram:
@@ -187,6 +204,12 @@ jobs:
       run: bash scripts/test_validate_probe_relay_secrets.sh
     - name: Test probe relay smoke retries and redaction
       run: bash scripts/test_probe_relay_smoke.sh
+    # v6 relay client contract: descriptor-level chunking (never exceeds the
+    # Worker's 6-descriptor ceiling), placeholder rendezvous resolution, and
+    # client-side dialability skips (root causes of the permanently empty
+    # fronted-transport advisory files, run 38702901771).
+    - name: Test probe relay client chunking and placeholder resolution
+      run: bash scripts/test_probe_relay.sh
 
     - name: Optional secret availability
       id: secret_presence
@@ -2485,6 +2508,45 @@ jobs:
           --verify-only
         echo "✅ Publication contract verified: every required file present,"
         echo "   manifest hashes match, archive contents byte-identical."
+
+      # Post-publication funnel refresh (2026-10-15, issue #270 follow-up).
+      # Stage 8v computes data/funnel_advisory.json BEFORE Stage 9 rewrites
+      # bridge/, so its published_advisory_working stage read the mid-pipeline
+      # (pre-publication) working set and systematically reported 0 while the
+      # run actually published hundreds of advisory-working bridges (run
+      # 38702901771: funnel said 0, the dual-persist commit said 638). The
+      # funnel advisory is re-run AFTER the verified publication on main so
+      # the committed metric reflects the published bytes; the Stage 8v run
+      # stays as the mid-pipeline observation. Advisory-only, non-blocking.
+    - name: Stage 9d — Post-publication funnel refresh (truthful
+        published_advisory_working)
+      timeout-minutes: 5
+      run: |
+        set -euo pipefail
+        if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+          echo "self no-op: post-publication funnel refresh stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
+          exit 0
+        fi
+        if [ ! -f data/funnel_advisory.json ]; then
+          echo "self no-op: no mid-pipeline funnel advisory to refresh"
+          exit 0
+        fi
+        # The funnel advisory derives its live/noop semantics from
+        # data/collection_mode.json, which the core job's snapshot wrote for
+        # the COLLECTION decision. At this point the run has verified and
+        # published the bridge/ contract (Stage 9b passed), so the
+        # publication context is live: the funnel recounts the PUBLISHED
+        # bytes, and zeroed this-run-collection semantics must not clobber
+        # the published metric. The committed mode is republished as live by
+        # this same publication run.
+        jq -n '{mode: "live", live_collection: true, refreshed_by: "stage_9d_post_publication"}' > data/collection_mode.json
+        cargo run --locked --quiet --bin funnel_advisory
+        published=$(jq -r '[.funnel[]? | select(.stage == "published_advisory_working") | .count] | first // 0' data/funnel_advisory.json 2>/dev/null || echo 0)
+        echo "Post-publication funnel: published_advisory_working=${published} (refreshed from the verified bridge/ bytes)"
+        {
+          echo "### Stage 9d — post-publication funnel refresh"
+          echo "- published_advisory_working: \`${published}\` (recomputed from the published bridge/ payload, not the mid-pipeline state)"
+        } >> "${GITHUB_STEP_SUMMARY}"
 
       # Directive v43 §H: freshness SLA + machine-readable metrics.
       #  * SLA — a published snapshot older than 3 hours at publication time
