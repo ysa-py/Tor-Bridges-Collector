@@ -779,19 +779,21 @@ fn filtered_family_lines(
                 candidate.raw.clone()
             }
         })
-        // Published copy-paste projections must contain only globally
-        // dialable endpoints. Lines whose endpoint literal sits in an IETF
-        // documentation / reserved range (RFC 3849 2001:db8, RFC 5737
-        // TEST-NETs, ...) stay in bridge_history.json for probing and the
-        // funnel census, but are never handed to consumers: a placeholder
-        // endpoint cannot be dialed and the 2026-09-09 zero-yield audit
-        // (docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) verified every such
-        // line in the supply is genuinely reserved. The strict raw check is
-        // used deliberately — the ingestion guard's url-front allowance is
-        // for probing placeholder-endpoint fronted transports, not for
-        // publication — and it also applies to the resolved form, since the
-        // resolved endpoint is what consumers dial.
-        .filter(|line| !crate::ip_guard::contains_documentation_or_reserved_endpoint(line))
+        // Published copy-paste projections must contain only consumer-dialable
+        // bridges. A literal endpoint in an IETF documentation / reserved
+        // range (RFC 3849 2001:db8, RFC 5737 TEST-NETs, ...) normally stays in
+        // bridge_history.json for probing and the funnel census (2026-09-09
+        // zero-yield audit, docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) —
+        // with one protocol-mandated exception now carried by
+        // `ip_guard::publication_blocks_endpoint`: broker/front transports
+        // (snowflake, meek*, conjure) ship RFC 5737/3849 placeholder
+        // endpoints in Tor Browser's own defaults and dial the `url=`/`front=`
+        // rendezvous instead, so those lines publish when their rendezvous
+        // validates (run 38660732712: fresh MOAT supply sat in history while
+        // every snowflake/meek projection stayed empty). Private, loopback,
+        // link-local, and other reserved literals remain blocked for every
+        // transport, and non-fronted transports keep the strict check.
+        .filter(|line| !crate::ip_guard::publication_blocks_endpoint(transport, line))
         .collect()
 }
 
@@ -1443,7 +1445,7 @@ fn is_advisory_working(probe: &ProbeRecord) -> bool {
             probe.iran_status.as_str(),
             "iran_asn_blocked" | "iran_likely_blocked" | "iran_frequently_blocked"
         )
-        && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
+        && !crate::ip_guard::publication_blocks_endpoint(&probe.transport, &probe.line)
 }
 
 /// Advisory (Tier C) reachability evidence (directive v43 §E): a typed,
@@ -1466,7 +1468,7 @@ fn is_runner_advisory_working(probe: &ProbeRecord) -> bool {
             probe.iran_status.as_str(),
             "iran_asn_blocked" | "iran_likely_blocked" | "iran_frequently_blocked"
         )
-        && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
+        && !crate::ip_guard::publication_blocks_endpoint(&probe.transport, &probe.line)
 }
 
 fn is_blocked(probe: &ProbeRecord) -> bool {
@@ -2858,7 +2860,15 @@ mod tests {
     }
 
     #[test]
-    fn transport_projections_exclude_documentation_endpoints() {
+    fn transport_projections_apply_the_publication_endpoint_policy() {
+        // Policy under test (ip_guard::publication_blocks_endpoint):
+        //   * webtunnel doc-range endpoints stay unpublished (the client
+        //     dials the literal endpoint; issue #257);
+        //   * broker/front placeholders (snowflake/meek/conjure) publish
+        //     when their url=/front= rendezvous validates — the exact form
+        //     Tor Browser ships (MOAT builtin 2026-10-15);
+        //   * a placeholder with an invalid rendezvous host stays blocked;
+        //   * routable literals always publish.
         let dir = std::env::temp_dir().join(format!("pub_docrange_{}", std::process::id()));
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
@@ -2874,8 +2884,13 @@ mod tests {
                 "transport": "obfs4",
                 "last_seen": now.to_rfc3339()
             },
-            "fake_snowflake": {
-                "raw": "snowflake 192.0.2.3:80 HHHH fingerprint=HHHH url=https://example.invalid/ front=www.example.invalid",
+            "invalid_rendezvous_snowflake": {
+                "raw": "snowflake 192.0.2.9:80 NNNN fingerprint=NNNN url=https://example.invalid/ front=www.example.invalid",
+                "transport": "snowflake",
+                "last_seen": now.to_rfc3339()
+            },
+            "valid_rendezvous_snowflake": {
+                "raw": "snowflake 192.0.2.3:80 HHHH fingerprint=HHHH url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com",
                 "transport": "snowflake",
                 "last_seen": now.to_rfc3339()
             }
@@ -2907,8 +2922,12 @@ mod tests {
         let snowflake =
             std::fs::read_to_string(bridge_dir.join("snowflake_ipv4_ipv6_all.txt")).expect("file");
         assert!(
-            !snowflake.contains("192.0.2.3"),
-            "TEST-NET snowflake placeholders must not be published: {snowflake}"
+            !snowflake.contains("fingerprint=NNNN"),
+            "a placeholder whose rendezvous host is invalid must not be published: {snowflake}"
+        );
+        assert!(
+            snowflake.contains("fingerprint=HHHH"),
+            "the current Tor-default placeholder form with a validated rendezvous publishes: {snowflake}"
         );
         let obfs4 =
             std::fs::read_to_string(bridge_dir.join("obfs4_ipv4_ipv6_all.txt")).expect("file");

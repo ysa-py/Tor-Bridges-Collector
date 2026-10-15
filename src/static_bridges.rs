@@ -1,22 +1,28 @@
 //! Parity port of `sources/static_bridges.py`.
 //!
-//! Official built-in Tor bridges (expanded). These bridges are hardcoded
-//! inside Tor Browser and change very rarely. Including them ensures the
-//! collector always has working bridges even when external APIs are
-//! unreachable (critical during Iranian internet cuts).
+//! Official built-in Tor bridges. These are the lines Tor Browser itself
+//! ships; they are refreshed from the MOAT `circumvention/builtin` API (the
+//! same endpoint the collector's Stage 3 polls). Including them ensures the
+//! collector always has bridges even when external APIs are unreachable
+//! (critical during Iranian internet cuts).
 //!
-//! Documentation-range endpoint placeholders have been removed from every
-//! production/static data path; fronted transports keep only their legitimate
-//! broker/front metadata and are not counted as direct IP bridges.
+//! Broker/front transports (snowflake, meek*, conjure) carry IETF
+//! documentation-range endpoint placeholders BY PROTOCOL DESIGN — BridgeDB
+//! ships `meek_lite 192.0.2.20:80 url=…` and `snowflake 192.0.2.3:80 …` in
+//! Tor Browser's own defaults, and the client dials the `url=`/`front=`
+//! rendezvous, never the placeholder. Such lines are publishable whenever
+//! their rendezvous validates (`ip_guard::publication_blocks_endpoint`); no
+//! endpoint may ever be fabricated for a line that lacks one.
 //!
-//! Beyond the sanitized static constants, this module also provides static
+//! Beyond the static constants, this module also provides static
 //! fallback lines for published transports whose bundled entries are complete
 //! client bridge lines (vanilla, snowflake, obfs4, conjure, and meek variants)
 //! via [`fallback_lines`] and [`fallback_all`]. URL-only WebTunnel metadata is
 //! retained for reference but is never emitted as a client bridge fallback.
 //!
-//! Sources:
+//! Sources (refreshed 2026-10-15 against the live MOAT builtin response):
 //! - Tor Browser source: tor-browser/src/app/tor-browser.git (torrc.defaults)
+//! - MOAT builtin: <https://bridges.torproject.org/moat/circumvention/builtin>
 //! - Snowflake broker: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/snowflake>
 //! - meek: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/meek>
 //! - WebTunnel: <https://gitlab.torproject.org/tpo/anti-censorship/pluggable-transports/webtunnel>
@@ -24,33 +30,35 @@
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Snowflake — WebRTC + CDN fronting. Extremely hard to block. Best for Iran.
-// Direct TEST-NET endpoints were purged; routing is via broker/front metadata.
+// The first two lines are the CURRENT Tor defaults (CDN77 rendezvous,
+// datapacket fronts, refreshed from MOAT builtin 2026-10-15); the
+// documentation-range endpoint placeholders are the protocol form Tor Browser
+// itself ships. The Fastly-broker variants remain valid secondary
+// rendezvous points.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Built-in Snowflake bridge lines. Length: 4.
 pub const SNOWFLAKE_BRIDGES: &[&str] = &[
-    // Primary — Fastly CDN front (googlevideo.com)
+    // Current Tor default #1 — CDN77 rendezvous, datapacket fronts
+    "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+url=https://1098762253.rsc.cdn77.org/ \
+fronts=app.datapacket.com,www.datapacket.com \
+ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 \
+utls-imitate=hellorandomizedalpn",
+    // Current Tor default #2 — same rendezvous, second fingerprint
+    "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA \
+url=https://1098762253.rsc.cdn77.org/ \
+fronts=app.datapacket.com,www.datapacket.com \
+ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 \
+utls-imitate=hellorandomizedalpn",
+    // Secondary — direct broker over Fastly (rendezvous still live)
     "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ \
 fronts=ftls.googlevideo.com \
 ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.voip.blackberry.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478 \
 utls-imitate=hellorandomizedalpn",
-    // Secondary — direct torproject.net with Fastly front
-    "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA \
-fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA \
-url=https://snowflake-broker.torproject.net/ \
-fronts=snowflake-broker.torproject.net.global.prod.fastly.net \
-ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.voip.blackberry.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.sonetel.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478 \
-utls-imitate=hellorandomizedalpn",
-    // AMP CDN — via ampproject.org (Google AMP CDN, harder to block in Iran)
-    "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
-fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
-url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ \
-fronts=www.gstatic.com \
-ice=stun:stun.l.google.com:19302,stun:stun.ekiga.net:3478,stun:stun.ideasip.com:3478,stun:stun.rixtelecom.se:3478,stun:stun.schlund.de:3478,stun:stun.stunprotocol.org:3478 \
-utls-imitate=hellorandomizedalphv2",
-    // Backup — hellorandomizednoalpn imitation
+    // Backup — direct broker, no-ALPN imitation
     "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA \
 fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA \
 url=https://snowflake-broker.torproject.net/ \
@@ -60,52 +68,52 @@ utls-imitate=hellorandomizednoalpn",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// meek-lite — CDN domain fronting. Traffic appears as Azure/AWS, not Tor.
+// meek-lite — CDN domain fronting. Traffic appears as ordinary CDN traffic.
+// meek.azureedge.net / az668014.vo.msecnd.net are RETIRED (DNS removed,
+// verified 2026-10-15); the current Tor default is the CDN77 rendezvous
+// below (MOAT builtin, country=ir).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Built-in meek-lite bridge lines. Length: 3.
+/// Built-in meek-lite bridge lines. Length: 1.
 pub const MEEK_BRIDGES: &[&str] = &[
-    // meek-azure — Microsoft Azure CDN (very high availability)
-    "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 \
-url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
-    // meek-amazon — AWS CloudFront
-    "meek_lite 0AC9589027B0B1F3B1D1D94C63CD9E8D05CD6D77 \
-url=https://a0.awsstatic.com/ front=a0.awsstatic.com",
-    // meek-azure alternate (CDN endpoint B)
-    "meek_lite BE776A53492E1E044A26F17306E1BC46A55A1625 \
-url=https://meek.azureedge.net/ front=cloudflightcdn.azureedge.net",
+    // Current Tor default — CDN77 rendezvous (azure retired 2024/2025)
+    "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org \
+front=www.phpmyadmin.net utls=HelloRandomizedALPN",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// obfs4 — Public well-known bridges from official Tor documentation.
-// NOTE: These are FROM the official Tor Project bridge pool public
-// documentation. They may rotate; the MOAT API always provides fresher obfs4
-// bridges.
+// obfs4 — the current Tor built-in obfs4 set, refreshed from the MOAT
+// builtin API (country=ir, 2026-10-15). The MOAT response lists the
+// 209.148.46.65 line twice; it is deduplicated here. The MOAT API always
+// provides fresher obfs4 bridges.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Built-in obfs4 bridge lines. Length: 5.
+/// Built-in obfs4 bridge lines. Length: 6.
 pub const OBFS4_BRIDGES: &[&str] = &[
-    // From Tor Project's official bridge distributor (publicly documented)
-    "obfs4 193.11.166.194:27025 \
-1AE2C08904527FEA90C4307C2A428523CF4DFED2 \
-cert=IYmSp4TQw7V87kQOPhwOGCHGEuNwMaS0IW0OEuYZVXslGcWCMI1Kes/GzJYKGR/5QQIZXQ \
-iat-mode=2",
-    "obfs4 193.11.166.194:27067 \
-1AE2C08904527FEA90C4307C2A428523CF4DFED2 \
-cert=cCbNa6Y1UrN9lGtKR3N0MhF5H62gU1VBIoJcNRHuInkBgMmJh5j0bECEMmjHgfSJUdRJqw \
-iat-mode=2",
-    "obfs4 37.218.245.14:38224 \
-D9A82D2F9C2F65A18407B1D2B764F130847F8B5D \
-cert=L4N/KQa4TQ24v0Q0VPKWG1Qq2ZXGQAB2OAhKj0f6YnEo1A99oPIFpLv1dMKiQAbHtFhXog \
-iat-mode=2",
-    "obfs4 89.163.212.153:15000 \
-A30B2B9F02AEE22D1F26D0D73C4B61DB6C5F84AA \
-cert=Dq5X8Ap5MJIO3sPbEG8vZONOvHUFIEJGN5oOpnAWKpMqXNDWjmhJCkNRmMDgj0H7a/MiFQ \
-iat-mode=2",
+    "obfs4 51.222.13.177:80 \
+5EDAC3B810E12B01F6FD8050D2FD3E277B289A08 \
+cert=2uplIpLQ0q9+0qMFrK5pkaYRDOe460LL9WHBvatgkuRr/SL31wBOEupaMMJ6koRE6Ld0ew \
+iat-mode=0",
+    "obfs4 209.148.46.65:443 \
+74FAD13168806246602538555B5521A0383A1875 \
+cert=ssH+9rP8dG2NLDN2XuFw63hIO/9MNNinLmxQDpVa+7kTOa9/m+tGWT1SmSYpQ9uTBGa6Hw \
+iat-mode=0",
+    "obfs4 212.83.43.74:443 \
+39562501228A4D5E27FCA4C0C81A01EE23AE3EE4 \
+cert=PBwr+S8JTVZo6MPdHnkTwXJPILWADLqfMGoVvhZClMq/Urndyd42BwX9YFJHZnBB3H0XCw \
+iat-mode=1",
+    "obfs4 212.83.43.95:443 \
+BFE712113A72899AD685764B211FACD30FF52C31 \
+cert=ayq0XzCwhpdysn5o0EyDUbmSOx3X/oTEbzDMvczHOdBJKlvIdHHLJGkZARtT4dcBFArPPg \
+iat-mode=1",
+    "obfs4 45.145.95.6:27015 \
+C5B7CD6946FF10C5B3E89691A7D3F2C122D2117C \
+cert=TD7PbUO0/0k6xYHMPW3vJxICfkMZNdkRrb63Zhl5j9dW3iRGiCx0A7mPhe5T2EDzQ35+Zw \
+iat-mode=0",
     "obfs4 146.57.248.225:22 \
-10A6CD36A537FCE513A322E120CD05179CE93655 \
-cert=K1gDtDAIcUfeLqbstggjIos/FsSYZ2h24CNQpDjEs62Tm4bFDIoE9+X/mhzOt5Jsvg \
-iat-mode=2",
+10A6CD36A537FCE513A322361547444B393989F0 \
+cert=K1gDtDAIcUfeLqbstggjIw2rtgIKqdIhUlHp82XRqNSq/mtAjp1BIC9vHKJ2FAEpGssTPw \
+iat-mode=0",
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -155,13 +163,15 @@ url=https://registration.refraction.network/api \
 fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min"];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// meek-azure — Azure CDN domain fronting. Same line as
+// meek-azure — the meek family's current CDN77 rendezvous (the azure
+// endpoints are retired; see the meek-lite section). Same line as
 // `onionhop_collector::fronted_meek_azure`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Built-in meek-azure bridge lines. Length: 1.
-pub const MEEK_AZURE_BRIDGES: &[&str] = &["meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
-url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com"];
+pub const MEEK_AZURE_BRIDGES: &[&str] = &["meek_lite 192.0.2.20:80 \
+url=https://1603026938.rsc.cdn77.org \
+front=www.phpmyadmin.net utls=HelloRandomizedALPN"];
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Public interface
@@ -214,7 +224,9 @@ pub fn fallback_lines(transport: &str) -> Vec<&'static str> {
 
 /// Static fallback lines across supported transports, in a fixed order, used
 /// for aggregate files such as `iran_likely_working_all.txt`. URL-only
-/// WebTunnel metadata is excluded.
+/// WebTunnel metadata is excluded. The meek-azure family mirrors the single
+/// current meek_lite rendezvous line by design, so duplicate lines are
+/// dropped here to keep aggregate files duplicate-free.
 pub fn fallback_all() -> Vec<&'static str> {
     let mut lines = Vec::new();
     for transport in [
@@ -226,7 +238,11 @@ pub fn fallback_all() -> Vec<&'static str> {
         "conjure",
         "meek-azure",
     ] {
-        lines.extend(fallback_lines(transport));
+        for line in fallback_lines(transport) {
+            if !lines.contains(&line) {
+                lines.push(line);
+            }
+        }
     }
     lines
 }
@@ -241,28 +257,32 @@ mod tests {
     }
 
     #[test]
-    fn meek_bridge_count_preserved() {
-        assert_eq!(MEEK_BRIDGES.len(), 3);
+    fn meek_bridge_count_matches_current_tor_defaults() {
+        // The azure endpoints are retired (DNS removed 2024/2025); the
+        // current Tor default set is the single CDN77 rendezvous line.
+        assert_eq!(MEEK_BRIDGES.len(), 1);
+        assert!(MEEK_BRIDGES[0].contains("1603026938.rsc.cdn77.org"));
+        assert!(!fallback_lines("meek_lite").iter().any(|line| line.contains("azureedge")));
     }
 
     #[test]
-    fn obfs4_bridge_count_preserved() {
-        assert_eq!(OBFS4_BRIDGES.len(), 5);
+    fn obfs4_bridge_count_matches_current_tor_defaults() {
+        assert_eq!(OBFS4_BRIDGES.len(), 6);
     }
 
     #[test]
-    fn get_all_returns_twelve_tuples_in_documented_order() {
+    fn get_all_returns_tuples_in_documented_order() {
         let all = get_all();
-        assert_eq!(all.len(), 12);
+        assert_eq!(all.len(), 4 + MEEK_BRIDGES.len() + OBFS4_BRIDGES.len());
         for entry in &all[0..4] {
             assert_eq!(entry.1, "snowflake");
             assert_eq!(entry.2, "ipv4");
         }
-        for entry in &all[4..7] {
+        for entry in &all[4..4 + MEEK_BRIDGES.len()] {
             assert_eq!(entry.1, "meek_lite");
             assert_eq!(entry.2, "ipv4");
         }
-        for entry in &all[7..12] {
+        for entry in &all[4 + MEEK_BRIDGES.len()..] {
             assert_eq!(entry.1, "obfs4");
             assert_eq!(entry.2, "ipv4");
         }
