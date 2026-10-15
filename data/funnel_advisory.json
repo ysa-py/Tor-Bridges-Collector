@@ -8,32 +8,32 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1978,
+      "count": 1982,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1978,
+      "count": 1982,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 1985,
+      "count": 1989,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 456,
+      "count": 453,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 1978,
+      "count": 1982,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 830,
+      "count": 834,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-15T04:53:22.679969997+00:00",
+  "generated_at": "2026-10-15T06:26:39.909578411+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -87,16 +87,16 @@
     "obfs4_tested.txt": 0,
     "tested_global_obfs4.txt": 0,
     "tested_global_vanilla.txt": 0,
-    "tested_global_webtunnel.txt": 153,
+    "tested_global_webtunnel.txt": 152,
     "vanilla.txt": 423,
-    "vanilla_tested.txt": 161,
-    "webtunnel.txt": 185,
+    "vanilla_tested.txt": 160,
+    "webtunnel.txt": 189,
     "webtunnel_ipv6.txt": 244
   },
   "relay_coverage": {
-    "candidates": 1978,
-    "relay_observations": 1985,
-    "relay_success": 456,
+    "candidates": 1982,
+    "relay_observations": 1989,
+    "relay_success": 453,
     "unobserved_by_transport": {
       "no_literal_endpoint": 4
     },
@@ -184,7 +184,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2197,
+        "fetched_lines": 2198,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
@@ -1341,7 +1341,7 @@
     ],
     "fronts_with_placeholder_endpoints": 244,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 429,
+    "lines_examined": 433,
     "summary": {
       "degraded": 0,
       "healthy": 0,
