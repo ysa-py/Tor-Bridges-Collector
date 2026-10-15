@@ -1,25 +1,26 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-15T03:00:59.649827280+00:00",
+  "generated_at": "2026-10-15T04:54:13.408974847+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 553,
-            "tested_failing": 51,
-            "tested_working": 244,
-            "untested (probe error)": 548,
-            "untested (rate-limited)": 59,
-            "untested (tcp timeout)": 523
+            "tcp_reachable_s1": 273,
+            "tested_failing": 182,
+            "tested_working": 532,
+            "untested (probe error)": 361,
+            "untested (rate-limited)": 51,
+            "untested (tcp timeout)": 579
           },
-          "stamped": 1536,
+          "stamped": 1499,
           "tiers": {
-            "tier_0_attempt": 1105,
-            "tier_1_tcp": 621,
-            "tier_3_transport": 244,
-            "untested": 8
+            "tier_0_attempt": 1109,
+            "tier_1_tcp": 336,
+            "tier_2_pt_handshake": 287,
+            "tier_3_transport": 245,
+            "untested": 1
           }
         },
         "files": {
@@ -31,24 +32,24 @@
           "iran_likely_working_vanilla.txt": 0,
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 119,
-          "tested_global_vanilla.txt": 125,
-          "tested_global_webtunnel.txt": 0
+          "tested_global_vanilla.txt": 126,
+          "tested_global_webtunnel.txt": 154
         },
         "relay_evidence": {
           "bridges_matched": 1963,
           "relay_observations": 2385,
-          "s2plus_connected": 244,
-          "verification_upgrades": 523
+          "s2plus_connected": 501,
+          "verification_upgrades": 526
         },
         "webtunnel_probe": {
           "probed": 429,
-          "ws_101": 0,
-          "ws_fail": 429
+          "ws_101": 287,
+          "ws_fail": 142
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-15T03:00:27.167408206+00:00",
+      "started_at": "2026-10-15T04:53:41.166244136+00:00",
       "status": "ok"
     }
   ],
