@@ -13,17 +13,17 @@
       "stage": "candidates_in_history"
     },
     {
-      "count": 1988,
+      "count": 1817,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 1995,
+      "count": 2408,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 455,
+      "count": 487,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -33,17 +33,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 838,
+      "count": 839,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 0,
+      "count": 635,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-15T12:06:11.310089628+00:00",
+  "generated_at": "2026-10-15T12:10:33.008160017+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,30 +78,33 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 0,
-    "iran_likely_working_obfs4.txt": 0,
+    "iran_likely_working_all.txt": 635,
+    "iran_likely_working_obfs4.txt": 292,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 0,
-    "iran_likely_working_webtunnel.txt": 0,
+    "iran_likely_working_vanilla.txt": 153,
+    "iran_likely_working_webtunnel.txt": 190,
     "obfs4.txt": 709,
-    "obfs4_tested.txt": 0,
-    "tested_global_obfs4.txt": 0,
-    "tested_global_vanilla.txt": 0,
-    "tested_global_webtunnel.txt": 153,
+    "obfs4_tested.txt": 292,
+    "tested_global_obfs4.txt": 292,
+    "tested_global_vanilla.txt": 153,
+    "tested_global_webtunnel.txt": 190,
     "vanilla.txt": 488,
-    "vanilla_tested.txt": 159,
-    "webtunnel.txt": 192,
-    "webtunnel_ipv6.txt": 244
+    "vanilla_tested.txt": 153,
+    "webtunnel.txt": 193,
+    "webtunnel_ipv6.txt": 72
   },
   "relay_coverage": {
-    "candidates": 1988,
-    "relay_observations": 1995,
-    "relay_success": 455,
+    "candidates": 1817,
+    "relay_observations": 2408,
+    "relay_success": 487,
     "unobserved_by_transport": {
-      "no_literal_endpoint": 4
+      "meek_lite": 1,
+      "no_literal_endpoint": 4,
+      "snowflake": 6,
+      "webtunnel": 72
     },
-    "unobserved_candidates": 0,
-    "unobserved_non_routable": 0,
+    "unobserved_candidates": 79,
+    "unobserved_non_routable": 79,
     "unobserved_other": 0
   },
   "relay_retry_plan": {
@@ -120,9 +123,9 @@
         "suggested_backoff_secs": 8.0
       }
     ],
-    "recommendation": "full coverage — no re-run needed",
+    "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 0
+    "unobserved_candidates": 79
   },
   "sources": {
     "sources": [
@@ -198,710 +201,710 @@
     "evidence_source": "data/pt_results.json (live probe-relay observations from Cloudflare)",
     "fronts": [
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "1-cvt.sports-streams.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "2jl.cc",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "307007.xyz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "5-ams.sports-streams.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "a.private.st",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "aaronstory2026.xyz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "alina-photos.art",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "allium.heelsn.eu",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "alwaysnewbie.eu.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "ams1.cryptomeanscryptography.club",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "anastasia.anondns.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "anoni.net",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "api.mittarovo.cz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "b.img-cdn.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "balades-et-gouts.fr",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "barker.anistratov.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "bdrmbdrmbdrm.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "bg.808.re",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "bridge-es.jmrp.io",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "bridge.hxflife.xyz",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "bridge2.phntm.pro",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "bridges.lovethosetrains.com",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "bubatz.legal",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "c.2jl.cc",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "c.img-cdn.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "capera.tel",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "catun.privacy-vbox.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdn-23.triplebit.dev",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdn-26.privacyguides.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdn-46.triplebit.dev",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdn.dameray.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "cdn.exonip.xyz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdn.seo-manager.info",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdn.yuvalbloch.com",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cdnspace.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "chatbuddy.eu.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "coellen.xyz",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cool110.xyz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "crm.gateway-jp.dynamicingress.space",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cryptomeanscryptography.club",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cyfog.net",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "cz.tradebotz.site",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "d.img-cdn.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "dallinbryce.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "ddns.icmnt.net",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "deimos.fedfe1.xyz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "dev-test.catcat.pictures",
-        "observations": 0,
+        "observations": 4,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "dev.dumkatze.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "disobey.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "docs.prevails.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "e.img-cdn.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "el-hacker.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "fdmf.ch",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "foglab.net",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "freeforall.camdvr.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "freesoftware.cloud",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "front-eu1.webdeliveryonl.click",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "fyhenry.uk",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "gia.shallotfarm.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "girafe.tel",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "headhumping.jumpingcrab.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "heresthespace.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "hhynz.maledict.me",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "hongkong.dagestani.eu",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "ie01-dub.beijing.st",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "iwantabigblackdickinmyass.nayumi.dev",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "jochenkessler.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "johns-tech-garden.com",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "kfc911.top",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "kochenjessler.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "le.nd-ai.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "lonecandle.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "lowkeykick.site",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "mae.nasnedagoniat.top",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "magicgreenforest.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "mail3.theyosh.nl",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "masterkeef.duckdns.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "men-touching.men",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "mensor.ch",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "meskio.net",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "metastable03.mori.yuka.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "mirror.sanin.dev",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "miscellanemaker.cc",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "mrrp.sillykittens.net",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "mstdn.party",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "myprivatecloud82.fun",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "n8n.ikebun.jp",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "naiveproxy.lab",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "nauka.edu.eu.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "nextcloud.kiljan.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "nextcloud.privacy-vbox.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "nl.808.re",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "nothing.localenby.is",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "np601p22.xoomlia.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "nthpyro.dev",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "nyx.libertasforge.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "oglilouhn.dedyn.io",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "oldradio.info",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "oneforty.chummer.online",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "onethirtyseven.chummer.online",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "onethirtysix.chummer.online",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
@@ -912,442 +915,435 @@
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "pablo.iki.fi",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "pl.808.re",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "pl2.808.re",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "pod01.oneclickhost.eu",
-        "observations": 0,
+        "observations": 5,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "pod02.oneclickhost.eu",
-        "observations": 0,
+        "observations": 5,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "pod03.oneclickhost.eu",
-        "observations": 0,
+        "observations": 5,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "pod04.oneclickhost.eu",
-        "observations": 0,
+        "observations": 4,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "pod05.oneclickhost.eu",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "push.hieronymus.uk",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "quantentoast.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "rabbithole2.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "redstarsl.cc",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "regionalindex37.xyz",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "relay.manupawick.men",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "reptiles.miscellanemaker.cc",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "rot.ronaak.eu",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "s.dont.icu",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "s3.vlue.dev",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "sexgrueselbox.ch",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "shallotfarm.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "signaling.privacy-vbox.de",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "sp-sk.bitcdn.ovh",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "sp-tr.bitcdn.ovh",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "speedtest.qs.ee",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "staging.nexusocean.link",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "steuern-sind-raub.ch",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "stop.rechts.jetzt",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "stream.lacka.day",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "streaming.the-forgotten-tales.com",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "surf.mysticboarding.cz",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "talnett.com",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "tearandnatureeco.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "test.mwumba.com",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "tired.social",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "tomorefreedomitis.com",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "topwager.bet",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "tor.jmrp.io",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "tor.kwe-private.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "tor1.woodie.dev",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "transformaforge.com",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "ttt.enerhome.site",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "unknxwn.lol",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "vault.005184.xyz",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "vika7.space",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "web.localenby.is",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "webtnl.ekiprahati.shop",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "webtunnel.buhhenbaldence.com",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "webtunnel.offblast.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wechatcommunities.top",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wildnetwork.pro",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "wolkewolkewolke.zip",
-        "observations": 0,
+        "observations": 4,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
-        "front": "wt.aaronstory2026.xyz",
-        "observations": 0,
-        "successes": 0
-      },
-      {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "wt.gri.mw",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "wt3.vkurage.zip",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wt5.wtqwert.top",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wtb007.unshakled.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "www.cafe-kantholz.de",
-        "observations": 0,
+        "observations": 4,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "www.jarlaxle.de",
-        "observations": 0,
+        "observations": 3,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "www.readthefinemanual.net",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
-        "endpoint_is_placeholder": true,
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "www2.shallotfarm.org",
-        "observations": 0,
+        "observations": 2,
         "successes": 0
       },
       {
-        "classification": "no_evidence",
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "yandex.arkadag.org",
-        "observations": 0,
+        "observations": 1,
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 244,
+    "fronts_with_placeholder_endpoints": 72,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 436,
+    "lines_examined": 265,
     "summary": {
       "degraded": 0,
       "healthy": 0,
-      "no_evidence": 163,
-      "unreachable_from_relay": 0
+      "no_evidence": 1,
+      "unreachable_from_relay": 161
     },
-    "unique_fronts": 163
+    "unique_fronts": 162
   }
 }
