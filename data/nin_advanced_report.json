@@ -517,6 +517,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 141.147.55.112:443 FDA4F037334BA25B7ECEBAC458350B588C57DA24 url=https://freeforall.camdvr.org/BrLxiuXhwTEx3qJxFEhOE3tA ver=0.0.4",
+      "host": "freeforall.camdvr.org",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 141.147.55.112:443 FDA4F037334BA25B7ECEBAC458350B588C57DA24 url=https://freeforall.camdvr.org/BrLxiuXhwTEx3qJxFEhOE3tA ver=0.0.5",
       "host": "freeforall.camdvr.org",
       "nin_flags": [
@@ -6008,6 +6020,18 @@
       ],
       "nin_score": 0.25,
       "port": 443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 163.245.201.114:8443 8DBB03F8C1DAE95837E8E928886792863CBEF4A6 cert=Z4I5oByDvQ+PeJNyVl3ggNxgjH6YWwA4vDUQzhX0VagoLuMNaE50OZ8T//QMF/ymZ254Dw iat-mode=0",
+      "host": "163.245.201.114",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8443,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -12772,6 +12796,17 @@
       ],
       "nin_score": 0.1,
       "port": 64989,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 54.37.139.184:8105 5970977230CA5D4B050F6B79B083ACBC33879AAD cert=JECw1VO3KS0x3cua52fDydrcmpXXbEez0FTuFFfAWlCpe8NSOD2wqadYU3WfZ8JzIA3bfQ iat-mode=0",
+      "host": "54.37.139.184",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 8105,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -21821,11 +21856,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1982,
-    "candidates_probed": 392,
-    "candidates_scored": 1982,
+    "candidates_input": 1985,
+    "candidates_probed": 393,
+    "candidates_scored": 1985,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 615.939
+    "probe_elapsed_secs": 614.492
   }
 }

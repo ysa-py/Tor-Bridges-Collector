@@ -387,6 +387,14 @@
     {
       "ip": "141.147.55.112",
       "port": 443,
+      "raw": "webtunnel 141.147.55.112:443 FDA4F037334BA25B7ECEBAC458350B588C57DA24 url=https://freeforall.camdvr.org/BrLxiuXhwTEx3qJxFEhOE3tA ver=0.0.4",
+      "sni": "freeforall.camdvr.org",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "141.147.55.112",
+      "port": 443,
       "raw": "webtunnel 141.147.55.112:443 FDA4F037334BA25B7ECEBAC458350B588C57DA24 url=https://freeforall.camdvr.org/BrLxiuXhwTEx3qJxFEhOE3tA ver=0.0.5",
       "sni": "freeforall.camdvr.org",
       "tier": "YELLOW",
@@ -1590,10 +1598,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-15T06:15:07.277560+00:00",
+  "generated_at": "2026-10-15T07:09:57.049761+00:00",
   "green_count": 9,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 198,
-  "yellow_count": 189
+  "total_bridges": 199,
+  "yellow_count": 190
 }
