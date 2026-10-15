@@ -742,6 +742,27 @@ pub fn read_pt_results() -> Vec<Value> {
     }
 }
 
+/// Normalise a probe-record transport label into the canonical diagnostic
+/// family key.
+///
+/// The relay-side probe (`scripts/probe_relay.sh`) labels a descriptor by
+/// the first token of the source line verbatim, so a vanilla bridge line
+/// carrying the optional `Bridge `/`bridge ` prefix surfaces as
+/// `transport:"Bridge"` or `transport:"bridge"` instead of `vanilla`. The
+/// split buckets showed up in every PROBE_RELAY notice as
+/// `Bridge=0/2 bridge=160/486 …` — two phantom transports with misleading
+/// zero-success rates next to the real ones. A line whose only transport
+/// marker is the generic bridge prefix is a vanilla bridge: collapse the
+/// case variants onto `vanilla`, lowercase everything else, and keep
+/// already-canonical labels byte-identical.
+fn normalize_transport_label(transport: &str) -> String {
+    let lowered = transport.trim().to_ascii_lowercase();
+    match lowered.as_str() {
+        "bridge" => "vanilla".to_string(),
+        _ => lowered,
+    }
+}
+
 /// Summarise relay probe observations per transport and per host.
 ///
 /// Each result entry is expected to carry `transport`, `success`, `host`,
@@ -762,7 +783,7 @@ pub fn summarize_pt_results(results: &[Value]) -> Value {
             .get("success")
             .and_then(Value::as_bool)
             .unwrap_or(false);
-        let transport_key = transport.to_string();
+        let transport_key = normalize_transport_label(transport);
         let counter = by_transport.entry(transport_key.clone()).or_default();
         *counter.entry("attempted").or_insert(0) += 1;
         if success {
@@ -1533,6 +1554,32 @@ webtunnel url=https://example.com/ abcdef0123456789
         assert_eq!(wt.get("success").and_then(Value::as_u64), Some(2));
         let host_a = summary.pointer("/by_host/webtunnel|cdn-a.example").unwrap();
         assert_eq!(host_a.get("attempted").and_then(Value::as_u64), Some(2));
+    }
+
+    // Regression (run 38680880616 PROBE_RELAY notice "Bridge=0/2
+    // bridge=160/486"): the relay labels a `Bridge ` / `bridge `-prefixed
+    // vanilla line by its first token, so the summary split vanilla into two
+    // phantom buckets with misleading rates. Both case variants must fold
+    // into the single `vanilla` family; canonical labels stay unchanged.
+    #[test]
+    fn summarize_pt_results_normalizes_bridge_prefix_labels() {
+        let results = vec![
+            json!({"transport": "Bridge", "host": "104.152.210.181", "port": 1105, "success": false}),
+            json!({"transport": "bridge", "host": "103.17.153.46", "port": 36287, "success": true}),
+            json!({"transport": "bridge", "host": "103.17.153.46", "port": 36287, "success": false}),
+            json!({"transport": "WebTunnel", "host": "cdn-a.example", "port": 443, "success": true}),
+        ];
+        let summary = summarize_pt_results(&results);
+        assert_eq!(summary.get("entries").and_then(Value::as_u64), Some(4));
+        let vanilla = summary.pointer("/by_transport/vanilla").unwrap();
+        assert_eq!(vanilla.get("attempted").and_then(Value::as_u64), Some(3));
+        assert_eq!(vanilla.get("success").and_then(Value::as_u64), Some(1));
+        // The two phantom buckets no longer exist.
+        assert!(summary.pointer("/by_transport/Bridge").is_none());
+        assert!(summary.pointer("/by_transport/bridge").is_none());
+        // Case variants of real transports collapse onto the canonical key.
+        let wt = summary.pointer("/by_transport/webtunnel").unwrap();
+        assert_eq!(wt.get("attempted").and_then(Value::as_u64), Some(1));
     }
 
     #[test]

@@ -345,6 +345,50 @@ pub fn infer_ip_version(key: &str) -> String {
     }
 }
 
+/// Classify a bridge line's IP family by its endpoint LITERAL (engineering
+/// directive v42 §C: "classify IPv4/IPv6 by the real endpoint").
+///
+/// `Some("ipv6")` for a bracketed `[IPv6]:port` endpoint, `Some("ipv4")` for
+/// a dotted IPv4 `host:port` endpoint, `None` when the line carries no
+/// parseable endpoint literal (URL-only broker lines, FQDN endpoints).
+///
+/// WHY this exists: the collector-side labels derived from the SOURCE shape
+/// (the requested URL variant `transport=X&ipv6=yes`, or a mirror's
+/// `*_ipv6.txt` file name) have been observed to disagree with the actual
+/// served line. Live verification 2026-10-15:
+/// `bridges.torproject.org/bridges?transport=vanilla&ipv6=yes` returns an
+/// IPv4 line (`217.76.139.236:21704 …`), and the Delta-Kronecker mirror's
+/// `vanilla_ipv6.txt` contains 65 IPv4-literal lines. Trusting the source
+/// shape stamped all of those as `ip_version:"ipv6"` in the history, which
+/// the v42 §C publication classifier then had to silently re-bucket —
+/// leaving `vanilla_ipv6.txt` empty while the records sat mislabeled and
+/// the supply diagnostics counted a phantom IPv6 pool. Ingestion now
+/// records the literal truth; the source shape remains only as the
+/// fallback for lines with no endpoint literal at all.
+pub(crate) fn literal_ip_version(line: &str) -> Option<&'static str> {
+    for token in line.split_whitespace() {
+        if token.contains('=') {
+            continue;
+        }
+        if token.starts_with('[') {
+            if let Some(close) = token.find(']') {
+                if token[1..close].parse::<std::net::IpAddr>().is_ok() {
+                    return Some("ipv6");
+                }
+            }
+            continue;
+        }
+        let host = token
+            .rsplit_once(':')
+            .map(|(host, _port)| host)
+            .unwrap_or(token);
+        if let Ok(address) = host.parse::<std::net::IpAddr>() {
+            return Some(if address.is_ipv6() { "ipv6" } else { "ipv4" });
+        }
+    }
+    None
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Minimal HTML extractor (mirrors _parse_bridgelines_html)
 // ─────────────────────────────────────────────────────────────────────────────
@@ -731,7 +775,14 @@ pub fn fetch_torproject(client: &dyn HttpFetch) -> Vec<(String, String, String)>
             lines.len()
         );
         for line in lines {
-            results.push((line, transport.to_string(), ip_ver.to_string()));
+            // Directive v42 §C at the ingestion boundary: the endpoint
+            // literal of the served line is the ground truth for the IP
+            // family. The URL variant (`&ipv6=yes`) is only a request hint —
+            // BridgeDB has been observed to answer it with IPv4 lines (see
+            // `literal_ip_version`), and trusting the hint mislabeled 65
+            // vanilla records as a phantom IPv6 pool.
+            let classified = literal_ip_version(&line).unwrap_or(ip_ver);
+            results.push((line, transport.to_string(), classified.to_string()));
         }
     }
     results
@@ -2022,6 +2073,52 @@ fn type_name_of_value(value: &Value) -> &'static str {
 
 #[cfg(test)]
 mod tests {
+    // Directive v42 §C ingestion classification: the endpoint literal of the
+    // served line is the ground truth, never the requested URL variant
+    // (`&ipv6=yes`) or the mirror's `*_ipv6.txt` file name. Regression for
+    // the 65 vanilla records BridgeDB's `vanilla&ipv6=yes` endpoint served
+    // as IPv4 lines but which were stamped `ip_version:"ipv6"`.
+    #[test]
+    fn literal_ip_version_classifies_by_endpoint_literal() {
+        // Verbatim BridgeDB answer to .../bridges?transport=vanilla&ipv6=yes
+        // (2026-10-15): an IPv4 literal despite the ipv6 hint.
+        assert_eq!(
+            literal_ip_version("217.76.139.236:21704 97EAB17550B88B6BB6692671B48B76383CE0B565"),
+            Some("ipv4")
+        );
+        // Real IPv6 supply (the shape obfs4&ipv6=yes serves).
+        assert_eq!(
+            literal_ip_version(
+                "obfs4 [2001:678:6d4:5150::126]:9130 FD973BCD35B3871A32613A8B87D23EBE15B71E5B cert=NPSADqB1RNvPgdhEIpceFFyxBH5E iat-mode=0"
+            ),
+            Some("ipv6")
+        );
+        // BridgeDB WebTunnel IPv6 placeholder endpoints are still IPv6
+        // literals (the family label is truthful; the placeholder policy is
+        // the ip_guard's separate concern).
+        assert_eq!(
+            literal_ip_version(
+                "webtunnel [2001:db8:a6c3:bdeb:9876:908f:cbf9:548b]:443 1F5056811B0E123CAD39AD0259F14F2880CA33F0 url=https://freesoftware.cloud/8675309 ver=0.0.4"
+            ),
+            Some("ipv6")
+        );
+        // URL-only broker line: no endpoint literal at all.
+        assert_eq!(
+            literal_ip_version(
+                "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api"
+            ),
+            None
+        );
+        // Transport-prefixed IPv4 line (leading transport token must not be
+        // mistaken for a host).
+        assert_eq!(
+            literal_ip_version(
+                "vanilla 95.216.163.36:443 0123456789ABCDEF0123456789ABCDEF01234567"
+            ),
+            Some("ipv4")
+        );
+    }
+
     #[test]
     fn merge_rejects_documentation_and_reserved_endpoints() {
         let mut history = serde_json::json!({});

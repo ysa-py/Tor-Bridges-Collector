@@ -966,6 +966,54 @@ fn static_line_ip_version(line: &str) -> Option<bool> {
     None
 }
 
+/// Data-hygiene pass (directive v42 §C) over the canonical history: make
+/// every record's `ip_version` label agree with the endpoint literal of its
+/// `raw` line, in place.
+///
+/// WHY: records ingested before the literal-classification fix carry labels
+/// from the SOURCE shape (the `&ipv6=yes` request hint or a mirror's
+/// `*_ipv6.txt` file name) that disagree with the served line — the
+/// committed history holds 65 vanilla records with IPv4 literals labelled
+/// `ip_version:"ipv6"`. The publication classifier already re-buckets those
+/// by literal (so `vanilla_ipv6.txt` publishes a truthful zero), but the
+/// stale labels keep the SUPPLY_DIAGNOSTICS counting a phantom IPv6 pool
+/// (`vanilla_ipv6::history_count_after=65`) and confuse every downstream
+/// audit. This pass relabels the records themselves and returns how many
+/// changed; lines with no parseable endpoint literal (URL-only broker
+/// lines, FQDN endpoints) keep their existing label.
+pub fn relabel_history_ip_versions(history: &mut Value) -> usize {
+    let Some(object) = history.as_object_mut() else {
+        return 0;
+    };
+    let mut relabeled = 0_usize;
+    for (key, value) in object {
+        let Some(record) = value.as_object_mut() else {
+            continue;
+        };
+        let raw = record
+            .get("raw")
+            .and_then(Value::as_str)
+            .unwrap_or(key)
+            .trim()
+            .to_string();
+        if raw.is_empty() {
+            continue;
+        }
+        let Some(is_ipv6) = static_line_ip_version(&raw) else {
+            continue;
+        };
+        let truthful = if is_ipv6 { "ipv6" } else { "ipv4" };
+        if record.get("ip_version").and_then(Value::as_str) != Some(truthful) {
+            record.insert(
+                "ip_version".to_string(),
+                Value::String(truthful.to_string()),
+            );
+            relabeled += 1;
+        }
+    }
+    relabeled
+}
+
 fn fallback_family_lines(transport: &str, ipv6: Option<bool>) -> Vec<String> {
     static_bridges::fallback_lines(transport)
         .into_iter()
@@ -2423,8 +2471,20 @@ pub fn publish_at(
         )));
     }
 
-    let history = read_json(&history_path)?;
+    let mut history = read_json(&history_path)?;
     let results = read_json(&results_path)?;
+    // v42 §C data hygiene BEFORE any projection is built: relabel history
+    // records whose `ip_version` disagrees with their endpoint literal, and
+    // persist the corrected history so the committed canonical input, the
+    // supply diagnostics, and the publication all tell the same story. The
+    // pass is idempotent — after the first corrected run it is a no-op.
+    let relabeled = relabel_history_ip_versions(&mut history);
+    if relabeled > 0 {
+        write_json_atomic(&history_path, &history)?;
+        println!(
+            "::notice::publication relabeled {relabeled} history record(s) whose ip_version label disagreed with the endpoint literal (v42 section C data hygiene; persisted to bridge_history.json)"
+        );
+    }
     let probes = extract_probe_records(&results, now, options.run_floor)?;
     let candidates = candidates_from_history(
         &history,
@@ -2663,6 +2723,58 @@ mod tests {
             normalise_transport("conjure 192.0.2.2:443", Some("vanilla")),
             "conjure"
         );
+    }
+
+    // Regression (committed bridge_history.json, run 38680880616): 65
+    // vanilla records carried IPv4 literals labelled `ip_version:"ipv6"`
+    // — ingested from the `&ipv6=yes` request hint / the mirror's
+    // `*_ipv6.txt` file name instead of the served line. The relabel pass
+    // must correct them in place, leave truthful labels untouched, and keep
+    // endpoint-less (URL-only) records on their existing label.
+    #[test]
+    fn relabel_history_ip_versions_aligns_labels_with_literals() {
+        let mut history = serde_json::json!({
+            // Mislabelled: IPv4 literal stamped ipv6 (the phantom pool).
+            "104.152.210.181:1105 2CF11CD4B8334A365952D7139BE356E55F2DEBC3": {
+                "raw": "104.152.210.181:1105 2CF11CD4B8334A365952D7139BE356E55F2DEBC3",
+                "transport": "vanilla",
+                "ip_version": "ipv6"
+            },
+            // Truthful IPv6 label: untouched.
+            "obfs4 [2001:678:6d4:5150::126]:9130 FD973BCD35B3871A32613A8B87D23EBE15B71E5B": {
+                "raw": "obfs4 [2001:678:6d4:5150::126]:9130 FD973BCD35B3871A32613A8B87D23EBE15B71E5B cert=NPSA iat-mode=0",
+                "transport": "obfs4",
+                "ip_version": "ipv6"
+            },
+            // Truthful IPv4 label: untouched.
+            "vanilla 95.216.163.36:443 0123456789ABCDEF0123456789ABCDEF01234567": {
+                "raw": "vanilla 95.216.163.36:443 0123456789ABCDEF0123456789ABCDEF01234567",
+                "transport": "vanilla",
+                "ip_version": "ipv4"
+            },
+            // No endpoint literal (URL-only broker line): label kept.
+            "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api": {
+                "raw": "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api",
+                "transport": "conjure",
+                "ip_version": "ipv4"
+            }
+        });
+        let changed = relabel_history_ip_versions(&mut history);
+        assert_eq!(changed, 1);
+        let mislabelled_key = "104.152.210.181:1105 2CF11CD4B8334A365952D7139BE356E55F2DEBC3";
+        assert_eq!(
+            history[mislabelled_key]["ip_version"].as_str(),
+            Some("ipv4")
+        );
+        let ipv6_key =
+            "obfs4 [2001:678:6d4:5150::126]:9130 FD973BCD35B3871A32613A8B87D23EBE15B71E5B";
+        assert_eq!(history[ipv6_key]["ip_version"].as_str(), Some("ipv6"));
+        let ipv4_key = "vanilla 95.216.163.36:443 0123456789ABCDEF0123456789ABCDEF01234567";
+        assert_eq!(history[ipv4_key]["ip_version"].as_str(), Some("ipv4"));
+        let url_only_key = "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api";
+        assert_eq!(history[url_only_key]["ip_version"].as_str(), Some("ipv4"));
+        // Idempotent: a second pass changes nothing.
+        assert_eq!(relabel_history_ip_versions(&mut history), 0);
     }
 
     #[test]
@@ -3054,8 +3166,15 @@ mod tests {
     #[test]
     fn transport_projections_apply_the_publication_endpoint_policy() {
         // Policy under test (ip_guard::publication_blocks_endpoint):
-        //   * webtunnel doc-range endpoints stay unpublished (the client
-        //     dials the literal endpoint; issue #257);
+        //   * webtunnel doc-range endpoints publish when their url=
+        //     rendezvous validates — the official webtunnel client dials the
+        //     url= host, never the literal endpoint token (client/main.go
+        //     `getAddressesFromHostname(url.Hostname())`), and BridgeDB
+        //     itself ships `[2001:db8:…]` endpoints for the IPv6 pool (the
+        //     disproven issue-#257 premise kept them unpublished while
+        //     244 validated bridges sat in history);
+        //   * a webtunnel placeholder without a valid rendezvous stays
+        //     unpublished;
         //   * broker/front placeholders (snowflake/meek/conjure) publish
         //     when their url=/front= rendezvous validates — the exact form
         //     Tor Browser ships (MOAT builtin 2026-10-15);
@@ -3066,8 +3185,13 @@ mod tests {
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let now = Utc::now();
         let history = serde_json::json!({
-            "fake_placeholder": {
+            "valid_rendezvous_webtunnel": {
                 "raw": "webtunnel [2001:db8:1218:1de7::1]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://coellen.xyz ver=0.0.4",
+                "transport": "webtunnel",
+                "last_seen": now.to_rfc3339()
+            },
+            "no_rendezvous_webtunnel": {
+                "raw": "webtunnel [2001:db8:1218:1de7::2]:443 DF343521735ABE129910A998817B3A93AA2390FE ver=0.0.4",
                 "transport": "webtunnel",
                 "last_seen": now.to_rfc3339()
             },
@@ -3108,8 +3232,18 @@ mod tests {
         let webtunnel =
             std::fs::read_to_string(bridge_dir.join("webtunnel_ipv4_ipv6_all.txt")).expect("file");
         assert!(
-            webtunnel.trim().is_empty(),
-            "doc-range webtunnel endpoints must not be published: {webtunnel}"
+            webtunnel.contains("url=https://coellen.xyz"),
+            "a doc-range webtunnel endpoint with a validated url= rendezvous must publish (official client dials the url host): {webtunnel}"
+        );
+        assert!(
+            !webtunnel.contains("1de7::2"),
+            "a doc-range webtunnel endpoint without a rendezvous must not be published: {webtunnel}"
+        );
+        let webtunnel_v6 =
+            std::fs::read_to_string(bridge_dir.join("webtunnel_ipv6.txt")).expect("file");
+        assert!(
+            webtunnel_v6.contains("url=https://coellen.xyz"),
+            "the placeholder-endpoint IPv6 webtunnel family publishes its BridgeDB supply: {webtunnel_v6}"
         );
         let snowflake =
             std::fs::read_to_string(bridge_dir.join("snowflake_ipv4_ipv6_all.txt")).expect("file");
