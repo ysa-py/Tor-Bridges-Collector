@@ -360,13 +360,35 @@ pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
 /// defaults: `snowflake 192.0.2.3:80 …`, `meek_lite 192.0.2.20:80 …`), so a
 /// validated rendezvous makes the placeholder line consumer-dialable.
 ///
-/// WebTunnel is deliberately NOT in this list: its client dials the literal
-/// endpoint (TLS SNI comes from `url=`), so a documentation-range endpoint
-/// stays un-dialable there and keeps the strict check (issue #257).
+/// WebTunnel belongs in this list. The official client
+/// (`pluggable-transports/webtunnel`, `client/main.go`) resolves the `url=`
+/// host via `getAddressesFromHostname(url.Hostname(), port)` and dials THOSE
+/// addresses with `TLSServerName` = the `url=` host; the literal endpoint
+/// token of the bridge line is never connected to. BridgeDB itself ships
+/// `webtunnel [2001:db8:…]:443 … url=https://…` lines (verified live
+/// 2026-10-15 via `bridges.torproject.org/bridges?transport=webtunnel&ipv6=yes`),
+/// so refusing them at publication deleted the entire official IPv6
+/// WebTunnel supply while it sat validated in bridge_history.json
+/// (`webtunnel_ipv6::history_count_after=244`, 146 of them S2-verified —
+/// every `webtunnel_ipv6*.txt` stayed empty). The earlier issue-#257 premise
+/// ("its client dials the literal endpoint") is disproven by the client
+/// source; a placeholder-endpoint WebTunnel line with a validated public
+/// `url=` rendezvous publishes exactly like the snowflake/meek/conjure
+/// defaults. Every other reserved literal (RFC 1918, loopback, link-local,
+/// multicast, …) stays rejected for every transport, and a WebTunnel line
+/// without a valid `url=` keeps the strict check.
 fn publication_placeholder_transport(transport: &str) -> bool {
     matches!(
         transport.to_ascii_lowercase().as_str(),
-        "snowflake" | "meek" | "meek_lite" | "meek-lite" | "meek-azure" | "meek_azure" | "conjure"
+        "webtunnel"
+            | "web-tunnel"
+            | "snowflake"
+            | "meek"
+            | "meek_lite"
+            | "meek-lite"
+            | "meek-azure"
+            | "meek_azure"
+            | "conjure"
     )
 }
 
@@ -591,6 +613,53 @@ mod tests {
             "meek_lite",
             "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org \
              front=www.phpmyadmin.net utls=HelloRandomizedALPN",
+        ));
+    }
+
+    #[test]
+    fn bridgedb_webtunnel_placeholders_with_valid_rendezvous_publish() {
+        // Verbatim BridgeDB lines fetched live 2026-10-15 from
+        // bridges.torproject.org/bridges?transport=webtunnel&ipv6=yes: the
+        // endpoint literal is an RFC 3849 placeholder and the official
+        // webtunnel client dials the url= host (client/main.go resolves
+        // url.Hostname() and never connects to the line's endpoint token),
+        // so a validated rendezvous makes these the official IPv6 supply.
+        assert!(!publication_blocks_endpoint(
+            "webtunnel",
+            "webtunnel [2001:db8:a6c3:bdeb:9876:908f:cbf9:548b]:443 \
+             1F5056811B0E123CAD39AD0259F14F2880CA33F0 url=https://freesoftware.cloud/8675309 ver=0.0.4",
+        ));
+        assert!(!publication_blocks_endpoint(
+            "webtunnel",
+            "webtunnel [2001:db8:7567:150e:f9a3:aa9b:b780:b8c8]:443 \
+             EA1BADD195B10F51E14A3A23444615F5F45CE9E0 \
+             url=https://oglilouhn.dedyn.io/36CjK6AA36FlAzjC3yMhoLCeqCIKHIWSGQ61w8uI7CwcirWBSJLw0oShwOn ver=0.0.5",
+        ));
+        // The alias spelling follows the same contract as the ingestion gate.
+        assert!(!publication_blocks_endpoint(
+            "WebTunnel",
+            "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://front.example.com/path ver=0.0.4",
+        ));
+    }
+
+    #[test]
+    fn webtunnel_placeholders_without_rendezvous_stay_blocked() {
+        // No url= at all: the client has nothing to dial — unusable.
+        assert!(publication_blocks_endpoint(
+            "webtunnel",
+            "webtunnel [2001:db8::1]:443 0123456789ABCDEF0123456789ABCDEF01234567 ver=0.0.4",
+        ));
+        // A url= that is not a valid public HTTP(S) rendezvous does not
+        // rescue the placeholder endpoint.
+        assert!(publication_blocks_endpoint(
+            "webtunnel",
+            "webtunnel [2001:db8::1]:443 FINGERPRINT url=https://192.168.1.5/path ver=0.0.4",
+        ));
+        // Private-range literals stay blocked for webtunnel exactly like
+        // every other transport, rendezvous or not.
+        assert!(publication_blocks_endpoint(
+            "webtunnel",
+            "webtunnel 10.0.0.7:443 FINGERPRINT url=https://front.example.com/path ver=0.0.4",
         ));
     }
 

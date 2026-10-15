@@ -1,5 +1,77 @@
 # Changelog
 
+## [Session 32] — 2026-10-15 — Official WebTunnel placeholder publication, IPv4-only front verdicts, literal-endpoint ingestion labels
+
+Root causes found with verbatim log/evidence forensics on run 38680880616
+(the first run after Session 31) plus live upstream verification against
+bridges.torproject.org and the official webtunnel client source, each fixed
+at the mechanism and covered by regression tests built from the real
+failing inputs.
+
+### Fixed
+- **Official WebTunnel IPv6 supply was deleted at publication** — 244
+  BridgeDB webtunnel IPv6 bridges (146 of them S2 front-verified) sat in
+  `bridge_history.json` while every `webtunnel_ipv6*.txt` published empty.
+  The Session-31 note "WebTunnel keeps the strict check (its client dials
+  the literal endpoint, issue #257)" was factually wrong: the official
+  client (`pluggable-transports/webtunnel` `client/main.go`) resolves the
+  `url=` host via `getAddressesFromHostname(url.Hostname(), port)` and
+  dials THOSE addresses — the literal endpoint token of the bridge line is
+  never connected to. BridgeDB itself ships
+  `webtunnel [2001:db8:…]:443 … url=https://…` lines (verified live via
+  `bridges.torproject.org/bridges?transport=webtunnel&ipv6=yes`), exactly
+  the placeholder shape Tor Browser's own defaults use for
+  snowflake/meek. `ip_guard::publication_placeholder_transport` now
+  includes webtunnel: a doc-range endpoint publishes when its public
+  `url=` rendezvous validates; a placeholder without a valid rendezvous,
+  and every private/loopback/link-local literal, stays blocked.
+- **Front-domain liveness verdicts poisoned by IPv6 environment noise** —
+  run 38680880616 confirmed nine fronts "unreachable" (including
+  www.google.com, cdn.ampproject.org, ajax.aspnetcdn.com) with error
+  classes mixing `front:timed out` and `environment:network unreachable`.
+  On a runner whose IPv6 default route silently blackholes, AAAA connects
+  TIME OUT with the same `TimedOut` kind as a genuine front-side fault,
+  so the mixed-family accounting (`environment_blocked != attempted`)
+  declared the front dead while no IPv4 address was ever successfully
+  measured. `drift_advisory::verify_front_liveness` now decides the
+  verdict from global IPv4 attempts only (no A record → inconclusive
+  `no_ipv4_address_resolved`; IPv4 environment failure → inconclusive);
+  IPv6 dials happen only as post-verdict diagnostics and can never
+  confirm a front fault.
+- **Phantom IPv6 pool from source-shape labels (v42 §C at ingestion)** —
+  the committed history held 65 vanilla records with IPv4 literals
+  labelled `ip_version:"ipv6"`: BridgeDB's
+  `bridges?transport=vanilla&ipv6=yes` answers with IPv4 lines (verified
+  live: `217.76.139.236:21704 …`), and the Delta-Kronecker mirror's
+  `vanilla_ipv6.txt` carries IPv4 literals; ingestion trusted the request
+  hint / the file name instead of the served line. Ingestion
+  (`scraper::fetch_torproject`, `sources_community_mirrors`) now
+  classifies by the endpoint literal, falling back to the source hint
+  only for lines with no parseable endpoint. The publisher additionally
+  runs an idempotent history hygiene pass
+  (`bridge_publication::relabel_history_ip_versions`) that persists the
+  corrected labels so the committed history, the supply diagnostics, and
+  the projections tell one story (`vanilla_ipv6` pool collapses to a
+  truthful zero; the 65 bridges stay published in the vanilla/IPv4
+  family where they always ended up anyway).
+- **PROBE_RELAY split `Bridge=0/2` / `bridge=160/486` buckets** — the
+  relay-side probe labels a descriptor by the first token of the source
+  line, so `Bridge `-prefixed vanilla lines surfaced as two phantom
+  transports next to the real ones. `summarize_pt_results` normalises the
+  label (lowercase; the generic `bridge` prefix folds onto `vanilla`),
+  merging the buckets and their misleading zero-success rates.
+
+### Verified
+- Live upstream: `bridges?transport=obfs4&ipv6=yes` serves real IPv6
+  obfs4 lines (the working 344-line `obfs4_ipv6.txt` family);
+  `snowflake|conjure|meek` variant endpoints redirect to error.html (no
+  current supply — the empty `*_ipv6` files for those families carry the
+  honest `NO_IPV6_SUPPLY` reason code).
+- Full gate locally: `cargo fmt`, `cargo clippy --all-targets --locked
+  -- -D warnings`, `cargo test --locked` — all green (1445 lib tests +
+  bin suites, including the new regressions built from verbatim BridgeDB
+  answers and the committed mislabelled history).
+
 ## [Session 31] — 2026-10-15 — Canonical WebTunnel contract, rendezvous-dialled placeholder publication, annotation discipline, ASN-diverse ranking
 
 Root causes found with verbatim log/evidence forensics on runs

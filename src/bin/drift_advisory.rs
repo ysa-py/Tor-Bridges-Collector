@@ -531,24 +531,31 @@ pub fn step_changes(prior_entries: &[Value]) -> Vec<StepChange> {
 /// Upper bound on per-run front liveness verifications (bounded network I/O).
 const MAX_FRONT_LIVENESS_CHECKS: usize = 16;
 /// Per-attempt TCP connect budget for the front liveness check.
-const FRONT_LIVENESS_TIMEOUT: Duration = Duration::from_secs(3);
-/// Upper bound on resolved addresses dialed per front (bounded + diverse).
-const MAX_FRONT_ADDRESSES_PER_DOMAIN: usize = 8;
+const FRONT_LIVENESS_TIMEOUT: Duration = Duration::from_secs(4);
+/// Upper bound on resolved IPv4 addresses dialed per front (bounded + diverse).
+const MAX_FRONT_ADDRESSES_PER_DOMAIN: usize = 3;
+/// Upper bound on resolved IPv6 addresses dialed per front, AFTER the IPv4
+/// verdict is already decided against the front (diagnostic completeness on
+/// dual-stack-capable runners; never feeds the verdict).
+const MAX_FRONT_V6_PROBE_ADDRESSES: usize = 2;
 
 /// Typed verdict of a front-liveness verification.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum FrontLiveness {
-    /// At least one resolved global address accepted the TCP connection.
+    /// At least one resolved global IPv4 address accepted the TCP
+    /// connection.
     Reachable,
-    /// At least one resolved global address was attempted and every attempt
+    /// At least one global IPv4 address was attempted and every IPv4 attempt
     /// failed with a FRONT-observable error (refused / timed out / other
     /// dial failure). Only this verdict supports a "front-level fault"
     /// claim.
     Unreachable,
-    /// DNS resolution failed, no global address resolved (SSRF guard), or
-    /// every dial failed because the RUNNER's own network cannot reach the
-    /// address family (`NetworkUnreachable` / `HostUnreachable`) — the
-    /// front itself was never meaningfully probed.
+    /// DNS resolution failed, no global IPv4 address resolved (SSRF guard /
+    /// IPv6-only front on a runner without working IPv6 egress), or every
+    /// dial failed because the RUNNER's own network cannot reach the address
+    /// family (`NetworkUnreachable` / `HostUnreachable` / blackhole timeouts
+    /// on the un-routed family) — the front itself was never meaningfully
+    /// probed.
     Inconclusive,
 }
 
@@ -563,7 +570,8 @@ impl FrontLiveness {
 }
 
 /// Independently verify a front domain's TCP-443 liveness (additive,
-/// 2026-10-14; recalibrated 2026-10-15, directive v43 §C).
+/// 2026-10-14; recalibrated 2026-10-15, directive v43 §C; hardened
+/// 2026-10-15 after run 38680880616).
 ///
 /// WHY: the concentrated-failure attribution ("front domain unreachable for
 /// every candidate using it") previously inferred FRONT health purely from
@@ -585,11 +593,26 @@ impl FrontLiveness {
 ///    (environment) scored identically to a front-side refusal/timeout;
 /// 3. the dead `Some(checked == 0)` branch could never return inconclusive.
 ///
-/// Now: dial IPv4 addresses first (up to [`MAX_FRONT_ADDRESSES_PER_DOMAIN`]
-/// total, all families), classify every error kind, and return
-/// [`FrontLiveness::Unreachable`] only when at least one GLOBAL IPv4 (or
-/// the only available family) address was genuinely attempted and every
-/// attempt failed with a front-observable error.
+/// Hardening root cause (run 38680880616 — nine fronts still confirmed
+/// "unreachable" with `front:timed out` on domains like www.google.com,
+/// which a DOC_AUDIT HTTP fetch from the same runner reaches fine):
+/// 4. mixed-family attempts poisoned the verdict. When a runner has an
+///    IPv6 default route that silently blackholes, AAAA connects TIME OUT
+///    instead of failing instantly with ENETUNREACH — the error kind
+///    (`TimedOut`) is indistinguishable from a genuine front-side timeout,
+///    so `environment_blocked != attempted` and the domain was declared
+///    unreachable even though no IPv4 address was ever successfully
+///    measured. Only IPv4 dials are a trustworthy front measurement from a
+///    GitHub-hosted runner.
+///
+/// Now: the verdict is decided by IPv4 attempts ONLY — dial up to
+/// [`MAX_FRONT_ADDRESSES_PER_DOMAIN`] global A-record addresses; `Ok`
+/// anywhere means [`FrontLiveness::Reachable`], all failed means
+/// [`FrontLiveness::Unreachable`], and no A record at all means
+/// [`FrontLiveness::Inconclusive`] (`no_ipv4_address_resolved`). IPv6
+/// addresses are dialed only for diagnostic completeness AFTER an
+/// unreachable IPv4 verdict, and their outcome (any error kind, including
+/// timeouts caused by an un-routed family) never changes the verdict.
 fn verify_front_liveness(domain: &str) -> (FrontLiveness, usize, Option<String>) {
     let resolved = match (domain, 44u16).to_socket_addrs() {
         Ok(addrs) => addrs.collect::<Vec<_>>(),
@@ -601,27 +624,34 @@ fn verify_front_liveness(domain: &str) -> (FrontLiveness, usize, Option<String>)
             )
         }
     };
-    let candidates: Vec<_> = resolved
+    let global: Vec<_> = resolved
         .into_iter()
         .filter(|addr| !is_documentation_or_reserved_ip(addr.ip()))
         .collect();
-    if candidates.is_empty() {
+    if global.is_empty() {
         return (
             FrontLiveness::Inconclusive,
             0,
             Some("no_global_address_resolved".into()),
         );
     }
-    // Dial IPv4 first: on a v6-less runner the AAAA attempts are environment
-    // noise, and the IPv4 result is the meaningful front measurement.
-    let mut ordered: Vec<&std::net::SocketAddr> =
-        candidates.iter().filter(|a| a.is_ipv4()).collect();
-    ordered.extend(candidates.iter().filter(|a| a.is_ipv6()));
+    let ipv4: Vec<&std::net::SocketAddr> = global.iter().filter(|a| a.is_ipv4()).collect();
+    let ipv6: Vec<&std::net::SocketAddr> = global.iter().filter(|a| a.is_ipv6()).collect();
+    if ipv4.is_empty() {
+        // IPv6-only front: a GitHub-hosted runner without working IPv6
+        // egress cannot measure it — the front was never meaningfully
+        // probed, whatever the AAAA dial does.
+        return (
+            FrontLiveness::Inconclusive,
+            0,
+            Some("no_ipv4_address_resolved".into()),
+        );
+    }
 
+    // Verdict pass — IPv4 only, bounded, first addresses of the family.
     let mut attempted = 0usize;
-    let mut environment_blocked = 0usize;
     let mut last_error = Option::<String>::None;
-    for address in ordered.into_iter().take(MAX_FRONT_ADDRESSES_PER_DOMAIN) {
+    for address in ipv4.into_iter().take(MAX_FRONT_ADDRESSES_PER_DOMAIN) {
         attempted += 1;
         match TcpStream::connect_timeout(address, FRONT_LIVENESS_TIMEOUT) {
             Ok(_) => return (FrontLiveness::Reachable, attempted, last_error),
@@ -633,27 +663,52 @@ fn verify_front_liveness(domain: &str) -> (FrontLiveness, usize, Option<String>)
                         | std::io::ErrorKind::HostUnreachable
                         | std::io::ErrorKind::AddrNotAvailable
                 ) {
-                    // The RUNNER cannot reach this address family at all —
-                    // this says nothing about the front.
-                    environment_blocked += 1;
-                    last_error = Some(format!("environment:{kind}"));
+                    // The RUNNER cannot reach even its IPv4 path — this
+                    // says nothing about the front. Treat like the family
+                    // noise it is: inconclusive, not a front fault.
+                    return (
+                        FrontLiveness::Inconclusive,
+                        attempted,
+                        Some(format!("environment_ipv4:{kind}")),
+                    );
+                }
+                last_error = Some(format!("front:{kind}"));
+            }
+        }
+    }
+    // Every global IPv4 address refused/timed out: a genuine front-side
+    // observation from this runner. Record IPv6 diagnostics afterwards —
+    // on a dual-stack runner a reachable AAAA softens the advisory, and a
+    // dead AAAA corroborates it; on a v6-less runner the attempts are
+    // noise (instant ENETUNREACH or blackhole timeout) and never affect
+    // the verdict.
+    let mut v6_note = String::new();
+    for address in ipv6.into_iter().take(MAX_FRONT_V6_PROBE_ADDRESSES) {
+        match TcpStream::connect_timeout(address, FRONT_LIVENESS_TIMEOUT) {
+            Ok(_) => {
+                v6_note = "ipv6_reachable".to_string();
+                break;
+            }
+            Err(error) => {
+                let kind = error.kind();
+                if matches!(
+                    kind,
+                    std::io::ErrorKind::NetworkUnreachable
+                        | std::io::ErrorKind::HostUnreachable
+                        | std::io::ErrorKind::AddrNotAvailable
+                ) {
+                    v6_note = "ipv6_environment_unrouted".to_string();
                 } else {
-                    last_error = Some(format!("front:{kind}"));
+                    v6_note = format!("ipv6:{kind}");
                 }
             }
         }
     }
-    if attempted > 0 && environment_blocked == attempted {
-        // Every dial failed because the runner lacks that route — the front
-        // was never meaningfully probed.
-        return (FrontLiveness::Inconclusive, attempted, last_error);
-    }
-    if attempted == 0 {
-        return (
-            FrontLiveness::Inconclusive,
-            0,
-            Some("no_address_attempted".into()),
-        );
+    if !v6_note.is_empty() {
+        last_error = Some(match last_error {
+            Some(error) => format!("{error} ({v6_note})"),
+            None => v6_note,
+        });
     }
     (FrontLiveness::Unreachable, attempted, last_error)
 }
@@ -1243,6 +1298,23 @@ mod tests {
         assert_eq!(verdict, FrontLiveness::Inconclusive);
         assert_eq!(attempted, 0);
         assert_eq!(reason.as_deref(), Some("dns_resolution_failed"));
+    }
+
+    // Regression (run 38680880616): a global IPv6-only resolution must be
+    // INCONCLUSIVE, never "unreachable". On a runner whose IPv6 route
+    // blackholes, AAAA connects time out with the same TimedOut error kind
+    // as a genuine front-side fault — the old mixed-family verdict turned
+    // that environment noise into nine false "CONFIRMED unreachable"
+    // advisories (including www.google.com). The verdict pass now dials A
+    // records only; an IPv6-only front is honestly unmeasurable from a
+    // v6-less runner. The production check pins port 443, so the global
+    // IPv6 literal below returns before any dial — deterministic offline.
+    #[test]
+    fn ipv6_only_resolution_is_inconclusive_never_unreachable() {
+        let (verdict, attempted, reason) = verify_front_liveness("2606:4700:4700::1111");
+        assert_eq!(verdict, FrontLiveness::Inconclusive);
+        assert_eq!(attempted, 0);
+        assert_eq!(reason.as_deref(), Some("no_ipv4_address_resolved"));
     }
 
     #[test]

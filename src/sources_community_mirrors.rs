@@ -278,10 +278,16 @@ pub fn fetch_mirror_file(
             continue;
         }
         outcome.valid_lines += 1;
-        let ip_version = if clean.contains('[') || file_is_ipv6 {
-            "ipv6"
-        } else {
-            "ipv4"
+        // Directive v42 §C: classify by the endpoint LITERAL of the served
+        // line. The mirror's `*_ipv6.txt` file name is only a hint — the
+        // Delta-Kronecker mirror's `vanilla_ipv6.txt` carries IPv4-literal
+        // lines, and trusting the file name stamps them as a phantom IPv6
+        // pool. The file hint survives only for lines with no parseable
+        // endpoint literal (URL-only broker lines, FQDN endpoints).
+        let ip_version = match crate::scraper::literal_ip_version(clean) {
+            Some(classified) => classified,
+            None if file_is_ipv6 => "ipv6",
+            None => "ipv4",
         };
         outcome
             .lines
@@ -484,6 +490,34 @@ mod tests {
                     .to_string(),
         };
         let outcome = fetch_mirror_file(&client, "a/b", "obfs4_ipv6.txt", "obfs4");
+        assert_eq!(outcome.valid_lines, 1);
+        assert_eq!(outcome.lines[0].1, "ipv6");
+    }
+
+    // Regression (Delta-Kronecker mirror, 2026-10-15): `vanilla_ipv6.txt`
+    // served IPv4-literal lines and the file-name hint stamped them all
+    // `ip_version:"ipv6"` — a phantom IPv6 pool of 65 records. The endpoint
+    // literal is the ground truth (directive v42 §C); the file name only
+    // covers lines with no parseable endpoint literal at all.
+    #[test]
+    fn fetch_mirror_file_classifies_ipv4_literal_in_ipv6_file_as_ipv4() {
+        let client = MockFetch {
+            status: 200,
+            body: "104.152.210.181:1105 2CF11CD4B8334A365952D7139BE356E55F2DEBC3\n".to_string(),
+        };
+        let outcome = fetch_mirror_file(&client, "a/b", "vanilla_ipv6.txt", "vanilla");
+        assert_eq!(outcome.valid_lines, 1);
+        assert_eq!(outcome.lines[0].1, "ipv4");
+    }
+
+    #[test]
+    fn fetch_mirror_file_falls_back_to_filename_hint_without_literal() {
+        let client = MockFetch {
+            status: 200,
+            body: "conjure 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api front=cdn.sstatic.net\n"
+                .to_string(),
+        };
+        let outcome = fetch_mirror_file(&client, "a/b", "conjure_ipv6.txt", "conjure");
         assert_eq!(outcome.valid_lines, 1);
         assert_eq!(outcome.lines[0].1, "ipv6");
     }
