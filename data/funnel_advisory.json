@@ -8,7 +8,7 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 1992,
+      "count": 1993,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
@@ -18,17 +18,17 @@
       "stage": "testing_candidates"
     },
     {
-      "count": 2412,
+      "count": 2413,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 487,
+      "count": 490,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 1992,
+      "count": 1993,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
@@ -38,12 +38,12 @@
       "stage": "tcp_reachable"
     },
     {
-      "count": 636,
+      "count": 640,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-15T19:59:53.714467890+00:00",
+  "generated_at": "2026-10-15T20:55:15.125204856+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,16 +78,16 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 636,
+    "iran_likely_working_all.txt": 640,
     "iran_likely_working_obfs4.txt": 289,
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 158,
-    "iran_likely_working_webtunnel.txt": 189,
+    "iran_likely_working_webtunnel.txt": 193,
     "obfs4.txt": 710,
     "obfs4_tested.txt": 289,
     "tested_global_obfs4.txt": 289,
     "tested_global_vanilla.txt": 158,
-    "tested_global_webtunnel.txt": 189,
+    "tested_global_webtunnel.txt": 193,
     "vanilla.txt": 488,
     "vanilla_tested.txt": 158,
     "webtunnel.txt": 196,
@@ -95,8 +95,8 @@
   },
   "relay_coverage": {
     "candidates": 1822,
-    "relay_observations": 2412,
-    "relay_success": 487,
+    "relay_observations": 2413,
+    "relay_success": 490,
     "unobserved_by_transport": {
       "meek_lite": 1,
       "no_literal_endpoint": 4,

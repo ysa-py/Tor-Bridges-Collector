@@ -731,6 +731,14 @@
     {
       "ip": "185.228.137.251",
       "port": 443,
+      "raw": "webtunnel 185.228.137.251:443 1F5056811B0E123CAD39AD0259F14F2880CA33F0 url=https://freesoftware.cloud/8675309 ver=0.0.1",
+      "sni": "freesoftware.cloud",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "185.228.137.251",
+      "port": 443,
       "raw": "webtunnel 185.228.137.251:443 1F5056811B0E123CAD39AD0259F14F2880CA33F0 url=https://freesoftware.cloud/8675309 ver=0.0.4",
       "sni": "freesoftware.cloud",
       "tier": "YELLOW",
@@ -1638,10 +1646,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-15T19:47:56.623835+00:00",
+  "generated_at": "2026-10-15T20:43:20.543495+00:00",
   "green_count": 9,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 204,
-  "yellow_count": 195
+  "total_bridges": 205,
+  "yellow_count": 196
 }
