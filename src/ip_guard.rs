@@ -354,6 +354,51 @@ pub fn contains_documentation_or_reserved_endpoint(line: &str) -> bool {
     check_endpoint(line).is_some()
 }
 
+/// The transports whose client dials the `url=`/`front=` rendezvous and
+/// never the literal endpoint. BridgeDB ships IETF documentation-range
+/// endpoint placeholders for exactly these transports (Tor Browser's own
+/// defaults: `snowflake 192.0.2.3:80 …`, `meek_lite 192.0.2.20:80 …`), so a
+/// validated rendezvous makes the placeholder line consumer-dialable.
+///
+/// WebTunnel is deliberately NOT in this list: its client dials the literal
+/// endpoint (TLS SNI comes from `url=`), so a documentation-range endpoint
+/// stays un-dialable there and keeps the strict check (issue #257).
+fn publication_placeholder_transport(transport: &str) -> bool {
+    matches!(
+        transport.to_ascii_lowercase().as_str(),
+        "snowflake" | "meek" | "meek_lite" | "meek-lite" | "meek-azure" | "meek_azure" | "conjure"
+    )
+}
+
+/// Publication-side endpoint gate for the copy-paste consumer files.
+///
+/// The strict [`contains_documentation_or_reserved_endpoint`] refuses every
+/// reserved literal — including the IETF documentation placeholders that
+/// BridgeDB itself ships as the endpoint of broker/front transports: Tor
+/// Browser's current defaults are `meek_lite 192.0.2.20:80
+/// url=https://1603026938.rsc.cdn77.org …` and `snowflake 192.0.2.3:80 …
+/// url=https://1098762253.rsc.cdn77.org/ …`. Those clients dial the
+/// `url=`/`front=` rendezvous and never the placeholder, so the strict
+/// filter deleted fresh MOAT supply from every projection while the lines
+/// sat in bridge_history.json (run 38660732712: snowflake/meek/conjure
+/// family and tested files empty despite live supply).
+///
+/// The publication gate therefore equals the ingestion contract
+/// ([`check_ingestion_endpoint`]) for the rendezvous-dialled transports
+/// ([`publication_placeholder_transport`]): ONE documentation-range
+/// placeholder (RFC 5737 TEST-NET / RFC 3849) is tolerated when the line
+/// carries an independently validated public HTTP(S) rendezvous. Every
+/// other reserved literal (RFC 1918, loopback, link-local, multicast, …)
+/// stays rejected for every transport, and all other transports —
+/// including WebTunnel, whose client dials the literal endpoint — keep the
+/// strict check.
+pub fn publication_blocks_endpoint(transport: &str, line: &str) -> bool {
+    if publication_placeholder_transport(transport) && check_ingestion_endpoint(line).is_none() {
+        return false;
+    }
+    contains_documentation_or_reserved_endpoint(line)
+}
+
 /// Like contains_documentation_or_reserved_endpoint but returns the reason
 /// label so callers can record telemetry.
 #[must_use]
@@ -528,6 +573,50 @@ pub fn reject_if_reserved(line: &str, transport: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ── Publication-side endpoint gate ────────────────────────────────
+
+    #[test]
+    fn broker_front_placeholders_with_valid_rendezvous_publish() {
+        // Verbatim current Tor defaults (MOAT builtin country=ir,
+        // 2026-10-15): the endpoint literal is a protocol placeholder and
+        // the client dials the url=/front= rendezvous.
+        assert!(!publication_blocks_endpoint(
+            "snowflake",
+            "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 \
+             url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com \
+             ice=stun:stun.l.google.com:19302 utls-imitate=hellorandomizedalpn",
+        ));
+        assert!(!publication_blocks_endpoint(
+            "meek_lite",
+            "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org \
+             front=www.phpmyadmin.net utls=HelloRandomizedALPN",
+        ));
+    }
+
+    #[test]
+    fn placeholders_without_rendezvous_and_private_literals_stay_blocked() {
+        // A placeholder with no url=/front= is unusable for the client.
+        assert!(publication_blocks_endpoint(
+            "snowflake",
+            "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72",
+        ));
+        // Private-range literals stay blocked for every transport, even
+        // when a rendezvous is present.
+        assert!(publication_blocks_endpoint(
+            "meek_lite",
+            "meek_lite 10.0.0.7:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net",
+        ));
+        // Non-fronted transports keep the strict check even with a URL.
+        assert!(publication_blocks_endpoint(
+            "vanilla",
+            "vanilla 192.0.2.9:443 0123456789ABCDEF0123456789ABCDEF01234567",
+        ));
+        assert!(!publication_blocks_endpoint(
+            "vanilla",
+            "vanilla 95.216.163.36:443 0123456789ABCDEF0123456789ABCDEF01234567",
+        ));
+    }
 
     // ── CIDR table integrity ──────────────────────────────────────────
 

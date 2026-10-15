@@ -1,5 +1,82 @@
 # Changelog
 
+## [Session 31] — 2026-10-15 — Canonical WebTunnel contract, rendezvous-dialled placeholder publication, annotation discipline, ASN-diverse ranking
+
+Root causes found with verbatim log/evidence forensics on runs
+38613981417 / 38632675661 / 38660732712, each fixed at the mechanism and
+covered by regression tests built from the real failing inputs.
+
+### Fixed
+- **WebTunnel S2 handshake vs the canonical protocol** — the reference
+  webtunnel server (`transport/httpupgrade`) answers `101 Switching
+  Protocols` with only `Connection: upgrade` + `Upgrade: websocket` and
+  never sends `Sec-WebSocket-Accept` (it is not an RFC 6455 endpoint). The
+  probe demanded that header, so every real bridge failed
+  `handshake_auth_fail` (89× in runs 38613981417 and 38660732712) and all
+  webtunnel evidence-gated files stayed empty. Both probe paths (the S2
+  handshake engine and the Stage 4b front probe) now accept the canonical
+  contract; the RFC 6455 accept echo is verified whenever a server sends
+  one; a bare `101` without the echo, a wrong echo, and 2xx/3xx/4xx
+  statuses keep their typed failures. Evidence honesty unchanged.
+- **BridgeDB placeholder endpoints deleted fresh MOAT supply** —
+  BridgeDB ships `meek_lite 192.0.2.20:80 url=…` and
+  `snowflake 192.0.2.3:80 …` (RFC 5737 placeholders the client never
+  dials; the rendezvous in `url=`/`front=` is the dial target). The
+  strict doc-range publication filter deleted exactly these lines from
+  every projection while they sat in `bridge_history.json`.
+  `ip_guard::publication_blocks_endpoint` now equals the ingestion
+  contract for rendezvous-dialled transports (snowflake, meek*, conjure);
+  WebTunnel keeps the strict check (its client dials the literal
+  endpoint, issue #257); private/loopback/link-local literals stay
+  blocked for every transport.
+- **Static fallback tables refreshed against the live MOAT builtin API
+  (2026-10-15)** — `meek.azureedge.net` / `az668014.vo.msecnd.net` are
+  retired (DNS removed, verified live); replaced with the current CDN77
+  rendezvous, datapacket snowflake fronts, and the current Tor obfs4
+  default set (deduplicated from the MOAT response).
+- **Self-heal gate flipped green runs to "failed"** — GitHub Actions
+  stores the ESC byte as the literal two characters `^[`; echoed script
+  source therefore arrived as `^[# a comment … ::error::^[` and the
+  `::error::` token inside an echoed YAML comment produced the single
+  Error-severity event that flipped the whole-run gate and emitted
+  "Whole-run diagnostics failed despite parent conclusion=success" on
+  every green run. The classifier now strips caret-transcribed escapes
+  before the structural guards, and an unexpanded `[[ … ]]` conditional
+  echo is source code, not a runtime failure (717 fabricated
+  hard_failure advisories in run 38660732712). Regression tests use the
+  verbatim run lines; real annotations and real tool errors still
+  classify Error.
+- **PR validation runs: 12 annotations of pure noise** — 4
+  `::warning::` ("regenerated payload differs …") for a delta that is
+  EXPECTED on validation refs (the PR path regenerates projections from
+  committed inputs, then restores the committed bytes) moved to the step
+  summary; 8 zero-value FUNNEL `::notice::` on no-op runs became plain
+  log lines (annotations are reserved for live-collection runs). The
+  `::error::` for a genuinely inconsistent committed contract stays and
+  still fails the run.
+
+### Added
+- **ASN-diverse round-robin ranking** — the ranked files
+  (`iran_likely_working_*`, `tested_global_*`) interleave one bridge per
+  origin ASN per round (groups by best score, deterministic tie-breaks,
+  unresolved-ASN lines at the tail), so the head of each file stays
+  network-diverse when one hoster gets throttled. Membership, freshness,
+  and evidence tiers untouched; a dedup-preserving ordered writer makes
+  the ranking survive publication (the old writer re-sorted
+  lexicographically). Tester-resolved ASN (string or numeric) rides on
+  ProbeRecord/Candidate.
+
+### Verification
+- `cargo test`: 1554 → 1568 tests, 0 failures (workspace, --locked).
+- `cargo clippy --workspace --all-targets --all-features -- -D
+  warnings`: clean. `cargo fmt --check`: clean.
+- New tests cover: canonical webtunnel acceptance (both probe paths,
+  including the exact reference-server bytes), placeholder publication
+  policy (valid rendezvous / invalid host / private literal / non-fronted
+  transport), caret-ESC echo lines from run 38660732712 verbatim, funnel
+  annotation discipline (noop vs live prefixes), and the ASN round-robin
+  vectors + an end-to-end working-file order test.
+
 ## [Session 30] — 2026-10-15 — Tiered evidence contract, honest empties, classifier recalibration, canary resilience, front-probe fix
 
 Live result of the session's changes, measured by running the rebuilt

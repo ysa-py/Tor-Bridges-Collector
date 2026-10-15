@@ -211,6 +211,104 @@ struct Candidate {
     /// Evidence-gated projections publish this resolved form; the raw history
     /// form stays inventory-only.
     verified_line: Option<String>,
+    /// Origin ASN of the bridge endpoint when the tester resolved one.
+    /// Drives ASN-diverse ranking of the working files.
+    asn: Option<String>,
+}
+
+/// Extract the tester-resolved origin ASN from a record, tolerating both the
+/// `AS14061` string form the Go tester writes and a bare numeric form.
+fn record_asn(record: &serde_json::Map<String, Value>) -> Option<String> {
+    match record.get("asn") {
+        Some(Value::String(asn)) => {
+            let asn = asn.trim();
+            (!asn.is_empty()).then(|| asn.to_string())
+        }
+        Some(Value::Number(number)) => number
+            .as_i64()
+            .map(|value| format!("AS{value}"))
+            .or_else(|| number.as_u64().map(|value| format!("AS{value}"))),
+        _ => None,
+    }
+}
+
+/// ASN-diverse round-robin ordering over the working-set entries.
+///
+/// A score-ranked list concentrates its head on whichever ASN hosts the
+/// best-scoring bridges. When a censor throttles or blocks exactly that
+/// ASN (the 2026-10 runs showed whole-hoster degradation), the top of a
+/// score-ranked file fails together. This ordering keeps the highest
+/// scoring entry of every ASN at the head of the file: groups are ordered
+/// by their best score (deterministic tie-break: group key, then line),
+/// and the file interleaves one bridge per ASN per round. Membership,
+/// freshness, and evidence tiers are untouched — only the published order
+/// changes, so a consumer reading top-down meets network diversity before
+/// depth. Entries with an unresolved ASN form their own group ordered last.
+fn asn_diverse_round_robin(mut entries: Vec<(f64, String, Option<String>)>) -> Vec<String> {
+    entries.sort_by(|left, right| {
+        right
+            .0
+            .total_cmp(&left.0)
+            .then_with(|| left.1.cmp(&right.1))
+    });
+    let mut groups: Vec<(String, std::collections::VecDeque<(f64, String)>)> = Vec::new();
+    let mut index_of: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+    for (score, line, asn) in entries {
+        let key = asn
+            .map(|value| value.to_ascii_uppercase())
+            .unwrap_or_else(|| "ZZ-UNRESOLVED".to_owned());
+        match index_of.get(&key) {
+            Some(&index) => groups[index].1.push_back((score, line)),
+            None => {
+                index_of.insert(key.clone(), groups.len());
+                let mut queue = std::collections::VecDeque::new();
+                queue.push_back((score, line));
+                groups.push((key, queue));
+            }
+        }
+    }
+    groups.sort_by(|left, right| {
+        let left_best = left
+            .1
+            .front()
+            .map_or(f64::NEG_INFINITY, |(score, _)| *score);
+        let right_best = right
+            .1
+            .front()
+            .map_or(f64::NEG_INFINITY, |(score, _)| *score);
+        right_best
+            .total_cmp(&left_best)
+            .then_with(|| left.0.cmp(&right.0))
+    });
+    // The unresolved-ASN group never enters the rotation: its lines keep
+    // their score order and sink to the tail of the file so consumers meet
+    // network-attributed diversity first.
+    let mut ordered =
+        Vec::with_capacity(groups.iter().map(|(_, queue)| queue.len()).sum::<usize>());
+    loop {
+        let mut progressed = false;
+        for (key, queue) in groups.iter_mut() {
+            if key == "ZZ-UNRESOLVED" {
+                continue;
+            }
+            if let Some((_, line)) = queue.pop_front() {
+                ordered.push(line);
+                progressed = true;
+            }
+        }
+        if !progressed {
+            break;
+        }
+    }
+    for (key, queue) in groups.iter_mut() {
+        if key != "ZZ-UNRESOLVED" {
+            continue;
+        }
+        while let Some((_, line)) = queue.pop_front() {
+            ordered.push(line);
+        }
+    }
+    ordered
 }
 
 impl Candidate {
@@ -243,6 +341,10 @@ struct ProbeRecord {
     /// Stamp-vocabulary tier label (`tier_4_pt_handshake` … `untested`).
     test_tier: String,
     score: f64,
+    /// Origin ASN of the bridge endpoint when the tester resolved one
+    /// (`AS14061` …). Drives ASN-diverse ranking of the working files; a
+    /// record with no resolved ASN stays rankable (grouped as unknown).
+    asn: Option<String>,
 }
 
 impl ProbeRecord {
@@ -440,6 +542,36 @@ fn write_lines(
     Ok(clean.len())
 }
 
+/// Dedup-preserving ordered writer for RANKED consumer files.
+///
+/// `write_lines` publishes a lexicographic BTreeSet order, which is right for
+/// inventories but silently destroys any ranking a caller built. The ranked
+/// files (`iran_likely_working_*`, `tested_global_*`) need their published
+/// order to carry the ranking signal, so this writer deduplicates while
+/// preserving the caller's first-occurrence order. Membership and line counts
+/// are identical; only the order differs (and with it, naturally, the file
+/// hashes in the manifest).
+fn write_lines_ordered(
+    path: &Path,
+    lines: impl IntoIterator<Item = String>,
+) -> Result<usize, Box<dyn std::error::Error>> {
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut ordered: Vec<String> = Vec::new();
+    for line in lines {
+        let line = line.trim().to_string();
+        if line.is_empty() || !seen.insert(line.clone()) {
+            continue;
+        }
+        ordered.push(line);
+    }
+    let mut body = ordered.join("\n");
+    if !body.is_empty() {
+        body.push('\n');
+    }
+    write_atomic(path, body.as_bytes())?;
+    Ok(ordered.len())
+}
+
 fn extract_probe_records(
     root: &Value,
     now: DateTime<Utc>,
@@ -479,6 +611,7 @@ fn extract_probe_records(
             .or_else(|| object.get("score"))
             .and_then(Value::as_f64)
             .unwrap_or(0.0);
+        let asn = record_asn(object);
         let iran_specific_assessment =
             crate::evidence_stamp::has_iran_specific_assessment_at(record, now);
         let iran_specific_working =
@@ -512,6 +645,7 @@ fn extract_probe_records(
             verified_runner_s1plus,
             test_tier,
             score,
+            asn,
         });
     }
     Ok(result)
@@ -645,6 +779,7 @@ fn candidates_from_history(
             test_tier,
             score,
             verified_line,
+            asn: record_asn(record),
         });
     }
     Ok(candidates)
@@ -779,19 +914,21 @@ fn filtered_family_lines(
                 candidate.raw.clone()
             }
         })
-        // Published copy-paste projections must contain only globally
-        // dialable endpoints. Lines whose endpoint literal sits in an IETF
-        // documentation / reserved range (RFC 3849 2001:db8, RFC 5737
-        // TEST-NETs, ...) stay in bridge_history.json for probing and the
-        // funnel census, but are never handed to consumers: a placeholder
-        // endpoint cannot be dialed and the 2026-09-09 zero-yield audit
-        // (docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) verified every such
-        // line in the supply is genuinely reserved. The strict raw check is
-        // used deliberately — the ingestion guard's url-front allowance is
-        // for probing placeholder-endpoint fronted transports, not for
-        // publication — and it also applies to the resolved form, since the
-        // resolved endpoint is what consumers dial.
-        .filter(|line| !crate::ip_guard::contains_documentation_or_reserved_endpoint(line))
+        // Published copy-paste projections must contain only consumer-dialable
+        // bridges. A literal endpoint in an IETF documentation / reserved
+        // range (RFC 3849 2001:db8, RFC 5737 TEST-NETs, ...) normally stays in
+        // bridge_history.json for probing and the funnel census (2026-09-09
+        // zero-yield audit, docs/ZERO_YIELD_ROOT_CAUSE_2026-09-09.md §3) —
+        // with one protocol-mandated exception now carried by
+        // `ip_guard::publication_blocks_endpoint`: broker/front transports
+        // (snowflake, meek*, conjure) ship RFC 5737/3849 placeholder
+        // endpoints in Tor Browser's own defaults and dial the `url=`/`front=`
+        // rendezvous instead, so those lines publish when their rendezvous
+        // validates (run 38660732712: fresh MOAT supply sat in history while
+        // every snowflake/meek projection stayed empty). Private, loopback,
+        // link-local, and other reserved literals remain blocked for every
+        // transport, and non-fronted transports keep the strict check.
+        .filter(|line| !crate::ip_guard::publication_blocks_endpoint(transport, line))
         .collect()
 }
 
@@ -1443,7 +1580,7 @@ fn is_advisory_working(probe: &ProbeRecord) -> bool {
             probe.iran_status.as_str(),
             "iran_asn_blocked" | "iran_likely_blocked" | "iran_frequently_blocked"
         )
-        && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
+        && !crate::ip_guard::publication_blocks_endpoint(&probe.transport, &probe.line)
 }
 
 /// Advisory (Tier C) reachability evidence (directive v43 §E): a typed,
@@ -1466,7 +1603,7 @@ fn is_runner_advisory_working(probe: &ProbeRecord) -> bool {
             probe.iran_status.as_str(),
             "iran_asn_blocked" | "iran_likely_blocked" | "iran_frequently_blocked"
         )
-        && !crate::ip_guard::contains_documentation_or_reserved_endpoint(&probe.line)
+        && !crate::ip_guard::publication_blocks_endpoint(&probe.transport, &probe.line)
 }
 
 fn is_blocked(probe: &ProbeRecord) -> bool {
@@ -1580,11 +1717,30 @@ fn write_iran_projections(
     let mut all_best_label = "untested".to_string();
     let mut nin_best_rank = 0_u8;
     let mut nin_best_label = "untested".to_string();
+    // ASN lookup for the ranked files: candidates carry the tester-resolved
+    // ASN keyed by the raw line; probes resolve the endpoint-rewritten forms.
+    let asn_by_line: BTreeMap<String, String> = candidates
+        .iter()
+        .filter_map(|candidate| {
+            candidate
+                .asn
+                .clone()
+                .map(|asn| (bridge_key(&candidate.raw), asn))
+        })
+        .chain(
+            probes
+                .iter()
+                .filter_map(|probe| probe.asn.clone().map(|asn| (bridge_key(&probe.line), asn))),
+        )
+        .collect();
+
     for transport in IRAN_TRANSPORTS {
         let mut entries = working.remove(*transport).unwrap_or_default();
-        // Best evidence tier first, then score, then line; the text writer
-        // does a final deterministic dedup/sort so consumers never receive
-        // duplicate bridge lines.
+        // Best evidence tier first, then score, then line. The published
+        // order then interleaves one bridge per origin ASN (see
+        // asn_diverse_round_robin), so the head of every working file is
+        // network-diverse instead of concentrating on whichever hoster
+        // scored best; the ordered writer preserves that ranking.
         entries.sort_by(|left, right| {
             right
                 .0
@@ -1592,13 +1748,21 @@ fn write_iran_projections(
                 .then_with(|| right.1.total_cmp(&left.1))
                 .then_with(|| left.2.cmp(&right.2))
         });
-        let lines: Vec<String> = entries.into_iter().map(|(_, _, line)| line).collect();
+        let lines: Vec<String> = asn_diverse_round_robin(
+            entries
+                .into_iter()
+                .map(|(_, _, line)| {
+                    let asn = asn_by_line.get(&bridge_key(&line)).cloned();
+                    (0.0, line, asn)
+                })
+                .collect(),
+        );
         if matches!(*transport, "snowflake" | "webtunnel" | "meek_lite") {
             nin.extend(lines.iter().cloned());
         }
         all_working.extend(lines.iter().cloned());
         let name = format!("iran_likely_working_{transport}.txt");
-        let count = write_lines(&bridge_dir.join(&name), lines)?;
+        let count = write_lines_ordered(&bridge_dir.join(&name), lines.clone())?;
         counts.insert(name.clone(), count);
         // Tier A/B rows are S2+ evidence (rank 2); a Tier C-only file is
         // runner TCP/TLS reachability (rank 1). The label is the strongest
@@ -1636,10 +1800,31 @@ fn write_iran_projections(
     // lines are never enough, so a projection stays empty rather than
     // inventing working candidates that no probe ever verified; the manifest
     // records a reason_code for every empty evidence file.
-    let all_count = write_lines(&bridge_dir.join("iran_likely_working_all.txt"), all_working)?;
+    let all_count = write_lines_ordered(
+        &bridge_dir.join("iran_likely_working_all.txt"),
+        asn_diverse_round_robin(
+            all_working
+                .iter()
+                .map(|line| {
+                    let asn = asn_by_line.get(&bridge_key(line)).cloned();
+                    (0.0, line.clone(), asn)
+                })
+                .collect(),
+        ),
+    )?;
     counts.insert("iran_likely_working_all.txt".to_string(), all_count);
     evidence_tiers.insert("iran_likely_working_all.txt".to_string(), all_best_label);
-    let nin_count = write_lines(&bridge_dir.join("iran_likely_working_nin.txt"), nin)?;
+    let nin_count = write_lines_ordered(
+        &bridge_dir.join("iran_likely_working_nin.txt"),
+        asn_diverse_round_robin(
+            nin.iter()
+                .map(|line| {
+                    let asn = asn_by_line.get(&bridge_key(line)).cloned();
+                    (0.0, line.clone(), asn)
+                })
+                .collect(),
+        ),
+    )?;
     counts.insert("iran_likely_working_nin.txt".to_string(), nin_count);
     evidence_tiers.insert("iran_likely_working_nin.txt".to_string(), nin_best_label);
     let blocked_count = write_lines(&bridge_dir.join("iran_blocked.txt"), blocked)?;
@@ -1655,10 +1840,19 @@ fn write_iran_projections(
                 .then_with(|| left.2.cmp(&right.2))
         });
         // These outputs are evidence-qualified. Never fill an empty tested
-        // projection with an unprobed static bridge.
-        let lines: Vec<String> = entries.into_iter().map(|(_, _, line)| line).collect();
+        // projection with an unprobed static bridge. Same ASN-diverse
+        // ordering as the working files.
+        let lines: Vec<String> = asn_diverse_round_robin(
+            entries
+                .into_iter()
+                .map(|(_, _, line)| {
+                    let asn = asn_by_line.get(&bridge_key(&line)).cloned();
+                    (0.0, line, asn)
+                })
+                .collect(),
+        );
         let name = format!("tested_global_{transport}.txt");
-        let count = write_lines(&bridge_dir.join(&name), lines)?;
+        let count = write_lines_ordered(&bridge_dir.join(&name), lines)?;
         counts.insert(name.clone(), count);
         evidence_tiers.insert(
             name,
@@ -2858,7 +3052,15 @@ mod tests {
     }
 
     #[test]
-    fn transport_projections_exclude_documentation_endpoints() {
+    fn transport_projections_apply_the_publication_endpoint_policy() {
+        // Policy under test (ip_guard::publication_blocks_endpoint):
+        //   * webtunnel doc-range endpoints stay unpublished (the client
+        //     dials the literal endpoint; issue #257);
+        //   * broker/front placeholders (snowflake/meek/conjure) publish
+        //     when their url=/front= rendezvous validates — the exact form
+        //     Tor Browser ships (MOAT builtin 2026-10-15);
+        //   * a placeholder with an invalid rendezvous host stays blocked;
+        //   * routable literals always publish.
         let dir = std::env::temp_dir().join(format!("pub_docrange_{}", std::process::id()));
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
@@ -2874,8 +3076,13 @@ mod tests {
                 "transport": "obfs4",
                 "last_seen": now.to_rfc3339()
             },
-            "fake_snowflake": {
-                "raw": "snowflake 192.0.2.3:80 HHHH fingerprint=HHHH url=https://example.invalid/ front=www.example.invalid",
+            "invalid_rendezvous_snowflake": {
+                "raw": "snowflake 192.0.2.9:80 NNNN fingerprint=NNNN url=https://example.invalid/ front=www.example.invalid",
+                "transport": "snowflake",
+                "last_seen": now.to_rfc3339()
+            },
+            "valid_rendezvous_snowflake": {
+                "raw": "snowflake 192.0.2.3:80 HHHH fingerprint=HHHH url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com",
                 "transport": "snowflake",
                 "last_seen": now.to_rfc3339()
             }
@@ -2907,14 +3114,148 @@ mod tests {
         let snowflake =
             std::fs::read_to_string(bridge_dir.join("snowflake_ipv4_ipv6_all.txt")).expect("file");
         assert!(
-            !snowflake.contains("192.0.2.3"),
-            "TEST-NET snowflake placeholders must not be published: {snowflake}"
+            !snowflake.contains("fingerprint=NNNN"),
+            "a placeholder whose rendezvous host is invalid must not be published: {snowflake}"
+        );
+        assert!(
+            snowflake.contains("fingerprint=HHHH"),
+            "the current Tor-default placeholder form with a validated rendezvous publishes: {snowflake}"
         );
         let obfs4 =
             std::fs::read_to_string(bridge_dir.join("obfs4_ipv4_ipv6_all.txt")).expect("file");
         assert!(
             obfs4.contains("45.10.30.1"),
             "routable obfs4 stays published"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn asn_diverse_round_robin_interleaves_networks() {
+        // Three ASNs with descending scores; a score-ranked file would
+        // concentrate AS14061 (4 bridges) at the head. The round-robin
+        // instead meets one bridge per ASN before repeating any network,
+        // with each ASN's segment still score-ordered internally.
+        let entries = vec![
+            (
+                9.0,
+                "AS14061 first".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                8.0,
+                "AS14061 second".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                7.0,
+                "AS14061 third".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                6.0,
+                "AS64512 first".to_string(),
+                Some("AS64512".to_string()),
+            ),
+            (
+                5.0,
+                "AS14061 fourth".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                4.0,
+                "AS64512 second".to_string(),
+                Some("AS64512".to_string()),
+            ),
+            (3.0, "unresolved one".to_string(), None),
+        ];
+        let ordered = asn_diverse_round_robin(entries);
+        assert_eq!(
+            ordered,
+            vec![
+                "AS14061 first".to_string(),
+                "AS64512 first".to_string(),
+                "AS14061 second".to_string(),
+                "AS64512 second".to_string(),
+                "AS14061 third".to_string(),
+                "AS14061 fourth".to_string(),
+                "unresolved one".to_string(),
+            ],
+            "one bridge per ASN per round; unresolved-ASN lines sink to the tail"
+        );
+
+        // Determinism: identical input yields the identical order.
+        let entries_again = vec![
+            (
+                9.0,
+                "AS14061 first".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                8.0,
+                "AS14061 second".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                7.0,
+                "AS14061 third".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                6.0,
+                "AS64512 first".to_string(),
+                Some("AS64512".to_string()),
+            ),
+            (
+                5.0,
+                "AS14061 fourth".to_string(),
+                Some("AS14061".to_string()),
+            ),
+            (
+                4.0,
+                "AS64512 second".to_string(),
+                Some("AS64512".to_string()),
+            ),
+            (3.0, "unresolved one".to_string(), None),
+        ];
+        assert_eq!(asn_diverse_round_robin(entries_again), ordered);
+
+        // Membership is unchanged by the reordering.
+        let mut membership: Vec<&str> = ordered.iter().map(String::as_str).collect();
+        membership.sort_unstable();
+        assert_eq!(membership.len(), 7);
+    }
+
+    #[test]
+    fn ranked_working_files_publish_in_asn_diverse_order() {
+        let dir = std::env::temp_dir().join(format!("pub_asn_div_{}", std::process::id()));
+        let bridge_dir = dir.join("bridge");
+        std::fs::create_dir_all(&bridge_dir).expect("temp dir");
+        let now = Utc::now();
+        let observed_at = now.to_rfc3339();
+        // Two ASNs; AS14061's entries have the highest scores.
+        let records = serde_json::json!({ "bridges": [
+            {"line": "obfs4 45.10.0.1:443 AAAA cert=x iat-mode=0", "transport": "obfs4",
+             "asn": "AS14061", "composite_score": 9.0,
+             "verification": {"status":"connected","stage":"S3","vantage":{"type":"github_actions_runner"},"probe_type":"obfs4-framing","observed_at":observed_at}},
+            {"line": "obfs4 45.10.0.2:443 BBBB cert=x iat-mode=0", "transport": "obfs4",
+             "asn": "AS14061", "composite_score": 8.0,
+             "verification": {"status":"connected","stage":"S3","vantage":{"type":"github_actions_runner"},"probe_type":"obfs4-framing","observed_at":observed_at}},
+            {"line": "obfs4 45.10.0.3:443 CCCC cert=x iat-mode=0", "transport": "obfs4",
+             "asn": "AS64512", "composite_score": 7.0,
+             "verification": {"status":"connected","stage":"S3","vantage":{"type":"github_actions_runner"},"probe_type":"obfs4-framing","observed_at":observed_at}}
+        ]});
+        let probes = extract_probe_records(&records, now, None).expect("probes");
+        let mut counts = BTreeMap::new();
+        write_iran_projections(&bridge_dir, &[], &probes, &mut counts, &mut BTreeMap::new())
+            .expect("write");
+        let body = std::fs::read_to_string(bridge_dir.join("iran_likely_working_obfs4.txt"))
+            .expect("file");
+        let lines: Vec<&str> = body.lines().collect();
+        assert_eq!(lines.len(), 3, "membership unchanged: {body}");
+        assert!(
+            lines[0].contains("45.10.0.1") && lines[1].contains("45.10.0.3"),
+            "the head must interleave ASNs before repeating one: {lines:?}"
         );
         let _ = std::fs::remove_dir_all(&dir);
     }

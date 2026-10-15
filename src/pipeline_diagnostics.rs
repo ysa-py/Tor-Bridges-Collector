@@ -491,6 +491,47 @@ fn log_message_part(line: &str) -> &str {
     rest
 }
 
+/// Remove caret-transcribed escape sequences from the START of a log
+/// message: GitHub Actions stores the ESC byte as the two literal
+/// characters `^[`, so an echoed line arrives as `^[  if [[ ...` or
+/// `^[# comment` and every structural guard below would misread its shape.
+/// A trailing bare `^[` (the same transcription at end of line, seen on
+/// run 38660732712 script echoes) is dropped as well. Only leading
+/// transcriptions are removed — a `^[` sequence inside a genuine error
+/// message is preserved.
+fn strip_caret_escapes(input: &str) -> String {
+    let mut output = input.trim_start().to_owned();
+    // Leading `^[` transcription, optionally followed by a transcribed CSI
+    // body (`^[[33m`), optionally repeated (`^[^[`).
+    loop {
+        if let Some(rest) = output.strip_prefix("^[") {
+            output = rest.to_owned();
+            // Transcribed SGR/CSI body: `[[...m` up to the final byte.
+            if let Some(after) = output.strip_prefix("[[") {
+                if let Some(m_end) = after.find('m') {
+                    let body = &after[..m_end];
+                    if body
+                        .chars()
+                        .all(|c| c.is_ascii_digit() || c == ';' || c == '?')
+                        && !body.is_empty()
+                    {
+                        output = after[m_end + 1..].to_owned();
+                    }
+                }
+            }
+            output = output.trim_start().to_owned();
+            continue;
+        }
+        break;
+    }
+    // Trailing bare transcription (same echo artifact, end of line).
+    while output.ends_with("^[") {
+        output.truncate(output.len() - 2);
+        output = output.trim_end().to_owned();
+    }
+    output
+}
+
 /// Remove ANSI escape sequences (CSI/OSC one-letter-terminated) and other
 /// C0 control characters from a log message. GitHub Actions colors and some
 /// tools interleave `\x1b[...m` sequences mid-message; the structural guards
@@ -566,6 +607,18 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     }
     let message = log_message_part(trimmed);
     let message_clean = strip_ansi(message);
+    // GitHub Actions log files store a terminal's real ESC byte as the two
+    // literal characters `^[` (run 38660732712: every echoed script-source
+    // line carried a leading `^[`). After that transcription `strip_ansi`
+    // has nothing to consume, so a `# comment` line arrived as `^[# comment`
+    // and the comment/source-echo guards below never fired — the
+    // `::error::` token inside the comment then fabricated the single
+    // Error-severity event that flipped the whole-run gate to "failed" and
+    // emitted the "Whole-run diagnostics failed despite parent
+    // conclusion=success" warning on every green run. Transcribed escapes
+    // (and a transcribed SGR body) are removed here, before any guard sees
+    // the message shape.
+    let message_clean = strip_caret_escapes(&message_clean);
     let message_trimmed = message_clean.trim();
     let message_lower = message_clean.to_ascii_lowercase();
 
@@ -601,6 +654,16 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
             && message_lower.contains('"')
             && (message_lower.contains("$req") || message_lower.contains("${")))
     {
+        return None;
+    }
+    // Echoed bash source with an unexpanded `[[ ... ]]` conditional and a
+    // shell variable (run 38660732712 line 677: `if [[ $attempt == 5 ]] ||
+    // ! grep -Fq 'checksum failed for ' "$log"` echoed by the toolchain
+    // action) is script text, not a runtime failure — without this guard
+    // the substring "failed" fabricated hundreds of hard_failure advisories
+    // per run. A real tool error never carries the bash test construct
+    // verbatim; genuine `error: checksum failed` lines do not contain `[[`.
+    if message_lower.contains("[[") && message_lower.contains("]]") && message_lower.contains('$') {
         return None;
     }
     // ALL-CAPS configuration echoes ("CONNECTION_TIMEOUT: 8",
@@ -992,6 +1055,44 @@ pub fn report_json(report: &DiagnosticReport) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn caret_transcribed_echo_sources_from_run_38660732712_never_classify() {
+        // Verbatim raw lines from the green parent run 38660732712 whose
+        // diagnostics gate was flipped to "failed" by exactly one fabricated
+        // Error event. The echoed script source carries the caret-ESC
+        // transcription `^[`; the ::error:: token inside the YAML comment
+        // must never become an annotation, and the `[[ $attempt == 5 ]]`
+        // conditional echo must never become a hard_failure advisory.
+        let error_comment_line = "scrape-and-test (finalize)\tStage 8s — Iran Anti-DPI Elite fusion (AI-consensus pack)\t2026-10-15T01:02:45.2743953Z ^[# a non-zero byte count — `test -s` previously emitted ::error::^[";
+        let conditional_echo_line = "Quality Gate\tRun dtolnay/rust-toolchain@stable\t2026-10-15T00:33:55.5316135Z ^[  if [[ $attempt == 5 ]] || ! grep -Fq 'checksum failed for ' \"$log\" \\^[";
+        assert_eq!(classify_line(error_comment_line), None);
+        assert_eq!(classify_line(conditional_echo_line), None);
+
+        // A REAL annotation line keeps its Error classification.
+        let real_error =
+            "build-r\tBuild\t2026-10-14T13:50:00.0000000Z ::error::manifest contract violated\n";
+        let report = analyze_log(real_error, "fixture");
+        assert_eq!(report.errors, 1);
+        assert_eq!(report.status, "failed");
+
+        // The transcription stripper must not touch genuine mid-message
+        // text: a real tool error is still classified Error with its
+        // text intact.
+        let report = analyze_log(
+            "build-r\tBuild\t2026-10-14T13:50:00.0000000Z error: checksum failed for registry crate\n",
+            "fixture",
+        );
+        assert!(report.events.len() == 1 && report.errors == 1);
+    }
+
+    #[test]
+    fn transcribed_sgr_prefixes_are_normalized_before_guards() {
+        // `^[[33m# comment` transcribes both ESC and the color sequence;
+        // after normalization the comment guard must see `# comment`.
+        let line = "build-r\tBuild\t2026-10-14T13:50:00.0000000Z ^[[33m# a comment mentioning ::warning::^[";
+        assert_eq!(classify_line(line), None);
+    }
 
     #[test]
     fn analyzes_every_line_and_classifies_silent_failures() {

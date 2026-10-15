@@ -523,9 +523,37 @@ pub fn build_funnel_report(repo_root: &Path) -> Value {
 }
 
 /// Emit GitHub Actions `::notice` annotations for the headline numbers.
+///
+/// Annotation discipline (runs 38613981417/38632675661: every validation
+/// run produced 8 FUNNEL notices of literal zeros — two identical sets of
+/// 4 — because the funnel runs in Stage 8v AND in the Stage 11
+/// `--check-contract` pass, and a validation-noop run has nothing to
+/// report): annotations are reserved for LIVE-collection runs where the
+/// counts carry real signal. On a validation-noop run the same lines are
+/// printed as plain log output, so the evidence stays in the log and the
+/// Actions annotation rail stays at zero.
 pub fn emit_notices(report: &Value) {
-    if report.get("live_collection").and_then(Value::as_bool) == Some(false) {
-        println!("::notice title=FUNNEL::live_collection=false this_run_observation_counts=0");
+    for line in funnel_notice_lines(report) {
+        println!("{line}");
+    }
+}
+
+/// Build the FUNNEL output lines. LIVE-collection runs prefix every line
+/// with the GitHub `::notice::` annotation form; validation-noop runs emit
+/// the identical lines unprefixed so the annotation rail stays at zero
+/// while the log keeps the evidence (see [`emit_notices`]).
+fn funnel_notice_lines(report: &Value) -> Vec<String> {
+    let live = report.get("live_collection").and_then(Value::as_bool) == Some(true);
+    let prefix = if live {
+        "::notice title=FUNNEL::"
+    } else {
+        "FUNNEL: "
+    };
+    let mut lines = Vec::new();
+    if !live {
+        lines.push(format!(
+            "{prefix}live_collection=false this_run_observation_counts=0"
+        ));
     }
     if let Some(stages) = report.get("funnel").and_then(Value::as_array) {
         let parts: Vec<String> = stages
@@ -538,20 +566,20 @@ pub fn emit_notices(report: &Value) {
                 )
             })
             .collect();
-        println!("::notice title=FUNNEL::{}", parts.join(" "));
+        lines.push(format!("{prefix}{}", parts.join(" ")));
     }
     if let Some(census) = report.get("non_routable_census") {
-        println!(
-            "::notice title=FUNNEL::non_routable_endpoints_in_pool={}",
+        lines.push(format!(
+            "{prefix}non_routable_endpoints_in_pool={}",
             census
                 .get("total_non_routable")
                 .and_then(Value::as_u64)
                 .unwrap_or(0)
-        );
+        ));
     }
     if let Some(coverage) = report.get("relay_coverage") {
-        println!(
-            "::notice title=FUNNEL::relay_unobserved={} (non_routable={}, other={})",
+        lines.push(format!(
+            "{prefix}relay_unobserved={} (non_routable={}, other={})",
             coverage
                 .get("unobserved_candidates")
                 .and_then(Value::as_u64)
@@ -564,10 +592,10 @@ pub fn emit_notices(report: &Value) {
                 .get("unobserved_other")
                 .and_then(Value::as_u64)
                 .unwrap_or(0),
-        );
+        ));
     }
+    lines
 }
-
 fn funnel_count(report: &Value, name: &str) -> u64 {
     let stages = report.get("funnel").and_then(Value::as_array);
     let Some(stages) = stages else {
@@ -812,6 +840,56 @@ mod tests {
         assert_eq!(report["relay_coverage"]["unobserved_candidates"], 0);
         emit_notices(&report);
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn noop_runs_emit_zero_annotations_and_live_runs_annotate() {
+        // The annotation-discipline contract: a validation-noop report must
+        // never carry the `::notice::` annotation prefix (runs
+        // 38613981417/38632675661 produced 8 zero-value FUNNEL annotations
+        // per PR), while a live report keeps the annotated form.
+        let noop = json!({
+            "live_collection": false,
+            "funnel": [
+                {"stage": "sources_fetched_lines", "count": 0},
+                {"stage": "published_advisory_working", "count": 0}
+            ],
+            "non_routable_census": {"total_non_routable": 0},
+            "relay_coverage": {
+                "unobserved_candidates": 0,
+                "unobserved_non_routable": 0,
+                "unobserved_other": 0
+            }
+        });
+        let lines = funnel_notice_lines(&noop);
+        assert_eq!(lines.len(), 4, "the four funnel lines still print");
+        assert!(
+            lines.iter().all(|line| !line.starts_with("::")),
+            "validation-noop lines must be plain log output: {lines:?}"
+        );
+        assert!(lines[0].contains("live_collection=false"));
+
+        let live = json!({
+            "live_collection": true,
+            "funnel": [
+                {"stage": "sources_fetched_lines", "count": 12},
+                {"stage": "published_advisory_working", "count": 3}
+            ],
+            "non_routable_census": {"total_non_routable": 2},
+            "relay_coverage": {
+                "unobserved_candidates": 5,
+                "unobserved_non_routable": 2,
+                "unobserved_other": 3
+            }
+        });
+        let lines = funnel_notice_lines(&live);
+        assert_eq!(lines.len(), 3, "live runs skip the no-op headline");
+        assert!(
+            lines
+                .iter()
+                .all(|line| line.starts_with("::notice title=FUNNEL::")),
+            "live lines must be GitHub annotations: {lines:?}"
+        );
     }
 
     #[test]

@@ -2395,11 +2395,24 @@ jobs:
             # inputs, so this worktree no longer holds the published bytes. The
             # contract a non-main ref must satisfy is the committed one: nothing
             # from a PR is ever published, and every main run rewrites the whole
-            # contract from freshly generated data. Report the worktree delta as
-            # annotated evidence, then verify the committed publication.
+            # contract from freshly generated data. The worktree delta is
+            # EXPECTED here (PR validation runs the same generators the main
+            # publication uses, then restores the committed bytes below), so it
+            # is reported in the step summary — not as ::warning:: annotations:
+            # a by-design no-op difference must not page as a warning on every
+            # validation run (runs 38613981417/38632675661: 4 annotations of
+            # pure noise per PR). The ::error:: for a genuinely inconsistent
+            # COMMITTED contract stays below and still fails the run.
             if ! git diff --quiet -- bridge/; then
+              {
+                echo "### Stage 9 — regenerated-vs-committed delta (expected on validation refs)"
+                echo 'The PR path regenerates projections from committed inputs, then restores the committed publication. The delta is informational:'
+                git diff --numstat -- bridge/ | sed -n '1,20p' | while read -r added removed path; do
+                  echo "- \`${path}\` (+${added}/-${removed})"
+                done
+              } >> "${GITHUB_STEP_SUMMARY}"
               git diff --numstat -- bridge/ | sed -n '1,20p' | while read -r added removed path; do
-                echo "::warning::regenerated payload differs from the committed publication: ${path} (+${added}/-${removed})"
+                echo "regenerated payload differs from the committed publication (expected on validation refs): ${path} (+${added}/-${removed})"
               done
             fi
             git checkout -- bridge/

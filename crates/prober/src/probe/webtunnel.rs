@@ -1,15 +1,20 @@
 //! WebTunnel HTTP/WebSocket upgrade probe.
 //!
-//! A WebTunnel bridge is reached by an RFC 6455 §4.2.1 HTTP upgrade request
-//! served **over TLS** on the `url=` front domain (the CDN routes by SNI, so
-//! the TLS session must name the same host the request does). The engine
-//! establishes that TLS session (`crate::tls`) before this probe runs. This
-//! probe drives the `tbc-transports` WebTunnel codec over the socket: it
-//! sends the upgrade request derived from the bridge's `url=` parameter, then
-//! verifies both the `101 Switching Protocols` status and the
-//! `Sec-WebSocket-Accept` header (SHA-1 of the client nonce plus the RFC
-//! magic GUID). A plain TCP listener that answers `200` or a wrong accept
-//! value is therefore rejected as not-a-WebTunnel-bridge.
+//! A WebTunnel bridge is reached by an HTTP upgrade request served **over
+//! TLS** on the `url=` front domain (the CDN routes by SNI, so the TLS
+//! session must name the same host the request does). The engine establishes
+//! that TLS session (`crate::tls`) before this probe runs. This probe drives
+//! the `tbc-transports` WebTunnel codec over the socket: it sends the upgrade
+//! request derived from the bridge's `url=` parameter, then verifies the
+//! response against the CANONICAL WebTunnel contract — `101 Switching
+//! Protocols` + `Upgrade: websocket` + `Connection: upgrade` — which is
+//! exactly what the reference `transport/httpupgrade` implementation accepts
+//! and emits. The reference server sends no `Sec-WebSocket-Accept` header
+//! (it is not an RFC 6455 endpoint), so the accept echo is verified ONLY
+//! when a server actually sends one: present-but-wrong rejects a forged
+//! endpoint, absent stays compatible with every deployed bridge. A plain
+//! TCP listener that answers `200` or a bare `101` without the upgrade
+//! echo is rejected as not-a-WebTunnel-bridge.
 
 use base64::Engine as _;
 use rand::RngCore;
@@ -57,18 +62,45 @@ pub async fn handshake(
         });
     }
 
-    let expected = websocket_accept(&request.sec_websocket_key());
-    match http::header_value(&upgrade.headers, "sec-websocket-accept") {
-        Some(value) if value == expected => {
-            Ok("webtunnel: 101 + Sec-WebSocket-Accept verified".to_owned())
+    verify_upgrade_acceptance(&upgrade, &request.sec_websocket_key())
+}
+
+/// Verify an upgraded (`101`) response against the canonical WebTunnel
+/// contract, with the optional RFC 6455 accept echo as the stronger check.
+///
+/// Evidence mapping (run 38613981417 root cause: every real bridge — 89
+/// observations — failed here with `missing Sec-WebSocket-Accept header`
+/// because the reference implementation never sends that header):
+///
+/// * `Sec-WebSocket-Accept` present and correct → verified (RFC 6455
+///   server, strongest webtunnel evidence).
+/// * present and wrong → `AuthFailed` (forged or misconfigured endpoint).
+/// * absent + canonical `101`/`Upgrade: websocket`/`Connection: upgrade`
+///   echo → verified (the reference contract every deployed bridge speaks).
+/// * absent + missing/foreign upgrade headers → `AuthFailed` (a bare `101`
+///   proves nothing about webtunnel).
+fn verify_upgrade_acceptance(
+    upgrade: &UpgradeResponse,
+    request_key: &str,
+) -> Result<String, ProbeError> {
+    match upgrade.sec_websocket_accept() {
+        Some(value) => {
+            let expected = websocket_accept(request_key);
+            if value == expected {
+                Ok("webtunnel: 101 + Sec-WebSocket-Accept verified (RFC 6455)".to_owned())
+            } else {
+                Err(ProbeError::AuthFailed {
+                    transport: "webtunnel",
+                    message: "Sec-WebSocket-Accept mismatch".to_owned(),
+                })
+            }
         }
-        Some(_) => Err(ProbeError::AuthFailed {
-            transport: "webtunnel",
-            message: "Sec-WebSocket-Accept mismatch".to_owned(),
-        }),
+        None if upgrade.is_canonical_webtunnel_upgrade() => {
+            Ok("webtunnel: 101 + Upgrade: websocket verified (canonical contract)".to_owned())
+        }
         None => Err(ProbeError::AuthFailed {
             transport: "webtunnel",
-            message: "missing Sec-WebSocket-Accept header".to_owned(),
+            message: "101 response without the canonical WebSocket upgrade echo".to_owned(),
         }),
     }
 }
@@ -92,5 +124,74 @@ mod tests {
         // The canonical vector from RFC 6455 §1.3.
         let accept = websocket_accept("dGhlIHNhbXBsZSBub25jZQ==");
         assert_eq!(accept, "s3pPLMBiTxaQ9kYGzzhZRbK+xOo=");
+    }
+
+    fn parsed_response(bytes: &[u8]) -> UpgradeResponse {
+        UpgradeResponse::parse(bytes).unwrap()
+    }
+
+    #[test]
+    fn canonical_server_without_accept_header_is_verified() {
+        // The exact bytes the reference webtunnel httpupgrade server writes.
+        let upgrade = parsed_response(
+            b"HTTP/1.1 101 Switching Protocols\r\n\
+              Connection: upgrade\r\n\
+              Upgrade: websocket\r\n\
+              \r\n",
+        );
+        let detail = verify_upgrade_acceptance(&upgrade, "dGhlIHNhbXBsZSBub25jZQ==").unwrap();
+        assert!(
+            detail.contains("canonical contract"),
+            "the canonical path must name its contract: {detail}"
+        );
+    }
+
+    #[test]
+    fn rfc6455_server_with_correct_accept_is_verified() {
+        let upgrade = parsed_response(
+            b"HTTP/1.1 101 Switching Protocols\r\n\
+              Connection: upgrade\r\n\
+              Upgrade: websocket\r\n\
+              Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\
+              \r\n",
+        );
+        let detail = verify_upgrade_acceptance(&upgrade, "dGhlIHNhbXBsZSBub25jZQ==").unwrap();
+        assert!(detail.contains("RFC 6455"), "{detail}");
+    }
+
+    #[test]
+    fn wrong_accept_header_is_an_auth_failure() {
+        let upgrade = parsed_response(
+            b"HTTP/1.1 101 Switching Protocols\r\n\
+              Connection: upgrade\r\n\
+              Upgrade: websocket\r\n\
+              Sec-WebSocket-Accept: forged\r\n\
+              \r\n",
+        );
+        assert!(matches!(
+            verify_upgrade_acceptance(&upgrade, "dGhlIHNhbXBsZSBub25jZQ=="),
+            Err(ProbeError::AuthFailed {
+                transport: "webtunnel",
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn bare_101_without_upgrade_echo_is_an_auth_failure() {
+        // A 101 with no Upgrade/Connection echo proves nothing about
+        // webtunnel; it must never become a positive observation.
+        let upgrade = parsed_response(
+            b"HTTP/1.1 101 Switching Protocols\r\n\
+              X-Proxy: middlebox\r\n\
+              \r\n",
+        );
+        assert!(matches!(
+            verify_upgrade_acceptance(&upgrade, "dGhlIHNhbXBsZSBub25jZQ=="),
+            Err(ProbeError::AuthFailed {
+                transport: "webtunnel",
+                ..
+            })
+        ));
     }
 }

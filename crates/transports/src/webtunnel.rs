@@ -119,6 +119,60 @@ impl UpgradeResponse {
         self.status_code == 101
     }
 
+    /// Canonical WebTunnel upgrade acceptance (the contract the reference
+    /// implementation actually enforces).
+    ///
+    /// The reference WebTunnel transport (`transport/httpupgrade` in the
+    /// torproject webtunnel source, mirrored by every deployed bridge)
+    /// accepts exactly `101 Switching Protocols` + `Upgrade: websocket` +
+    /// `Connection: upgrade` and sends **no** `Sec-WebSocket-Accept` header —
+    /// it is not an RFC 6455 endpoint. A probe that demands the accept echo
+    /// therefore rejects every real bridge (run 38613981417: 89×
+    /// `handshake_auth_fail — missing Sec-WebSocket-Accept header`), which
+    /// kept every evidence-gated webtunnel projection empty.
+    ///
+    /// Matching is case-insensitive, and `Connection` is treated as a
+    /// comma-separated token list per RFC 9110 §5.6.1 (a CDN may append
+    /// `keep-alive`). An RFC 6455-conformant server that DOES return a
+    /// correct `Sec-WebSocket-Accept` still passes; the caller may verify
+    /// that echo as the stronger check when present.
+    pub fn is_canonical_webtunnel_upgrade(&self) -> bool {
+        if self.status_code != 101 {
+            return false;
+        }
+        let upgrade_websocket = header_tokens(&self.headers, "upgrade")
+            .iter()
+            .any(|token| token.eq_ignore_ascii_case("websocket"));
+        let connection_upgrade = header_tokens(&self.headers, "connection")
+            .iter()
+            .any(|token| token.eq_ignore_ascii_case("upgrade"));
+        upgrade_websocket && connection_upgrade
+    }
+
+    /// The raw `Sec-WebSocket-Accept` value, when the server sent one.
+    pub fn sec_websocket_accept(&self) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(name, _)| name == "sec-websocket-accept")
+            .map(|(_, value)| value.as_str())
+    }
+}
+
+/// Comma-split tokens of every header with the given lower-cased name.
+/// RFC 9110 list fields may repeat and may carry `;parameters`, which are
+/// dropped here (an `Upgrade: websocket;charset=x` echo still names the
+/// websocket protocol for acceptance purposes).
+fn header_tokens(headers: &[(String, String)], name: &str) -> Vec<String> {
+    headers
+        .iter()
+        .filter(|(header_name, _)| header_name == name)
+        .flat_map(|(_, value)| value.split(','))
+        .map(|token| token.split(';').next().unwrap_or(token).trim().to_owned())
+        .filter(|token| !token.is_empty())
+        .collect()
+}
+
+impl UpgradeResponse {
     /// Parse an HTTP/1.1 upgrade response from wire bytes.
     pub fn parse(bytes: &[u8]) -> Result<Self, TransportError> {
         let text = std::str::from_utf8(bytes)
@@ -217,6 +271,69 @@ mod tests {
         assert_eq!(parsed.status_code, 101);
         assert!(parsed.is_upgrade_accepted());
         assert_eq!(parsed.subprotocol.as_deref(), Some("AQIDBA=="));
+    }
+
+    #[test]
+    fn canonical_webtunnel_server_response_is_accepted_without_accept_header() {
+        // The exact response shape the reference webtunnel
+        // `transport/httpupgrade` Server() implementation writes
+        // (101 + Connection/Upgrade echo, no Sec-WebSocket-Accept).
+        let response = b"HTTP/1.1 101 Switching Protocols\r\n\
+                         Connection: upgrade\r\n\
+                         Upgrade: websocket\r\n\
+                         \r\n";
+        let parsed = UpgradeResponse::parse(response).unwrap();
+        assert!(parsed.is_upgrade_accepted());
+        assert!(parsed.is_canonical_webtunnel_upgrade());
+        assert!(parsed.sec_websocket_accept().is_none());
+    }
+
+    #[test]
+    fn canonical_acceptance_is_case_insensitive_and_token_list_tolerant() {
+        // CDNs may re-emit headers with different casing and append
+        // connection tokens; the contract names the protocol tokens.
+        let response = b"HTTP/1.1 101 Switching Protocols\r\n\
+                         Connection: keep-alive, Upgrade\r\n\
+                         UPGRADE: WebSocket\r\n\
+                         \r\n";
+        let parsed = UpgradeResponse::parse(response).unwrap();
+        assert!(parsed.is_canonical_webtunnel_upgrade());
+    }
+
+    #[test]
+    fn non_101_or_missing_upgrade_headers_are_rejected() {
+        let http200 = b"HTTP/1.1 200 OK\r\n\
+                         Connection: upgrade\r\n\
+                         Upgrade: websocket\r\n\
+                         \r\n";
+        assert!(!UpgradeResponse::parse(http200)
+            .unwrap()
+            .is_canonical_webtunnel_upgrade());
+
+        let bare101 = b"HTTP/1.1 101 Switching Protocols\r\n\
+                         X-Generic: header\r\n\
+                         \r\n";
+        let parsed = UpgradeResponse::parse(bare101).unwrap();
+        assert!(parsed.is_upgrade_accepted());
+        assert!(
+            !parsed.is_canonical_webtunnel_upgrade(),
+            "101 without the Upgrade/Connection echo is not the webtunnel contract"
+        );
+    }
+
+    #[test]
+    fn rfc6455_accept_header_is_surfaced_for_the_stronger_check() {
+        let response = b"HTTP/1.1 101 Switching Protocols\r\n\
+                         Connection: upgrade\r\n\
+                         Upgrade: websocket\r\n\
+                         Sec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\
+                         \r\n";
+        let parsed = UpgradeResponse::parse(response).unwrap();
+        assert!(parsed.is_canonical_webtunnel_upgrade());
+        assert_eq!(
+            parsed.sec_websocket_accept(),
+            Some("s3pPLMBiTxaQ9kYGzzhZRbK+xOo=")
+        );
     }
 
     #[test]

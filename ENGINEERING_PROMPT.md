@@ -108,7 +108,48 @@ Deliver a **zero-error** state for the TorShield-IR bridge-collector:
 
 ---
 
-## 7. Addendum — directive v43 (2026-10-15): tiered evidence & honest empties
+## 7. Addendum — directive v44 (2026-10-15): protocol-truth probes & annotation discipline
+
+Binding for every future session touching `crates/prober`, `crates/transports`,
+`ip_guard.rs`, `pipeline_diagnostics.rs`, or the funnel advisory:
+
+1. **Probe the protocol the reference implementation speaks.** A handshake
+   probe must be validated against the reference PT source, not against an
+   RFC the transport merely resembles. WebTunnel is the standing example:
+   the reference server answers `101` with `Connection: upgrade` +
+   `Upgrade: websocket` and no `Sec-WebSocket-Accept` — a probe that
+   demands the RFC 6455 echo rejects every real bridge while looking
+   strict. Two-tier acceptance (verify the echo when present; accept the
+   canonical contract when absent; a bare `101` still fails) is the
+   required shape. Fixtures must include the reference server's exact
+   response bytes.
+2. **Placeholder endpoints are transport-semantic.** BridgeDB ships
+   RFC 5737/3849 placeholders as the endpoint of rendezvous-dialled
+   transports (snowflake, meek*, conjure) — Tor Browser consumes those
+   lines verbatim. Publication filters must therefore ask "does the client
+   dial the literal endpoint?" before blocking a documentation-range
+   literal. WebTunnel (dials the literal; SNI from `url=`) keeps the
+   strict check. Private/loopback/link-local literals stay blocked for
+   every transport. See `ip_guard::publication_blocks_endpoint`.
+3. **Annotations are signal, not telemetry.** `::warning::`/`::notice::`
+   annotations are reserved for conditions a human must react to. An
+   EXPECTED validation-ref delta (PR path regenerates, then restores the
+   committed publication) goes to the step summary; a validation-noop
+   funnel prints plain log lines. `::error::` stays reserved for a
+   genuinely broken contract. A PR run must produce ZERO annotations.
+4. **Transcribed escapes are log-shape, not content.** GitHub Actions
+   stores the ESC byte as the literal characters `^[`. The diagnostics
+   classifier must normalize leading/trailing `^[` (and transcribed SGR)
+   BEFORE the structural guards, and echoed `[[ … ]]` source with an
+   unexpanded shell variable is script text, never a runtime failure. The
+   verbatim lines of run 38660732712 are regression fixtures.
+5. **Ranked files rank by resilience, not only by score.** The ranked
+   consumer files interleave one bridge per origin ASN per round
+   (`asn_diverse_round_robin`); a censor throttling one hoster must not
+   empty the head of the file. Membership/evidence never change with
+   ordering; the ordered writer preserves the built ranking end-to-end.
+
+## 8. Addendum — directive v43 (2026-10-15): tiered evidence & honest empties
 
 Extends the zero-error discipline to the evidence contract itself. These rules
 are binding for every future session touching `bridge_publication.rs`,

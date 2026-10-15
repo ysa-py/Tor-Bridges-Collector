@@ -830,11 +830,14 @@ stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
     ]
 }
 
-/// Mirror of `FRONTED_BRIDGES["meek-azure"]`.
+/// Mirror of `FRONTED_BRIDGES["meek-azure"]`. meek.azureedge.net is
+/// retired (DNS removed, verified 2026-10-15); the current Tor default is
+/// the CDN77 rendezvous (MOAT builtin, country=ir).
 pub fn fronted_meek_azure() -> Vec<&'static str> {
     vec![
-        "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE \
-url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+        "meek_lite 192.0.2.20:80 \
+url=https://1603026938.rsc.cdn77.org \
+front=www.phpmyadmin.net utls=HelloRandomizedALPN",
     ]
 }
 
