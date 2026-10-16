@@ -1,6 +1,6 @@
 # eBPF/XDP DPI Bypass Blueprint
 
-Generated: 2026-10-16T10:15:07.838651796+00:00
+Generated: 2026-10-16T12:15:42.381932119+00:00
 
 ```json
 {

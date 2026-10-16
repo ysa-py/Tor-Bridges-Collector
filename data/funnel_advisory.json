@@ -3,7 +3,7 @@
   "collection_mode": "live",
   "funnel": [
     {
-      "count": 24,
+      "count": 25,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
@@ -33,17 +33,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 844,
+      "count": 846,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 636,
+      "count": 640,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-16T10:27:48.551382819+00:00",
+  "generated_at": "2026-10-16T12:28:24.213260331+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,16 +78,16 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 636,
+    "iran_likely_working_all.txt": 640,
     "iran_likely_working_obfs4.txt": 291,
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 155,
-    "iran_likely_working_webtunnel.txt": 190,
+    "iran_likely_working_webtunnel.txt": 194,
     "obfs4.txt": 717,
     "obfs4_tested.txt": 291,
     "tested_global_obfs4.txt": 291,
     "tested_global_vanilla.txt": 155,
-    "tested_global_webtunnel.txt": 190,
+    "tested_global_webtunnel.txt": 194,
     "vanilla.txt": 488,
     "vanilla_tested.txt": 155,
     "webtunnel.txt": 198,
@@ -152,7 +152,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 3,
+        "fetched_lines": 4,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_settings_single_transport"
