@@ -1,22 +1,6 @@
 {
   "activations": [
     {
-      "file": "webtunnel_ipv6_tested.txt",
-      "lines": 0,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_projection",
-      "timestamp": "2026-10-05T04:24:57.936999557+00:00",
-      "transport": "webtunnel"
-    },
-    {
-      "file": "webtunnel_ipv6_72h.txt",
-      "lines": 0,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_alias",
-      "timestamp": "2026-10-05T04:24:57.944601694+00:00",
-      "transport": "webtunnel"
-    },
-    {
       "file": "meek_lite_tested.txt",
       "lines": 3,
       "producer": "bridge_publication",
@@ -3720,8 +3704,23 @@
       "reason": "empty_transport_projection",
       "timestamp": "2026-10-16T01:18:25.535555590+00:00",
       "transport": "meek-azure"
+    },
+    {
+      "file": "meek_lite.txt",
+      "lines": 1,
+      "reason": "empty_or_missing_projection",
+      "timestamp": "2026-10-16T04:47:22.704367995+00:00",
+      "transport": "meek_lite"
+    },
+    {
+      "file": "meek-azure.txt",
+      "lines": 1,
+      "producer": "bridge_publication",
+      "reason": "empty_transport_projection",
+      "timestamp": "2026-10-16T05:09:47.730500973+00:00",
+      "transport": "meek-azure"
     }
   ],
-  "generated_at": "2026-10-16T01:18:25.535567642+00:00",
+  "generated_at": "2026-10-16T05:09:47.730514444+00:00",
   "note": "Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data."
 }
