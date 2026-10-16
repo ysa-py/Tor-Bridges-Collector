@@ -5053,6 +5053,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:eb48:18d1:b5ac:62d0:da55:f164]:443 B9B09EDFAEA3824D6258DB017002899F368C9943 url=https://pablo.iki.fi/H5cdG6c0tO7sDwZgAfBixLZB ver=0.0.7",
+      "host": "pablo.iki.fi",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:ec38:ad64:f0fb:d7c2:2e26:4c4a]:443 5FC9FFCBA10611A1C17851A4B0BE1352FBC8909F url=https://redstarsl.cc/cme9f87hmdc8s7dychbsm897xy ver=0.0.1",
       "host": "redstarsl.cc",
       "nin_flags": [
@@ -6998,6 +7010,18 @@
     {
       "bridge_line": "obfs4 47.36.122.155:8443 808E86271077E90D4F2795FD5FF9E5D2975F9EDE cert=43KGgMq2zn8BUuw6sau0jRvrqykD7biVvO4NOPU2HecVqCvj82NibIad4lwKyCY26s9kSw iat-mode=0",
       "host": "47.36.122.155",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 47.81.24.169:8443 829F3F4E83B52E88364AB9F6CED532A015A9F27A cert=lbGsUP4olfQG+YkXSGgONqcm169oshXULtwtvvF4iC51IgU8pwJLdu8Rr2gfazYFPsB1QQ iat-mode=0",
+      "host": "47.81.24.169",
       "nin_flags": [
         "obfs4_tcp_only",
         "nin_port_open"
@@ -14514,6 +14538,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 87.179.112.28:1678 577B7B8084CA36EDA4F4D600377925F705C5D8B5 cert=e9jpBvEt8L7CdOOV6b+j6x4VEb8WDALcCfyxMfE4BV3r583rmXorEJH5cTRkEWCz+qXNcg iat-mode=0",
+      "host": "87.179.112.28",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 1678,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 87.183.255.205:45439 469CC6FA33961F5322C5D00007B42EF3D5B398CC cert=1r/SSKByXjRsy140delLG8r8n7m3GFGjsdGFajSSwAd6MeObBXWIVjRqOAmaUUNENMayLA iat-mode=0",
       "host": "87.183.255.205",
       "nin_flags": [
@@ -21966,11 +22001,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1994,
-    "candidates_probed": 391,
-    "candidates_scored": 1994,
+    "candidates_input": 1997,
+    "candidates_probed": 388,
+    "candidates_scored": 1997,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 611.509
+    "probe_elapsed_secs": 614.726
   }
 }
