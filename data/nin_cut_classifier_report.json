@@ -1059,6 +1059,14 @@
     {
       "ip": "38.242.197.12",
       "port": 443,
+      "raw": "webtunnel 38.242.197.12:443 F5038BA595B75BD87A295CA6060214CCD4280F2F url=https://bridges.lovethosetrains.com/iwCXEhbdY7ErwP8J4MRavyAj ver=0.0.3",
+      "sni": "bridges.lovethosetrains.com",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "38.242.197.12",
+      "port": 443,
       "raw": "webtunnel 38.242.197.12:443 F5038BA595B75BD87A295CA6060214CCD4280F2F url=https://bridges.lovethosetrains.com/iwCXEhbdY7ErwP8J4MRavyAj ver=0.0.4",
       "sni": "bridges.lovethosetrains.com",
       "tier": "YELLOW",
@@ -1678,10 +1686,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-16T20:25:45.687308+00:00",
+  "generated_at": "2026-10-16T22:27:24.015264+00:00",
   "green_count": 9,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 209,
-  "yellow_count": 200
+  "total_bridges": 210,
+  "yellow_count": 201
 }
