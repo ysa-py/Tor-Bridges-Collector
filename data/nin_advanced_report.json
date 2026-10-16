@@ -1969,6 +1969,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 82.47.22.191:443 B9B09EDFAEA3824D6258DB017002899F368C9943 url=https://pablo.iki.fi/H5cdG6c0tO7sDwZgAfBixLZB ver=0.0.7",
+      "host": "pablo.iki.fi",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 83.113.75.134:443 664BEAA9A60B4C029258E4A19E13E26C6D961E0A url=https://hhynz.maledict.me/TLzq9HcRQDlLGmjHAQMff0Hu ver=0.0.5",
       "host": "hhynz.maledict.me",
       "nin_flags": [
@@ -6204,6 +6216,18 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 178.236.252.191:8080 03AA7C82562A3BC8088200147C700C49EA91085E cert=KxtRDiuGRH58Z5mjSrSQOmDv6Y17qdqWFsGoFbKXwEi8FBoPBm8qMzzg4GQcNpgjQw3zLA iat-mode=0",
+      "host": "178.236.252.191",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8080,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 178.83.31.71:8080 EDE7C9E92E631A74BDD5BD091D0D0FC16383EAE3 cert=lSrEdORvTcAMXbva3kiczhW0un3FmV/WNFh/4VyshItKBh7YWksBBy7uXDdaevEKNzQDUw iat-mode=1",
       "host": "178.83.31.71",
       "nin_flags": [
@@ -9188,17 +9212,6 @@
       ],
       "nin_score": 0.15,
       "port": 1629,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 207.136.101.198:1701 E00DE29F04E89959B9D3612AD1BF5C40E4FF1719",
-      "host": "207.136.101.198",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 1701,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -13812,6 +13825,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 82.101.228.182:38111 D63381FC6BD99A67570177322D275AE3FBEF94FE cert=/HJzcPpdibv4teKdsOgbvPyHhM2AWclOfDyuNegbyixNqNb9ugm/xfJ8G0sPoGO5iB7FVA iat-mode=0",
+      "host": "82.101.228.182",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 38111,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 82.101.228.182:43719 D63381FC6BD99A67570177322D275AE3FBEF94FE cert=/HJzcPpdibv4teKdsOgbvPyHhM2AWclOfDyuNegbyixNqNb9ugm/xfJ8G0sPoGO5iB7FVA iat-mode=0",
       "host": "82.101.228.182",
       "nin_flags": [
@@ -15288,6 +15312,17 @@
     {
       "bridge_line": "obfs4 96.43.206.115:8877 6E2620AEDD466CC1542CBC8B85F45FE04AC126EC cert=O9j5SLu3FYxUGj0hvbC72FE5q0eXUOCmdhjwLr7lZvKTTQakPCgPjAVgoMK7y48g1T3yHw iat-mode=0",
       "host": "96.43.206.115",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 8877,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 96.43.206.90:8877 6E2620AEDD466CC1542CBC8B85F45FE04AC126EC cert=O9j5SLu3FYxUGj0hvbC72FE5q0eXUOCmdhjwLr7lZvKTTQakPCgPjAVgoMK7y48g1T3yHw iat-mode=0",
+      "host": "96.43.206.90",
       "nin_flags": [
         "obfs4_tcp_only"
       ],
@@ -20249,6 +20284,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 207.136.101.198:1701 E00DE29F04E89959B9D3612AD1BF5C40E4FF1719",
+      "host": "207.136.101.198",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 1701,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 208.69.78.161:39411 DF055EC9FCE35960CF9F6E005D224BDC70993BEC",
       "host": "208.69.78.161",
       "nin_flags": [],
@@ -22023,11 +22067,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 1999,
-    "candidates_probed": 393,
-    "candidates_scored": 1999,
+    "candidates_input": 2003,
+    "candidates_probed": 390,
+    "candidates_scored": 2003,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 612.127
+    "probe_elapsed_secs": 614.51
   }
 }
