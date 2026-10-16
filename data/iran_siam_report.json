@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-15T23:01:39.318220+00:00",
+  "generated_at": "2026-10-16T00:02:02.709274+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -3983,6 +3983,29 @@
     },
     {
       "bridge_line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.3",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "webtunnel_non_cdn_sni",
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.8718,
+      "layer_scores": {
+        "L1_packet_length": 1.0,
+        "L2_iat_timing": 0.95,
+        "L3_flow_features": 0.96,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.9,
+        "L6_alpn_anomaly": 0.96,
+        "L7_temporal": 0.95,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 7,
+      "port": 443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.4",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
         "webtunnel_non_cdn_sni",
@@ -44933,13 +44956,13 @@
     "COVERT": 994,
     "DETECTED": 488,
     "PHANTOM": 9,
-    "STEALTH": 502
+    "STEALTH": 503
   },
-  "total_scored": 1993,
+  "total_scored": 1994,
   "transport_summary": {
     "obfs4": 1054,
     "snowflake": 8,
     "vanilla": 488,
-    "webtunnel": 443
+    "webtunnel": 444
   }
 }
