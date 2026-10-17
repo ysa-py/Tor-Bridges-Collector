@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-17T15:16:46.159878463+00:00",
+  "generated_at": "2026-10-17T17:36:03.581432523+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 554,
-            "tested_failing": 13,
-            "tested_working": 298,
-            "untested (probe error)": 548,
+            "tcp_reachable_s1": 560,
+            "tested_failing": 181,
+            "tested_working": 299,
+            "untested (probe error)": 326,
             "untested (rate-limited)": 87,
-            "untested (tcp timeout)": 526
+            "untested (tcp timeout)": 575
           },
-          "stamped": 2026,
+          "stamped": 2028,
           "tiers": {
-            "tier_0_attempt": 1070,
-            "tier_1_tcp": 658,
-            "tier_2_pt_handshake": 298
+            "tier_0_attempt": 1066,
+            "tier_1_tcp": 663,
+            "tier_2_pt_handshake": 299
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 1,
-          "tested_global_webtunnel.txt": 157
+          "tested_global_webtunnel.txt": 158
         },
         "relay_evidence": {
-          "bridges_matched": 2026,
-          "relay_observations": 2046,
+          "bridges_matched": 2028,
+          "relay_observations": 2048,
           "s2plus_connected": 2,
-          "verification_upgrades": 1366
+          "verification_upgrades": 306
         },
         "webtunnel_probe": {
           "probed": 447,
-          "ws_101": 296,
-          "ws_fail": 151
+          "ws_101": 297,
+          "ws_fail": 150
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-17T15:16:13.100130604+00:00",
+      "started_at": "2026-10-17T17:35:31.401511345+00:00",
       "status": "ok"
     }
   ],
