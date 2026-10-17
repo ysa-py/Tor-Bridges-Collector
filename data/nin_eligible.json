@@ -18,7 +18,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-10-17T17:29:25.184890861Z",
+      "observed_at": "2026-10-17T18:06:07.122062496Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -45,7 +45,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-10-17T17:29:25.184904753Z",
+      "observed_at": "2026-10-17T18:06:07.122081511Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -72,7 +72,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-10-17T17:29:39.502908874Z",
+      "observed_at": "2026-10-17T18:06:21.965520967Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -102,7 +102,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-10-17T17:29:39.665288016Z",
+      "observed_at": "2026-10-17T18:06:22.179621469Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -132,7 +132,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-10-17T17:29:39.884798209Z",
+      "observed_at": "2026-10-17T18:06:22.42568134Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -162,7 +162,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-10-17T17:29:40.406653183Z",
+      "observed_at": "2026-10-17T18:06:22.600823985Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -192,7 +192,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-10-17T17:29:40.895573446Z",
+      "observed_at": "2026-10-17T18:06:22.821735401Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -222,47 +222,11 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-10-17T17:29:41.270624923Z",
+      "observed_at": "2026-10-17T18:06:23.178199159Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
       "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "asn": "AS14061",
-    "asn_country": "GB",
-    "asn_org": "AS14061 DigitalOcean, LLC",
-    "composite_score": 0.5906,
-    "composite_score_orig": 0.675,
-    "flags": [
-      "domain_front_cdn_ok"
-    ],
-    "host": "209.97.139.217",
-    "iran_status": "iran_unknown",
-    "line": "webtunnel 209.97.139.217:443 4F4571C3E0FD8D23C0C0AF76D63F7A5B08199A86 url=https://talnett.com/RLzWM1yDLRjlDiNxzdBQr8DR ver=0.0.4",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 443,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": true,
-    "transport": "webtunnel",
-    "verification": {
-      "detail": "TCP connection established; no transport handshake was performed",
-      "error_class": "",
-      "observed_at": "2026-10-17T17:29:26.798227497Z",
-      "probe_type": "tcp",
-      "rtt_ms": 109.661,
-      "stage": "S1",
-      "status": "connected",
       "vantage": {
         "region": null,
         "type": "github_actions_runner"
@@ -294,9 +258,45 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-10-17T17:29:26.801547564Z",
+      "observed_at": "2026-10-17T18:06:08.936802308Z",
       "probe_type": "tcp",
-      "rtt_ms": 115.638,
+      "rtt_ms": 77.537,
+      "stage": "S1",
+      "status": "connected",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "asn": "AS14061",
+    "asn_country": "GB",
+    "asn_org": "AS14061 DigitalOcean, LLC",
+    "composite_score": 0.5906,
+    "composite_score_orig": 0.675,
+    "flags": [
+      "domain_front_cdn_ok"
+    ],
+    "host": "209.97.139.217",
+    "iran_status": "iran_unknown",
+    "line": "webtunnel 209.97.139.217:443 4F4571C3E0FD8D23C0C0AF76D63F7A5B08199A86 url=https://talnett.com/RLzWM1yDLRjlDiNxzdBQr8DR ver=0.0.4",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 443,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": true,
+    "transport": "webtunnel",
+    "verification": {
+      "detail": "TCP connection established; no transport handshake was performed",
+      "error_class": "",
+      "observed_at": "2026-10-17T18:06:08.9474622Z",
+      "probe_type": "tcp",
+      "rtt_ms": 76.546,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -330,9 +330,9 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-10-17T17:29:26.807371748Z",
+      "observed_at": "2026-10-17T18:06:08.980791043Z",
       "probe_type": "tcp",
-      "rtt_ms": 109.386,
+      "rtt_ms": 100.932,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -360,7 +360,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-10-17T17:28:05.832881056Z",
+      "observed_at": "2026-10-17T18:04:45.433951878Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
