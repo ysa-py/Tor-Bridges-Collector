@@ -1273,6 +1273,14 @@
       "transport": "webtunnel"
     },
     {
+      "ip": "74.208.11.176",
+      "port": 443,
+      "raw": "webtunnel 74.208.11.176:443 8705A462A7F3AB0EB4548B4A2AD8EEEB1A202C2C url=https://capera.tel/H9AExWAVK0rWaHRuXZ8LZCb6 ver=0.0.7",
+      "sni": "capera.tel",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
       "ip": "77.236.211.162",
       "port": 443,
       "raw": "webtunnel 77.236.211.162:443 4723A337C3F108B96EF7429EC3DD96F3222B589D url=https://api.mittarovo.cz/5E8310CF0A ver=0.0.4",
@@ -1523,6 +1531,14 @@
     {
       "ip": "87.106.216.69",
       "port": 443,
+      "raw": "webtunnel 87.106.216.69:443 1098B4E153AB1666B4F63F48325A103FB005940F url=https://pod04.oneclickhost.eu/FeTyRXzPPAzwIjuxzWxwl09N ver=0.0.3",
+      "sni": "pod04.oneclickhost.eu",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "87.106.216.69",
+      "port": 443,
       "raw": "webtunnel 87.106.216.69:443 1098B4E153AB1666B4F63F48325A103FB005940F url=https://pod04.oneclickhost.eu/FeTyRXzPPAzwIjuxzWxwl09N ver=0.0.4",
       "sni": "pod04.oneclickhost.eu",
       "tier": "YELLOW",
@@ -1686,10 +1702,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-10-18T02:03:49.525568+00:00",
+  "generated_at": "2026-10-18T06:27:35.624765+00:00",
   "green_count": 9,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 210,
-  "yellow_count": 201
+  "total_bridges": 212,
+  "yellow_count": 203
 }

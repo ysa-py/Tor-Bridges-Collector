@@ -1849,6 +1849,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 74.208.11.176:443 8705A462A7F3AB0EB4548B4A2AD8EEEB1A202C2C url=https://capera.tel/H9AExWAVK0rWaHRuXZ8LZCb6 ver=0.0.7",
+      "host": "capera.tel",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 77.236.211.162:443 4723A337C3F108B96EF7429EC3DD96F3222B589D url=https://api.mittarovo.cz/5E8310CF0A ver=0.0.4",
       "host": "api.mittarovo.cz",
       "nin_flags": [
@@ -2211,6 +2223,18 @@
     {
       "bridge_line": "webtunnel 87.106.191.237:443 963668851C177DC162895A33F1473E32E1E4BE56 url=https://pod05.oneclickhost.eu/K5Fsvkz3SaWjVPm4i0vn5gIs ver=0.0.7",
       "host": "pod05.oneclickhost.eu",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel 87.106.216.69:443 1098B4E153AB1666B4F63F48325A103FB005940F url=https://pod04.oneclickhost.eu/FeTyRXzPPAzwIjuxzWxwl09N ver=0.0.3",
+      "host": "pod04.oneclickhost.eu",
       "nin_flags": [
         "webtunnel_cdn_fronted",
         "nin_port_open"
@@ -6446,6 +6470,18 @@
     {
       "bridge_line": "obfs4 185.177.207.146:8443 4EBA78385FCA62C8A26EDEEC6752068C676287F3 cert=IPU7h22MwNmvCogs3TrR4NO/RcIb9asRU0saVWfAPvBbWc1YALuHxDhOl5Sri2rZ7QhKNg iat-mode=0",
       "host": "185.177.207.146",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 185.177.207.151:8443 767334C91612327B92C01222CC810133BAA8B8A5 cert=HqgFdfhJrBZrNHBZnAKdpZdYw+VEeQvP1lp7VWKRQyRFEBhjGCFPhl8lmJTvu/vR7xY3Cw iat-mode=0",
+      "host": "185.177.207.151",
       "nin_flags": [
         "obfs4_tcp_only",
         "nin_port_open"
@@ -22432,11 +22468,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2035,
-    "candidates_probed": 393,
-    "candidates_scored": 2035,
+    "candidates_input": 2038,
+    "candidates_probed": 388,
+    "candidates_scored": 2038,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 616.644
+    "probe_elapsed_secs": 614.272
   }
 }
