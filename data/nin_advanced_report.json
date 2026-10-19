@@ -5533,6 +5533,30 @@
       "transport": "snowflake"
     },
     {
+      "bridge_line": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+      "host": "snowflake-broker.torproject.net",
+      "nin_flags": [
+        "snowflake_webrtc",
+        "nin_port_open"
+      ],
+      "nin_score": 0.6,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "snowflake"
+    },
+    {
+      "bridge_line": "snowflake 192.0.2.6:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+      "host": "snowflake-broker.torproject.net",
+      "nin_flags": [
+        "snowflake_webrtc",
+        "nin_port_open"
+      ],
+      "nin_score": 0.6,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "snowflake"
+    },
+    {
       "bridge_line": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
       "host": "1098762253.rsc.cdn77.org",
       "nin_flags": [
@@ -10775,6 +10799,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 157.90.18.58:9999 4747D5EB038771935A8BEEF1938959953B562634 cert=E9kqqm5BMViPCNAPUfo/0Kx2SF96bv58nAYml8HofiUqhwlqz82C9eI3fpbnqR0HB+FXfw iat-mode=0",
+      "host": "157.90.18.58",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9999,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 158.174.146.87:7800 B27592A9DA08DCB871F14F9247299F9FBA72D05F cert=g+x8k6Fn0V2zIESkJ05jWOANrEfj5T6HofdDcSfqqUGJGxqzjCZmt6R51yXbpz90JPS2OA iat-mode=0",
       "host": "158.174.146.87",
       "nin_flags": [
@@ -11024,6 +11059,17 @@
       ],
       "nin_score": 0.1,
       "port": 4443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 172.245.152.13:8847 DBC64CC458A0FC0FFDD8235474121B38372EFF94 cert=fBcoWMUkl8ZAoZPx2/3N2v1kTlRL9pc9auwJlEEYi3/B6eS0GXkgHH1BVeBEK6uYPBxRGQ iat-mode=2",
+      "host": "172.245.152.13",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 8847,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -12542,6 +12588,17 @@
       ],
       "nin_score": 0.1,
       "port": 9877,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 31.14.41.109:6000 A5B9A30C20C396AC7402BBEE1CA568D5BF2FBA99 cert=CWnSYfTtmvXNiZL24fxIkIxSEtKtlxgicOWa09nG6iIOuMU2duYcLmJKEe29d9VfPP0qNg iat-mode=0",
+      "host": "31.14.41.109",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 6000,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -22568,11 +22625,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2047,
+    "candidates_input": 2052,
     "candidates_probed": 392,
-    "candidates_scored": 2047,
+    "candidates_scored": 2052,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 615.971
+    "probe_elapsed_secs": 610.214
   }
 }

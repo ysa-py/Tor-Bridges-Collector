@@ -196,15 +196,27 @@
           "raw": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
           "tcp_reachable": false,
           "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
+        },
+        {
+          "health_score": 0.4,
+          "raw": "snowflake 192.0.2.6:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+          "tcp_reachable": false,
+          "transport": "snowflake"
         }
       ],
-      "candidates": 2,
+      "candidates": 4,
       "concentrated_failure": true,
       "currently_reachable": 0,
       "front_liveness_attempted_addresses": 1,
       "front_liveness_last_error_class": null,
       "front_liveness_tcp443": "reachable",
-      "mean_candidate_health": 0.0
+      "mean_candidate_health": 0.2
     },
     "www.phpmyadmin.net": {
       "advisory": "front verified reachable (direct TCP-443 connect succeeded); all candidates using it failed — bridge-side fault, not a front-level fault",
@@ -249,5 +261,5 @@
       "mean_candidate_health": 0.0
     }
   },
-  "generated_at": "2026-10-18T23:49:08.235245218+00:00"
+  "generated_at": "2026-10-19T00:24:16.413045592+00:00"
 }
