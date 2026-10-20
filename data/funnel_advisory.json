@@ -3,7 +3,7 @@
   "collection_mode": "live",
   "funnel": [
     {
-      "count": 22,
+      "count": 21,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
@@ -23,7 +23,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 535,
+      "count": 532,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -33,17 +33,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 893,
+      "count": 895,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 683,
+      "count": 685,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-20T19:01:56.796865903+00:00",
+  "generated_at": "2026-10-20T20:11:10.218046214+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,25 +78,25 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 683,
-    "iran_likely_working_obfs4.txt": 336,
+    "iran_likely_working_all.txt": 685,
+    "iran_likely_working_obfs4.txt": 335,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 154,
-    "iran_likely_working_webtunnel.txt": 193,
+    "iran_likely_working_vanilla.txt": 156,
+    "iran_likely_working_webtunnel.txt": 194,
     "obfs4.txt": 764,
-    "obfs4_tested.txt": 336,
-    "tested_global_obfs4.txt": 336,
-    "tested_global_vanilla.txt": 154,
-    "tested_global_webtunnel.txt": 193,
+    "obfs4_tested.txt": 335,
+    "tested_global_obfs4.txt": 335,
+    "tested_global_vanilla.txt": 156,
+    "tested_global_webtunnel.txt": 194,
     "vanilla.txt": 488,
-    "vanilla_tested.txt": 154,
+    "vanilla_tested.txt": 156,
     "webtunnel.txt": 206,
     "webtunnel_ipv6.txt": 72
   },
   "relay_coverage": {
     "candidates": 1895,
     "relay_observations": 2494,
-    "relay_success": 535,
+    "relay_success": 532,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
@@ -152,7 +152,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 4,
+        "fetched_lines": 3,
         "requests": 3,
         "responses_ok": 3,
         "source": "moat_settings_single_transport"
@@ -187,7 +187,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2213,
+        "fetched_lines": 2215,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
