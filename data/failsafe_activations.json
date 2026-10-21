@@ -1,22 +1,6 @@
 {
   "activations": [
     {
-      "file": "meek_lite_72h_ipv6.txt",
-      "lines": 3,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_projection",
-      "timestamp": "2026-10-06T05:13:35.037821751+00:00",
-      "transport": "meek_lite"
-    },
-    {
-      "file": "meek_lite_ipv6_tested.txt",
-      "lines": 3,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_ipv6_projection",
-      "timestamp": "2026-10-06T05:13:35.045507697+00:00",
-      "transport": "meek_lite"
-    },
-    {
       "file": "conjure_72h.txt",
       "lines": 1,
       "reason": "empty_or_missing_projection",
@@ -3724,8 +3708,23 @@
       "reason": "empty_transport_projection",
       "timestamp": "2026-10-21T01:31:45.559814411+00:00",
       "transport": "meek-azure"
+    },
+    {
+      "file": "meek_lite.txt",
+      "lines": 1,
+      "reason": "empty_or_missing_projection",
+      "timestamp": "2026-10-21T01:49:10.186853095+00:00",
+      "transport": "meek_lite"
+    },
+    {
+      "file": "meek-azure.txt",
+      "lines": 1,
+      "producer": "bridge_publication",
+      "reason": "empty_transport_projection",
+      "timestamp": "2026-10-21T02:12:37.469195610+00:00",
+      "transport": "meek-azure"
     }
   ],
-  "generated_at": "2026-10-21T01:31:45.559830605+00:00",
+  "generated_at": "2026-10-21T02:12:37.469217463+00:00",
   "note": "Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data."
 }
