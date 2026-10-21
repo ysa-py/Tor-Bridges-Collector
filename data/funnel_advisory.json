@@ -23,7 +23,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 535,
+      "count": 534,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -33,17 +33,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 894,
+      "count": 897,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 688,
+      "count": 687,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-21T18:15:05.332918466+00:00",
+  "generated_at": "2026-10-21T19:16:11.662757793+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,25 +78,25 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 688,
+    "iran_likely_working_all.txt": 687,
     "iran_likely_working_obfs4.txt": 339,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 154,
-    "iran_likely_working_webtunnel.txt": 195,
+    "iran_likely_working_vanilla.txt": 152,
+    "iran_likely_working_webtunnel.txt": 196,
     "obfs4.txt": 772,
     "obfs4_tested.txt": 339,
     "tested_global_obfs4.txt": 339,
-    "tested_global_vanilla.txt": 154,
-    "tested_global_webtunnel.txt": 195,
+    "tested_global_vanilla.txt": 152,
+    "tested_global_webtunnel.txt": 196,
     "vanilla.txt": 488,
-    "vanilla_tested.txt": 154,
+    "vanilla_tested.txt": 152,
     "webtunnel.txt": 207,
     "webtunnel_ipv6.txt": 74
   },
   "relay_coverage": {
     "candidates": 1906,
     "relay_observations": 2504,
-    "relay_success": 535,
+    "relay_success": 534,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
