@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-21T01:59:04.741094635+00:00",
+  "generated_at": "2026-10-21T06:56:29.621406369+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 604,
-            "tested_failing": 176,
-            "tested_working": 296,
+            "tcp_reachable_s1": 595,
+            "tested_failing": 177,
+            "tested_working": 304,
             "untested (probe error)": 328,
-            "untested (rate-limited)": 94,
-            "untested (tcp timeout)": 580
+            "untested (rate-limited)": 93,
+            "untested (tcp timeout)": 584
           },
-          "stamped": 2078,
+          "stamped": 2081,
           "tiers": {
-            "tier_0_attempt": 1070,
-            "tier_1_tcp": 712,
-            "tier_2_pt_handshake": 296
+            "tier_0_attempt": 1075,
+            "tier_1_tcp": 702,
+            "tier_2_pt_handshake": 304
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 1,
-          "tested_global_webtunnel.txt": 150
+          "tested_global_webtunnel.txt": 159
         },
         "relay_evidence": {
-          "bridges_matched": 2078,
-          "relay_observations": 2101,
+          "bridges_matched": 2081,
+          "relay_observations": 2104,
           "s2plus_connected": 3,
-          "verification_upgrades": 315
+          "verification_upgrades": 316
         },
         "webtunnel_probe": {
-          "probed": 455,
-          "ws_101": 293,
-          "ws_fail": 162
+          "probed": 456,
+          "ws_101": 301,
+          "ws_fail": 155
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-21T01:58:34.090512382+00:00",
+      "started_at": "2026-10-21T06:55:54.827612536+00:00",
       "status": "ok"
     }
   ],
