@@ -3769,6 +3769,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:65a8:c789:310f:6d00:60be:b447]:443 DBF8A0FEBBC698A086B0C758407012CE4CD27122 url=https://wtrelay7.duckdns.org/f7Qm2xV9pL4tR8wZ3cN6bY1h ver=0.0.2",
+      "host": "wtrelay7.duckdns.org",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:67ae:eddf:66cd:cbd0:eab4:8143]:443 439C2F45FA99C9255F079ACBF59060D3EC2C3637 url=https://push.hieronymus.uk/sheflashedthetorchasasignal ver=0.0.4",
       "host": "push.hieronymus.uk",
       "nin_flags": [
@@ -9713,17 +9725,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 46.243.1.156:6889 5D9EE7AA730F39263D04C90AAF23C66AB013E1C0",
-      "host": "46.243.1.156",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 6889,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 47.210.17.65:9001 B309CF46481BBAE946ED595B1648A12A4D67DCD3",
       "host": "47.210.17.65",
       "nin_flags": [
@@ -9984,6 +9985,17 @@
       ],
       "nin_score": 0.1,
       "port": 50164,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 103.25.182.180:9292 6DEFBF5DA34B182D5B7A91EB5E79A3EA30CBE8A9 cert=njouPrb2E24qty2a0YL+uChP9tI4uu6lAsv52ASFtyUdPt8g/y5edZFgR5Z20SObausbUg iat-mode=0",
+      "host": "103.25.182.180",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9292,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -10963,6 +10975,17 @@
       ],
       "nin_score": 0.1,
       "port": 5846,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 159.69.190.215:41417 29800B2D04F745E7B8826C377792EF626AAC34CC cert=7QWGquAC+jKXKvDMX+c3xLSVsT5b4EhGRYI+7c/nImIytadq+1edbDTHeSEmQ1AOD0ETOw iat-mode=0",
+      "host": "159.69.190.215",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 41417,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -21467,6 +21490,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 46.243.1.156:6889 5D9EE7AA730F39263D04C90AAF23C66AB013E1C0",
+      "host": "46.243.1.156",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 6889,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 46.38.240.142:31415 85DDB88F43F5F233BEA75246A2D693388BC2608B",
       "host": "46.38.240.142",
       "nin_flags": [],
@@ -22863,11 +22895,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2073,
-    "candidates_probed": 395,
-    "candidates_scored": 2073,
+    "candidates_input": 2076,
+    "candidates_probed": 393,
+    "candidates_scored": 2076,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 616.449
+    "probe_elapsed_secs": 613.572
   }
 }

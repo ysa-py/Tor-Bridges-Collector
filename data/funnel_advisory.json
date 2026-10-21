@@ -8,53 +8,53 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2073,
+      "count": 2076,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1897,
+      "count": 1900,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 2496,
+      "count": 2499,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 534,
+      "count": 535,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 2073,
+      "count": 2076,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 896,
+      "count": 897,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 687,
+      "count": 692,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-20T23:31:03.665944765+00:00",
+  "generated_at": "2026-10-21T01:31:50.989691318+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
-      "DOCUMENTATION_RFC3849_2001_DB8": 248,
+      "DOCUMENTATION_RFC3849_2001_DB8": 249,
       "TEST_NET_1_RFC5737": 10
     },
     "by_transport": {
       "meek-azure": 2,
       "snowflake": 8,
-      "webtunnel": 248
+      "webtunnel": 249
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
     "samples": [
@@ -67,7 +67,7 @@
       "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
       "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478"
     ],
-    "total_non_routable": 258
+    "total_non_routable": 259
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -78,33 +78,33 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 687,
-    "iran_likely_working_obfs4.txt": 338,
+    "iran_likely_working_all.txt": 692,
+    "iran_likely_working_obfs4.txt": 339,
     "iran_likely_working_snowflake.txt": 0,
     "iran_likely_working_vanilla.txt": 155,
-    "iran_likely_working_webtunnel.txt": 194,
-    "obfs4.txt": 766,
-    "obfs4_tested.txt": 338,
-    "tested_global_obfs4.txt": 338,
+    "iran_likely_working_webtunnel.txt": 198,
+    "obfs4.txt": 768,
+    "obfs4_tested.txt": 339,
+    "tested_global_obfs4.txt": 339,
     "tested_global_vanilla.txt": 155,
-    "tested_global_webtunnel.txt": 194,
+    "tested_global_webtunnel.txt": 198,
     "vanilla.txt": 488,
     "vanilla_tested.txt": 155,
     "webtunnel.txt": 206,
-    "webtunnel_ipv6.txt": 72
+    "webtunnel_ipv6.txt": 73
   },
   "relay_coverage": {
-    "candidates": 1897,
-    "relay_observations": 2496,
-    "relay_success": 534,
+    "candidates": 1900,
+    "relay_observations": 2499,
+    "relay_success": 535,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
       "snowflake": 8,
-      "webtunnel": 72
+      "webtunnel": 73
     },
-    "unobserved_candidates": 82,
-    "unobserved_non_routable": 82,
+    "unobserved_candidates": 83,
+    "unobserved_non_routable": 83,
     "unobserved_other": 0
   },
   "relay_retry_plan": {
@@ -125,7 +125,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 82
+    "unobserved_candidates": 83
   },
   "sources": {
     "sources": [
@@ -1308,6 +1308,13 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "wtrelay7.duckdns.org",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "www.cafe-kantholz.de",
         "observations": 4,
@@ -1342,15 +1349,15 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 72,
+    "fronts_with_placeholder_endpoints": 73,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 278,
+    "lines_examined": 279,
     "summary": {
       "degraded": 0,
       "healthy": 0,
       "no_evidence": 1,
-      "unreachable_from_relay": 162
+      "unreachable_from_relay": 163
     },
-    "unique_fronts": 163
+    "unique_fronts": 164
   }
 }
