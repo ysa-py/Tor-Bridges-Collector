@@ -1009,6 +1009,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.4",
+      "host": "anoni.net",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
       "host": "anoni.net",
       "nin_flags": [
@@ -9750,17 +9762,6 @@
       ],
       "nin_score": 0.15,
       "port": 55125,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 37.120.97.194:9001 AE830A2FAD68B82FE906E204FE5C8610FC9F9FE0",
-      "host": "37.120.97.194",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -21435,6 +21436,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 37.120.97.194:9001 AE830A2FAD68B82FE906E204FE5C8610FC9F9FE0",
+      "host": "37.120.97.194",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9001,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 37.221.64.195:9001 B679D14EAED9B74543048CB7C9C8184596B3959F",
       "host": "37.221.64.195",
       "nin_flags": [],
@@ -23065,11 +23075,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2091,
+    "candidates_input": 2092,
     "candidates_probed": 395,
-    "candidates_scored": 2091,
+    "candidates_scored": 2092,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 614.852
+    "probe_elapsed_secs": 615.176
   }
 }
