@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-22T18:58:02.091304+00:00",
+  "generated_at": "2026-10-22T19:53:47.765551+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -4029,6 +4029,29 @@
     },
     {
       "bridge_line": "webtunnel 77.237.246.219:443 337F12771B8FBA072121C0978B8D5722B567609B url=https://www.cafe-kantholz.de/LceovFqcXy92Ji6Gx0rrUmmB ver=0.0.6",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "webtunnel_non_cdn_sni",
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.8718,
+      "layer_scores": {
+        "L1_packet_length": 1.0,
+        "L2_iat_timing": 0.95,
+        "L3_flow_features": 0.96,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.9,
+        "L6_alpn_anomaly": 0.96,
+        "L7_temporal": 0.95,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 7,
+      "port": 443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel 79.116.1.69:443 98422E9D1648FFDB8F16C06CF58CD64B6C03A003 url=https://bridge-es.jmrp.io/hzry0yMJazasJuZZP09uCUtn ver=0.0.4",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
         "webtunnel_non_cdn_sni",
@@ -47318,13 +47341,13 @@
     "COVERT": 1071,
     "DETECTED": 489,
     "PHANTOM": 11,
-    "STEALTH": 525
+    "STEALTH": 526
   },
-  "total_scored": 2096,
+  "total_scored": 2097,
   "transport_summary": {
     "obfs4": 1134,
     "snowflake": 10,
     "vanilla": 489,
-    "webtunnel": 463
+    "webtunnel": 464
   }
 }
