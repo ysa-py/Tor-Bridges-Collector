@@ -8,42 +8,42 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2121,
+      "count": 2123,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 1944,
+      "count": 1946,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 2544,
+      "count": 2546,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 560,
+      "count": 561,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 2121,
+      "count": 2123,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 926,
+      "count": 925,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 714,
+      "count": 711,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-24T08:09:30.816036991+00:00",
+  "generated_at": "2026-10-24T11:45:30.670088329+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,25 +78,25 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 714,
+    "iran_likely_working_all.txt": 711,
     "iran_likely_working_obfs4.txt": 361,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 155,
-    "iran_likely_working_webtunnel.txt": 198,
-    "obfs4.txt": 804,
+    "iran_likely_working_vanilla.txt": 154,
+    "iran_likely_working_webtunnel.txt": 196,
+    "obfs4.txt": 806,
     "obfs4_tested.txt": 361,
     "tested_global_obfs4.txt": 361,
-    "tested_global_vanilla.txt": 155,
-    "tested_global_webtunnel.txt": 198,
+    "tested_global_vanilla.txt": 154,
+    "tested_global_webtunnel.txt": 196,
     "vanilla.txt": 490,
-    "vanilla_tested.txt": 155,
+    "vanilla_tested.txt": 154,
     "webtunnel.txt": 211,
     "webtunnel_ipv6.txt": 74
   },
   "relay_coverage": {
-    "candidates": 1944,
-    "relay_observations": 2544,
-    "relay_success": 560,
+    "candidates": 1946,
+    "relay_observations": 2546,
+    "relay_success": 561,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
@@ -187,10 +187,10 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2222,
+        "fetched_lines": 2226,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
-        "responses_ok": 6,
+        "responses_ok": 9,
         "source": "community_mirror:center2055/OnionHop-Bridges-Collector"
       }
     ]
