@@ -1693,6 +1693,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 45.142.195.125:443 A310B68A6C1D1DBDD374B1B641E9A122109477DB url=https://cdnspace.net/ovVRTrs9IcHUv2uQBPa4cvKX ver=0.0.5",
+      "host": "cdnspace.net",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 46.144.207.177:443 F76C85011FD8C113AA00960BD9FC7F5B66F726A2 url=https://disobey.net/vM8i19mU4gvHOzRm33DaBNuM ver=0.0.2",
       "host": "disobey.net",
       "nin_flags": [
@@ -7196,6 +7208,18 @@
       ],
       "nin_score": 0.25,
       "port": 8080,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 212.227.74.93:443 8EB5D953DB159D6DF7B634BE9DCDBB99D4B545B8 cert=gb8NA/KwGahJMmEV0jw7plIJiqJNcA0Src0giFwHNOmhu8++CRVO3sEsy4M2+AxvmpqiEQ iat-mode=0",
+      "host": "212.227.74.93",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 443,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -13669,6 +13693,17 @@
       ],
       "nin_score": 0.1,
       "port": 25565,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 47.151.5.40:42786 9EB94D29047DBAEFF56035353D4306B732C79F05 cert=aLqmhaEAZHc3TuFdO7tq44Pf+9hSFa2dWVSl2RsqRL7qjKlWXNsXGYt7k8z7IQ5J9JTPEQ iat-mode=0",
+      "host": "47.151.5.40",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 42786,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -23506,11 +23541,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2130,
-    "candidates_probed": 395,
-    "candidates_scored": 2130,
+    "candidates_input": 2133,
+    "candidates_probed": 391,
+    "candidates_scored": 2133,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 617.012
+    "probe_elapsed_secs": 612.891
   }
 }
