@@ -8592,6 +8592,18 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 96.227.109.89:8443 ABDC9FB1B7E288B4895ED82707A8CDD63BFAD23F cert=y0DTT6AH6DktRQ/XnsSJZB489ixioSVYmSuJyxhMABQEWUYrkGV1689AohQOxwOdIiYOAA iat-mode=0",
+      "host": "96.227.109.89",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 98.55.160.215:443 934416970936B0A1FDA3CEFCC1021806FDACE6B7 cert=GtEUTRcF1Ocmp8a0bn/6obJ5w+CfRgq2hP4K5Dy5+4qyrTbBs/ZF5uTjfeKHi5sgqACvaw iat-mode=0",
       "host": "98.55.160.215",
       "nin_flags": [
@@ -9513,6 +9525,17 @@
       ],
       "nin_score": 0.15,
       "port": 23451,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 185.112.147.158:19001 F3E390221D8384F8AD99783DAC6749338D2A7433",
+      "host": "185.112.147.158",
+      "nin_flags": [
+        "tcp_alive"
+      ],
+      "nin_score": 0.15,
+      "port": 19001,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -21209,15 +21232,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 185.112.147.158:19001 F3E390221D8384F8AD99783DAC6749338D2A7433",
-      "host": "185.112.147.158",
-      "nin_flags": [],
-      "nin_score": 0.05,
-      "port": 19001,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 185.132.53.3:9001 47559C9D31B6F8C8E7722827EE432CF8DA935B4D",
       "host": "185.132.53.3",
       "nin_flags": [],
@@ -23541,11 +23555,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2133,
-    "candidates_probed": 395,
-    "candidates_scored": 2133,
+    "candidates_input": 2134,
+    "candidates_probed": 392,
+    "candidates_scored": 2134,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 615.48
+    "probe_elapsed_secs": 609.64
   }
 }
