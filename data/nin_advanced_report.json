@@ -1033,6 +1033,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 173.249.203.13:443 082B13E0A1E5D8D2585B6C84914B1810B7E884EC url=https://bootstrap.gosuda.org/s33gf0iiidqo9lacdqzbjgy6 ver=0.0.7",
+      "host": "bootstrap.gosuda.org",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 185.195.236.2:443 5158AFC892367D7E33A80759289BBB03C4B05AFE url=https://magicgreenforest.de/itwouldbeawfuliftheearthexploded_itssobeautiful ver=0.0.5",
       "host": "magicgreenforest.de",
       "nin_flags": [
@@ -15992,6 +16004,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 87.151.149.119:27015 87D694EB41A19275D726D188A5411E85BA9D3BA2 cert=RXxFEnSgq4/f4glsVtmXaerRaMJaHrh2bvEzjQPQVX+onFY/XGb6dPzVZOV/QwxP7pQwfw iat-mode=0",
+      "host": "87.151.149.119",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 27015,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 87.152.19.228:1059 EB1CB0138DF8D78A1B9C63148F232B88802BA486 cert=5r1vnr59DBIYmkhmvlynoqHSrwK/BCS5/MPNUYs2jmSpMrNeh9eSfdoFelzQgHCcWxWJHw iat-mode=0",
       "host": "87.152.19.228",
       "nin_flags": [
@@ -23821,11 +23844,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2158,
-    "candidates_probed": 393,
-    "candidates_scored": 2158,
+    "candidates_input": 2160,
+    "candidates_probed": 391,
+    "candidates_scored": 2160,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 612.073
+    "probe_elapsed_secs": 615.964
   }
 }

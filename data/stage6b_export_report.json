@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-27T00:27:51.008005383+00:00",
+  "generated_at": "2026-10-27T01:07:45.805004075+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 635,
-            "tested_failing": 64,
-            "tested_working": 309,
-            "untested (probe error)": 492,
-            "untested (rate-limited)": 98,
-            "untested (tcp timeout)": 560
+            "tcp_reachable_s1": 636,
+            "tested_failing": 69,
+            "tested_working": 310,
+            "untested (probe error)": 484,
+            "untested (rate-limited)": 97,
+            "untested (tcp timeout)": 564
           },
-          "stamped": 2158,
+          "stamped": 2160,
           "tiers": {
-            "tier_0_attempt": 1101,
+            "tier_0_attempt": 1102,
             "tier_1_tcp": 748,
-            "tier_2_pt_handshake": 309
+            "tier_2_pt_handshake": 310
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 1,
-          "tested_global_webtunnel.txt": 152
+          "tested_global_webtunnel.txt": 157
         },
         "relay_evidence": {
-          "bridges_matched": 2158,
-          "relay_observations": 2181,
+          "bridges_matched": 2160,
+          "relay_observations": 2183,
           "s2plus_connected": 3,
-          "verification_upgrades": 1002
+          "verification_upgrades": 959
         },
         "webtunnel_probe": {
-          "probed": 467,
-          "ws_101": 306,
+          "probed": 468,
+          "ws_101": 307,
           "ws_fail": 161
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-27T00:27:20.642306572+00:00",
+      "started_at": "2026-10-27T01:07:12.965855618+00:00",
       "status": "ok"
     }
   ],
