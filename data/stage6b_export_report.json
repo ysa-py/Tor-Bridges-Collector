@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-27T01:07:45.805004075+00:00",
+  "generated_at": "2026-10-27T05:57:25.750188010+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 636,
-            "tested_failing": 69,
-            "tested_working": 310,
-            "untested (probe error)": 484,
-            "untested (rate-limited)": 97,
-            "untested (tcp timeout)": 564
+            "tcp_reachable_s1": 635,
+            "tested_failing": 181,
+            "tested_working": 307,
+            "untested (probe error)": 336,
+            "untested (rate-limited)": 98,
+            "untested (tcp timeout)": 604
           },
-          "stamped": 2160,
+          "stamped": 2161,
           "tiers": {
-            "tier_0_attempt": 1102,
-            "tier_1_tcp": 748,
-            "tier_2_pt_handshake": 310
+            "tier_0_attempt": 1105,
+            "tier_1_tcp": 749,
+            "tier_2_pt_handshake": 307
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 1,
-          "tested_global_webtunnel.txt": 157
+          "tested_global_webtunnel.txt": 156
         },
         "relay_evidence": {
-          "bridges_matched": 2160,
-          "relay_observations": 2183,
+          "bridges_matched": 2161,
+          "relay_observations": 2184,
           "s2plus_connected": 3,
-          "verification_upgrades": 959
+          "verification_upgrades": 323
         },
         "webtunnel_probe": {
           "probed": 468,
-          "ws_101": 307,
-          "ws_fail": 161
+          "ws_101": 304,
+          "ws_fail": 164
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-27T01:07:12.965855618+00:00",
+      "started_at": "2026-10-27T05:56:53.731460612+00:00",
       "status": "ok"
     }
   ],
