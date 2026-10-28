@@ -3073,6 +3073,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:2ce3:75bd:2da:f69f:d97a:7874]:443 CFB5DD5A5CC4AAB0435C1C5B27D46C0E2AB54C6E url=https://sexgrueselbox.ch/Tha8Iequ4Goo9ku ver=0.0.7",
+      "host": "sexgrueselbox.ch",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:2d5a:d621:5449:a5b7:2aeb:152a]:443 5CF46063D197073DBAE982D7E953738766799D0E url=https://s.dont.icu ver=0.0.1",
       "host": "s.dont.icu",
       "nin_flags": [
@@ -11969,6 +11981,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 185.122.47.254:35670 41FFFFFA47554E88CA357310B09BB1E25BF297A6 cert=CpohIiK1Fe5UCND1DN9RvztPEuJVWn7FI/8LiiLfF/ag1HnThSikabvkFKdsv0w3ZvT6QQ iat-mode=0",
+      "host": "185.122.47.254",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 35670,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 185.152.116.78:9002 AB2BF8399CB98F9A44B74185DB64AEBE96781969 cert=ZhSBWRcGUbeSCYnWmwPkvGgc/cQEVViFzTMXCpn0rW+MHCF+DnE3T01xorQ/aggtKnYdBA iat-mode=0",
       "host": "185.152.116.78",
       "nin_flags": [
@@ -13626,6 +13649,17 @@
       ],
       "nin_score": 0.1,
       "port": 9130,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 45.144.140.252:35670 41FFFFFA47554E88CA357310B09BB1E25BF297A6 cert=CpohIiK1Fe5UCND1DN9RvztPEuJVWn7FI/8LiiLfF/ag1HnThSikabvkFKdsv0w3ZvT6QQ iat-mode=0",
+      "host": "45.144.140.252",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 35670,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -21773,6 +21807,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 185.192.124.64:34843 978180445CF4B1748DBD2FEE550F93BE8C117AF9",
+      "host": "185.192.124.64",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 34843,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 185.218.137.172:40093 1E242C749707B4A68A269F0D31311CE36CDFEC28",
       "host": "185.218.137.172",
       "nin_flags": [],
@@ -23934,11 +23977,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2168,
-    "candidates_probed": 391,
-    "candidates_scored": 2168,
+    "candidates_input": 2172,
+    "candidates_probed": 392,
+    "candidates_scored": 2172,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 610.876
+    "probe_elapsed_secs": 613.173
   }
 }
