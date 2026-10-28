@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-10-28T06:13:11.873520663+00:00",
+  "generated_at": "2026-10-28T06:52:59.374292077+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 646,
-            "tested_failing": 71,
-            "tested_working": 299,
-            "untested (probe error)": 477,
-            "untested (rate-limited)": 102,
-            "untested (tcp timeout)": 582
+            "tcp_reachable_s1": 639,
+            "tested_failing": 77,
+            "tested_working": 314,
+            "untested (probe error)": 469,
+            "untested (rate-limited)": 100,
+            "untested (tcp timeout)": 581
           },
-          "stamped": 2177,
+          "stamped": 2180,
           "tiers": {
-            "tier_0_attempt": 1117,
-            "tier_1_tcp": 761,
-            "tier_2_pt_handshake": 299
+            "tier_0_attempt": 1115,
+            "tier_1_tcp": 751,
+            "tier_2_pt_handshake": 314
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 1,
-          "tested_global_webtunnel.txt": 150
+          "tested_global_webtunnel.txt": 159
         },
         "relay_evidence": {
-          "bridges_matched": 2177,
-          "relay_observations": 2200,
+          "bridges_matched": 2180,
+          "relay_observations": 2203,
           "s2plus_connected": 3,
-          "verification_upgrades": 967
+          "verification_upgrades": 917
         },
         "webtunnel_probe": {
-          "probed": 470,
-          "ws_101": 296,
-          "ws_fail": 174
+          "probed": 471,
+          "ws_101": 311,
+          "ws_fail": 160
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-10-28T06:12:36.882227777+00:00",
+      "started_at": "2026-10-28T06:52:25.571779954+00:00",
       "status": "ok"
     }
   ],
