@@ -10433,6 +10433,17 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 83.151.206.122:9001 9E8B19CA2B5D504668242DB2B1D20BAB5DC6744E",
+      "host": "83.151.206.122",
+      "nin_flags": [
+        "tcp_alive"
+      ],
+      "nin_score": 0.15,
+      "port": 9001,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "obfs4 100.8.170.63:50164 FBA329BA4F5FE648456C3A28BBAA3C7EBD118E08 cert=DKA6xS0N6c4I1CFVmWc/qgAEhPBgR/dPQyXhbkjt082Ka2xmq1pwSUpCPt626uuKW2Z1TA iat-mode=0",
       "host": "100.8.170.63",
       "nin_flags": [
@@ -11551,6 +11562,17 @@
       ],
       "nin_score": 0.1,
       "port": 9443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 160.187.130.89:9002 9FB6BE28AFDA5484D1E8FA30F7B3367FB97A00D3 cert=gpJOgGCLo8FGjbAY9m8wXRUiT2xqDBv0y5GCWdbMWFF5JwDq0gWAIQZyp6QuXI6Y+fSgPg iat-mode=0",
+      "host": "160.187.130.89",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9002,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -14477,6 +14499,17 @@
       ],
       "nin_score": 0.1,
       "port": 9443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 57.129.91.195:62688 CA286BA38149ED2272B8D2FD2FAE60644D853B4C cert=CpfkBySCI0mOZCJVwAvluZYy2Dgsvz1cNBJgBOFSEs6FCBCjFFHhGyhAM+7oPFeoOfDBLA iat-mode=0",
+      "host": "57.129.91.195",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 62688,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -23327,15 +23360,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 83.151.206.122:9001 9E8B19CA2B5D504668242DB2B1D20BAB5DC6744E",
-      "host": "83.151.206.122",
-      "nin_flags": [],
-      "nin_score": 0.05,
-      "port": 9001,
-      "tcp_reachable": false,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 83.202.181.15:9111 352A84CCDDDDE9DC0D29B70C81103402F172B42E",
       "host": "83.202.181.15",
       "nin_flags": [],
@@ -24156,11 +24180,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2188,
-    "candidates_probed": 388,
-    "candidates_scored": 2188,
+    "candidates_input": 2190,
+    "candidates_probed": 391,
+    "candidates_scored": 2190,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 610.436
+    "probe_elapsed_secs": 610.644
   }
 }
