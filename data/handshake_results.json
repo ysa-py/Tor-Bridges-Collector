@@ -605,7 +605,7 @@
     "line": "obfs4 103.17.153.51:443 2FA8E2BF12884D62728BF3186ACF9762E9A9B310 cert=xaX5JDYbIYSHoJxDtJ3HoMsCfWB4MD0R/Ye+8VwCthtafATk1OHTS0aZ7isGaPevySIxeA iat-mode=0",
     "observed_at": "2026-10-30T03:19:32.080245Z",
     "probe_type": "obfs4-framing",
-    "rtt_ms": 236.0,
+    "rtt_ms": 285.0,
     "source": "handshake-probe",
     "stage": "S3",
     "status": "connected",
@@ -995,7 +995,7 @@
     "line": "obfs4 158.69.55.8:2024 22F0CA73A0E39C7A4198454C2AEC99E311237F5F cert=MTQVuueo3gKDZljyb5xvr6Cq4BisSHew/HKarStz4yfiUVL0Zr0/wGt0V6pj7Mwfk5kWXg iat-mode=2",
     "observed_at": "2026-10-30T03:19:32.540397Z",
     "probe_type": "obfs4-framing",
-    "rtt_ms": 185.0,
+    "rtt_ms": 95.0,
     "source": "handshake-probe",
     "stage": "S3",
     "status": "connected",
@@ -1005,44 +1005,14 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
+    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 104.26.12.124:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
     "observed_at": "2026-10-30T03:19:32.563226Z",
     "probe_type": "websocket-101",
     "rtt_ms": 466.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 31.19.54.209:55125 99FE2D1CECD0ECE7905C21C78FC1880B087E33B8",
-    "observed_at": "2026-10-30T02:35:10.724216Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 403.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 193.182.111.126:42888 6834AC6E3E0E1B668C163F062F57ACE23D32C708",
-    "observed_at": "2026-10-30T02:35:10.745043Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 419.0,
-    "source": "handshake-probe",
-    "stage": "S3",
+    "stage": "S2",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -5317,8 +5287,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5932,8 +5902,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5947,8 +5917,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -6007,8 +5977,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
