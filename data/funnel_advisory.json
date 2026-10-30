@@ -23,7 +23,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 586,
+      "count": 575,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -33,17 +33,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 957,
+      "count": 956,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 732,
+      "count": 736,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-30T17:17:35.294481823+00:00",
+  "generated_at": "2026-10-30T21:24:11.690720855+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,25 +78,25 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 732,
-    "iran_likely_working_obfs4.txt": 390,
+    "iran_likely_working_all.txt": 736,
+    "iran_likely_working_obfs4.txt": 388,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 147,
-    "iran_likely_working_webtunnel.txt": 195,
+    "iran_likely_working_vanilla.txt": 146,
+    "iran_likely_working_webtunnel.txt": 202,
     "obfs4.txt": 862,
-    "obfs4_tested.txt": 390,
-    "tested_global_obfs4.txt": 390,
-    "tested_global_vanilla.txt": 147,
-    "tested_global_webtunnel.txt": 195,
+    "obfs4_tested.txt": 388,
+    "tested_global_obfs4.txt": 388,
+    "tested_global_vanilla.txt": 146,
+    "tested_global_webtunnel.txt": 202,
     "vanilla.txt": 493,
-    "vanilla_tested.txt": 147,
+    "vanilla_tested.txt": 146,
     "webtunnel.txt": 219,
     "webtunnel_ipv6.txt": 78
   },
   "relay_coverage": {
     "candidates": 2025,
     "relay_observations": 2625,
-    "relay_success": 586,
+    "relay_success": 575,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
