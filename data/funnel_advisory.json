@@ -8,17 +8,17 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2206,
+      "count": 2209,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 2030,
+      "count": 2033,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 2629,
+      "count": 2632,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
@@ -28,7 +28,7 @@
       "stage": "relay_success"
     },
     {
-      "count": 2206,
+      "count": 2209,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-10-31T01:27:15.152768825+00:00",
+  "generated_at": "2026-10-31T02:15:35.977113621+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -81,22 +81,22 @@
     "iran_likely_working_all.txt": 735,
     "iran_likely_working_obfs4.txt": 384,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 149,
-    "iran_likely_working_webtunnel.txt": 202,
-    "obfs4.txt": 864,
-    "obfs4_tested.txt": 384,
-    "tested_global_obfs4.txt": 384,
-    "tested_global_vanilla.txt": 149,
-    "tested_global_webtunnel.txt": 202,
+    "iran_likely_working_vanilla.txt": 150,
+    "iran_likely_working_webtunnel.txt": 196,
+    "obfs4.txt": 866,
+    "obfs4_tested.txt": 386,
+    "tested_global_obfs4.txt": 386,
+    "tested_global_vanilla.txt": 150,
+    "tested_global_webtunnel.txt": 196,
     "vanilla.txt": 494,
-    "vanilla_tested.txt": 149,
+    "vanilla_tested.txt": 150,
     "webtunnel.txt": 221,
-    "webtunnel_ipv6.txt": 78
+    "webtunnel_ipv6.txt": 79
   },
   "relay_coverage": {
-    "candidates": 2030,
-    "relay_observations": 2629,
-    "relay_success": 577,
+    "candidates": 2033,
+    "relay_observations": 2632,
+    "relay_success": 580,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
@@ -104,8 +104,8 @@
       "webtunnel": 79
     },
     "unobserved_candidates": 89,
-    "unobserved_non_routable": 88,
-    "unobserved_other": 1
+    "unobserved_non_routable": 89,
+    "unobserved_other": 0
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -187,7 +187,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 0,
+        "fetched_lines": 2255,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 0,
@@ -846,7 +846,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "nextcloud.privacy-vbox.de",
         "observations": 1,
         "successes": 0
@@ -1363,9 +1363,9 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 78,
+    "fronts_with_placeholder_endpoints": 79,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 299,
+    "lines_examined": 300,
     "summary": {
       "degraded": 0,
       "healthy": 0,
