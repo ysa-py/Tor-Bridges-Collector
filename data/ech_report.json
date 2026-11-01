@@ -93,7 +93,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -111,7 +111,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -453,7 +453,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 1,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -615,7 +615,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -633,7 +633,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1209,7 +1209,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1443,7 +1443,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 2,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1461,7 +1461,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 2,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1479,7 +1479,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 2,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1497,7 +1497,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 2,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1515,7 +1515,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 2,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -1533,7 +1533,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 2,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -4334,20 +4334,6 @@
     },
     {
       "bridge_line": "webtunnel [2001:db8:272b:3cc6:66df:4d41:6895:cbcf]:443 316ACA10592957F567C6433846C5B0B4C35C858B url=https://docs.prevails.org/a0baef823aeeacee ver=0.0.3",
-      "ech_verification": "static_inference_no_live_handshake",
-      "flags": [
-        "cdn_fronted",
-        "non_standard_port"
-      ],
-      "front_reachability": "no_relay_observation",
-      "iran_dpi_evasion_score": 0.4,
-      "relay_probe": {
-        "observed": false
-      },
-      "transport": "webtunnel"
-    },
-    {
-      "bridge_line": "webtunnel [2001:db8:2777:f8e4:5dac:f4e3:96c5:c311]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://test.coellen.xyz ver=0.0.5",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [
         "cdn_fronted",
@@ -13182,8 +13168,8 @@
       "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": "probe failed before a positive connection stage was recorded",
-        "latency_ms": 4227,
+        "error": "TCP connection timed out",
+        "latency_ms": 5000,
         "observed": true,
         "probe_type": "tcp",
         "success": false
@@ -17859,14 +17845,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
         "latency_ms": 109,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -23169,14 +23155,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
         "latency_ms": 21,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },

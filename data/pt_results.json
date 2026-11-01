@@ -5934,9 +5934,9 @@
     }
   },
   {
-    "detail": "TCP connection timed out",
-    "error": "TCP connection timed out",
-    "error_class": "tcp_connect_timeout",
+    "detail": "probe failed before a positive connection stage was recorded",
+    "error": "probe failed before a positive connection stage was recorded",
+    "error_class": "probe_error",
     "host": "45.133.74.248",
     "http_status": null,
     "id": "line-Bridge-45.133.74.248-9001",
@@ -5948,7 +5948,7 @@
     "rtt_ms": 3176,
     "sni": null,
     "stage": "S0",
-    "status": "timeout",
+    "status": "error",
     "success": false,
     "transport": "bridge",
     "vantage": {
@@ -12466,9 +12466,9 @@
     }
   },
   {
-    "detail": "TCP connection timed out",
-    "error": "TCP connection timed out",
-    "error_class": "tcp_connect_timeout",
+    "detail": "probe failed before a positive connection stage was recorded",
+    "error": "probe failed before a positive connection stage was recorded",
+    "error_class": "probe_error",
     "host": "109.202.219.164",
     "http_status": null,
     "id": "line-obfs4-109.202.219.164-47111",
@@ -12480,7 +12480,7 @@
     "rtt_ms": 116,
     "sni": null,
     "stage": "S0",
-    "status": "timeout",
+    "status": "error",
     "success": false,
     "transport": "obfs4",
     "vantage": {
@@ -18676,21 +18676,21 @@
     }
   },
   {
-    "detail": "probe failed before a positive connection stage was recorded",
-    "error": "probe failed before a positive connection stage was recorded",
-    "error_class": "probe_error",
+    "detail": "TCP connection timed out",
+    "error": "TCP connection timed out",
+    "error_class": "tcp_connect_timeout",
     "host": "193.26.115.109",
     "http_status": null,
     "id": "line-obfs4-193.26.115.109-8443",
-    "latency_ms": 4227,
+    "latency_ms": 5000,
     "line": "obfs4 193.26.115.109:8443 C4EBCF922AD2F7F05A48AD5FB3E8533B14765A05 cert=q6gUIZRbeqbDuvILljaAEGNbYHQNmR5uumPugNkdisutMGUxlSTXZRp4VukHxvDn6nkVUw iat-mode=0",
     "observed_at": "2026-11-01T03:10:10.098Z",
     "port": 8443,
     "probe_type": "tcp",
-    "rtt_ms": 4227,
+    "rtt_ms": 5000,
     "sni": null,
     "stage": "S0",
-    "status": "error",
+    "status": "timeout",
     "success": false,
     "transport": "obfs4",
     "vantage": {
@@ -24886,9 +24886,9 @@
     }
   },
   {
-    "detail": "probe failed before a positive connection stage was recorded",
-    "error": "probe failed before a positive connection stage was recorded",
-    "error_class": "probe_error",
+    "detail": "TCP connection established",
+    "error": null,
+    "error_class": null,
     "host": "72.56.118.69",
     "http_status": null,
     "id": "line-obfs4-72.56.118.69-25986",
@@ -24899,9 +24899,9 @@
     "probe_type": "tcp",
     "rtt_ms": 109,
     "sni": null,
-    "stage": "S0",
-    "status": "error",
-    "success": false,
+    "stage": "S1",
+    "status": "connected",
+    "success": true,
     "transport": "obfs4",
     "vantage": {
       "colo": "MSP",
@@ -31763,9 +31763,9 @@
     }
   },
   {
-    "detail": "probe failed before a positive connection stage was recorded",
-    "error": "probe failed before a positive connection stage was recorded",
-    "error_class": "probe_error",
+    "detail": "TCP connection established",
+    "error": null,
+    "error_class": null,
     "host": "98.206.61.206",
     "http_status": null,
     "id": "line-obfs4-98.206.61.206-64998",
@@ -31776,9 +31776,9 @@
     "probe_type": "tcp",
     "rtt_ms": 21,
     "sni": null,
-    "stage": "S0",
-    "status": "error",
-    "success": false,
+    "stage": "S1",
+    "status": "connected",
+    "success": true,
     "transport": "obfs4",
     "vantage": {
       "colo": "MSP",
@@ -32022,12 +32022,12 @@
     "host": "[2001:19f0:7401:8f51:5400:6ff:fe04:7817]",
     "http_status": null,
     "id": "line-obfs4-[2001_19f0_7401_8f51_5400_6ff_fe04_7817]-8080",
-    "latency_ms": 2,
+    "latency_ms": 0,
     "line": "obfs4 [2001:19f0:7401:8f51:5400:6ff:fe04:7817]:8080 0E75D1C25A4C6E9CAA34C0326BC625F49DE76F1E cert=y3hZX0aEbfSfNiDJ3dM5tXbURAvAwmkKlkCkm5HDf9thLI08u6pRw1wGaF5Qg/D8Bg7pOg iat-mode=0",
     "observed_at": "2026-11-01T03:11:18.020Z",
     "port": 8080,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 0,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -32873,12 +32873,12 @@
     "host": "[2003:c1:f703:d100:be24:11ff:fe71:e7b0]",
     "http_status": null,
     "id": "line-obfs4-[2003_c1_f703_d100_be24_11ff_fe71_e7b0]-37465",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2003:c1:f703:d100:be24:11ff:fe71:e7b0]:37465 8C6A851020455A384C4B6C0D26D2798F00E9F245 cert=vfeKxxDMEtuC4uFGdqtjMXD8kvrpezDyHwNqTZd74K1yiIp2A/Gm3O2229G3oEOcQhb9Iw iat-mode=0",
     "observed_at": "2026-11-01T03:11:18.009Z",
     "port": 37465,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -33678,12 +33678,12 @@
     "host": "[2401:c080:3800:2fd4:5400:6ff:fe03:dc31]",
     "http_status": null,
     "id": "line-obfs4-[2401_c080_3800_2fd4_5400_6ff_fe03_dc31]-8080",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2401:c080:3800:2fd4:5400:6ff:fe03:dc31]:8080 9A5140B2C5EC60C96195E8152E5BF56954F42A3F cert=cy7g0fX1UEct9L86x+M7+xIKF63njr0OVnsk14Dl5t3yrNXrk6SuD9cRynLmyuhj6H99Qw iat-mode=0",
     "observed_at": "2026-11-01T03:11:18.840Z",
     "port": 8080,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -34529,12 +34529,12 @@
     "host": "[2603:c020:1e:8867:0:1110:e46a:f568]",
     "http_status": null,
     "id": "line-obfs4-[2603_c020_1e_8867_0_1110_e46a_f568]-3721",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2603:c020:1e:8867:0:1110:e46a:f568]:3721 159E2EE0E954B669865AAF963EA534884850E6AD cert=Yngpf+xcO4yraE/51Q3Kl6k2+mQvaK2wPk+HsP4cDs5zLJU83gyajohigzmTSoMEfyBUDg iat-mode=0",
     "observed_at": "2026-11-01T03:11:19.522Z",
     "port": 3721,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -34552,12 +34552,12 @@
     "host": "[2603:c020:26:177a:0:57e2:6fcc:c8a4]",
     "http_status": null,
     "id": "line-obfs4-[2603_c020_26_177a_0_57e2_6fcc_c8a4]-443",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2603:c020:26:177a:0:57e2:6fcc:c8a4]:443 5FC491B672427778DC8DF7FD1786603965BCF91D cert=Au/SSHqDOEuLQOyQkKeMnLM9G3CUYwvOf87YFfT5ba/xvAvG8SS0oJW3xiBiDi8e0ZbeZQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:19.522Z",
     "port": 443,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -35403,12 +35403,12 @@
     "host": "[2804:9874:0:1600::5267:76ec]",
     "http_status": null,
     "id": "line-obfs4-[2804_9874_0_1600__5267_76ec]-8902",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2804:9874:0:1600::5267:76ec]:8902 B90A053E497D4D97795563A42DBAA0D6A16D3FB0 cert=56v3WQBDGYyyoAJDHdmODDD0hRklZYflJLgfqyxzhi5txCmLlPl7JzjjScCUaJtbCYVDJw iat-mode=0",
     "observed_at": "2026-11-01T03:11:20.337Z",
     "port": 8902,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -35426,12 +35426,12 @@
     "host": "[2a00:10:650e:6301:be24:11ff:feea:70d5]",
     "http_status": null,
     "id": "line-obfs4-[2a00_10_650e_6301_be24_11ff_feea_70d5]-8080",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2a00:10:650e:6301:be24:11ff:feea:70d5]:8080 47CD157813D346BCC2AC317B2BD6D0E938713747 cert=WA56UpJ3QJK48Mdc7km6AfQ9WFr5jjDH+QO6TvepZ/fdntRzG+/njxIO9SjoE0MlJ6+hYw iat-mode=0",
     "observed_at": "2026-11-01T03:11:20.337Z",
     "port": 8080,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -35610,12 +35610,12 @@
     "host": "[2a00:10:6f29:2201:be24:11ff:feea:70d5]",
     "http_status": null,
     "id": "line-obfs4-[2a00_10_6f29_2201_be24_11ff_feea_70d5]-8080",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a00:10:6f29:2201:be24:11ff:feea:70d5]:8080 47CD157813D346BCC2AC317B2BD6D0E938713747 cert=WA56UpJ3QJK48Mdc7km6AfQ9WFr5jjDH+QO6TvepZ/fdntRzG+/njxIO9SjoE0MlJ6+hYw iat-mode=0",
     "observed_at": "2026-11-01T03:11:20.280Z",
     "port": 8080,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -36185,12 +36185,12 @@
     "host": "[2a01:4f8:1c1a:ab9a::1]",
     "http_status": null,
     "id": "line-obfs4-[2a01_4f8_1c1a_ab9a__1]-9101",
-    "latency_ms": 0,
+    "latency_ms": 1,
     "line": "obfs4 [2a01:4f8:1c1a:ab9a::1]:9101 E32BB8DD5A8F8742F12F3BA4C9563B2A16E9F7B2 cert=l+KkYn5R8qJ2+8xqxNAIYXJkQ9CDRecNXqaxIyqSLoJyu9ExF2NvKKyKH5WsWOEjEI/Qag iat-mode=0",
     "observed_at": "2026-11-01T03:11:20.321Z",
     "port": 9101,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -36208,12 +36208,12 @@
     "host": "[2a01:4f8:1c1b:18f6::1]",
     "http_status": null,
     "id": "line-obfs4-[2a01_4f8_1c1b_18f6__1]-9100",
-    "latency_ms": 0,
+    "latency_ms": 1,
     "line": "obfs4 [2a01:4f8:1c1b:18f6::1]:9100 79F91A20265D9E47F66A3702FB6B9CF68E048ADA cert=Ofn1p2Su4slDbtsqUYmFa7hHEtzc410sOeazSuXUdMUwJDH03Z8MI26ctitX/pHW2sNeew iat-mode=0",
     "observed_at": "2026-11-01T03:11:20.321Z",
     "port": 9100,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37174,12 +37174,12 @@
     "host": "[2a01:6f01:1206:e530::1234]",
     "http_status": null,
     "id": "line-obfs4-[2a01_6f01_1206_e530__1234]-9002",
-    "latency_ms": 1,
+    "latency_ms": 3,
     "line": "obfs4 [2a01:6f01:1206:e530::1234]:9002 AB2BF8399CB98F9A44B74185DB64AEBE96781969 cert=ZhSBWRcGUbeSCYnWmwPkvGgc/cQEVViFzTMXCpn0rW+MHCF+DnE3T01xorQ/aggtKnYdBA iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.105Z",
     "port": 9002,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37197,12 +37197,12 @@
     "host": "[2a01:cb1d:96a5:7f00:e02e:cfff:fe64:aa9c]",
     "http_status": null,
     "id": "line-obfs4-[2a01_cb1d_96a5_7f00_e02e_cfff_fe64_aa9c]-2000",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a01:cb1d:96a5:7f00:e02e:cfff:fe64:aa9c]:2000 B51FD3150E208A600D00BCA5963B0EF5C867574F cert=uNlJV9AyPd577S11iF6ewwZpu3K8c7YMEZdogqzQJCbeN1Zmj6xtTC+jioSWiluqvfIKag iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.105Z",
     "port": 2000,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37220,12 +37220,12 @@
     "host": "[2a01:e0a:262:45f0:8647:9ff:fe29:32b1]",
     "http_status": null,
     "id": "line-obfs4-[2a01_e0a_262_45f0_8647_9ff_fe29_32b1]-9003",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a01:e0a:262:45f0:8647:9ff:fe29:32b1]:9003 33416F5D1A8D766154B3D8D9E838323D4876F38C cert=XKdqBbr0t2+v7a3KPO0++oz9TW2Mm4bqlxuSDbbGerbeNry2+1ANWqo4Ss63iANcRGjzCQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.105Z",
     "port": 9003,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37243,12 +37243,12 @@
     "host": "[2a01:e0a:839:af80:cad3:ffff:fe9b:6f08]",
     "http_status": null,
     "id": "line-obfs4-[2a01_e0a_839_af80_cad3_ffff_fe9b_6f08]-9003",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a01:e0a:839:af80:cad3:ffff:fe9b:6f08]:9003 7005304FD738FC70F4B04E513206A3B70EA6A9FA cert=8OHHXpyutlE2SQuk7zWuAwFWhjEzyZiqmH/76MoYjoAXVILTg89bj/imcbFAaFwuGdMsAg iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.105Z",
     "port": 9003,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37335,12 +37335,12 @@
     "host": "[2a01:e0a:992:f8d0:daa:17d2:5c04:d763]",
     "http_status": null,
     "id": "line-obfs4-[2a01_e0a_992_f8d0_daa_17d2_5c04_d763]-44589",
-    "latency_ms": 0,
+    "latency_ms": 2,
     "line": "obfs4 [2a01:e0a:992:f8d0:daa:17d2:5c04:d763]:44589 A3E031BF296292AA22E9AFBD9AA9399C2DE1C988 cert=IxgJlV6GPRvjiSa2/hs7ob+BAroR+6cNN8h+LD4nR/kxdZA25to5ZLTU4n5AODa7YqMPEQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.114Z",
     "port": 44589,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37358,12 +37358,12 @@
     "host": "[2a01:e0a:c16:d010:be24:11ff:fe1d:f3d6]",
     "http_status": null,
     "id": "line-obfs4-[2a01_e0a_c16_d010_be24_11ff_fe1d_f3d6]-42004",
-    "latency_ms": 0,
+    "latency_ms": 2,
     "line": "obfs4 [2a01:e0a:c16:d010:be24:11ff:fe1d:f3d6]:42004 7A987653ED8D25D17EAF539CCCAE812E1AEEC109 cert=o7Y9PEebc404rwV56Got4ORmzcyNG6Ws5ZdJaFGuJZG/pS0f136iNZQN6D+hiwnCRPKRRQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.114Z",
     "port": 42004,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37381,12 +37381,12 @@
     "host": "[2a01:e0a:ce:5f90:cad3:ffff:fe9b:6f08]",
     "http_status": null,
     "id": "line-obfs4-[2a01_e0a_ce_5f90_cad3_ffff_fe9b_6f08]-9003",
-    "latency_ms": 0,
+    "latency_ms": 2,
     "line": "obfs4 [2a01:e0a:ce:5f90:cad3:ffff:fe9b:6f08]:9003 7005304FD738FC70F4B04E513206A3B70EA6A9FA cert=8OHHXpyutlE2SQuk7zWuAwFWhjEzyZiqmH/76MoYjoAXVILTg89bj/imcbFAaFwuGdMsAg iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.114Z",
     "port": 9003,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -37404,12 +37404,12 @@
     "host": "[2a01:e0a:e8a:4c10:42b0:34ff:fef7:cb7b]",
     "http_status": null,
     "id": "line-obfs4-[2a01_e0a_e8a_4c10_42b0_34ff_fef7_cb7b]-9002",
-    "latency_ms": 0,
+    "latency_ms": 2,
     "line": "obfs4 [2a01:e0a:e8a:4c10:42b0:34ff:fef7:cb7b]:9002 D9F4190115B6DB5461E101A7A2E20F213F9BBA42 cert=ZywYSr2ll07F23EX4RoeXyMJz+93uPUq0c4FDvX1aoJbfmT/3Kekp1OkXpEBUTF9zI3RRw iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.095Z",
     "port": 9002,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38002,12 +38002,12 @@
     "host": "[2a03:4000:15:aa9:3411:9cff:fef6:c188]",
     "http_status": null,
     "id": "line-obfs4-[2a03_4000_15_aa9_3411_9cff_fef6_c188]-443",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a03:4000:15:aa9:3411:9cff:fef6:c188]:443 A785C024E88D1286E0976B3433F56F5F0FE0193F cert=PAolDrjSw5wzgm0n5jGNFvhljx8sHa5JTsPJQMa/U5wXH6+2ckdzdCRJiyD7fBMwaVw7EA iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.903Z",
     "port": 443,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -38025,12 +38025,12 @@
     "host": "[2a03:4000:27:71::13]",
     "http_status": null,
     "id": "line-obfs4-[2a03_4000_27_71__13]-45741",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a03:4000:27:71::13]:45741 5E4F1FC1B90BACEC3A9B83D55E71134636C89484 cert=RGQ7dcx7NKBdpRx71hGa4pxhrqBluaVqUDwERGXfEjQ3/Uiw7+q9K5gnUTZDaO6PsaSGYw iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.903Z",
     "port": 45741,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38048,12 +38048,12 @@
     "host": "[2a03:4000:27:976:48da:75ff:fe93:a550]",
     "http_status": null,
     "id": "line-obfs4-[2a03_4000_27_976_48da_75ff_fe93_a550]-21580",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a03:4000:27:976:48da:75ff:fe93:a550]:21580 078DCEA421F8364866C1C98F6BA9670232A8462A cert=2dXLeD056qysxYoi0UV8QsrtJRzy3WU+0kmKqPTGg4US9U+PJ6xlojwfPoK+lGRZcxNJQw iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.903Z",
     "port": 21580,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38071,12 +38071,12 @@
     "host": "[2a03:4000:40:ad::1]",
     "http_status": null,
     "id": "line-obfs4-[2a03_4000_40_ad__1]-1992",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "obfs4 [2a03:4000:40:ad::1]:1992 6580023D474DD3C06920027530C3B5E39B89DC03 cert=pSt9XZ3p/3oxi9knlK4jQY8LFSWZn4hl/PplgnMY5Lra3VaZMbP7F4tuorDV2vXhm8qEAQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.903Z",
     "port": 1992,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38508,12 +38508,12 @@
     "host": "[2a07:a081:0:116d:1ec0:b5a9:808e:8284]",
     "http_status": null,
     "id": "line-obfs4-[2a07_a081_0_116d_1ec0_b5a9_808e_8284]-8443",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a07:a081:0:116d:1ec0:b5a9:808e:8284]:8443 8406AAD272684FAC6C1ED55045A7459772A6E9C9 cert=LYDv1ZvCwdCSafsjgFMrRQyhVPZ+62veuCzip9WnUVnQZ4RIghl85fTUUOpRdShnqJZ0Xg iat-mode=0",
     "observed_at": "2026-11-01T03:11:21.885Z",
     "port": 8443,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38531,12 +38531,12 @@
     "host": "[2a0a:4587:2011::103]",
     "http_status": null,
     "id": "line-obfs4-[2a0a_4587_2011__103]-12346",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a0a:4587:2011::103]:12346 627D34BFF60081758EEFFB985E8F052326C0F816 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
     "observed_at": "2026-11-01T03:11:21.885Z",
     "port": 12346,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38554,12 +38554,12 @@
     "host": "[2a0a:4587:2011::108]",
     "http_status": null,
     "id": "line-obfs4-[2a0a_4587_2011__108]-12346",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a0a:4587:2011::108]:12346 90F67B8B09B66CF21E3FE73135F90FEAA4637B9B cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
     "observed_at": "2026-11-01T03:11:21.885Z",
     "port": 12346,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38600,12 +38600,12 @@
     "host": "[2a0a:4587:2011::120]",
     "http_status": null,
     "id": "line-obfs4-[2a0a_4587_2011__120]-12346",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a0a:4587:2011::120]:12346 92C51B81F7FE2ADB39CFD2A36BF423C317268A4B cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
     "observed_at": "2026-11-01T03:11:21.885Z",
     "port": 12346,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38623,12 +38623,12 @@
     "host": "[2a0a:4587:2011::122]",
     "http_status": null,
     "id": "line-obfs4-[2a0a_4587_2011__122]-12346",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a0a:4587:2011::122]:12346 3B91E7B162D05807ABB9173804CCD403C01FF9E8 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
     "observed_at": "2026-11-01T03:11:21.885Z",
     "port": 12346,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -38830,12 +38830,12 @@
     "host": "[2a0a:4587:2011::57]",
     "http_status": null,
     "id": "line-obfs4-[2a0a_4587_2011__57]-13630",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "obfs4 [2a0a:4587:2011::57]:13630 A3D55AA6178E80AE486B6DAEAFBA5AB79B29B399 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
     "observed_at": "2026-11-01T03:11:22.807Z",
     "port": 13630,
     "probe_type": "tcp",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -39129,12 +39129,12 @@
     "host": "[2a0a:4587:2012::218]",
     "http_status": null,
     "id": "line-obfs4-[2a0a_4587_2012__218]-11218",
-    "latency_ms": 0,
+    "latency_ms": 1,
     "line": "obfs4 [2a0a:4587:2012::218]:11218 951F1D53D204FC810BBB53E22A43B9A3EF908026 cert=5s8xwixGaPWhQjzifnXw3upQmyKSTvUfjrHE9Qkua7Hpxf26V19eiL9BeibI/3G+/1UyPA iat-mode=0",
     "observed_at": "2026-11-01T03:11:22.782Z",
     "port": 11218,
     "probe_type": "tcp",
-    "rtt_ms": 0,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -39911,12 +39911,12 @@
     "host": "[2a13:7c00:7:4:f816:3eff:fed5:12]",
     "http_status": null,
     "id": "line-obfs4-[2a13_7c00_7_4_f816_3eff_fed5_12]-9100",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2a13:7c00:7:4:f816:3eff:fed5:12]:9100 3DD1EC05989D25793694FE73439768F87DC0EB64 cert=5NbEE3euZBttq64Y9XWLErtrKkcICetuGYViOa2aNU3Q4UGVJPkxZEsuB55YnCHeNWDceA iat-mode=0",
     "observed_at": "2026-11-01T03:11:23.633Z",
     "port": 9100,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -39934,12 +39934,12 @@
     "host": "[2a13:7c00:7:6:f816:3eff:feaa:1ef3]",
     "http_status": null,
     "id": "line-obfs4-[2a13_7c00_7_6_f816_3eff_feaa_1ef3]-1440",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2a13:7c00:7:6:f816:3eff:feaa:1ef3]:1440 BE64FDF30333DC473E3DF7D4F20D49572B68466E cert=0n2tSMP/vaukwiXlqCOTUngNHxyEKYBRYDW1l4bN3kLJy2lROg0oBbVfTc3YT0ETdtg/UQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:23.633Z",
     "port": 1440,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -39957,12 +39957,12 @@
     "host": "[2a14:1ec7:f710:eb6a::1]",
     "http_status": null,
     "id": "line-obfs4-[2a14_1ec7_f710_eb6a__1]-443",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2a14:1ec7:f710:eb6a::1]:443 AFD7327D513A76446CB7DCD41B1820A940B748DF cert=d9YPxpszAE/ZXFTn7yQC34ass8T5CNmaFR+n9ITRuJghZaaOELXaKr632IdkUKMu55vieQ iat-mode=0",
     "observed_at": "2026-11-01T03:11:23.633Z",
     "port": 443,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -39980,12 +39980,12 @@
     "host": "[2a14:1ec7:f900:9::a]",
     "http_status": null,
     "id": "line-obfs4-[2a14_1ec7_f900_9__a]-6229",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2a14:1ec7:f900:9::a]:6229 3606A23A8B9D6C4933F8E17FA218DB241C492E01 cert=BYQ+7YSs+Y+zChvH5qc/x3UqEJ6cTKUEYwS87s6mA2xIkQpO5d8rNwy1RksjQaqK0lCkXA iat-mode=0",
     "observed_at": "2026-11-01T03:11:23.633Z",
     "port": 6229,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -40003,12 +40003,12 @@
     "host": "[2a14:38c0:2::186]",
     "http_status": null,
     "id": "line-obfs4-[2a14_38c0_2__186]-8443",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "obfs4 [2a14:38c0:2::186]:8443 2D16215A86522A3CFCBBBE30BFF7C706413336A9 cert=ebVLQlo1wEnp/HYtJ+nSuikwe+dSt632ka33wJAiUeVK0IeYs5M6w5DwoPX8gYLsJfADSA iat-mode=0",
     "observed_at": "2026-11-01T03:11:23.633Z",
     "port": 8443,
     "probe_type": "tcp",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S0",
     "status": "error",
@@ -40808,12 +40808,12 @@
     "host": "104.20.26.62",
     "http_status": null,
     "id": "line-webtunnel-104.20.26.62-443",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "webtunnel 104.20.26.62:443 5C4499F49EF591BB28F86DC63E48846F8E610764 url=https://mstdn.party/ou8MiapiZahngai6 ver=0.0.2",
     "observed_at": "2026-11-01T03:11:23.638Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -40831,12 +40831,12 @@
     "host": "104.21.15.240",
     "http_status": null,
     "id": "line-webtunnel-104.21.15.240-443",
-    "latency_ms": 2,
+    "latency_ms": 3,
     "line": "webtunnel 104.21.15.240:443 1A60FE3FAE97BD5FAE8E8F2E9B94AA697D9467F8 url=https://oldradio.info/9bd85e2a09a7eb00e0d2a542d436fd632143df9e ver=0.0.3",
     "observed_at": "2026-11-01T03:11:23.638Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 2,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -41268,12 +41268,12 @@
     "host": "104.26.1.150",
     "http_status": null,
     "id": "line-webtunnel-104.26.1.150-443",
-    "latency_ms": 2,
+    "latency_ms": 1,
     "line": "webtunnel 104.26.1.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3",
     "observed_at": "2026-11-01T03:11:25.026Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 2,
+    "rtt_ms": 1,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -41475,12 +41475,12 @@
     "host": "104.26.15.240",
     "http_status": null,
     "id": "line-webtunnel-104.26.15.240-443",
-    "latency_ms": 1,
+    "latency_ms": 3,
     "line": "webtunnel 104.26.15.240:443 28F5A0325B50F3EFB5FCC73194FCBF9D4972248E url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.4",
     "observed_at": "2026-11-01T03:11:25.033Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42234,12 +42234,12 @@
     "host": "172.67.153.141",
     "http_status": null,
     "id": "line-webtunnel-172.67.153.141-443",
-    "latency_ms": 1,
+    "latency_ms": 3,
     "line": "webtunnel 172.67.153.141:443 FFBAE1B459A6CB5C6751F9BE72284EAB9E36CD0F url=https://steuern-sind-raub.ch/rohzaaSae8meith4oo ver=0.0.3",
     "observed_at": "2026-11-01T03:11:26.356Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42533,12 +42533,12 @@
     "host": "172.67.68.233",
     "http_status": null,
     "id": "line-webtunnel-172.67.68.233-443",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "webtunnel 172.67.68.233:443 28F5A0325B50F3EFB5FCC73194FCBF9D4972248E url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.4",
     "observed_at": "2026-11-01T03:11:26.368Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42556,12 +42556,12 @@
     "host": "172.67.68.233",
     "http_status": null,
     "id": "line-webtunnel-172.67.68.233-443",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "webtunnel 172.67.68.233:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3",
     "observed_at": "2026-11-01T03:11:26.368Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42579,12 +42579,12 @@
     "host": "172.67.69.9",
     "http_status": null,
     "id": "line-webtunnel-172.67.69.9-443",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "webtunnel 172.67.69.9:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3",
     "observed_at": "2026-11-01T03:11:26.368Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42602,12 +42602,12 @@
     "host": "172.67.73.15",
     "http_status": null,
     "id": "line-webtunnel-172.67.73.15-443",
-    "latency_ms": 1,
+    "latency_ms": 2,
     "line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.3",
     "observed_at": "2026-11-01T03:11:26.368Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 2,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42625,12 +42625,12 @@
     "host": "172.67.73.15",
     "http_status": null,
     "id": "line-webtunnel-172.67.73.15-443",
-    "latency_ms": 1,
+    "latency_ms": 3,
     "line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.4",
     "observed_at": "2026-11-01T03:11:26.369Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -42648,12 +42648,12 @@
     "host": "172.67.73.15",
     "http_status": null,
     "id": "line-webtunnel-172.67.73.15-443",
-    "latency_ms": 1,
+    "latency_ms": 3,
     "line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
     "observed_at": "2026-11-01T03:11:26.372Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 1,
+    "rtt_ms": 3,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -48691,11 +48691,11 @@
     }
   },
   {
-    "detail": "connection reached the endpoint but its protocol signature was not verified",
-    "error": "connection reached the endpoint but its protocol signature was not verified",
-    "error_class": "protocol_response_unverified",
+    "detail": "HTTP 101 was returned without a valid WebSocket upgrade signature",
+    "error": "HTTP 101 was returned without a valid WebSocket upgrade signature",
+    "error_class": "websocket_signature_invalid",
     "host": "shallotfarm.org",
-    "http_status": null,
+    "http_status": 101,
     "id": "webtunnel-url-shallotfarm.org-443",
     "latency_ms": 565,
     "line": "webtunnel [2001:db8:77cb:5ce6:9995:7466:7ffa:b3f8]:443 770EA6412C8D3997ABFFF7173A3E53F1D3660167 url=https://shallotfarm.org/jcHgyp7m90iQr9QaVSprq1wP ver=0.0.3",
@@ -48714,11 +48714,11 @@
     }
   },
   {
-    "detail": "connection reached the endpoint but its protocol signature was not verified",
-    "error": "connection reached the endpoint but its protocol signature was not verified",
-    "error_class": "protocol_response_unverified",
+    "detail": "HTTP 101 was returned without a valid WebSocket upgrade signature",
+    "error": "HTTP 101 was returned without a valid WebSocket upgrade signature",
+    "error_class": "websocket_signature_invalid",
     "host": "shallotfarm.org",
-    "http_status": null,
+    "http_status": 101,
     "id": "webtunnel-url-shallotfarm.org-443",
     "latency_ms": 678,
     "line": "webtunnel [2001:db8:77cb:5ce6:9995:7466:7ffa:b3f8]:443 770EA6412C8D3997ABFFF7173A3E53F1D3660167 url=https://shallotfarm.org/jcHgyp7m90iQr9QaVSprq1wP ver=0.0.5",
@@ -49226,12 +49226,12 @@
     "host": "unknxwn.lol",
     "http_status": null,
     "id": "webtunnel-url-unknxwn.lol-443",
-    "latency_ms": 103,
+    "latency_ms": 187,
     "line": "webtunnel [2001:db8:8a9d:77ec:3b4d:ad85:24e0:a700]:443 1FC3F8277DC68922B6DFDFEE6943BF3C79188E6A url=https://unknxwn.lol/H9wNSHum9rxiryQNRCCLjGn8 ver=0.0.4",
     "observed_at": "2026-11-01T03:12:47.845Z",
     "port": 443,
     "probe_type": "websocket-101",
-    "rtt_ms": 103,
+    "rtt_ms": 187,
     "sni": null,
     "stage": "S1",
     "status": "inconclusive",
@@ -51908,7 +51908,7 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
+    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
     "error_class": null,
     "line": "Bridge 104.152.210.181:1105 2CF11CD4B8334A365952D7139BE356E55F2DEBC3",
     "observed_at": "2026-11-01T03:27:48.103243Z",
@@ -52438,7 +52438,7 @@
     "line": "obfs4 104.223.85.48:9130 88B164C802EFE7EE16344EDE654ABA3FFA45D3C8 cert=zLDuqhClvYEFoVcsxsi2Xn+dAc5Vi84npX2FX9tiag2euZOBvcrtjGPyB6dVsGT7nH5DGg iat-mode=0",
     "observed_at": "2026-11-01T03:27:48.566280Z",
     "probe_type": "obfs4-framing",
-    "rtt_ms": 271.0,
+    "rtt_ms": 42.0,
     "source": "handshake-probe",
     "stage": "S3",
     "status": "connected",
@@ -57120,8 +57120,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -57179,1431 +57179,6 @@
     "observed_at": "2026-11-01T03:27:56.173828Z",
     "probe_type": "tor-handshake",
     "rtt_ms": 506.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 178.17.170.33:4444 C2542268C0F438A725E5225781B689A33F12C495 cert=7V57ZSaOe59/oSbHNVyQaWyvtPYmGkb4Wy+MoDOuJDoR5czdc1YfaA8cMXD/unSy4ZNoXA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:39.222766Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 332.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 47.210.17.65:9001 B309CF46481BBAE946ED595B1648A12A4D67DCD3",
-    "observed_at": "2026-11-01T02:49:39.233955Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 195.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 46.226.106.231:443 377CF6FCBFD2E57D0775EA6F2E8D3EF0D8CDD02F url=https://cryptomeanscryptography.club/TfDS3X50Rf3dR5x3Q3vLS25o ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:39.255591Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 398.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 45.129.183.60:1989 10764D2B8D58BB45CBA5396FBB27E295992301C4",
-    "observed_at": "2026-11-01T02:49:39.283674Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 548.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 178.83.31.71:8080 EDE7C9E92E631A74BDD5BD091D0D0FC16383EAE3 cert=lSrEdORvTcAMXbva3kiczhW0un3FmV/WNFh/4VyshItKBh7YWksBBy7uXDdaevEKNzQDUw iat-mode=1",
-    "observed_at": "2026-11-01T02:49:39.331642Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 302.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during tls",
-    "error_class": "vanilla:timeout",
-    "line": "Bridge 172.178.90.66:8080 F55C4471F07FE4B355CAF074D8FBC3D51AF56B0E",
-    "observed_at": "2026-11-01T02:49:39.361685Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 45.84.59.11:18082 D912F551C1551D9A309AB8EB77A7E7F9C585FB57",
-    "observed_at": "2026-11-01T02:49:39.394817Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 586.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 107.191.102.246:11111 03F427B05F658D152B2DBB9A6B25FC722C831174",
-    "observed_at": "2026-11-01T02:49:39.411668Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 188.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 179.184.242.240:9031 7715D9FB07F3406C445D9AA90E18BBFBB5166B5D cert=wfwr0ALmooL4HD6nsaQ59WLpqK8ybVFAuPiT1/Kbzvtd2UhQ1S03G3693JgBSXGhvIrcFg iat-mode=0",
-    "observed_at": "2026-11-01T02:49:39.433957Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 335.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 57.128.180.235:443 059AEB126918A33B8246E8136D565FF57753D5CF url=https://alwaysnewbie.eu.org/homesweethome ver=0.0.2",
-    "observed_at": "2026-11-01T02:49:39.525053Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 822.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 179.214.0.29:443 3AC17E97D18ADF92E9662D00EDE3B8FCCA6A6D80 cert=/WbHxF7lntn60mpieMRQ17YF88WfezgIzU0U+vQ3GMyCQUesVWtRkowZStfTO9cv6FutPw iat-mode=0",
-    "observed_at": "2026-11-01T02:49:39.577548Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 343.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during read",
-    "error_class": "obfs4:timeout",
-    "line": "obfs4 103.149.168.186:8443 2D16215A86522A3CFCBBBE30BFF7C706413336A9 cert=ebVLQlo1wEnp/HYtJ+nSuikwe+dSt632ka33wJAiUeVK0IeYs5M6w5DwoPX8gYLsJfADSA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:39.577704Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.117.73.71:31337 E315A7F8A5E2C1B4819D09D79C5A627D65C182AB cert=6A8hJlnBlk8wNW7PolPyT+i2RBsVLSrE8OS5ikV2d7tyHq0e3bO6coI6kAjRkJNtzZAmJA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:39.637244Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 275.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.137:8443 D6B9EC832A0D9E6A181A62D4D72CC3A9FEDF60CB cert=4Q8yZaa1lzkPmxsbtanABUYaapxko+AoVtsBNoWGC4+YLBCgavxoM3x4Kn+SX3rLVNubDQ iat-mode=0",
-    "observed_at": "2026-11-01T02:49:39.689788Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 278.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 51.77.53.21:443 07C77888D2367C25CA875E2174D9B225140940E9 url=https://nextcloud.privacy-vbox.de/iJmug5bRcsKeVv45h7a0fvkL ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:39.714395Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 668.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 51.222.9.153:42683 6E26C7CC5852E8D13F7865D912ADC412EAA393DA",
-    "observed_at": "2026-11-01T02:49:39.716850Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 282.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 57.128.180.235:443 059AEB126918A33B8246E8136D565FF57753D5CF url=https://alwaysnewbie.eu.org/homesweethome ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:39.739267Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 780.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 46.243.1.156:6889 5D9EE7AA730F39263D04C90AAF23C66AB013E1C0",
-    "observed_at": "2026-11-01T02:49:39.775775Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 620.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 65.109.80.16:443 CDCF334F257ACAD04A2C6CD9725B7FC686160912 url=https://meskio.net/eCDFZe3boSv+b2iqHiaY4ZgPxXBc ver=0.0.5",
-    "observed_at": "2026-11-01T02:49:39.782303Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 599.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 5.135.18.230:10245 926ED9FD651B8D2548F0CAC7DB6A5656DB3368C3",
-    "observed_at": "2026-11-01T02:49:39.832091Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 576.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.10:56389 6B84EEA5CE85F8CA28102B0134851F0928921EC2 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
-    "observed_at": "2026-11-01T02:49:39.913419Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 276.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 51.195.90.24:9001 4D5FE5401910610B729DC0E224FBDB6D340BFA56",
-    "observed_at": "2026-11-01T02:49:39.916080Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 584.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 179.214.0.29:8668 3AC17E97D18ADF92E9662D00EDE3B8FCCA6A6D80 cert=/WbHxF7lntn60mpieMRQ17YF88WfezgIzU0U+vQ3GMyCQUesVWtRkowZStfTO9cv6FutPw iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.030176Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 340.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 69.167.224.90:9030 E9660A202B0D49571409987D317D0C3CD94DAAC3",
-    "observed_at": "2026-11-01T02:49:40.049278Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 217.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.141:8443 C1DF7FDCF4609E7873FBE134DF0894F3A2C51F09 cert=9Ztk+CFInRJ09AER9LMFSKY5I2Iowcq4ZUBo0Sl3QC2ME3opTDtXd270obFuMrKB/BByRA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.053234Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 277.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 65.109.80.16:443 CDCF334F257ACAD04A2C6CD9725B7FC686160912 url=https://meskio.net/eCDFZe3boSv+b2iqHiaY4ZgPxXBc ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:40.058812Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 481.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 5.75.235.204:49123 8BB7D36A40CDF35D6CAE2F0C902D08EFD096F230",
-    "observed_at": "2026-11-01T02:49:40.071751Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 546.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 167.99.37.45:8444 90B81B90F934BFE5D90081B5FC62A2E2FCAB5234",
-    "observed_at": "2026-11-01T02:49:40.129623Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 8060.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 45.142.195.125:443 A310B68A6C1D1DBDD374B1B641E9A122109477DB url=https://cdnspace.net/ovVRTrs9IcHUv2uQBPa4cvKX ver=0.0.5",
-    "observed_at": "2026-11-01T02:49:40.142135Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 858.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.148.251:9098 270A0B4418B2E724275207E7B202A1653CEFB93C cert=b7L/+YXG4GNo7xMKd+6ttlZAW5wuBkYoiSJgkQbt35Be97Nf1LBVKldrEtGUATsVuA82Uw iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.168406Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 252.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 77.237.246.219:443 337F12771B8FBA072121C0978B8D5722B567609B url=https://www.cafe-kantholz.de/LceovFqcXy92Ji6Gx0rrUmmB ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:40.232166Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 449.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 77.237.246.219:443 337F12771B8FBA072121C0978B8D5722B567609B url=https://www.cafe-kantholz.de/LceovFqcXy92Ji6Gx0rrUmmB ver=0.0.7",
-    "observed_at": "2026-11-01T02:49:40.232951Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 655.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 77.237.246.219:443 337F12771B8FBA072121C0978B8D5722B567609B url=https://www.cafe-kantholz.de/LceovFqcXy92Ji6Gx0rrUmmB ver=0.0.6",
-    "observed_at": "2026-11-01T02:49:40.264030Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 547.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during tls",
-    "error_class": "vanilla:timeout",
-    "line": "Bridge 142.93.128.78:1356 B2CF8191825381A63ADC2F62D667D028C1BD9749",
-    "observed_at": "2026-11-01T02:49:40.269277Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 54.38.212.14:9001 FA257B63B78717168339B777DB1FAEED8E75C0CA",
-    "observed_at": "2026-11-01T02:49:40.289292Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 574.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during read",
-    "error_class": "obfs4:timeout",
-    "line": "obfs4 129.151.27.14:3721 159E2EE0E954B669865AAF963EA534884850E6AD cert=Yngpf+xcO4yraE/51Q3Kl6k2+mQvaK2wPk+HsP4cDs5zLJU83gyajohigzmTSoMEfyBUDg iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.300097Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.151:8443 767334C91612327B92C01222CC810133BAA8B8A5 cert=HqgFdfhJrBZrNHBZnAKdpZdYw+VEeQvP1lp7VWKRQyRFEBhjGCFPhl8lmJTvu/vR7xY3Cw iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.309561Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 279.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 79.116.15.136:443 1508F567C54ECF5373CE2EF3BF02C62EEA1B320E url=https://tor.jmrp.io/7Zkw18j2NWGK9X7PiiPUQRJB ver=0.0.4",
-    "observed_at": "2026-11-01T02:49:40.312586Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 398.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.162.250.10:9091 F7B2E53E515DBF8D2816073D9DBBC67E8D43EE4F cert=fH9BHQrKYGPavVviMAP9H9R/ISXaP7tgQo/VHCHg2w6b7K4mCekFj9HXOXqMPvAB5mJ1JA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.416172Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 273.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 64.44.83.138:6443 3FD2D70C4E7F8D5470080B6BABA21376F2B478A1",
-    "observed_at": "2026-11-01T02:49:40.428887Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 260.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 45.76.185.188:8444 55346F385B6FB7069D1588CE842DBE88F90F90C5",
-    "observed_at": "2026-11-01T02:49:40.437353Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 697.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 181.118.218.29:4443 F1555089C07B70D7B9513FE19F2A630D03460FAC cert=T6S21IP6FyvyuE/07jJYmhp8Qtv6gUbUK6Pk2SPsnzHSt62zUBkbXFCmXdBdm8bl7syUEw iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.459860Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 330.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 77.236.211.162:443 4723A337C3F108B96EF7429EC3DD96F3222B589D url=https://api.mittarovo.cz/5E8310CF0A ver=0.0.4",
-    "observed_at": "2026-11-01T02:49:40.468370Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 1073.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 79.116.64.60:443 98422E9D1648FFDB8F16C06CF58CD64B6C03A003 url=https://bridge-es.jmrp.io/hzry0yMJazasJuZZP09uCUtn ver=0.0.4",
-    "observed_at": "2026-11-01T02:49:40.496643Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 424.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.170.112.113:443 A785C024E88D1286E0976B3433F56F5F0FE0193F cert=PAolDrjSw5wzgm0n5jGNFvhljx8sHa5JTsPJQMa/U5wXH6+2ckdzdCRJiyD7fBMwaVw7EA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.584879Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 275.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.130:8443 114A6897D35FFD5D27C375C0C2E0B0B8CF8CBA55 cert=Va3ADFJjrJG+kfPnnHRGN3j0l+Os21K66+xTKFV3L/t6HkG8EdIvPFaQrVl3uHPHm6GQNQ iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.590414Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 277.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.165.171.86:56713 9AC244E0C4A58A54A3B3FE9912FF1D64C7FBD5AF cert=KDD6kI7wXVhE5lzyfTCnCsidusCgIda6Wdpv/YfI2QXqx5O8yZyoMYXrm7MuLUdOu3wvLw iat-mode=2",
-    "observed_at": "2026-11-01T02:49:40.598261Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 334.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 217.217.249.205:9001 57CE78F6F2C5377429AD653639443DB1653F0D16",
-    "observed_at": "2026-11-01T02:49:40.614792Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 2231.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 51.77.200.91:8888 19CE19EFCD8B6C4CEE058ECFECD36AE401A8CC5B",
-    "observed_at": "2026-11-01T02:49:40.631407Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 578.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 72.18.53.189:9111 A216B2017C64AA3BAB144B3B9458CD24A39F53B1",
-    "observed_at": "2026-11-01T02:49:40.635401Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 345.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 67.217.246.127:9001 9AA946B39AD5334B7EA5B805CB3913F7D377D030",
-    "observed_at": "2026-11-01T02:49:40.682677Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 266.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 77.237.246.219:443 337F12771B8FBA072121C0978B8D5722B567609B url=https://www.cafe-kantholz.de/LceovFqcXy92Ji6Gx0rrUmmB ver=0.0.4",
-    "observed_at": "2026-11-01T02:49:40.685144Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 415.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 82.127.83.55:443 B51FD3150E208A600D00BCA5963B0EF5C867574F url=https://rot.ronaak.eu:443/iUFRXvAp3E3MHDiJ8453BaaM ver=0.0.2",
-    "observed_at": "2026-11-01T02:49:40.713577Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 654.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.128:8443 1C449CEA7CE065BB8C16F766A05382105B8957A7 cert=XUJTh1xeWKVmcj3Zk6sQOjhOe4bTl4+aUcWuokbz3twSrasAN0zd8zBmHr9A0mBEWXGZPQ iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.747736Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 279.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 45.76.185.188:8443 7C7A8518809B6B5EAFC31AEB7E477D3DB68BC5DD",
-    "observed_at": "2026-11-01T02:49:40.763767Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 714.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 5.252.227.82:53176 CF33C11BE567C137038179BE864DF671BD899CE2",
-    "observed_at": "2026-11-01T02:49:40.784404Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 551.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 76.228.104.143:9333 AF2CA04E5F0DB92EC5322564A4FBAE3E6BB71C99",
-    "observed_at": "2026-11-01T02:49:40.816568Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 231.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.122.47.254:35670 41FFFFFA47554E88CA357310B09BB1E25BF297A6 cert=CpohIiK1Fe5UCND1DN9RvztPEuJVWn7FI/8LiiLfF/ag1HnThSikabvkFKdsv0w3ZvT6QQ iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.826527Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 329.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 64.176.44.117:443 9A5140B2C5EC60C96195E8152E5BF56954F42A3F url=https://rumblebee.site/PToEBKTcXDpeENNJfnQy1pYO ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:40.845016Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 385.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.132:8443 4FB781F7A9DD39DA53A7996907817FC479874D19 cert=UL2gCAXWW5kEWY4TQ0lNeu6OAmzh40bXYVhMnTWVG8USnyy/zEKGSIPgmwTDMumWr9c1Pg iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.894314Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 279.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.138:8443 53716FE26F23C8C6A71A2BC5D9D8DC64747278C7 cert=6jcYVilMEzxdsWghSrQFpYYJlkkir/GPIXw/EnddUK3S8ToVpMG8u1SwMOEdEs735RrMHw iat-mode=0",
-    "observed_at": "2026-11-01T02:49:40.991584Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 277.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 77.237.246.219:443 337F12771B8FBA072121C0978B8D5722B567609B url=https://www.cafe-kantholz.de/LceovFqcXy92Ji6Gx0rrUmmB ver=0.0.5",
-    "observed_at": "2026-11-01T02:49:41.046676Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 415.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.13:22662 928C1E4289A01F34C8FB423FC32C0E77EE0F8736 cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
-    "observed_at": "2026-11-01T02:49:41.094341Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 277.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.199:12199 CE9FB471CD33ADFD45D1851E3FB3B6E8B8C8F0CD cert=b0194UWG2T7IX0Y6hBUbxA30LjyxFixxZuZv/C2vtvzSC9tarpB0OO+JIuTRbhzGqXfHbg iat-mode=1",
-    "observed_at": "2026-11-01T02:49:41.107691Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 281.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 67.159.18.195:9889 9AC114DFE373C159AA1021EA19C7B18588B2B31D",
-    "observed_at": "2026-11-01T02:49:41.115387Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 686.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.4",
-    "observed_at": "2026-11-01T02:49:41.147307Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 847.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.6",
-    "observed_at": "2026-11-01T02:49:41.148013Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 465.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.7",
-    "observed_at": "2026-11-01T02:49:41.148827Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 558.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.5",
-    "observed_at": "2026-11-01T02:49:41.149369Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 711.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.163.16:443 775A648318DA1E1240EF0DEC038154B60696DE5B url=https://pod01.oneclickhost.eu/jLoIafiPpOBkJRJBN5mm6GPe ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:41.157720Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 925.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 77.172.105.93:9002 A4E5433B40D668BEDFD21C44CE23A3A2B1764E16",
-    "observed_at": "2026-11-01T02:49:41.172256Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 536.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during tls",
-    "error_class": "vanilla:timeout",
-    "line": "Bridge 13.49.132.251:24022 E4487F2AF77CE7FFD86774E0A3E4F7BDDB186B0B",
-    "observed_at": "2026-11-01T02:49:41.216584Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.146:8443 4EBA78385FCA62C8A26EDEEC6752068C676287F3 cert=IPU7h22MwNmvCogs3TrR4NO/RcIb9asRU0saVWfAPvBbWc1YALuHxDhOl5Sri2rZ7QhKNg iat-mode=0",
-    "observed_at": "2026-11-01T02:49:41.325988Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 279.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 77.37.65.181:8888 0F1F4A2FE37BBC986462779BA2F837FA104C667D",
-    "observed_at": "2026-11-01T02:49:41.328528Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 580.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.156:8443 85039DCAC3BBFB86A09BB0C58878FECD79AE33DA cert=9+nXWUOkB/vGawa21fYwAv8v66QvflMgsx3KExXhHInwU6GzBF/MdWtoAvIZ2YKThUCpdA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:41.394127Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 278.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 77.78.111.81:31338 10C8BD5CFB3DCA04455A7B63BBA8F510362D8ED4",
-    "observed_at": "2026-11-01T02:49:41.401626Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 556.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.158:8443 B9E39FA01A5C72F0774A840F91BC72C2860954E5 cert=WA1P+AQj7sAZV9terWaYV6ZmhBUcj89Ev8ropu/IED4OAtqFm7AdPHB168BPoW3RrN0NfA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:41.452036Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 279.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.152.116.78:9002 AB2BF8399CB98F9A44B74185DB64AEBE96781969 cert=ZhSBWRcGUbeSCYnWmwPkvGgc/cQEVViFzTMXCpn0rW+MHCF+DnE3T01xorQ/aggtKnYdBA iat-mode=0",
-    "observed_at": "2026-11-01T02:49:41.468055Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 319.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 83.113.75.134:443 664BEAA9A60B4C029258E4A19E13E26C6D961E0A url=https://hhynz.maledict.me/TLzq9HcRQDlLGmjHAQMff0Hu ver=0.0.5",
-    "observed_at": "2026-11-01T02:49:41.581650Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 434.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 82.183.26.32:9001 2999D36D7A7B48E0CE38049FD3F5F733F2C0029A",
-    "observed_at": "2026-11-01T02:49:41.582142Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 590.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.199:11199 E15FB70EF1A4C46AB3901475FF2CD239813531D4 cert=PCmyK9zEuUc6cyNmliGoYSFHoK4zIAnAlKp9m6vV6tSmL1kVwI/58vW55rqE3z1uAJMuPw iat-mode=2",
-    "observed_at": "2026-11-01T02:49:41.606274Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 277.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 80.67.172.3:443 088ACF1F2F1720AA41BE8575F45AD202FBD59296",
-    "observed_at": "2026-11-01T02:49:41.622948Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 515.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:41.698144Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 603.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.4",
-    "observed_at": "2026-11-01T02:49:41.698381Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 548.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 82.65.58.41:9002 3256AEAE5F47ED3AE908677B1E586E8690F1D17E",
-    "observed_at": "2026-11-01T02:49:41.704323Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 556.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.2",
-    "observed_at": "2026-11-01T02:49:41.705882Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 941.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 82.149.227.122:2112 F1A695C5F67D8751E2ACA8F5D10A9F08FDC1467C",
-    "observed_at": "2026-11-01T02:49:41.730841Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 573.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.18:30196 F8946FCD8F1A7A75836E88059942028BB41A6CCA cert=p9L6+25s8bnfkye1ZxFeAE4mAGY7DH4Gaj7dxngIIzP9BtqrHHwZXdjMK0RVIQ34C7aqZw iat-mode=2",
-    "observed_at": "2026-11-01T02:49:41.733003Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 280.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 82.47.22.191:443 B9B09EDFAEA3824D6258DB017002899F368C9943 url=https://pablo.iki.fi/H5cdG6c0tO7sDwZgAfBixLZB ver=0.0.6",
-    "observed_at": "2026-11-01T02:49:41.803060Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 908.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 82.47.22.191:443 B9B09EDFAEA3824D6258DB017002899F368C9943 url=https://pablo.iki.fi/H5cdG6c0tO7sDwZgAfBixLZB ver=0.0.3",
-    "observed_at": "2026-11-01T02:49:41.803925Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 1019.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 82.47.22.191:443 B9B09EDFAEA3824D6258DB017002899F368C9943 url=https://pablo.iki.fi/H5cdG6c0tO7sDwZgAfBixLZB ver=0.0.7",
-    "observed_at": "2026-11-01T02:49:41.804501Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 587.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 83.151.206.122:9001 9E8B19CA2B5D504668242DB2B1D20BAB5DC6744E",
-    "observed_at": "2026-11-01T02:49:41.839149Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 513.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.6",
-    "observed_at": "2026-11-01T02:49:41.856455Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 462.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 82.127.83.55:2001 B51FD3150E208A600D00BCA5963B0EF5C867574F",
-    "observed_at": "2026-11-01T02:49:42.012656Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 610.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 84.22.109.77:1312 CEF423251E83353BD875CB5327B458F4C8751170",
-    "observed_at": "2026-11-01T02:49:42.052906Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 584.0,
     "source": "handshake-probe",
     "stage": "S3",
     "status": "connected",
@@ -58877,21 +57452,6 @@
     "source": "handshake-probe",
     "stage": "S0",
     "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.7",
-    "observed_at": "2026-11-01T02:49:42.473408Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 891.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
