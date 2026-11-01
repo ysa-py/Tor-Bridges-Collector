@@ -2989,6 +2989,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:2777:f8e4:5dac:f4e3:96c5:c311]:443 DF343521735ABE129910A998817B3A93AA2390FE url=https://test.coellen.xyz ver=0.0.5",
+      "host": "test.coellen.xyz",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:289b:84cd:4be3:77f1:1cdd:9cb1]:443 D71C8E9C2180D2F35DEBF4A39BFCA6972F076D1C sni-imitation=yandex.ru,google.com,dzen.ru,vk.com,mail.ru,ozon.ru,ya.ru,www.wildberries.ru,rutube.ru,www.avito.ru,ok.ru,vkvideo.ru url=https://streaming.the-forgotten-tales.com/gz9X1VBgl0r1Xfx3dHdNl5Tl ver=0.0.3",
       "host": "streaming.the-forgotten-tales.com",
       "nin_flags": [
@@ -3686,6 +3698,18 @@
     },
     {
       "bridge_line": "webtunnel [2001:db8:4fe2:49d2:2b7d:8576:5ede:e177]:443 C9AB6F207432161589F1B994F44FFE28FBF211E2 url=https://www.jarlaxle.de/wzZhcKoNURYF5JUssKhC25Cg ver=0.0.6",
+      "host": "www.jarlaxle.de",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel [2001:db8:4fe2:49d2:2b7d:8576:5ede:e177]:443 C9AB6F207432161589F1B994F44FFE28FBF211E2 url=https://www.jarlaxle.de/wzZhcKoNURYF5JUssKhC25Cg ver=0.0.7",
       "host": "www.jarlaxle.de",
       "nin_flags": [
         "webtunnel_cdn_fronted",
@@ -6024,6 +6048,18 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 185.133.173.187:80 9EABD1AA4B6C40A020DBCCA32DA904B5F8B74BC0",
+      "host": "185.133.173.187",
+      "nin_flags": [
+        "nin_port_open",
+        "tcp_alive"
+      ],
+      "nin_score": 0.3,
+      "port": 80,
+      "tcp_reachable": true,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 188.68.55.68:8443 AAB7DAE2F38A907951899A53A3EE781D180D8CAB",
       "host": "188.68.55.68",
       "nin_flags": [
@@ -7356,6 +7392,18 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 212.171.157.32:8443 E8643AF0230E2F2763DB0781E81CC01E5730D32D cert=xzBvSxLEQ4OaiTfFvaW2Nv5+dhuCD1QTn6htiVCs7kGYYJfw3g7RstX4scYXinyyWvycUA iat-mode=0",
+      "host": "212.171.157.32",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 212.216.147.77:8443 E8643AF0230E2F2763DB0781E81CC01E5730D32D cert=xzBvSxLEQ4OaiTfFvaW2Nv5+dhuCD1QTn6htiVCs7kGYYJfw3g7RstX4scYXinyyWvycUA iat-mode=0",
       "host": "212.216.147.77",
       "nin_flags": [
@@ -7574,6 +7622,18 @@
     {
       "bridge_line": "obfs4 31.76.50.102:8443 E29BFDBF195F7C994139ED726DD0D5FBA0BE8853 cert=0aZMBsmQ9maXZ+0fvBBzxY/94qZobw0dS0q2DqPYnlsa2tUHbJFInV1n5oE2QWP+qeyKcw iat-mode=0",
       "host": "31.76.50.102",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 8443,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 37.143.129.104:8443 D933C2BC508FA68EB3566588C23EF349D0AA7C64 cert=v4cQZapGbHJx5/npxafbXITv/CD4MbDfcxJMNP83xCMS2zdv7IfFm1f+AaloXkNz5nsiPg iat-mode=0",
+      "host": "37.143.129.104",
       "nin_flags": [
         "obfs4_tcp_only",
         "nin_port_open"
@@ -12373,6 +12433,17 @@
       ],
       "nin_score": 0.1,
       "port": 11200,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 185.177.207.202:11202 B072D9AC89714B2832C302A9504FBA1D82060C7E cert=Pj197GrLhhiCMdxhPXER2zM469+Nr7MD6pOnTDHqsrtU4XuWjtWKz77ZZ8uuYzmTAB2kFA iat-mode=1",
+      "host": "185.177.207.202",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 11202,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -24503,11 +24574,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2219,
-    "candidates_probed": 388,
-    "candidates_scored": 2219,
+    "candidates_input": 2225,
+    "candidates_probed": 389,
+    "candidates_scored": 2225,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 618.55
+    "probe_elapsed_secs": 619.2
   }
 }
