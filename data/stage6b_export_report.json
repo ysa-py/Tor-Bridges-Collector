@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-01T02:36:19.327284947+00:00",
+  "generated_at": "2026-11-01T03:14:44.210225794+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 648,
-            "tested_failing": 177,
-            "tested_working": 318,
-            "untested (probe error)": 337,
-            "untested (rate-limited)": 106,
-            "untested (tcp timeout)": 639
+            "tcp_reachable_s1": 644,
+            "tested_failing": 112,
+            "tested_working": 323,
+            "untested (probe error)": 407,
+            "untested (rate-limited)": 105,
+            "untested (tcp timeout)": 637
           },
-          "stamped": 2225,
+          "stamped": 2228,
           "tiers": {
-            "tier_0_attempt": 1138,
-            "tier_1_tcp": 769,
-            "tier_2_pt_handshake": 318
+            "tier_0_attempt": 1141,
+            "tier_1_tcp": 764,
+            "tier_2_pt_handshake": 323
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 1,
-          "tested_global_webtunnel.txt": 161
+          "tested_global_webtunnel.txt": 167
         },
         "relay_evidence": {
-          "bridges_matched": 2225,
-          "relay_observations": 2248,
+          "bridges_matched": 2228,
+          "relay_observations": 2251,
           "s2plus_connected": 3,
-          "verification_upgrades": 330
+          "verification_upgrades": 578
         },
         "webtunnel_probe": {
           "probed": 480,
-          "ws_101": 315,
-          "ws_fail": 165
+          "ws_101": 320,
+          "ws_fail": 160
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-01T02:35:48.266655349+00:00",
+      "started_at": "2026-11-01T03:14:12.229745289+00:00",
       "status": "ok"
     }
   ],
