@@ -8,17 +8,17 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2232,
+      "count": 2233,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 2052,
+      "count": 2053,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 2655,
+      "count": 2656,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
@@ -28,12 +28,12 @@
       "stage": "relay_success"
     },
     {
-      "count": 2232,
+      "count": 2233,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 968,
+      "count": 965,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,18 +43,18 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-01T10:20:08.035723698+00:00",
+  "generated_at": "2026-11-01T11:08:51.910276657+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
-      "DOCUMENTATION_RFC3849_2001_DB8": 259,
+      "DOCUMENTATION_RFC3849_2001_DB8": 260,
       "TEST_NET_1_RFC5737": 10
     },
     "by_transport": {
       "meek-azure": 2,
       "snowflake": 8,
-      "webtunnel": 259
+      "webtunnel": 260
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
     "samples": [
@@ -67,7 +67,7 @@
       "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
       "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478"
     ],
-    "total_non_routable": 269
+    "total_non_routable": 270
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -81,31 +81,31 @@
     "iran_likely_working_all.txt": 740,
     "iran_likely_working_obfs4.txt": 394,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 146,
-    "iran_likely_working_webtunnel.txt": 200,
+    "iran_likely_working_vanilla.txt": 145,
+    "iran_likely_working_webtunnel.txt": 201,
     "obfs4.txt": 881,
     "obfs4_tested.txt": 394,
     "tested_global_obfs4.txt": 394,
-    "tested_global_vanilla.txt": 146,
-    "tested_global_webtunnel.txt": 200,
+    "tested_global_vanilla.txt": 145,
+    "tested_global_webtunnel.txt": 201,
     "vanilla.txt": 495,
-    "vanilla_tested.txt": 146,
-    "webtunnel.txt": 224,
+    "vanilla_tested.txt": 145,
+    "webtunnel.txt": 225,
     "webtunnel_ipv6.txt": 79
   },
   "relay_coverage": {
-    "candidates": 2052,
-    "relay_observations": 2655,
+    "candidates": 2053,
+    "relay_observations": 2656,
     "relay_success": 590,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
       "snowflake": 8,
-      "webtunnel": 79
+      "webtunnel": 80
     },
-    "unobserved_candidates": 89,
+    "unobserved_candidates": 90,
     "unobserved_non_routable": 89,
-    "unobserved_other": 0
+    "unobserved_other": 1
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -125,7 +125,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 89
+    "unobserved_candidates": 90
   },
   "sources": {
     "sources": [
@@ -1118,6 +1118,13 @@
         "successes": 0
       },
       {
+        "classification": "healthy",
+        "endpoint_is_placeholder": false,
+        "front": "static.sw-servers.net",
+        "observations": 1,
+        "successes": 1
+      },
+      {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "steuern-sind-raub.ch",
@@ -1372,13 +1379,13 @@
     ],
     "fronts_with_placeholder_endpoints": 79,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 303,
+    "lines_examined": 304,
     "summary": {
       "degraded": 0,
-      "healthy": 0,
+      "healthy": 1,
       "no_evidence": 1,
       "unreachable_from_relay": 166
     },
-    "unique_fronts": 167
+    "unique_fronts": 168
   }
 }

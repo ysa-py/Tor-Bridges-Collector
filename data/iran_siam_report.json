@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-01T10:07:57.244688+00:00",
+  "generated_at": "2026-11-01T10:56:22.883311+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -5524,6 +5524,29 @@
     },
     {
       "bridge_line": "webtunnel [2001:db8:135d:123e:527a:c63b:5eb0:b322]:443 68674E54A17AEB1C9ADE878BBBB46C6975DD3105 url=https://vika7.space/83c1327ea78e32b5d151e872ca123f7858aec2e1 ver=0.0.4",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "webtunnel_non_cdn_sni",
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.8718,
+      "layer_scores": {
+        "L1_packet_length": 1.0,
+        "L2_iat_timing": 0.95,
+        "L3_flow_features": 0.96,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.9,
+        "L6_alpn_anomaly": 0.96,
+        "L7_temporal": 0.95,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 7,
+      "port": 443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel [2001:db8:13d9:65c5:fc37:9bb2:c196:7b2c]:443 5B3DB05ADBCB006FE30C3CFC744F2D4381197052 url=https://static.sw-servers.net/ps6KSEIWRVYTAKLixx5R6sR3 ver=0.0.7",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
         "webtunnel_non_cdn_sni",
@@ -50459,13 +50482,13 @@
     "COVERT": 1173,
     "DETECTED": 495,
     "PHANTOM": 11,
-    "STEALTH": 553
+    "STEALTH": 554
   },
-  "total_scored": 2232,
+  "total_scored": 2233,
   "transport_summary": {
     "obfs4": 1240,
     "snowflake": 10,
     "vanilla": 495,
-    "webtunnel": 487
+    "webtunnel": 488
   }
 }
