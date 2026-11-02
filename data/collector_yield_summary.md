@@ -2,9 +2,9 @@
 
 | Transport | IPv4 archive | IPv6 archive | IPv4 tested | IPv6 tested |
 |---|---:|---:|---:|---:|
-| obfs4 | 888 | 353 | 0 | 0 |
-| webtunnel | 226 | 261 | 179 | 161 |
-| vanilla | 495 | 0 | 151 | 0 |
+| obfs4 | 890 | 353 | 0 | 0 |
+| webtunnel | 226 | 261 | 174 | 157 |
+| vanilla | 495 | 0 | 154 | 0 |
 | snowflake | 10 | 0 | 0 | 0 |
 | meek-azure | 3 | 0 | 0 | 0 |
 | conjure | 1 | 0 | 0 | 0 |
