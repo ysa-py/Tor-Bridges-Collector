@@ -6240,18 +6240,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 51.254.100.93:443 235A622631D1FD3641CF8CCFB4E2E528F1D3CB43",
-      "host": "51.254.100.93",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 443,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 80.67.172.3:443 088ACF1F2F1720AA41BE8575F45AD202FBD59296",
       "host": "80.67.172.3",
       "nin_flags": [
@@ -9202,6 +9190,17 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 51.254.100.93:443 235A622631D1FD3641CF8CCFB4E2E528F1D3CB43",
+      "host": "51.254.100.93",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 70.109.178.27:443 5E07802E4E16519993534E00CE31B8E6657179EB",
       "host": "70.109.178.27",
       "nin_flags": [
@@ -10661,17 +10660,6 @@
       ],
       "nin_score": 0.15,
       "port": 2112,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 82.183.26.32:9001 2999D36D7A7B48E0CE38049FD3F5F733F2C0029A",
-      "host": "82.183.26.32",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -16045,6 +16033,17 @@
     },
     {
       "bridge_line": "obfs4 82.67.179.132:9003 7005304FD738FC70F4B04E513206A3B70EA6A9FA cert=8OHHXpyutlE2SQuk7zWuAwFWhjEzyZiqmH/76MoYjoAXVILTg89bj/imcbFAaFwuGdMsAg iat-mode=0",
+      "host": "82.67.179.132",
+      "nin_flags": [
+        "obfs4_tcp_only"
+      ],
+      "nin_score": 0.1,
+      "port": 9003,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 82.67.179.132:9003 718F0BDC8A886A85B0CBC8E76BEC0FF1C6A355D9 cert=Eby+vbsax5seJlg2BFsZJRmmj9WDCtFr/xxVN8mydcu3d5lJr5QHOaZ21aBik2fPFbEVZQ iat-mode=0",
       "host": "82.67.179.132",
       "nin_flags": [
         "obfs4_tcp_only"
@@ -24776,11 +24775,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 2243,
-    "candidates_probed": 385,
-    "candidates_scored": 2243,
+    "candidates_input": 2244,
+    "candidates_probed": 384,
+    "candidates_scored": 2244,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 616.575
+    "probe_elapsed_secs": 610.506
   }
 }
