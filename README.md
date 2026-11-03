@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-11-02T19:41:04Z` · **Archive payload SHA-256:** `a1ccdf6d36f62dc67dcf2a2ab1a7be00eace10ad6c5f3ded8aa7dc97c0f7c119`
+> **Last publication:** `2026-11-03T02:17:26Z` · **Archive payload SHA-256:** `fe086e9caecf37e788fa5ddbcbc8d63637f1579485d47ed3a224bb30268b7071`
 
 ## Quick use for Iran
 
@@ -15,8 +15,8 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `757` | Evidence-backed advisory set across transports |
-| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `402` | obfs4-oriented fallback for conventional DPI |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `760` | Evidence-backed advisory set across transports |
+| [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `403` | obfs4-oriented fallback for conventional DPI |
 | [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `208` | WebTunnel candidates |
 | [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `0` | Snowflake capability candidates |
 | [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `208` | NIN/cut-mode priority candidates |
