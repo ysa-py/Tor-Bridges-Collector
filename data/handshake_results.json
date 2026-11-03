@@ -1,20 +1,5 @@
 [
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 129.153.78.39:2484 3B9C9D44AD2FB54D9F6DA20FF5FED8AA02EBB7DF cert=IToBT0eDMvxLKNGE/f6eJ4b8rMSq/WkQi7BXSFqGBeDtbqOt1wIH+1akaMcm/G0odA2nKw iat-mode=0",
-    "observed_at": "2026-11-03T18:45:10.197803Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 7.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "DNS resolution failed for host \"meek.azureedge.net\"",
     "error_class": "meek:dns_failure",
     "line": "meek_lite 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
@@ -5400,21 +5385,6 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 185.177.207.137:8443 D6B9EC832A0D9E6A181A62D4D72CC3A9FEDF60CB cert=4Q8yZaa1lzkPmxsbtanABUYaapxko+AoVtsBNoWGC4+YLBCgavxoM3x4Kn+SX3rLVNubDQ iat-mode=0",
-    "observed_at": "2026-11-03T18:45:17.009011Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 288.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
     "error_class": null,
     "line": "Bridge 209.97.139.217:40048 4F4571C3E0FD8D23C0C0AF76D63F7A5B08199A86",
@@ -5445,7 +5415,7 @@
     }
   },
   {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
+    "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 164.132.87.198:59873 2F29A56FF65BFEA38A140DCFCEE5F259E6ECE9EF cert=XuQwA8c3XWitLrOLDsdAvVH5/zWhq/8vbuIJFaKSUxG/DFPDFG4/wKOuB2WM8pCCz5asFQ iat-mode=0",
     "observed_at": "2026-11-03T19:47:08.319844Z",
@@ -5535,7 +5505,7 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
+    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.6",
     "observed_at": "2026-11-03T19:47:08.524213Z",
@@ -5603,21 +5573,6 @@
     "rtt_ms": 284.0,
     "source": "handshake-probe",
     "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 85.215.180.86:443 6F6C8E0069880AC253704507119464CE4BD1BA65 url=https://dev-test.catcat.pictures/Fj7VnJi1mjigUKBb2rJ1TeWJ ver=0.0.6",
-    "observed_at": "2026-11-03T18:45:19.084898Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 818.0,
-    "source": "handshake-probe",
-    "stage": "S2",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -5932,8 +5887,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5947,8 +5902,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5979,36 +5934,6 @@
     "source": "handshake-probe",
     "stage": "S0",
     "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during read",
-    "error_class": "obfs4:timeout",
-    "line": "obfs4 152.53.160.146:43119 2582C1451932CEC25E225F3D52472ED70F7EC9F0 cert=7nCSaVFvNObSUrrplRjR0AYqTN4TuNa8Izdf6FHFvew8o/stB6NWDjafvHsMpzUxcHSFQg iat-mode=0",
-    "observed_at": "2026-11-03T18:45:21.187752Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "timeout",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "connection reset during tls",
-    "error_class": "vanilla:connection_reset",
-    "line": "Bridge 51.254.100.93:443 235A622631D1FD3641CF8CCFB4E2E528F1D3CB43",
-    "observed_at": "2026-11-03T18:45:25.313162Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"

@@ -13,7 +13,7 @@
       "stage": "candidates_in_history"
     },
     {
-      "count": 2071,
+      "count": 2070,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -91,20 +91,20 @@
     "vanilla.txt": 496,
     "vanilla_tested.txt": 149,
     "webtunnel.txt": 226,
-    "webtunnel_ipv6.txt": 79
+    "webtunnel_ipv6.txt": 78
   },
   "relay_coverage": {
-    "candidates": 2071,
+    "candidates": 2070,
     "relay_observations": 2676,
     "relay_success": 597,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
       "snowflake": 8,
-      "webtunnel": 79
+      "webtunnel": 78
     },
-    "unobserved_candidates": 89,
-    "unobserved_non_routable": 89,
+    "unobserved_candidates": 88,
+    "unobserved_non_routable": 88,
     "unobserved_other": 0
   },
   "relay_retry_plan": {
@@ -125,7 +125,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 89
+    "unobserved_candidates": 88
   },
   "sources": {
     "sources": [
@@ -881,7 +881,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "np601p22.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -1384,9 +1384,9 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 79,
+    "fronts_with_placeholder_endpoints": 78,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 305,
+    "lines_examined": 304,
     "summary": {
       "degraded": 0,
       "healthy": 1,
