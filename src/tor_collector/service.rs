@@ -181,8 +181,8 @@ impl CollectorService {
             // Domain-fronted transports are address-family agnostic and no public source publishes vanilla
             // IPv6 bridges, so an empty IPv6 variant is an expected supply gap (the AI fusion engine back-fills
             // those projections) and must not raise a CI warning annotation.
-            let expected_gap =
-                ipv6 && (Transport::FRONTED.contains(&transport) || transport == Transport::Vanilla);
+            let expected_gap = ipv6
+                && (Transport::FRONTED.contains(&transport) || transport == Transport::Vanilla);
             let gap_level = if expected_gap { "INFO" } else { "WARNING" };
             let fetched = bridgedb.unwrap_or_else(|error| {
                 log(&format!(
