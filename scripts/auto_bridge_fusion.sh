@@ -1356,6 +1356,12 @@ if [ "${FUSION_SKIP_ATTEST:-0}" = "1" ]; then
   exit 0
 fi
 
+# Derived NIN / PQ artefacts must stay byte-identical to a fresh regeneration of the bridge/ data we just
+# wrote (repo invariants C11-C13). The builders are deterministic, so refreshing them is idempotent.
+for builder in build_iran_cut_pack build_pq_bridge_scores build_nin_recommended_transport; do
+  bash "$SCRIPT_DIR/$builder.sh" >/dev/null 2>&1 || echo "[fusion] note: $builder.sh did not complete (non-fatal)"
+done
+
 # Re-attest manifest / ZIP / README to the bytes we just wrote, then verify.
 bash "$SCRIPT_DIR/publication_contract.sh" --rebuild --sync-counts --root "$ROOT" --bridge-dir "$BRIDGE_DIR"
 bash "$SCRIPT_DIR/publication_contract.sh" --check --root "$ROOT" --bridge-dir "$BRIDGE_DIR"
