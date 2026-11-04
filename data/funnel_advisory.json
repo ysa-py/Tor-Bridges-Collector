@@ -3,37 +3,37 @@
   "collection_mode": "live",
   "funnel": [
     {
-      "count": 19,
+      "count": 38,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2577,
+      "count": 2951,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 2354,
+      "count": 2727,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 3004,
+      "count": 3670,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 805,
+      "count": 1106,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 2577,
+      "count": 2951,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 1275,
+      "count": 1276,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,31 +43,32 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-04T22:33:36.160382425+00:00",
+  "generated_at": "2026-11-04T22:47:04.700006712+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
-      "DOCUMENTATION_RFC3849_2001_DB8": 309,
-      "TEST_NET_1_RFC5737": 12
+      "DOCUMENTATION_RFC3849_2001_DB8": 389,
+      "TEST_NET_1_RFC5737": 120
     },
     "by_transport": {
-      "meek-azure": 2,
-      "snowflake": 10,
+      "conjure": 64,
+      "meek-azure": 86,
+      "snowflake": 50,
       "webtunnel": 309
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
     "samples": [
-      "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedALPN",
-      "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
-      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
-      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
-      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn"
+      "conjure 192.0.2.11:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
+      "conjure 192.0.2.12:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=assets.cloud.censys.io,cdn.sstatic.net transport=min",
+      "conjure 192.0.2.13:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.cdn77.com,www.phpmyadmin.net transport=min",
+      "conjure 192.0.2.14:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=app.datapacket.com,www.datapacket.com transport=min",
+      "conjure 192.0.2.15:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.phpmyadmin.net,cdn.zk.mk transport=min",
+      "conjure 192.0.2.16:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.ampproject.org,www.google.com transport=min",
+      "conjure 192.0.2.17:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min",
+      "conjure 192.0.2.18:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.datapacket.com,www.cdn77.com transport=min"
     ],
-    "total_non_routable": 321
+    "total_non_routable": 509
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -79,32 +80,33 @@
   },
   "published_counts": {
     "iran_likely_working_all.txt": 1003,
-    "iran_likely_working_obfs4.txt": 561,
+    "iran_likely_working_obfs4.txt": 565,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 195,
-    "iran_likely_working_webtunnel.txt": 247,
+    "iran_likely_working_vanilla.txt": 192,
+    "iran_likely_working_webtunnel.txt": 246,
     "obfs4.txt": 1062,
-    "obfs4_tested.txt": 561,
-    "tested_global_obfs4.txt": 561,
-    "tested_global_vanilla.txt": 195,
-    "tested_global_webtunnel.txt": 247,
+    "obfs4_tested.txt": 565,
+    "tested_global_obfs4.txt": 565,
+    "tested_global_vanilla.txt": 192,
+    "tested_global_webtunnel.txt": 246,
     "vanilla.txt": 536,
-    "vanilla_tested.txt": 195,
-    "webtunnel.txt": 278,
+    "vanilla_tested.txt": 192,
+    "webtunnel.txt": 277,
     "webtunnel_ipv6.txt": 83
   },
   "relay_coverage": {
-    "candidates": 2354,
-    "relay_observations": 3004,
-    "relay_success": 805,
+    "candidates": 2727,
+    "relay_observations": 3670,
+    "relay_success": 1106,
     "unobserved_by_transport": {
-      "meek_lite": 2,
+      "conjure": 64,
+      "meek_lite": 86,
       "no_literal_endpoint": 4,
-      "snowflake": 10,
+      "snowflake": 50,
       "webtunnel": 85
     },
-    "unobserved_candidates": 97,
-    "unobserved_non_routable": 95,
+    "unobserved_candidates": 285,
+    "unobserved_non_routable": 283,
     "unobserved_other": 2
   },
   "relay_retry_plan": {
@@ -125,15 +127,15 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 97
+    "unobserved_candidates": 285
   },
   "sources": {
     "sources": [
       {
         "added_records": 0,
         "fetched_lines": 0,
-        "requests": 6,
-        "responses_ok": 6,
+        "requests": 12,
+        "responses_ok": 12,
         "source": "bridgedb_html_rotation"
       },
       {
@@ -145,53 +147,53 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 5,
-        "requests": 3,
-        "responses_ok": 3,
+        "fetched_lines": 10,
+        "requests": 6,
+        "responses_ok": 6,
         "source": "moat_builtin_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 4,
-        "requests": 3,
-        "responses_ok": 3,
+        "fetched_lines": 8,
+        "requests": 6,
+        "responses_ok": 6,
         "source": "moat_settings_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 5,
-        "requests": 3,
-        "responses_ok": 3,
+        "fetched_lines": 10,
+        "requests": 6,
+        "responses_ok": 6,
         "source": "moat_builtin_geolocated_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 5,
-        "requests": 3,
-        "responses_ok": 3,
+        "fetched_lines": 10,
+        "requests": 6,
+        "responses_ok": 6,
         "source": "moat_builtin_unblocked_ir_single_transport"
       },
       {
         "added_records": 0,
         "fetched_lines": 0,
-        "requests": 3,
-        "responses_ok": 3,
+        "requests": 6,
+        "responses_ok": 6,
         "source": "moat_settings_geolocated_single_transport"
       },
       {
         "added_records": 0,
         "fetched_lines": 0,
-        "requests": 3,
-        "responses_ok": 3,
+        "requests": 6,
+        "responses_ok": 6,
         "source": "moat_settings_unblocked_ir_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 2278,
+        "fetched_lines": 0,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
-        "responses_ok": 9,
-        "source": "community_mirror:center2055/OnionHop-Bridges-Collector"
+        "responses_ok": 0,
+        "source": "community_mirror:center2055/OnionHop-Bridges-Collector,scriptzteam/Tor-Bridges-Collector-v2"
       }
     ]
   },
@@ -1701,7 +1703,7 @@
     ],
     "fronts_with_placeholder_endpoints": 83,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 361,
+    "lines_examined": 360,
     "summary": {
       "degraded": 0,
       "healthy": 1,
