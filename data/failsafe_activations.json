@@ -1,22 +1,6 @@
 {
   "activations": [
     {
-      "file": "conjure_tested.txt",
-      "lines": 1,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_projection",
-      "timestamp": "2026-10-08T10:24:31.175288060+00:00",
-      "transport": "conjure"
-    },
-    {
-      "file": "meek-azure.txt",
-      "lines": 1,
-      "producer": "bridge_publication",
-      "reason": "empty_transport_projection",
-      "timestamp": "2026-10-08T10:24:31.182990182+00:00",
-      "transport": "meek-azure"
-    },
-    {
       "file": "meek-azure_72h.txt",
       "lines": 1,
       "producer": "bridge_publication",
@@ -3744,8 +3728,23 @@
       "reason": "empty_transport_projection",
       "timestamp": "2026-11-04T16:07:38.259823202+00:00",
       "transport": "meek-azure"
+    },
+    {
+      "file": "meek_lite.txt",
+      "lines": 1,
+      "reason": "empty_or_missing_projection",
+      "timestamp": "2026-11-04T17:26:08.389281816+00:00",
+      "transport": "meek_lite"
+    },
+    {
+      "file": "meek-azure.txt",
+      "lines": 1,
+      "producer": "bridge_publication",
+      "reason": "empty_transport_projection",
+      "timestamp": "2026-11-04T17:51:27.071538108+00:00",
+      "transport": "meek-azure"
     }
   ],
-  "generated_at": "2026-11-04T16:07:38.259836336+00:00",
+  "generated_at": "2026-11-04T17:51:27.071553456+00:00",
   "note": "Non-empty when a transport source exhausts retries and alternate acquisition before using failsafe data."
 }

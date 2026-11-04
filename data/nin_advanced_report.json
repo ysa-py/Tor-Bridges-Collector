@@ -6072,18 +6072,6 @@
       "transport": "webtunnel"
     },
     {
-      "bridge_line": "Bridge 108.175.13.9:80 F9A4DE8B36FA492A05277FAD58F93F5EFEA1E926",
-      "host": "108.175.13.9",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 80,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 109.104.14.213:443 3F94891578E8ED8E693F5C2B0442846C617D1B91",
       "host": "109.104.14.213",
       "nin_flags": [
@@ -9156,6 +9144,17 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "Bridge 108.175.13.9:80 F9A4DE8B36FA492A05277FAD58F93F5EFEA1E926",
+      "host": "108.175.13.9",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 80,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 129.152.27.111:443 D7D36B82E37D7B6D87C0F1B41CB87378D405BA88",
       "host": "129.152.27.111",
       "nin_flags": [
@@ -10280,17 +10279,6 @@
     {
       "bridge_line": "Bridge 194.36.145.3:9001 2DC7C3A77E2EF0A15D16EBCA0050B73DC91E7C27",
       "host": "194.36.145.3",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 194.59.207.185:9001 D6F610636498D27639501BF07951C830C7E05BBA",
-      "host": "194.59.207.185",
       "nin_flags": [
         "tcp_alive"
       ],
@@ -23110,6 +23098,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 194.59.207.185:9001 D6F610636498D27639501BF07951C830C7E05BBA",
+      "host": "194.59.207.185",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9001,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 194.76.168.99:6398 2BFBEEA0AD4FB38F61C64CEDA21673961566BF30",
       "host": "194.76.168.99",
       "nin_flags": [],
@@ -25092,10 +25089,10 @@
   ],
   "nin_probe_metadata": {
     "candidates_input": 2271,
-    "candidates_probed": 390,
+    "candidates_probed": 389,
     "candidates_scored": 2271,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 618.807
+    "probe_elapsed_secs": 616.004
   }
 }
