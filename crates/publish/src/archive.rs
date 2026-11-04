@@ -30,7 +30,7 @@ pub fn deterministic_zip(
 
     let cursor = std::io::Cursor::new(Vec::new());
     let mut writer = zip::ZipWriter::new(cursor);
-    let options = zip::write::FileOptions::default()
+    let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o644)
         .last_modified_time(zip_timestamp);
@@ -60,11 +60,11 @@ fn to_zip_timestamp(timestamp: Option<DateTime<Utc>>) -> Result<zip::DateTime, P
                 dt.minute() as u8,
                 dt.second() as u8,
             )
-            .map_err(|()| PublishError::InvalidZipTimestamp {
+            .map_err(|_| PublishError::InvalidZipTimestamp {
                 reason: "timestamp is outside the ZIP DOS range",
             })
         }
-        None => zip::DateTime::from_date_and_time(1980, 1, 1, 0, 0, 0).map_err(|()| {
+        None => zip::DateTime::from_date_and_time(1980, 1, 1, 0, 0, 0).map_err(|_| {
             PublishError::InvalidZipTimestamp {
                 reason: "fixed epoch is outside the ZIP DOS range",
             }

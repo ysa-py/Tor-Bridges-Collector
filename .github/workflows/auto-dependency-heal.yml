@@ -1,0 +1,72 @@
+---
+# Autonomous dependency healer.
+# Runs daily and whenever the security-audit / self-heal pipeline fails.
+# If `cargo audit` reports anything actionable, scripts/auto_dependency_heal.sh
+# upgrades the affected crates, verifies the workspace still compiles, and a PR
+# is opened (and auto-merge requested) with no human involvement. If the fix
+# needs a real code migration the script rolls back and an issue is opened.
+name: Auto Dependency Heal
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["TorShield-IR Main CI"]
+    types: [completed]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: auto-dependency-heal
+  cancel-in-progress: false
+
+jobs:
+  heal:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'failure'
+    runs-on: ubuntu-26.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Heal dependencies
+        id: heal
+        continue-on-error: true
+        run: bash scripts/auto_dependency_heal.sh
+
+      - name: Open pull request
+        if: steps.heal.outputs.healed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          BRANCH="auto-heal/deps-$(date -u +%Y%m%d-%H%M%S)"
+          git config user.name "tbc-auto-heal[bot]"
+          git config user.email "tbc-auto-heal@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add -A -- '*Cargo.toml' Cargo.lock
+          git commit -m "fix(deps): auto-heal RustSec advisories"
+          git push origin "$BRANCH"
+          PR_URL="$(gh pr create --base "${GITHUB_REF_NAME}" --head "$BRANCH" \
+            --title "fix(deps): auto-heal RustSec advisories" \
+            --body "Automated by scripts/auto_dependency_heal.sh. cargo audit is clean and the workspace compiles.")"
+          gh pr merge "$PR_URL" --auto --squash || echo "auto-merge not enabled; PR left open"
+
+      - name: Report unhealable advisories
+        if: steps.heal.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh issue list --label dependency-heal --state open --json number --jq 'length' | grep -qx 0 || exit 0
+          gh label create dependency-heal --color D93F0B --description "auto-heal needs manual migration" 2>/dev/null || true
+          gh issue create --label dependency-heal \
+            --title "Dependency advisories need a manual migration" \
+            --body "scripts/auto_dependency_heal.sh could not apply a compiling fix automatically. See run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}."

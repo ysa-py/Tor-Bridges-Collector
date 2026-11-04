@@ -38,7 +38,7 @@ rust-version = "1.85"
 # even though scraper.rs already uses reqwest::blocking; --features network
 # exposed this during the first real build of that feature.
 reqwest = { version = "=0.12.22", default-features = false, features = ["rustls-tls", "json", "multipart", "blocking"] }
-tokio = { version = "=1.45.1", features = ["macros", "rt-multi-thread", "time", "fs", "io-util", "process"] }
+tokio = { version = "=1.51.6", features = ["macros", "rt-multi-thread", "time", "fs", "io-util", "process"] }
 quinn = "=0.11.8"
 scraper = "=0.23.1"
 html5ever = "=0.29.1"
@@ -108,7 +108,7 @@ tracing-subscriber = { workspace = true }
 # stdlib equivalent exists in Rust, so this is a new, minimal-feature
 # dependency (only the "deflate" compression method is used, matching
 # Python's `zipfile.ZIP_DEFLATED`).
-zip = { version = "=0.6.6", default-features = false, features = ["deflate"] }
+zip = { version = "=9.3.0", default-features = false, features = ["deflate"] }
 # `serde_yaml` is the YAML engine behind the `validate_workflows` and
 # `quality_gate yaml-lint` Rust ports (replacing PyYAML from the retired
 # `scripts/validate_workflows.py` and the inline `_yaml_lint.py` heredoc in

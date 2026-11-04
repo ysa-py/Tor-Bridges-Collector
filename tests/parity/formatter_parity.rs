@@ -325,7 +325,7 @@ fn run_pipeline_rust(tmp_dir: &Path, fixtures: &[Fixture]) -> Value {
     let zip_file = std::fs::File::open(bridge_dir.join("tor_bridges.zip")).unwrap();
     let mut archive = zip::ZipArchive::new(zip_file).unwrap();
     let mut zip_entries: Vec<String> = (0..archive.len())
-        .map(|i| archive.by_index(i).unwrap().name().to_string())
+        .map(|i| archive.by_index(i).unwrap().name().expect("zip entry name readable").to_string())
         .collect();
     zip_entries.sort();
 

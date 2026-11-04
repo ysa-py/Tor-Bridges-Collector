@@ -7,7 +7,7 @@ use std::path::Path;
 use anyhow::{anyhow, Context, Result};
 use chrono::{DateTime, Utc};
 use reqwest::multipart::{Form, Part};
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipWriter};
 
 use crate::network_safety::safe_reqwest_error_summary;
@@ -112,7 +112,7 @@ law.\n",
 pub fn build_zip(entries: &BTreeMap<String, Vec<u8>>) -> Result<Vec<u8>> {
     let cursor = Cursor::new(Vec::new());
     let mut zip = ZipWriter::new(cursor);
-    let options = FileOptions::default().compression_method(CompressionMethod::Deflated);
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
     for (name, bytes) in entries {
         if !name.ends_with(".txt") || name == "tor_bridges.zip" {
             continue;
