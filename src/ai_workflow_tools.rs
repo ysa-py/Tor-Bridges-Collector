@@ -666,7 +666,7 @@ fn fetch_parent_logs() -> String {
                         let mut texts = Vec::new();
                         for index in 0..archive.len() {
                             if let Ok(mut file) = archive.by_index(index) {
-                                if file.name().ends_with(".txt") {
+                                if file.name().is_ok_and(|name| name.ends_with(".txt")) {
                                     let mut buf = Vec::new();
                                     use std::io::Read as _;
                                     if file.read_to_end(&mut buf).is_ok() {

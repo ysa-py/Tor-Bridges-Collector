@@ -857,6 +857,61 @@ impl IranAntiDpi {
             "bridge_optimization": self.optimize_bridge(bridge_line),
         })
     }
+
+    /// Autonomous, zero-stop, dynamic AI Anti-DPI synthesis for Iranian ISPs.
+    /// Combines threat telemetry, hourly uTLS/ECH JA3/JA4 rotation, Shannon
+    /// entropy morphing, and adaptive TCP fragmentation / IAT jitter profiles.
+    #[must_use]
+    pub fn autonomous_dynamic_evasion_plan(
+        &self,
+        bridge_line: &str,
+        censorship_level: i64,
+        isp: &str,
+        hex_payload_sample: &str,
+        now_ts: f64,
+    ) -> Value {
+        let clamped_level = censorship_level.clamp(1, 5);
+        let threats = self.analyze_threats(clamped_level, isp);
+        let bridge_opt = self.optimize_bridge(bridge_line);
+        let tls_rot = Self::get_tls_randomization_at(now_ts);
+        let entropy = self.analyze_entropy(hex_payload_sample);
+        let isp_norm = if isp.trim().is_empty() {
+            "All"
+        } else {
+            isp.trim()
+        };
+        let (record_frag_bytes, jitter_ms, failover_chain) = match clamped_level {
+            5 => (
+                28,
+                85,
+                vec!["webtunnel", "meek_lite", "snowflake", "conjure", "obfs4"],
+            ),
+            4 => (
+                42,
+                55,
+                vec!["webtunnel", "obfs4", "snowflake", "meek_lite", "conjure"],
+            ),
+            3 => (64, 35, vec!["obfs4", "webtunnel", "snowflake", "meek_lite"]),
+            _ => (128, 15, vec!["obfs4", "webtunnel", "snowflake", "vanilla"]),
+        };
+        json!({
+            "autonomous_mode": true,
+            "zero_stop_failsafe": true,
+            "isp": isp_norm,
+            "censorship_level": clamped_level,
+            "threat_analysis": threats,
+            "bridge_optimization": bridge_opt,
+            "tls_randomization": tls_rot,
+            "entropy_guard": entropy,
+            "dynamic_shaping": {
+                "tcp_record_fragment_bytes": record_frag_bytes,
+                "iat_jitter_window_ms": jitter_ms,
+                "ech_grease_enabled": true,
+                "sni_front_rotation_sec": 900,
+                "failover_transport_chain": failover_chain,
+            },
+        })
+    }
 }
 
 fn hex_decode(s: &str) -> Option<Vec<u8>> {
@@ -934,5 +989,25 @@ mod tests {
         let result = engine.analyze_entropy(&all_zero);
         assert_eq!(result["entropy"], json!(0.0));
         assert_eq!(result["risk"], json!("medium"));
+    }
+
+    #[test]
+    fn autonomous_dynamic_evasion_plan_synthesizes_zero_stop_profile() {
+        let engine = IranAntiDpi::new();
+        let plan = engine.autonomous_dynamic_evasion_plan(
+            "obfs4 198.51.100.7:443 ABCD1234 cert=xyz iat-mode=0",
+            5,
+            "MCI",
+            "48656c6c6f576f726c64",
+            3600.0,
+        );
+        assert_eq!(plan["autonomous_mode"], json!(true));
+        assert_eq!(plan["zero_stop_failsafe"], json!(true));
+        assert_eq!(plan["isp"], json!("MCI"));
+        assert_eq!(plan["censorship_level"], json!(5));
+        assert_eq!(
+            plan["dynamic_shaping"]["tcp_record_fragment_bytes"],
+            json!(28)
+        );
     }
 }

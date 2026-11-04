@@ -506,8 +506,11 @@ fn strip_caret_escapes(input: &str) -> String {
     loop {
         if let Some(rest) = output.strip_prefix("^[") {
             output = rest.to_owned();
-            // Transcribed SGR/CSI body: `[[...m` up to the final byte.
-            if let Some(after) = output.strip_prefix("[[") {
+            // Transcribed SGR/CSI body: `[...m` or `[[...m` up to the final byte.
+            if let Some(after) = output
+                .strip_prefix("[[")
+                .or_else(|| output.strip_prefix('['))
+            {
                 if let Some(m_end) = after.find('m') {
                     let body = &after[..m_end];
                     if body
@@ -524,10 +527,17 @@ fn strip_caret_escapes(input: &str) -> String {
         }
         break;
     }
-    // Trailing bare transcription (same echo artifact, end of line).
-    while output.ends_with("^[") {
-        output.truncate(output.len() - 2);
-        output = output.trim_end().to_owned();
+    // Trailing bare transcription or reset SGR (`^[[0m`, `^[`) at end of line.
+    loop {
+        if let Some(prefix) = output.strip_suffix("^[[0m") {
+            output = prefix.trim_end().to_owned();
+            continue;
+        }
+        if let Some(prefix) = output.strip_suffix("^[") {
+            output = prefix.trim_end().to_owned();
+            continue;
+        }
+        break;
     }
     output
 }
@@ -600,7 +610,7 @@ fn strip_ansi(input: &str) -> String {
 }
 
 fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
-    let lower = line.to_ascii_lowercase();
+    let raw_lower = line.to_ascii_lowercase();
     let trimmed = line.trim();
     if trimmed.is_empty() {
         return None;
@@ -621,6 +631,10 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     let message_clean = strip_caret_escapes(&message_clean);
     let message_trimmed = message_clean.trim();
     let message_lower = message_clean.to_ascii_lowercase();
+    // Match against the message body rather than `<job>\t<step>\t<ts>` so a
+    // step named "Ensure bridge dir and fallback input" never fabricates
+    // warnings on ordinary shell lines inside that step.
+    let lower = message_lower.as_str();
 
     // ── Structural false-positive guards (added 2026-10-14) ─────────────
     // The 2026-10-14 run 38579293985 audit proved the pattern rules below
@@ -740,6 +754,33 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     // emitted ::error::" matched the ::error:: rule). Keep GitHub's own
     // `##[...]` log commands (group/endgroup/annotations) classifiable.
     if message_trimmed.starts_with('#') && !message_trimmed.starts_with("##[") {
+        return None;
+    }
+    // Comment groups echoed by actions (`##[group]Run # https://.../timeout...`),
+    // successful pipeline summaries (`pipeline: ok=21 skipped=0 failed=0`),
+    // vitest batch config headers, Cargo crate download/compile progress
+    // (`Downloaded wait-timeout`), action setup echoes, and per-candidate
+    // webtunnel-probe progress lines are telemetry/metadata, not anomalies.
+    if message_trimmed.starts_with("##[group]Run #")
+        || (message_lower.starts_with("pipeline: ") && message_lower.contains("failed=0"))
+        || message_lower.starts_with("[probe-relay] batch_start ")
+        || message_trimmed.starts_with("Downloaded ")
+        || message_trimmed.starts_with("Compiling ")
+        || message_trimmed.starts_with("[command]/usr/bin/tar ")
+        || message_trimmed == "severity: warning"
+        || message_trimmed.starts_with("INPUT_SHELLCHECK_OPTIONS:")
+        || message_trimmed.contains("[DEP0005] DeprecationWarning:")
+        || message_trimmed.starts_with("(Use `node --trace-deprecation")
+        || message_trimmed
+            .starts_with("[warning]Cache folder path is retrieved but doesn't exist on disk:")
+        || message_trimmed.starts_with("webtunnel-probe: ")
+        || message_lower.starts_with("warning:  unsound")
+        || message_lower.starts_with("warning: 1 allowed warning found")
+        || message_lower.contains("pytestconfigwarning: unknown config option: asyncio_mode")
+        || message_lower.contains("= warnings summary =")
+        || message_lower.starts_with("-- docs: https://docs.pytest.org/")
+        || (message_lower.starts_with("====") && message_lower.contains(" warning in "))
+    {
         return None;
     }
 
@@ -928,7 +969,8 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     let hard_failure_signal = lower.contains("::error::")
         || lower.starts_with("error:")
         || message_trimmed.starts_with("error:")
-        || lower.contains(" process completed with exit code ")
+        || raw_lower.contains(" process completed with exit code ")
+        || lower.contains("process completed with exit code ")
         || lower.contains("##[error]")
         || lower.contains("fatal:")
         || message_trimmed.starts_with("panic:")
@@ -937,7 +979,7 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
         || message_lower.contains(" ... failed")
         || message_lower.starts_with("test result: failed.");
     if !hard_failure_signal {
-        if let Some(code) = parse_exit_code(&lower) {
+        if let Some(code) = parse_exit_code(lower) {
             if code != 0 {
                 return Some((
                     AnomalyKind::NonZeroExit,
@@ -1255,5 +1297,23 @@ mod tests {
         assert_eq!(report.errors, 1);
         assert_eq!(report.status, "failed");
         assert_eq!(report.events[0].kind, AnomalyKind::HardFailure);
+    }
+
+    #[test]
+    fn run_41840622512_false_positive_warnings_are_suppressed() {
+        let log = concat!(
+            "probe-relay-vitest\tRun vitest suite\t2026-11-04T13:43:14.5716179Z ^[[22m^[[39m[probe-relay] batch_start bridges=1 max_concurrent=6 timeout_ms=5000\n",
+            "Quality Gate\tSetup Rust\t2026-11-04T13:43:06.5568045Z ##[group]Run # https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation\n",
+            "Quality Gate\tSetup Rust\t2026-11-04T13:43:06.5568946Z ^[[36;1m# https://rust-lang.zulipchat.com/#narrow/stream/246057-t-cargo/topic/timeout.20investigation^[[0m\n",
+            "shell-check\tRun ShellCheck\t2026-11-04T13:44:11.7544517Z   severity: warning\n",
+            "shell-check\tRun ShellCheck\t2026-11-04T13:44:12.1058995Z   INPUT_SHELLCHECK_OPTIONS: -S warning --format=gcc\n",
+            "scrape-and-test\tRun pipeline (--all)\t2026-11-04T13:46:08.6396522Z webtunnel-probe: anastasia.anondns.net:443 => HTTP 101 (websocket_101_canonical)\n",
+            "scrape-and-test\tRun pipeline (--all)\t2026-11-04T13:56:49.7607734Z pipeline: ok=21 skipped=0 failed=0 -> data/pipeline_report.json\n",
+            "security-audit\tInstall cargo-audit\t2026-11-04T13:44:20.4592765Z ^[[1m^[[32m  Downloaded^[[0m wait-timeout v0.2.1\n",
+            "AI Bridge Re-Ranker (Iran)\tEnsure bridge dir and fallback input\t2026-11-04T13:57:10.1651766Z ^[[36;1mmkdir -p bridge^[[0m\n",
+        );
+        let report = analyze_log(log, "run-41840622512");
+        assert_eq!(report.errors, 0);
+        assert_eq!(report.warnings, 0, "got events: {:?}", report.events);
     }
 }

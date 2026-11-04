@@ -26,6 +26,7 @@ enum Stream {
     /// Transient placeholder while ownership of the inner stream is moved
     /// during a TLS upgrade. Unreachable for I/O: a failed upgrade aborts
     /// the probe attempt and drops the socket.
+    #[cfg_attr(all(target_arch = "arm", target_env = "musl"), allow(dead_code))]
     Torn,
 }
 

@@ -328,6 +328,59 @@ pub fn current_tier() -> CensorshipTier {
     classify_tier(Utc::now(), &IrstTierConfig::default())
 }
 
+/// Build an autonomous, zero-stop Iran ISP-aware adaptive anti-filtering
+/// matrix combining IRST tiering, OONI hourly correlation, and ISP-specific
+/// DPI countermeasure tuning (`MCI`, `Irancell`, `TCI`, `Rightel`, `Shatel`).
+#[allow(clippy::too_many_arguments)]
+#[must_use]
+pub fn autonomous_isp_adaptive_matrix(
+    now: DateTime<Utc>,
+    isp: &str,
+    cfg: &IrstTierConfig,
+    bridges: &[(String, String, f64)],
+    ooni_records: &[OoniIstRecord],
+    recent_failures: &[(String, DateTime<Utc>)],
+    window_days: i64,
+    cooldown_mins: i64,
+) -> Value {
+    let base = routing_recommendation(
+        now,
+        cfg,
+        bridges,
+        ooni_records,
+        recent_failures,
+        window_days,
+        cooldown_mins,
+    );
+    let isp_clean = if isp.trim().is_empty() {
+        "All-Iran-ISPs"
+    } else {
+        isp.trim()
+    };
+    let (sni_padding, quic_probe, mtu_clamp) = match isp_clean.to_ascii_lowercase().as_str() {
+        "mci" | "hamrah-e-aval" => (true, false, 1360),
+        "irancell" | "mtn" => (true, true, 1380),
+        "tci" | "mokhaberat" => (true, false, 1340),
+        _ => (true, true, 1400),
+    };
+    json!({
+        "autonomous": true,
+        "zero_stop": true,
+        "isp": isp_clean,
+        "tier": base["tier"],
+        "irst_hour": base["irst_hour"],
+        "next_transport": base["next_transport"],
+        "preferred_ports": base["preferred_ports"],
+        "bridge_recommendations": base["bridge_recommendations"],
+        "isp_dpi_countermeasures": {
+            "sni_grease_padding": sni_padding,
+            "quic_h3_opportunistic": quic_probe,
+            "safe_mtu_clamp": mtu_clamp,
+            "auto_circuit_heal": true,
+        },
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -655,5 +708,24 @@ mod tests {
         // base 95 + boost (capped at 15) = 110 → clamped to 100
         assert_eq!(recs[0].final_score, 100.0);
         assert!(recs[0].boost <= 15.0);
+    }
+
+    #[test]
+    fn autonomous_isp_adaptive_matrix_handles_all_iran_isps() {
+        let now = Utc.with_ymd_and_hms(2026, 11, 4, 18, 30, 0).unwrap();
+        let bridges = vec![("1.2.3.4:443".to_string(), "snowflake".to_string(), 82.0)];
+        let matrix = autonomous_isp_adaptive_matrix(
+            now,
+            "Irancell",
+            &IrstTierConfig::default(),
+            &bridges,
+            &[],
+            &[],
+            7,
+            10,
+        );
+        assert_eq!(matrix["autonomous"], json!(true));
+        assert_eq!(matrix["isp"], json!("Irancell"));
+        assert_eq!(matrix["tier"], json!("ultra_stealth"));
     }
 }

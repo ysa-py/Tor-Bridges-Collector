@@ -26,6 +26,7 @@
 //! The behavior mirrors what a real Tor client does for bridge lines
 //! (webpkicert verification is deliberately skipped for bridges).
 
+#[cfg(not(all(target_arch = "arm", target_env = "musl")))]
 use std::sync::Arc;
 use std::time::Duration;
 
