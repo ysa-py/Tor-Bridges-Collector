@@ -30,7 +30,7 @@ use std::path::{Path, PathBuf};
 use chrono::{DateTime, Duration, SecondsFormat, Utc};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 
 use crate::static_bridges;
 
@@ -2269,7 +2269,7 @@ fn build_archive(bridge_dir: &Path) -> Result<PathBuf, Box<dyn std::error::Error
     let temporary = bridge_dir.join(format!(".tor_bridges.{}.tmp", std::process::id()));
     let file = File::create(&temporary)?;
     let mut archive = zip::ZipWriter::new(file);
-    let options = FileOptions::default()
+    let options = SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated)
         .unix_permissions(0o644);
 

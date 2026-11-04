@@ -112,7 +112,10 @@ fn archive_contains_every_bundle_file() {
 
     let reader = std::io::Cursor::new(bundle.archive.clone());
     let mut zip_archive = zip::ZipArchive::new(reader).unwrap();
-    let mut names: Vec<String> = zip_archive.file_names().map(str::to_owned).collect();
+    let mut names: Vec<String> = zip_archive
+        .file_names()
+        .map(|name| name.expect("zip entry name readable").into_owned())
+        .collect();
     names.sort();
     let mut expected: Vec<String> = bundle.files.keys().cloned().collect();
     expected.sort();

@@ -1,59 +1,21 @@
 {
   "consecutive_model_failures": 0,
   "counters": {
-    "dpi_blocked": 191,
+    "dpi_blocked": 195,
     "dpi_camouflaged": 4,
-    "dpi_sys_iran": 191,
+    "dpi_sys_iran": 195,
     "dpi_sys_sni_inspector": 2,
     "dpi_sys_utls_rotation": 2,
-    "dpi_total": 195,
-    "failures_recovered": 112,
+    "dpi_total": 199,
+    "failures_recovered": 114,
     "self_heal_registry_refresh": 16,
-    "self_heal_rotated": 96,
-    "self_heal_total": 112,
-    "slot_0_failures": 95,
-    "slot_failures": 95
+    "self_heal_rotated": 98,
+    "self_heal_total": 114,
+    "slot_0_failures": 97,
+    "slot_failures": 97
   },
-  "last_updated": "2026-10-14T20:24:13.393275+00:00",
+  "last_updated": "2026-11-04T18:02:59.530629+00:00",
   "recent_dpi_events": [
-    {
-      "action": "blocked",
-      "details": {},
-      "dpi_system": "iran",
-      "evasion_used": "obfs4",
-      "success": false,
-      "timestamp": "2026-07-03T06:57:15.298953+00:00"
-    },
-    {
-      "action": "blocked",
-      "details": {
-        "bridge": "192.0.2.3:1",
-        "reason": "TLS handshake reset"
-      },
-      "dpi_system": "iran",
-      "evasion_used": "snowflake",
-      "success": false,
-      "timestamp": "2026-07-03T06:57:15.302278+00:00"
-    },
-    {
-      "action": "blocked",
-      "details": {},
-      "dpi_system": "iran",
-      "evasion_used": "obfs4",
-      "success": false,
-      "timestamp": "2026-07-03T07:00:51.313496+00:00"
-    },
-    {
-      "action": "blocked",
-      "details": {
-        "bridge": "192.0.2.3:1",
-        "reason": "TLS handshake reset"
-      },
-      "dpi_system": "iran",
-      "evasion_used": "snowflake",
-      "success": false,
-      "timestamp": "2026-07-03T07:00:51.317043+00:00"
-    },
     {
       "action": "blocked",
       "details": {},
@@ -965,23 +927,47 @@
       "evasion_used": "snowflake",
       "success": false,
       "timestamp": "2026-10-14T20:24:13.387015+00:00"
+    },
+    {
+      "action": "blocked",
+      "details": {},
+      "dpi_system": "iran",
+      "evasion_used": "obfs4",
+      "success": false,
+      "timestamp": "2026-11-04T18:00:46.642853+00:00"
+    },
+    {
+      "action": "blocked",
+      "details": {
+        "bridge": "192.0.2.3:1",
+        "reason": "TLS handshake reset"
+      },
+      "dpi_system": "iran",
+      "evasion_used": "snowflake",
+      "success": false,
+      "timestamp": "2026-11-04T18:00:46.643588+00:00"
+    },
+    {
+      "action": "blocked",
+      "details": {},
+      "dpi_system": "iran",
+      "evasion_used": "obfs4",
+      "success": false,
+      "timestamp": "2026-11-04T18:02:59.523470+00:00"
+    },
+    {
+      "action": "blocked",
+      "details": {
+        "bridge": "192.0.2.3:1",
+        "reason": "TLS handshake reset"
+      },
+      "dpi_system": "iran",
+      "evasion_used": "snowflake",
+      "success": false,
+      "timestamp": "2026-11-04T18:02:59.524417+00:00"
     }
   ],
   "recent_self_heal_events": [
-    {
-      "action_type": "rotated",
-      "details": {},
-      "recovery_time_ms": 42.0,
-      "success": true,
-      "timestamp": "2026-06-28T06:23:29.781936+00:00"
-    },
-    {
-      "action_type": "rotated",
-      "details": {},
-      "recovery_time_ms": 42.0,
-      "success": true,
-      "timestamp": "2026-06-28T06:23:59.070191+00:00"
-    },
     {
       "action_type": "rotated",
       "details": {},
@@ -1719,6 +1705,20 @@
       "recovery_time_ms": 42.0,
       "success": true,
       "timestamp": "2026-10-14T20:24:13.390906+00:00"
+    },
+    {
+      "action_type": "rotated",
+      "details": {},
+      "recovery_time_ms": 42.0,
+      "success": true,
+      "timestamp": "2026-11-04T18:00:46.647627+00:00"
+    },
+    {
+      "action_type": "rotated",
+      "details": {},
+      "recovery_time_ms": 42.0,
+      "success": true,
+      "timestamp": "2026-11-04T18:02:59.528155+00:00"
     }
   ],
   "recent_slot_events": [
@@ -2576,9 +2576,27 @@
       "recovery_method": "",
       "slot_index": 0,
       "timestamp": "2026-10-14T20:24:13.392587+00:00"
+    },
+    {
+      "env_var": "CF_API_TOKEN_1",
+      "error_detail": "rate limited",
+      "error_type": "HTTP 429",
+      "recovered": false,
+      "recovery_method": "",
+      "slot_index": 0,
+      "timestamp": "2026-11-04T18:00:46.649031+00:00"
+    },
+    {
+      "env_var": "CF_API_TOKEN_1",
+      "error_detail": "rate limited",
+      "error_type": "HTTP 429",
+      "recovered": false,
+      "recovery_method": "",
+      "slot_index": 0,
+      "timestamp": "2026-11-04T18:02:59.529759+00:00"
     }
   ],
-  "start_time": 1792009453.3835168,
+  "start_time": 1793815379.5206866,
   "successful_requests": 0,
   "total_requests": 0
 }

@@ -114,7 +114,7 @@ use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, Utc};
 use serde_json::{json, Map, Value};
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 use zip::ZipWriter;
 
 use crate::config::Config;
@@ -503,7 +503,8 @@ impl BridgeFormatter {
         let zip_path = bridge_dir.join("tor_bridges.zip");
         let file = std::fs::File::create(&zip_path).map_err(|e| io_err(&zip_path, e))?;
         let mut zf = ZipWriter::new(file);
-        let options = FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+        let options =
+            SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
         let root = "Tor Bridges";
 
         // Re-list post-deletion, still sorted, matching Python's second
@@ -863,7 +864,14 @@ mod tests {
         let zip_file = std::fs::File::open(bridge_dir.join("tor_bridges.zip")).unwrap();
         let mut archive = zip::ZipArchive::new(zip_file).unwrap();
         let mut names: Vec<String> = (0..archive.len())
-            .map(|i| archive.by_index(i).unwrap().name().to_string())
+            .map(|i| {
+                archive
+                    .by_index(i)
+                    .unwrap()
+                    .name()
+                    .expect("zip entry name readable")
+                    .to_string()
+            })
             .collect();
         names.sort();
         assert!(names.iter().any(|n| n.contains("Tested (Verified)")));
