@@ -1,0 +1,88 @@
+{
+  "ai": {
+    "accuracy": 0.6964444444444444,
+    "llm_advice": null,
+    "model": "online-logistic-v1",
+    "trained_on": 2250
+  },
+  "counts": {
+    "admitted_this_run": 0,
+    "history": 2274,
+    "hourly_mix": 20,
+    "live": 918
+  },
+  "dpi_countermeasures": {
+    "bridge_rotation": {
+      "diversity": "max 2 per /16 and per URL host",
+      "interval_minutes": 60,
+      "retire_after_failures": 3
+    },
+    "domain_fronting": {
+      "live_fronts": [],
+      "max_consecutive_failures_before_rotate": 2,
+      "rotate_front_on_failure": true
+    },
+    "nin_shutdown_survival": {
+      "fallback_order": [
+        "webtunnel",
+        "obfs4",
+        "snowflake",
+        "meek-azure",
+        "conjure",
+        "vanilla"
+      ],
+      "prefer": [
+        "webtunnel",
+        "snowflake",
+        "meek-azure"
+      ],
+      "reason": "CDN-fronted transports ride whitelisted domestic/CDN paths"
+    },
+    "port_policy": {
+      "avoid_fixed_high_ports_first": true,
+      "prefer": [
+        443,
+        80,
+        8443,
+        8080,
+        2083
+      ]
+    },
+    "tls_clienthello": {
+      "alpn": [
+        "h2",
+        "http/1.1"
+      ],
+      "record_fragmentation_bytes": [
+        1,
+        5,
+        40
+      ],
+      "rotate_per_connection": true,
+      "utls_fingerprints": [
+        "HelloChrome_Auto",
+        "HelloFirefox_Auto",
+        "HelloRandomizedALPN"
+      ]
+    },
+    "traffic_shaping": {
+      "burst_split": true,
+      "obfs4_iat_mode": 2,
+      "padding_jitter_ms": [
+        5,
+        60
+      ]
+    }
+  },
+  "generated_at": "2026-11-04T20:23:55.986861+00:00",
+  "hour_seed": 498284,
+  "target": "IR",
+  "transport_priority": [
+    "webtunnel",
+    "obfs4",
+    "snowflake",
+    "meek-azure",
+    "conjure",
+    "vanilla"
+  ]
+}

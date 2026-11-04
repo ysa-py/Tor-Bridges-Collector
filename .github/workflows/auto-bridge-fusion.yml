@@ -1,0 +1,91 @@
+name: Auto Bridge Fusion (Hourly AI)
+
+# Fully automatic, dynamic bridge discovery + AI ranking + projection fill for Iran.
+#
+#   * runs every hour (offset minute — GitHub drops top-of-hour crons under load)
+#   * also runs right after every successful TorShield-IR Bridge Intelligence run so
+#     projections that the Rust publisher rewrote (and may have emptied again) are
+#     refilled immediately
+#   * discovers new sources on its own (Tor Moat + GitHub repository search with a
+#     persistent yield memory), probes with a network-honesty guard, ranks with an
+#     online-learning model, rebuilds the Iran hourly mix + anti-DPI profile, then
+#     re-attests manifest / ZIP / README through scripts/publication_contract.sh
+#   * push conflicts never need a human: on rejection it re-syncs to origin/main and
+#     re-runs the (idempotent) fusion, up to four times
+
+'on':
+  schedule:
+    - cron: '29 * * * *'
+  workflow_run:
+    workflows: ['TorShield-IR Bridge Intelligence']
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: auto-bridge-fusion
+  cancel-in-progress: false
+
+jobs:
+  fusion:
+    name: AI Bridge Fusion (Iran)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Fuse, fill, attest and publish (self-retrying)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          FUSION_BUDGET_SECS: '780'
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          for attempt in 1 2 3 4; do
+            bash scripts/auto_bridge_fusion.sh
+            git add -A bridge data export README.md
+            if git diff --cached --quiet; then
+              echo 'Nothing to publish.'
+              exit 0
+            fi
+            git commit -m 'chore: hourly AI bridge fusion [skip ci]'
+            if git push origin HEAD:main; then
+              echo "Published on attempt ${attempt}."
+              exit 0
+            fi
+            echo "::warning::push rejected on attempt ${attempt}; re-syncing to origin/main and re-running"
+            git fetch origin main
+            git reset --hard origin/main
+            sleep $((attempt * 7))
+          done
+          echo '::warning::could not publish after 4 attempts; the next scheduled run retries automatically'
+
+      - name: Job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo '### Auto Bridge Fusion (Iran)'
+            if [ -f data/ai_fusion_report.json ]; then
+              python3 - <<'PY'
+          import json
+          r = json.load(open('data/ai_fusion_report.json'))
+          print(f"- history: `{r.get('history_total')}` · live: `{r.get('live_bridges')}` · admitted this run: `{r.get('admitted')}`")
+          print(f"- filled from empty: `{len(r.get('filled_from_empty', []))}` · still empty (no real source yet): `{r.get('still_empty')}`")
+          for n in r.get('notes', [])[:6]:
+              print(f"- note: {n}")
+          PY
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
