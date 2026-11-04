@@ -115,6 +115,14 @@
     {
       "ip": "104.21.10.213",
       "port": 443,
+      "raw": "webtunnel 104.21.10.213:443 28F5A0325B50F3EFB5FCC73194FCBF9D4972248E url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.4",
+      "sni": "tired.social",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "104.21.10.213",
+      "port": 443,
       "raw": "webtunnel 104.21.10.213:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3",
       "sni": "tired.social",
       "tier": "YELLOW",
@@ -1489,6 +1497,14 @@
       "transport": "webtunnel"
     },
     {
+      "ip": "79.116.47.14",
+      "port": 443,
+      "raw": "webtunnel 79.116.47.14:443 98422E9D1648FFDB8F16C06CF58CD64B6C03A003 url=https://bridge-es.jmrp.io/hzry0yMJazasJuZZP09uCUtn ver=0.0.4",
+      "sni": "bridge-es.jmrp.io",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
       "ip": "79.116.64.60",
       "port": 443,
       "raw": "webtunnel 79.116.64.60:443 98422E9D1648FFDB8F16C06CF58CD64B6C03A003 url=https://bridge-es.jmrp.io/hzry0yMJazasJuZZP09uCUtn ver=0.0.4",
@@ -1918,10 +1934,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-11-04T03:43:12.181549+00:00",
+  "generated_at": "2026-11-04T06:56:20.416640+00:00",
   "green_count": 11,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 239,
-  "yellow_count": 228
+  "total_bridges": 241,
+  "yellow_count": 230
 }

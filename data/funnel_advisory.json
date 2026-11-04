@@ -8,42 +8,42 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2264,
+      "count": 2268,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 2084,
+      "count": 2087,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 2687,
+      "count": 2691,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 602,
+      "count": 600,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 2264,
+      "count": 2268,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 979,
+      "count": 982,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 756,
+      "count": 757,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-04T03:55:05.960155170+00:00",
+  "generated_at": "2026-11-04T07:08:20.570170355+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -78,34 +78,34 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 756,
-    "iran_likely_working_obfs4.txt": 404,
+    "iran_likely_working_all.txt": 757,
+    "iran_likely_working_obfs4.txt": 406,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 150,
-    "iran_likely_working_webtunnel.txt": 202,
-    "obfs4.txt": 904,
-    "obfs4_tested.txt": 404,
-    "tested_global_obfs4.txt": 404,
-    "tested_global_vanilla.txt": 150,
-    "tested_global_webtunnel.txt": 202,
+    "iran_likely_working_vanilla.txt": 151,
+    "iran_likely_working_webtunnel.txt": 200,
+    "obfs4.txt": 906,
+    "obfs4_tested.txt": 406,
+    "tested_global_obfs4.txt": 406,
+    "tested_global_vanilla.txt": 151,
+    "tested_global_webtunnel.txt": 200,
     "vanilla.txt": 497,
-    "vanilla_tested.txt": 150,
-    "webtunnel.txt": 230,
+    "vanilla_tested.txt": 151,
+    "webtunnel.txt": 231,
     "webtunnel_ipv6.txt": 79
   },
   "relay_coverage": {
-    "candidates": 2084,
-    "relay_observations": 2687,
-    "relay_success": 602,
+    "candidates": 2087,
+    "relay_observations": 2691,
+    "relay_success": 600,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
       "snowflake": 8,
-      "webtunnel": 80
+      "webtunnel": 79
     },
-    "unobserved_candidates": 90,
+    "unobserved_candidates": 89,
     "unobserved_non_routable": 89,
-    "unobserved_other": 1
+    "unobserved_other": 0
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -125,7 +125,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 90
+    "unobserved_candidates": 89
   },
   "sources": {
     "sources": [
@@ -187,7 +187,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 2277,
+        "fetched_lines": 2278,
         "note": "advisory mode: valid_lines reported, merge disabled by default (COMMUNITY_MIRRORS_MERGE=true to merge)",
         "requests": 11,
         "responses_ok": 9,
@@ -1386,7 +1386,7 @@
     ],
     "fronts_with_placeholder_endpoints": 79,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 309,
+    "lines_examined": 310,
     "summary": {
       "degraded": 0,
       "healthy": 1,
