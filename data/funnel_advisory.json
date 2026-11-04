@@ -8,52 +8,52 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 2483,
+      "count": 2577,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 2301,
+      "count": 2354,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 2906,
+      "count": 3004,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 741,
+      "count": 805,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 2483,
+      "count": 2577,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 1183,
+      "count": 1275,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 954,
+      "count": 1003,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-04T21:19:54.039517935+00:00",
+  "generated_at": "2026-11-04T22:33:36.160382425+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
       "DOCUMENTATION_RFC3849_2001_DB8": 309,
-      "TEST_NET_1_RFC5737": 10
+      "TEST_NET_1_RFC5737": 12
     },
     "by_transport": {
       "meek-azure": 2,
-      "snowflake": 8,
+      "snowflake": 10,
       "webtunnel": 309
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
@@ -62,12 +62,12 @@
       "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
       "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
       "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+      "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
       "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
       "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478"
+      "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn"
     ],
-    "total_non_routable": 319
+    "total_non_routable": 321
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -78,34 +78,34 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 954,
-    "iran_likely_working_obfs4.txt": 515,
+    "iran_likely_working_all.txt": 1003,
+    "iran_likely_working_obfs4.txt": 561,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 194,
-    "iran_likely_working_webtunnel.txt": 245,
-    "obfs4.txt": 1014,
-    "obfs4_tested.txt": 515,
-    "tested_global_obfs4.txt": 515,
-    "tested_global_vanilla.txt": 194,
-    "tested_global_webtunnel.txt": 245,
+    "iran_likely_working_vanilla.txt": 195,
+    "iran_likely_working_webtunnel.txt": 247,
+    "obfs4.txt": 1062,
+    "obfs4_tested.txt": 561,
+    "tested_global_obfs4.txt": 561,
+    "tested_global_vanilla.txt": 195,
+    "tested_global_webtunnel.txt": 247,
     "vanilla.txt": 536,
-    "vanilla_tested.txt": 194,
-    "webtunnel.txt": 275,
+    "vanilla_tested.txt": 195,
+    "webtunnel.txt": 278,
     "webtunnel_ipv6.txt": 83
   },
   "relay_coverage": {
-    "candidates": 2301,
-    "relay_observations": 2906,
-    "relay_success": 741,
+    "candidates": 2354,
+    "relay_observations": 3004,
+    "relay_success": 805,
     "unobserved_by_transport": {
       "meek_lite": 2,
       "no_literal_endpoint": 4,
-      "snowflake": 8,
-      "webtunnel": 119
+      "snowflake": 10,
+      "webtunnel": 85
     },
-    "unobserved_candidates": 129,
-    "unobserved_non_routable": 93,
-    "unobserved_other": 36
+    "unobserved_candidates": 97,
+    "unobserved_non_routable": 95,
+    "unobserved_other": 2
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -125,7 +125,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 129
+    "unobserved_candidates": 97
   },
   "sources": {
     "sources": [
@@ -1701,7 +1701,7 @@
     ],
     "fronts_with_placeholder_endpoints": 83,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 358,
+    "lines_examined": 361,
     "summary": {
       "degraded": 0,
       "healthy": 1,
