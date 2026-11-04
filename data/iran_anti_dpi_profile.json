@@ -1,15 +1,15 @@
 {
   "ai": {
-    "accuracy": 0.6964444444444444,
+    "accuracy": 0.6961350510884051,
     "llm_advice": null,
     "model": "online-logistic-v1",
-    "trained_on": 2250
+    "trained_on": 2251
   },
   "counts": {
-    "admitted_this_run": 0,
-    "history": 2274,
-    "hourly_mix": 20,
-    "live": 918
+    "admitted_this_run": 190,
+    "history": 2483,
+    "hourly_mix": 26,
+    "live": 1202
   },
   "dpi_countermeasures": {
     "bridge_rotation": {
@@ -18,16 +18,27 @@
       "retire_after_failures": 3
     },
     "domain_fronting": {
-      "live_fronts": [],
+      "live_fronts": [
+        "ajax.aspnetcdn.com",
+        "app.datapacket.com",
+        "assets.cloud.censys.io",
+        "cdn.ampproject.org",
+        "cdn.sstatic.net",
+        "cdn.zk.mk",
+        "www.cdn77.com",
+        "www.datapacket.com",
+        "www.google.com",
+        "www.phpmyadmin.net"
+      ],
       "max_consecutive_failures_before_rotate": 2,
       "rotate_front_on_failure": true
     },
     "nin_shutdown_survival": {
       "fallback_order": [
         "webtunnel",
-        "obfs4",
         "snowflake",
         "meek-azure",
+        "obfs4",
         "conjure",
         "vanilla"
       ],
@@ -74,14 +85,14 @@
       ]
     }
   },
-  "generated_at": "2026-11-04T20:23:55.986861+00:00",
+  "generated_at": "2026-11-04T20:24:44.182091+00:00",
   "hour_seed": 498284,
   "target": "IR",
   "transport_priority": [
     "webtunnel",
-    "obfs4",
     "snowflake",
     "meek-azure",
+    "obfs4",
     "conjure",
     "vanilla"
   ]
