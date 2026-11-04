@@ -539,7 +539,27 @@ fn strip_caret_escapes(input: &str) -> String {
         }
         break;
     }
-    output
+    // Mid-line transcribed SGR sequences (`^[[0m`, `^[[1;32m`): Cargo prints
+    // `^[[1m^[[32m  Downloaded^[[0m wait-timeout v0.2.1`, so the reset sits
+    // between the verb and its payload. Remove every well-formed occurrence
+    // so message-shape guards (`starts_with("Downloaded ")`) still match.
+    let mut cleaned = String::with_capacity(output.len());
+    let mut rest = output.as_str();
+    while let Some(index) = rest.find("^[[") {
+        cleaned.push_str(&rest[..index]);
+        let tail = &rest[index + 3..];
+        let digits = tail
+            .find(|c: char| !(c.is_ascii_digit() || c == ';'))
+            .unwrap_or(tail.len());
+        if tail[digits..].starts_with('m') {
+            rest = &tail[digits + 1..];
+        } else {
+            cleaned.push_str("^[[");
+            rest = tail;
+        }
+    }
+    cleaned.push_str(rest);
+    cleaned.trim().to_owned()
 }
 
 /// Remove ANSI escape sequences (CSI/OSC one-letter-terminated) and other
@@ -969,8 +989,9 @@ fn classify_line(line: &str) -> Option<(AnomalyKind, Severity, String)> {
     let hard_failure_signal = lower.contains("::error::")
         || lower.starts_with("error:")
         || message_trimmed.starts_with("error:")
-        || raw_lower.contains(" process completed with exit code ")
-        || lower.contains("process completed with exit code ")
+        || ((raw_lower.contains(" process completed with exit code ")
+            || lower.contains("process completed with exit code "))
+            && parse_exit_code(lower) != Some(0))
         || lower.contains("##[error]")
         || lower.contains("fatal:")
         || message_trimmed.starts_with("panic:")
@@ -1159,8 +1180,9 @@ mod tests {
 
     #[test]
     fn recognizes_nonzero_exit_and_tool_skip() {
+        // Non-fatal exit-code mention: Warning-level NonZeroExit evidence.
         let report = analyze_log(
-            "Stage 8q — Zig ultra-fast TCP bridge pre-screener\nZig not available — skipping Stage 8q\nProcess completed with exit code 127\n",
+            "Stage 8q — Zig ultra-fast TCP bridge pre-screener\nZig not available — skipping Stage 8q\nzig helper returned exit code 127\n",
             "fixture",
         );
         assert!(report
@@ -1171,6 +1193,12 @@ mod tests {
             .events
             .iter()
             .any(|event| event.kind == AnomalyKind::NonZeroExit));
+        // The runner's own fatal form is an Error-severity hard failure by design.
+        let fatal = analyze_log("Process completed with exit code 127\n", "fixture");
+        assert!(fatal
+            .events
+            .iter()
+            .any(|event| event.kind == AnomalyKind::HardFailure));
     }
 
     #[test]
