@@ -536,6 +536,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: "1.22"
+          cache: false
       - name: Run Go tests
         run: go test ./internal/...
 
@@ -603,6 +604,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: "1.22"
+          cache: false
       - name: Setup Node
         uses: actions/setup-node@v7
         with:

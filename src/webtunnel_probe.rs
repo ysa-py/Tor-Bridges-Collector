@@ -24,7 +24,9 @@ use std::thread::sleep;
 const MAX_PROBE_RETRIES: u32 = 3;
 /// Base backoff between retries (milliseconds), doubled each attempt.
 const RETRY_BASE_MS: u64 = 500;
+#[cfg_attr(all(target_arch = "arm", target_env = "musl"), allow(dead_code))]
 const WS_PROBE_KEY: &str = "dGhlIHNhbXBsZSBub25jZQ==";
+#[cfg_attr(all(target_arch = "arm", target_env = "musl"), allow(dead_code))]
 const MAX_RESPONSE_HEADER_BYTES: usize = 16 * 1024;
 
 /// Check whether an IPv6 address string is in the RFC 3849 documentation
@@ -83,6 +85,7 @@ fn extract_front_domain(line: &str) -> Option<FrontTarget> {
 
 /// Build a safe WebSocket handshake request. Never log the target path: for
 /// WebTunnel bridge lines it may contain a secret/randomized path component.
+#[cfg_attr(all(target_arch = "arm", target_env = "musl"), allow(dead_code))]
 fn build_websocket_upgrade_request(host: &str, port: u16, path_and_query: &str) -> String {
     let target = if path_and_query.starts_with('/')
         && !path_and_query
@@ -367,7 +370,7 @@ pub fn probe_webtunnel_bridge(bridge: &Value, timeout: Duration) -> Value {
             #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
             sleep(Duration::from_millis(delay_ms));
             #[cfg(all(target_arch = "arm", target_env = "musl"))]
-            drop(delay_ms); // no-op on ARM musl (no std::thread::sleep in CI stub)
+            let _ = delay_ms; // no-op on ARM musl (no std::thread::sleep in CI stub)
         }
 
         let result = probe_sync(host, port, request_target, timeout);
