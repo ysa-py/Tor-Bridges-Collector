@@ -202,6 +202,8 @@ jobs:
       run: bash scripts/test_report_optional_secrets.sh
     - name: Test probe relay secret validation
       run: bash scripts/test_validate_probe_relay_secrets.sh
+    - name: Test notice-to-summary filter (annotation hygiene)
+      run: bash scripts/test_quiet_notices.sh
     - name: Test probe relay smoke retries and redaction
       run: bash scripts/test_probe_relay_smoke.sh
     # v6 relay client contract: descriptor-level chunking (never exceeds the
@@ -697,7 +699,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --locked --quiet --features network --bin community_mirrors
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --features network --bin community_mirrors
 
     - name: Stage 0 — Direct scraper (bridges.torproject.org seed)
       continue-on-error: true
@@ -789,7 +791,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --locked --quiet --features network --bin supply_extender
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --features network --bin supply_extender
 
     - name: FAILSAFE — ensure bridge files always have content (Rust port)
       timeout-minutes: 3
@@ -1357,7 +1359,7 @@ jobs:
           exit 0
         fi
         set -euo pipefail
-        cargo run --locked --quiet --features network --bin webtunnel_supply_advanced
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --features network --bin webtunnel_supply_advanced
 
       # Unconditional cleanup of the backgrounded probe_scheduler; three
       # escalating kill signals plus fuser as the final fallback for port 8742.
@@ -2317,7 +2319,7 @@ jobs:
       timeout-minutes: 5
       run: |
         set -euo pipefail
-        cargo run --locked --quiet --bin drift_advisory
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --bin drift_advisory
 
       # Stage 8v (ADDITIVE 2026-09-08): pipeline funnel advisory — turns the
       # Section-1 diagnostic funnel into a repeatable per-run artifact:
@@ -2338,7 +2340,7 @@ jobs:
       timeout-minutes: 10
       run: |
         set -euo pipefail
-        cargo run --locked --quiet --bin funnel_advisory
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --bin funnel_advisory
 
       # Stage 8w (ADDITIVE 2026-10-13): runner-side transport handshake
       # verification. Before this stage the pipeline produced S1 (TCP) and
@@ -2477,7 +2479,7 @@ jobs:
           # this is a configuration-dependent notice. Single ::notice:: line
           # keeps the Actions annotations clean while keeping the reason in the
           # log.
-          echo "::notice::TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not configured — Telegram delivery skipped; the identical verified payload is still committed to bridge/ + README.md by Stage 11."
+          echo "[notice] TELEGRAM_BOT_TOKEN/TELEGRAM_CHAT_ID not configured — Telegram delivery skipped; the identical verified payload is still committed to bridge/ + README.md by Stage 11."
           UPLOAD=false
         fi
         echo "Telegram dual-persist mode: $UPLOAD"
@@ -2540,7 +2542,7 @@ jobs:
         # the published metric. The committed mode is republished as live by
         # this same publication run.
         jq -n '{mode: "live", live_collection: true, refreshed_by: "stage_9d_post_publication"}' > data/collection_mode.json
-        cargo run --locked --quiet --bin funnel_advisory
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --bin funnel_advisory
         published=$(jq -r '[.funnel[]? | select(.stage == "published_advisory_working") | .count] | first // 0' data/funnel_advisory.json 2>/dev/null || echo 0)
         echo "Post-publication funnel: published_advisory_working=${published} (refreshed from the verified bridge/ bytes)"
         {
@@ -2704,7 +2706,7 @@ jobs:
         for name in $FILES; do
           file="bridge/$name"
           if [ ! -f "$file" ]; then
-            echo "::notice::COUNT_DELTA $name before=0 after=0 file_missing"
+            echo "[notice] COUNT_DELTA $name before=0 after=0 file_missing"
             continue
           fi
           before=$(git show "HEAD:$file" 2>/dev/null | grep -c . || true)
@@ -2713,7 +2715,7 @@ jobs:
           after=$(grep -c . "$file" 2>/dev/null) || after=0
           after=${after//[$'\t\r\n ']/}
           after=${after:-0}
-          echo "::notice::COUNT_DELTA $name before=$before after=$after"
+          echo "[notice] COUNT_DELTA $name before=$before after=$after"
         done
 
       # Stage 8p2 rebuilds the USER-FACING export/iran_cut_pack.txt (the file
@@ -3135,4 +3137,4 @@ jobs:
       if: ${{ github.event_name != 'workflow_dispatch' || inputs.rerank_only != true }}
       run: |
         set -euo pipefail
-        cargo run --locked --quiet --bin funnel_advisory -- --check-contract
+        bash scripts/quiet_notices.sh cargo run --locked --quiet --bin funnel_advisory -- --check-contract
