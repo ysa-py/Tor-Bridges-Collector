@@ -18,7 +18,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-11-03T23:40:43.82892265Z",
+      "observed_at": "2026-11-04T00:19:33.477597994Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -45,7 +45,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-11-03T23:40:43.82892963Z",
+      "observed_at": "2026-11-04T00:19:33.477607359Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -72,7 +72,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:58.474734176Z",
+      "observed_at": "2026-11-04T00:19:48.035628757Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -102,7 +102,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:58.637909396Z",
+      "observed_at": "2026-11-04T00:19:48.19527664Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -132,7 +132,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:58.871518419Z",
+      "observed_at": "2026-11-04T00:19:48.391837627Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -162,7 +162,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:59.00388196Z",
+      "observed_at": "2026-11-04T00:19:48.5122669Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -192,7 +192,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:59.12867104Z",
+      "observed_at": "2026-11-04T00:19:48.732874793Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -222,7 +222,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:59.441626589Z",
+      "observed_at": "2026-11-04T00:19:48.93620846Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -252,7 +252,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:59.597380088Z",
+      "observed_at": "2026-11-04T00:19:49.355527549Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -282,11 +282,41 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-03T23:40:59.72009353Z",
+      "observed_at": "2026-11-04T00:19:49.518847937Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
       "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection established; no transport handshake was performed",
+      "error_class": "",
+      "observed_at": "2026-11-04T00:19:35.618534869Z",
+      "probe_type": "tcp",
+      "rtt_ms": 120.144,
+      "stage": "S1",
+      "status": "connected",
       "vantage": {
         "region": null,
         "type": "github_actions_runner"
@@ -318,9 +348,9 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-11-03T23:40:45.996458982Z",
+      "observed_at": "2026-11-04T00:19:35.638259614Z",
       "probe_type": "tcp",
-      "rtt_ms": 114.032,
+      "rtt_ms": 116.279,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -354,45 +384,9 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-11-03T23:40:45.996918009Z",
+      "observed_at": "2026-11-04T00:19:35.650450201Z",
       "probe_type": "tcp",
-      "rtt_ms": 114.47,
-      "stage": "S1",
-      "status": "connected",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "asn": "AS14061",
-    "asn_country": "GB",
-    "asn_org": "AS14061 DigitalOcean, LLC",
-    "composite_score": 0.5906,
-    "composite_score_orig": 0.675,
-    "flags": [
-      "domain_front_cdn_ok"
-    ],
-    "host": "209.97.139.217",
-    "iran_status": "iran_unknown",
-    "line": "webtunnel 209.97.139.217:443 4F4571C3E0FD8D23C0C0AF76D63F7A5B08199A86 url=https://talnett.com/RLzWM1yDLRjlDiNxzdBQr8DR ver=0.0.3",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 443,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": true,
-    "transport": "webtunnel",
-    "verification": {
-      "detail": "TCP connection established; no transport handshake was performed",
-      "error_class": "",
-      "observed_at": "2026-11-03T23:40:46.001485513Z",
-      "probe_type": "tcp",
-      "rtt_ms": 129.233,
+      "rtt_ms": 111.632,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -420,7 +414,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-11-03T23:38:46.038043212Z",
+      "observed_at": "2026-11-04T00:17:35.690024455Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
