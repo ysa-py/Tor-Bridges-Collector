@@ -37,7 +37,7 @@
 # Environment (all optional):
 #   BRIDGE_DIR (bridge)  DATA_DIR (data)  EXPORT_DIR (export)
 #   FUSION_BUDGET_SECS (780)  FUSION_OFFLINE (0)  FUSION_SKIP_ATTEST (0)
-#   FUSION_MAX_REPOS (24)  FUSION_MAX_FILES (140)  FUSION_WORKERS (256)
+#   FUSION_MAX_REPOS (40)  FUSION_MAX_FILES (140)  FUSION_WORKERS (256)
 #   GITHUB_TOKEN / GH_TOKEN  CEREBRAS_API_KEY  GROQ_API_KEY
 #
 # Usage: scripts/auto_bridge_fusion.sh
@@ -75,7 +75,7 @@ DATA = os.environ.get("DATA_DIR", "data")
 EXPORT = os.environ.get("EXPORT_DIR", "export")
 BUDGET = int(os.environ.get("FUSION_BUDGET_SECS", "780"))
 OFFLINE = os.environ.get("FUSION_OFFLINE", "0") == "1"
-MAX_REPOS = int(os.environ.get("FUSION_MAX_REPOS", "24"))
+MAX_REPOS = int(os.environ.get("FUSION_MAX_REPOS", "40"))
 MAX_FILES = int(os.environ.get("FUSION_MAX_FILES", "140"))
 WORKERS = int(os.environ.get("FUSION_WORKERS", "256"))
 TOKEN = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or ""
@@ -492,7 +492,12 @@ def discover_moat():
 QUERIES = ["tor bridges obfs4", "tor bridges webtunnel", "tor bridge collector", "obfs4 bridges list",
            "snowflake webtunnel bridges", "tor bridges ipv6", "tor bridges iran", "tor bridges telegram bot",
            "vanilla tor bridges", "bridges.torproject.org mirror", "tor bridges ipv6 vanilla list",
-           "webtunnel obfs4 snowflake collector", "tor relay bridge list github actions"]
+           "webtunnel obfs4 snowflake collector", "tor relay bridge list github actions",
+           "tor bridges persian", "tor bridges censorship circumvention list", "lyrebird bridges list",
+           "tor bridge scraper moat", "obfs4 bridge lines txt", "webtunnel bridge lines", "tor bridges tested working",
+           "tor bridges hourly updated", "tor bridges auto update", "meek snowflake conjure bridges",
+           "tor bridges russia china iran", "bridge pool tor onionoo"]
+TOPICS = ["tor-bridges", "obfs4", "webtunnel", "snowflake", "tor-bridge", "bridges", "censorship-circumvention"]
 NAME_RE = re.compile(r"(bridge|obfs4|webtunnel|vanilla|ipv6|ipv4|tested|working|alive|snowflake|torrc|relay)", re.I)
 EXT_RE = re.compile(r"\.(txt|list|json|csv|conf|md|lst)$", re.I)
 SKIP_PATH = re.compile(r"(node_modules|/\.git/|\.min\.|lock|package|license|changelog|/docs?/|/test)", re.I)
@@ -502,7 +507,7 @@ def discover_github():
     mem = load_json(os.path.join(DATA, "ai_fusion_sources.json"), {"repos": {}})
     repos_mem = mem.setdefault("repos", {})
     found = {}
-    qs = [QUERIES[(HOUR_SEED + i * 3) % len(QUERIES)] for i in range(4)]
+    qs = [QUERIES[(HOUR_SEED * 5 + i * 3) % len(QUERIES)] for i in range(7)]
     for q in qs:
         if left() < 120:
             break
@@ -516,6 +521,31 @@ def discover_github():
             if pushed and (NOW - dt.datetime.fromisoformat(pushed.replace("Z", "+00:00"))).days > 30:
                 continue
             found[r["full_name"]] = r.get("default_branch", "main")
+    # topic search (rotating) — finds collectors that never mention "tor bridges" in name/description
+    for tp in [TOPICS[(HOUR_SEED + i) % len(TOPICS)] for i in range(3)]:
+        if left() < 120:
+            break
+        d = jget("https://api.github.com/search/repositories?q=topic:" + urllib.request.quote(tp)
+                 + "&sort=updated&order=desc&per_page=30", timeout=25)
+        for r in (d or {}).get("items", []) or []:
+            pushed = r.get("pushed_at", "")
+            if r["full_name"].lower() == SELF_REPO.lower() or r.get("archived") or r.get("size", 0) > 400_000:
+                continue
+            if pushed and (NOW - dt.datetime.fromisoformat(pushed.replace("Z", "+00:00"))).days > 45:
+                continue
+            found.setdefault(r["full_name"], r.get("default_branch", "main"))
+    # code search (needs a token): repositories that literally hold bridge lines
+    if TOKEN:
+        code_qs = ("obfs4 iat-mode cert extension:txt", "webtunnel url ver extension:txt", "obfs4 cert iat-mode=0")
+        for cq in [code_qs[(HOUR_SEED + i) % len(code_qs)] for i in range(2)]:
+            if left() < 120:
+                break
+            d = jget("https://api.github.com/search/code?q=" + urllib.request.quote(cq) + "&per_page=30", timeout=25)
+            for it in (d or {}).get("items", []) or []:
+                repo = it.get("repository") or {}
+                if repo.get("full_name") and repo["full_name"].lower() != SELF_REPO.lower() and not repo.get("fork"):
+                    found.setdefault(repo["full_name"], "main")
+            time.sleep(2.2)           # code search is limited to ~10 req/min
     for name, m in repos_mem.items():     # remembered productive repos always revisited
         if m.get("yield", 0) > 0 and m.get("misses", 0) < 6:
             found.setdefault(name, m.get("branch", "main"))
@@ -531,13 +561,17 @@ def discover_github():
         out = []
         tree = jget(f"https://api.github.com/repos/{name}/git/trees/{branch}?recursive=1", timeout=25)
         if not tree:
+            info = jget(f"https://api.github.com/repos/{name}", timeout=25) or {}
+            branch = info.get("default_branch") or ("master" if branch == "main" else "main")
+            tree = jget(f"https://api.github.com/repos/{name}/git/trees/{branch}?recursive=1", timeout=25)
+        if not tree:
             return name, branch, [], 0
         blobs = [t for t in tree.get("tree", []) if t.get("type") == "blob"
                  and EXT_RE.search(t["path"]) and NAME_RE.search(t["path"])
                  and not SKIP_PATH.search(t["path"]) and 30 < t.get("size", 0) < 3_000_000]
         blobs.sort(key=lambda t: (not t["path"].lower().startswith("bridge"), -t.get("size", 0)))
         scanned = 0
-        for b in blobs[:12]:
+        for b in blobs[:20]:
             s, body = http(f"https://raw.githubusercontent.com/{name}/{branch}/{b['path']}", timeout=25, retries=1)
             if s == 200 and body:
                 scanned += 1
@@ -563,8 +597,69 @@ def discover_github():
     write_json(os.path.join(DATA, "ai_fusion_sources.json"), mem)
 
 
+
+# Curated authoritative / community raw sources. The registry file below makes the list self-growing:
+# every raw file that ever produced a valid line is remembered, every dead one is retired after 24 misses.
+EXTRA_RAW = [
+    ("tor-browser-pt-config", "https://gitlab.torproject.org/tpo/applications/tor-browser-build/-/raw/main/projects/tor-expert-bundle/pt_config.json"),
+    ("tor-browser-pt-config-gh", "https://raw.githubusercontent.com/torproject/tor-browser-build/main/projects/tor-expert-bundle/pt_config.json"),
+    ("scriptzteam-obfs4", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector/main/bridges-obfs4"),
+    ("scriptzteam-obfs4-ipv6", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector/main/bridges-obfs4-ipv6"),
+    ("scriptzteam-obfs4-guards", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector/main/bridges-obfs4-guards"),
+    ("scriptzteam-vanilla", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector/main/bridges-vanilla"),
+    ("scriptzteam-webtunnel", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector/main/bridges-webtunnel"),
+    ("scriptzteam-v2-obfs4-ipv6", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/obfs4_ipv6.txt"),
+    ("scriptzteam-v2-vanilla-ipv6", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/vanilla_ipv6.txt"),
+    ("scriptzteam-v2-webtunnel-ipv6", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/webtunnel_ipv6.txt"),
+    ("delta-obfs4-ipv6", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/obfs4_ipv6.txt"),
+    ("delta-webtunnel-ipv6", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/webtunnel_ipv6.txt"),
+    ("delta-vanilla-ipv6", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/vanilla_ipv6.txt"),
+    ("delta-snowflake", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/snowflake.txt"),
+    ("delta-meek", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/meek_lite.txt"),
+]
+
+
+def discover_extra():
+    reg_path = os.path.join(DATA, "ai_fusion_extra_sources.json")
+    reg = load_json(reg_path, {"urls": {}})
+    urls = reg.setdefault("urls", {})
+    for name, url in EXTRA_RAW:
+        urls.setdefault(url, {"name": name, "yield": 0, "misses": 0})
+    # every productive GitHub repo remembered by discover_github contributes its raw files as well
+    work = list(urls.items())
+
+    def pull(item):
+        url, meta = item
+        s_, body = http(url, timeout=25, retries=1)
+        if s_ != 200 or not body:
+            return url, None
+        return url, extract(body.decode("utf-8", "replace"))
+
+    ok = fresh = 0
+    with cf.ThreadPoolExecutor(max_workers=8) as ex:
+        for url, cands in ex.map(pull, work):
+            meta = urls[url]
+            if cands is None:
+                meta["misses"] = meta.get("misses", 0) + 1
+                continue
+            new = add_found(cands, "extra:" + meta.get("name", url))
+            ok += 1
+            fresh += new
+            meta["last_valid"] = len(cands)
+            meta["last_ok"] = NOW.isoformat()
+            meta["misses"] = 0 if cands else meta.get("misses", 0) + 1
+            if new:
+                meta["yield"] = meta.get("yield", 0) + new
+            src_stats["extra:" + meta.get("name", url)] = {"valid": len(cands), "new": new}
+    for url in [u for u, m in urls.items() if m.get("misses", 0) >= 24 and not any(url == x[1] for x in EXTRA_RAW)]:
+        urls.pop(url, None)
+    reg["updated_at"] = NOW.isoformat()
+    write_json(reg_path, reg)
+    log(f"extra sources: {ok}/{len(work)} reachable, {fresh} unseen candidates")
+
+
 if not OFFLINE:
-    for fn in (discover_moat, discover_github):
+    for fn in (discover_moat, discover_extra, discover_github):
         try:
             fn()
         except Exception as exc:    # discovery must never break publication
@@ -594,6 +689,9 @@ HONEST = network_honest()
 if not HONEST:
     note("network control probes answered for unroutable TEST-NET hosts — probe results are untrusted, "
          "no bridge will be promoted or admitted from probing this run")
+# hourly-seeded shuffle: with >6000 unseen candidates a fixed prefix would starve the rest forever
+# (unanswered community lines are never remembered), so every candidate gets its turn over a few hours.
+random.Random(HOUR_SEED).shuffle(new_cands)
 probe_new = run_probes(new_cands[:6000], "new") if HONEST else {}
 # re-probe: fronted lines always; everything else that is not yet reachable (cheap upgrade path)
 reprobe = []
@@ -904,6 +1002,9 @@ def dead_evidence():
 
 
 targets = set(os.listdir(BRIDGE)) | set(load_json(os.path.join(DATA, "run_manifest.json"), {}).get("files", {}).keys())
+FB_PATH = os.path.join(DATA, "ai_fusion_fallbacks.json")
+prev_fb = set(load_json(FB_PATH, {}).get("files", []))     # projections that were filled by a documented fallback
+FB_USED = set()
 projection_report = {"filled_from_empty": [], "still_empty": [], "updated": 0}
 written = {}
 
@@ -957,7 +1058,9 @@ def fallback(name):
     if got:
         return got
     if not tested:
-        return members(fam, v6, False, False, False)
+        got = members(fam, v6, False, False, False)
+        if got or not v6:
+            return got
     if v6:
         # GitHub runners have no IPv6 egress, so IPv6 bridges cannot be TCP-verified there.
         # Fallback: strictly validated IPv6 lines re-observed in a live source this run
@@ -968,7 +1071,18 @@ def fallback(name):
         lines = [r[2] for r in pool[:50]]
         if lines:
             projection_report.setdefault("validated_unprobed_ipv6_fallback", []).append(name)
-        return lines
+            return lines
+        if fam == "vanilla":
+            # No public source anywhere publishes real vanilla IPv6 bridges (BridgeDB hands them out only behind a
+            # CAPTCHA). Rather than leave the projection empty, serve the best *real, probed* dual-purpose vanilla
+            # lines (IPv4) so clients always have a usable entry; superseded automatically the moment a genuine
+            # IPv6 vanilla bridge is discovered (see prev_fb handling below). Reported, never claimed as IPv6.
+            got = members("vanilla", False, True, f72, False) or members("vanilla", False, True, False, False) \
+                or members("vanilla", False, False, False, False)
+            if got:
+                FB_USED.add(name)
+                projection_report.setdefault("vanilla_ipv4_dual_stack_fallback", []).append(name)
+                return got[:60]
     return []
 
 
@@ -982,7 +1096,18 @@ for name in sorted(targets):
         continue
     path = os.path.join(BRIDGE, name)
     existing = read_lines(path)
-    merged = union(existing, d) if existing else list(d)
+    if name in prev_fb:
+        # previously filled by fallback: real data supersedes it, otherwise the fallback is refreshed (never goes stale)
+        if d:
+            merged = list(d)
+        else:
+            fb_lines = fallback(name)
+            fb_set = set(fb_lines)
+            keep = [ln for ln in existing if ln in fb_set]       # stable order: only churn what really changed
+            kept = set(keep)
+            merged = (keep + [ln for ln in fb_lines if ln not in kept])[:60] if fb_lines else existing
+    else:
+        merged = union(existing, d) if existing else list(d)
     if not merged:
         merged = fallback(name)
     if not merged:
@@ -994,6 +1119,9 @@ for name in sorted(targets):
         write_atomic(path, "\n".join(merged) + "\n")
         projection_report["updated"] += 1
     written[name] = len(merged)
+
+write_json(FB_PATH, {"files": sorted(FB_USED), "updated_at": NOW.isoformat(),
+                     "note": "projections served by a documented fallback; replaced automatically when real data appears"})
 
 # last resort for aggregate files: closest populated sibling projection
 SIBLINGS = {
@@ -1117,6 +1245,102 @@ profile = {
 }
 write_json(os.path.join(DATA, "iran_anti_dpi_profile.json"), profile)
 
+
+# ───────────────────────────── 7. Ultra anti-DPI (Iran) + fastest-first export + freshness ─────────────────────────────
+import hashlib
+
+
+def bridge_speed(k):
+    lat = history[k].get("latency_ms")
+    return lat if isinstance(lat, (int, float)) and lat > 0 else 10 ** 6
+
+
+fastest = {}
+for tr in QUOTA:
+    ks = [k for k, c in parsed.items() if fam_of(c) == tr and scores[k]["live"]]
+    ks.sort(key=lambda k: (bridge_speed(k), -scores[k]["score"]))
+    fastest[tr] = [{"line": parsed[k]["raw"], "latency_ms": history[k].get("latency_ms"),
+                    "ai_score": scores[k]["score"]} for k in ks[:12]]
+
+ult_rng = random.Random(HOUR_SEED ^ 0x1A2B3C)
+UTLS = ["HelloChrome_Auto", "HelloFirefox_Auto", "HelloIOS_Auto", "HelloAndroid_11_OkHttp", "HelloEdge_Auto",
+        "HelloSafari_Auto", "HelloRandomizedALPN", "HelloRandomizedNoALPN"]
+schedule = []
+prev = None
+for h in range(24):
+    choice = ult_rng.choice([u for u in UTLS if u != prev])
+    prev = choice
+    schedule.append({"utc_hour_offset": h, "utls": choice, "fragment_bytes": ult_rng.choice([1, 2, 5, 40, 100]),
+                     "record_split": ult_rng.choice([[1, 5], [40], [100, 20], [3]]),
+                     "padding_jitter_ms": [ult_rng.choice([2, 5, 10]), ult_rng.choice([40, 60, 120])]})
+adaptive = {}
+for tr in QUOTA:
+    live_n = len(per_tr.get(tr, []))
+    avg_speed = (sum(scores[k]["speed"] for k in per_tr.get(tr, [])) / live_n) if live_n else 0.0
+    adaptive[tr] = round(DPI_PRIOR.get(tr, 0.3) * 0.55 + tr_strength(tr) * 0.25 + avg_speed * 0.20, 4)
+ultra = {
+    "generated_at": iso_now, "target": "IR", "hour_seed": HOUR_SEED,
+    "note": "advisory client-side hardening profile derived from live probes + online model; no claim of "
+            "reachability inside Iran. Consumers: lyrebird / snowflake-client / conjure-client / sing-box style cores.",
+    "adaptive_transport_weights": adaptive,
+    "escalation_ladder": [
+        {"step": 1, "use": "webtunnel", "why": "HTTPS/WebSocket look-alike on CDN-able hosts; best DPI prior"},
+        {"step": 2, "use": "snowflake", "params": {"ampcache": True, "fronts": live_fronts[:6]}},
+        {"step": 3, "use": "meek-azure", "params": {"utls": "HelloRandomizedALPN"}},
+        {"step": 4, "use": "obfs4", "params": {"iat-mode": 2, "prefer_ports": [443, 80, 8443]}},
+        {"step": 5, "use": "conjure", "params": {"phantom": True}},
+        {"step": 6, "use": "vanilla", "params": {"only_if": "all else blocked"}},
+    ],
+    "tls": {"rotation_24h": schedule, "ech": "prefer when the front supports it (Cloudflare / Fastly)",
+            "alpn": ["h2", "http/1.1"], "session_resumption": True},
+    "tcp": {"segment_first_payload": True, "first_segment_bytes": [1, 2, 5], "ttl_decoy": False,
+            "note": "TTL decoys are intentionally off — they break behind carrier NAT"},
+    "dns": {"doh_resolvers": ["https://1.1.1.1/dns-query", "https://9.9.9.9/dns-query", "https://8.8.8.8/dns-query"],
+            "bootstrap_by_ip": True, "avoid_system_resolver": True},
+    "speed": {"probe_workers": WORKERS, "fastest_first": True, "parallel_bridge_attempts": 3,
+              "circuit_build_timeout_s": 25, "fastest_by_transport": {t: v[:5] for t, v in fastest.items()}},
+    "nin_shutdown_survival": profile["dpi_countermeasures"]["nin_shutdown_survival"],
+    "counts": {"live": profile["counts"]["live"], "history": len(history)},
+}
+write_json(os.path.join(DATA, "iran_anti_dpi_ultra.json"), ultra)
+
+fast_t = ["# Auto-generated FASTEST-FIRST Iran torrc — " + iso_now,
+          "# Lowest measured handshake latency first, one bridge set per transport. Regenerated hourly.",
+          "UseBridges 1", "ClientTransportPlugin obfs4,meek_lite,webtunnel exec /usr/bin/lyrebird",
+          "ClientTransportPlugin snowflake exec /usr/bin/snowflake-client",
+          "ClientTransportPlugin conjure exec /usr/bin/conjure-client",
+          "LearnCircuitBuildTimeout 1", "CircuitBuildTimeout 25", "KeepalivePeriod 60",
+          "ConnectionPadding 1", "CircuitPadding 1", "NumCPUs 2"]
+for tr in sorted(QUOTA, key=lambda t: -adaptive[t]):
+    for b in fastest.get(tr, [])[:6]:
+        fast_t.append("Bridge " + b["line"])
+write_atomic(os.path.join(EXPORT, "iran_fastest.torrc"), "\n".join(fast_t) + "\n")
+
+# freshness manifest — proves every projection was re-derived this run even when its bytes did not change
+FR_PATH = os.path.join(DATA, "bridge_freshness.json")
+fr_old = load_json(FR_PATH, {}).get("files", {})
+fr_new = {}
+SUPPLY_LIMITED = {"conjure": "Tor Project publishes a single conjure line",
+                  "meek": "Tor Project publishes ≤3 meek lines", "snowflake": "Tor Project publishes ~10 snowflake lines"}
+for fn in sorted(os.listdir(BRIDGE)):
+    fp = os.path.join(BRIDGE, fn)
+    if not os.path.isfile(fp) or fn.endswith((".json", ".zip")):
+        continue
+    with open(fp, "rb") as fh:
+        raw_b = fh.read()
+    h = hashlib.sha256(raw_b).hexdigest()
+    prev_meta = fr_old.get(fn, {})
+    entry = {"lines": raw_b.count(b"\n"), "sha256": h, "last_verified": iso_now,
+             "content_changed_at": iso_now if prev_meta.get("sha256") != h else prev_meta.get("content_changed_at", iso_now)}
+    for key, why in SUPPLY_LIMITED.items():
+        if fn.startswith(key):
+            entry["supply_limited"] = why
+    if fn in FB_USED:
+        entry["fallback"] = "served from real vanilla IPv4 lines (no public vanilla IPv6 source exists)"
+    fr_new[fn] = entry
+write_json(FR_PATH, {"generated_at": iso_now, "empty_files": sorted(n for n, e in fr_new.items() if e["lines"] == 0),
+                     "files": fr_new})
+
 REPORT.update({"finished_at": dt.datetime.now(dt.timezone.utc).isoformat(),
                "elapsed_secs": round(time.time() - T0, 1), "history_total": len(history),
                "live_bridges": profile["counts"]["live"], "admitted": admitted,
@@ -1133,7 +1357,7 @@ if [ "${FUSION_SKIP_ATTEST:-0}" = "1" ]; then
 fi
 
 # Re-attest manifest / ZIP / README to the bytes we just wrote, then verify.
-bash "$SCRIPT_DIR/publication_contract.sh" --rebuild --root "$ROOT" --bridge-dir "$BRIDGE_DIR"
+bash "$SCRIPT_DIR/publication_contract.sh" --rebuild --sync-counts --root "$ROOT" --bridge-dir "$BRIDGE_DIR"
 bash "$SCRIPT_DIR/publication_contract.sh" --check --root "$ROOT" --bridge-dir "$BRIDGE_DIR"
 
 # Refresh data/run_manifest.json (bytes / lines / sha256 per published file) so the

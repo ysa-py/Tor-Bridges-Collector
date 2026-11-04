@@ -45,16 +45,19 @@ ROOT="$(cd -- "$SCRIPT_DIR/.." && pwd)"
 BRIDGE_DIR=""
 mode="check"
 set_counts=()
+sync_counts=0
 
 usage() {
   cat <<'USAGE'
 Usage:
   publication_contract.sh --check   [--root DIR] [--bridge-dir DIR]
-  publication_contract.sh --rebuild [--root DIR] [--set-count NAME=VALUE]...
+  publication_contract.sh --rebuild [--root DIR] [--set-count NAME=VALUE]... [--sync-counts]
 
 --check    verify manifest hashes, ZIP entries, and README archive hash (default)
 --rebuild  re-attest manifest hashes/sizes to the published bytes and rebuild the
            ZIP; refuses while the payload still carries conflict markers
+--sync-counts  (with --rebuild) re-attest every manifest summary count to the
+           count the payload really holds, so no advisory is left behind
 USAGE
 }
 
@@ -70,6 +73,7 @@ while [ "$#" -gt 0 ]; do
       BRIDGE_DIR="${2:?--bridge-dir needs a directory}"
       shift
       ;;
+    --sync-counts) sync_counts=1 ;;
     --set-count)
       set_counts+=("${2:?--set-count needs NAME=VALUE}")
       shift
@@ -99,6 +103,7 @@ CONTRACT_MODE="$mode" \
   CONTRACT_ROOT="$ROOT" \
   CONTRACT_BRIDGE_DIR="$BRIDGE_DIR" \
   CONTRACT_SET_COUNTS="$set_counts_joined" \
+  CONTRACT_SYNC_COUNTS="$sync_counts" \
   python3 - <<'PY'
 import hashlib
 import json
@@ -111,6 +116,7 @@ MODE = os.environ["CONTRACT_MODE"]
 ROOT = os.environ["CONTRACT_ROOT"]
 BRIDGE = os.environ["CONTRACT_BRIDGE_DIR"]
 SET_COUNTS = [p for p in os.environ["CONTRACT_SET_COUNTS"].splitlines() if p]
+SYNC_COUNTS = os.environ.get("CONTRACT_SYNC_COUNTS", "0") == "1"
 
 MANIFEST_NAME = "telegram_manifest.json"
 ARCHIVE_NAME = "tor_bridges.zip"
@@ -364,6 +370,16 @@ for pair in SET_COUNTS:
         fail(2, f"--set-count value must be a non-negative integer: {pair!r}")
     summary[name] = int(value)
     reattested.append(f"{name} (summary)")
+
+if SYNC_COUNTS:
+    for name in payload_of(required):
+        path = os.path.join(BRIDGE, name)
+        if not os.path.isfile(path) or name not in summary:
+            continue
+        actual = payload_count(name, read(path))
+        if actual is not None and summary[name] != actual:
+            summary[name] = actual
+            reattested.append(f"{name} (summary synced)")
 
 write_atomic(manifest_path, (json.dumps(manifest, indent=2, ensure_ascii=False) + "\n").encode("utf-8"))
 

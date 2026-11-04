@@ -160,7 +160,14 @@ impl CollectorService {
                 lines
             }
             Err(error) => {
-                log(&format!("WARNING: {error}"));
+                // The Telegram source is optional; a missing bot token is configuration, not a fault.
+                let message = error.to_string();
+                let level = if message.contains("no TELEGRAM_BOT_TOKEN") {
+                    "INFO"
+                } else {
+                    "WARNING"
+                };
+                log(&format!("{level}: {message}"));
                 Vec::new()
             }
         };
@@ -171,15 +178,21 @@ impl CollectorService {
         // 12-minute budget even though acquisition itself was concurrent.
         let mut list_inputs = Vec::new();
         for (transport, ipv6, bridgedb, community) in acquired {
+            // Domain-fronted transports are address-family agnostic and no public source publishes vanilla
+            // IPv6 bridges, so an empty IPv6 variant is an expected supply gap (the AI fusion engine back-fills
+            // those projections) and must not raise a CI warning annotation.
+            let expected_gap =
+                ipv6 && (Transport::FRONTED.contains(&transport) || transport == Transport::Vanilla);
+            let gap_level = if expected_gap { "INFO" } else { "WARNING" };
             let fetched = bridgedb.unwrap_or_else(|error| {
                 log(&format!(
-                    "WARNING: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
+                    "{gap_level}: BridgeDB {transport} ipv6={ipv6} unavailable: {error}"
                 ));
                 Vec::new()
             });
             let mut seeded = community.unwrap_or_else(|error| {
                 log(&format!(
-                    "WARNING: community source {transport} ipv6={ipv6} unavailable: {error}"
+                    "{gap_level}: community source {transport} ipv6={ipv6} unavailable: {error}"
                 ));
                 Vec::new()
             });
@@ -428,8 +441,15 @@ impl CollectorService {
             // This is the zero-byte/empty-upstream guard: no archive, recent,
             // or tested file is touched when there is nothing trustworthy to
             // publish, so a transient source failure cannot erase old output.
+            let gap_level = if ipv6
+                && (Transport::FRONTED.contains(&transport) || transport == Transport::Vanilla)
+            {
+                "INFO"
+            } else {
+                "WARNING"
+            };
             log(&format!(
-                "WARNING: {transport} ipv6={ipv6} has no usable source or existing lines; retaining prior files"
+                "{gap_level}: {transport} ipv6={ipv6} has no usable source or existing lines; retaining prior files"
             ));
             return Ok(None);
         }
