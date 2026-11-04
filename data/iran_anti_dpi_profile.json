@@ -1,23 +1,25 @@
 {
   "ai": {
-    "accuracy": 0.7007525453740593,
+    "accuracy": 0.693227,
     "llm_advice": null,
-    "model": "online-logistic-v1",
-    "trained_on": 2259
+    "model": "online-logistic-v2-iran-anti-dpi",
+    "trained_on": 2261
   },
   "counts": {
-    "admitted_this_run": 50,
-    "history": 2533,
-    "hourly_mix": 26,
-    "live": 1252
+    "admitted_this_run": 0,
+    "empty_projections": 0,
+    "history": 3260,
+    "hourly_mix": 37,
+    "live": 1425
   },
   "dpi_countermeasures": {
     "bridge_rotation": {
-      "diversity": "max 2 per /16 and per URL host",
+      "diversity": "max 2 per /16 and per URL host; deterministic SHA-256 hourly permutation",
       "interval_minutes": 60,
       "retire_after_failures": 3
     },
     "domain_fronting": {
+      "ipv6_aaaa_verified": true,
       "live_fronts": [
         "ajax.aspnetcdn.com",
         "app.datapacket.com",
@@ -38,16 +40,17 @@
         "webtunnel",
         "snowflake",
         "meek-azure",
-        "obfs4",
         "conjure",
+        "obfs4",
         "vanilla"
       ],
       "prefer": [
         "webtunnel",
         "snowflake",
-        "meek-azure"
+        "meek_lite",
+        "conjure"
       ],
-      "reason": "CDN-fronted transports ride whitelisted domestic/CDN paths"
+      "reason": "CDN-fronted and Refraction transports ride whitelisted domestic/CDN paths during NIN cuts"
     },
     "port_policy": {
       "avoid_fixed_high_ports_first": true,
@@ -56,7 +59,8 @@
         80,
         8443,
         8080,
-        2083
+        2083,
+        2053
       ]
     },
     "tls_clienthello": {
@@ -67,12 +71,15 @@
       "record_fragmentation_bytes": [
         1,
         5,
+        24,
         40
       ],
       "rotate_per_connection": true,
+      "sni_ech_grease": true,
       "utls_fingerprints": [
         "HelloChrome_Auto",
         "HelloFirefox_Auto",
+        "HelloIOS_Auto",
         "HelloRandomizedALPN"
       ]
     },
@@ -82,18 +89,24 @@
       "padding_jitter_ms": [
         5,
         60
-      ]
+      ],
+      "stun_ports_preferred": [
+        443,
+        10000,
+        3478
+      ],
+      "webrtc_covertdtls": "randomizemimic"
     }
   },
-  "generated_at": "2026-11-04T21:25:27.251701+00:00",
-  "hour_seed": 498285,
+  "generated_at": "2026-11-04T22:00:00+00:00",
+  "hour_seed": 498286,
   "target": "IR",
   "transport_priority": [
     "webtunnel",
     "snowflake",
     "meek-azure",
-    "obfs4",
     "conjure",
+    "obfs4",
     "vanilla"
   ]
 }
