@@ -691,8 +691,8 @@ jobs:
       continue-on-error: true
       timeout-minutes: 10
       env:
-        COMMUNITY_MIRRORS: ${{ vars.COMMUNITY_MIRRORS || 'center2055/OnionHop-Bridges-Collector' }}
-        COMMUNITY_MIRRORS_MERGE: ${{ vars.COMMUNITY_MIRRORS_MERGE || 'false' }}
+        COMMUNITY_MIRRORS: ${{ vars.COMMUNITY_MIRRORS || 'center2055/OnionHop-Bridges-Collector,scriptzteam/Tor-Bridges-Collector-v2' }}
+        COMMUNITY_MIRRORS_MERGE: ${{ vars.COMMUNITY_MIRRORS_MERGE || 'true' }}
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
@@ -780,11 +780,11 @@ jobs:
       env:
         # Bounded, rate-limit-aware extra draws (self-limited; see
         # docs/SUPPLY_EXPANSION.md). 0 disables a family entirely.
-        SUPPLY_EXTRA_DRAWS: '1'
-        MOAT_EXTRA_ROUNDS: '1'
+        SUPPLY_EXTRA_DRAWS: '2'
+        MOAT_EXTRA_ROUNDS: '2'
         # Channel-variant MOAT draws (geolocated + `unblocked: ["ir"]`
         # single-transport payloads; docs/SUPPLY_EXPANSION.md section 7).
-        MOAT_VARIANT_ROUNDS: '1'
+        MOAT_VARIANT_ROUNDS: '2'
       run: |
         if [ "${{ steps.collection.outputs.collect }}" != "true" ]; then
           echo "self no-op: live collection, Worker deploy, and Telegram stay on main"
@@ -2735,13 +2735,14 @@ jobs:
       # invariant audit (C11 cutpack-freshness) then correctly rejected.
     - name: Stage 8p2 — NIN cut-pack finalizer (user-facing iran_cut_pack.txt)
       continue-on-error: true
-      timeout-minutes: 5
+      timeout-minutes: 10
       run: |
         set -euo pipefail
         if [ "${GITHUB_EVENT_NAME}" = "pull_request" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
           echo "self no-op: iran_cut_pack finalizer stays on main (event=${GITHUB_EVENT_NAME} ref=${GITHUB_REF})"
           exit 0
         fi
+        FUSION_BUDGET_SECS=240 bash scripts/auto_bridge_fusion.sh
         bash scripts/build_iran_cut_pack.sh
         echo "✅ Iran internet-cut pack: $(grep -c '^[^#]' export/iran_cut_pack.txt) bridges"
 
