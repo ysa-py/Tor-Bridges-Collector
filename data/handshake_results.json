@@ -165,36 +165,6 @@
     }
   },
   {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 129.153.78.39:9959 3B9C9D44AD2FB54D9F6DA20FF5FED8AA02EBB7DF",
-    "observed_at": "2026-11-04T22:45:44.256628Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 70.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
-    "observed_at": "2026-11-04T22:45:44.260841Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 100.8.170.63:50164 FBA329BA4F5FE648456C3A28BBAA3C7EBD118E08 cert=DKA6xS0N6c4I1CFVmWc/qgAEhPBgR/dPQyXhbkjt082Ka2xmq1pwSUpCPt626uuKW2Z1TA iat-mode=0",
@@ -263,7 +233,7 @@
     "rtt_ms": 0.0,
     "source": "handshake-probe",
     "stage": "S0",
-    "status": "inconclusive",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5993,7 +5963,7 @@
     "rtt_ms": 0.0,
     "source": "handshake-probe",
     "stage": "S0",
-    "status": "error",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
