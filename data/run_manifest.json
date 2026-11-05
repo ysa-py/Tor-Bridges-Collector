@@ -1,87 +1,483 @@
 {
-  "generated_at": "2026-11-05T21:11:46Z",
   "degraded": false,
   "degraded_reasons": [],
-  "restored_last_known_good": [],
   "files": {
-    "bridge_history.json": {"bytes": 2754995, "lines": 54977, "sha256": "984bc1ae992ba56ae5351e66209ed6d1f11e0b565c8ff844269d0a2643678846"},
-    "bridge_list_for_testing.json": {"bytes": 586736, "lines": 4233, "sha256": "fc9d8ec6fa263358b643540db976e21cec79db078c7cc5ea3f8d413acee6a27f"},
-    "bridge_scores.json": {"bytes": 816606, "lines": 16926, "sha256": "c4c56c55bb71a55cf5d68ec6c9d601995ec47259a69c1d08318eae8f9b0181df"},
-    "conjure.txt": {"bytes": 6038, "lines": 35, "sha256": "620ab3ad42ae684f7aa30355d7e757d4d9a5345419ce9f3440fda5833a62c22e"},
-    "conjure_72h.txt": {"bytes": 11585, "lines": 67, "sha256": "d64e180da7fe9ccf8ff803e5e65ccf8348bf3832b54291ccace027722c093cc5"},
-    "conjure_72h_ipv4.txt": {"bytes": 6038, "lines": 35, "sha256": "7ab6fc609e4ea7ef1998173d8e7d9fba92f80ed8f94c38906d3081263c20e202"},
-    "conjure_72h_ipv6.txt": {"bytes": 9519, "lines": 55, "sha256": "40b376c00aa5aeaf2f5ee6d5bb5ce5af210a19d4944daf9622833269f5bbdcc1"},
-    "conjure_ipv4_ipv6_all.txt": {"bytes": 11585, "lines": 67, "sha256": "53240b6914d1dbb8142241ca6765d27ee42823bad308f9b055425c5521390e7a"},
-    "conjure_tested.txt": {"bytes": 11585, "lines": 67, "sha256": "8310425f62d439f1e5b6d2e506bd7baf3c1bb2674901ef7b6a29c9390f21799a"},
-    "iran_blocked.txt": {"bytes": 150072, "lines": 1132, "sha256": "f016776b506938ebb00e1b3fe0e20653418d09a4a0e64c2dcac99d3fa336975e"},
-    "iran_blocked_ipv4_ipv6_all.txt": {"bytes": 150072, "lines": 1132, "sha256": "f016776b506938ebb00e1b3fe0e20653418d09a4a0e64c2dcac99d3fa336975e"},
-    "iran_likely_working_all.txt": {"bytes": 286109, "lines": 2183, "sha256": "2f7d2cf6b3be4bf9acbda0fd0e0e173fef4e242fad604d02203d0d0ff6847d66"},
-    "iran_likely_working_ipv4_ipv6_all.txt": {"bytes": 286109, "lines": 2183, "sha256": "2f7d2cf6b3be4bf9acbda0fd0e0e173fef4e242fad604d02203d0d0ff6847d66"},
-    "iran_likely_working_nin.txt": {"bytes": 62634, "lines": 385, "sha256": "7614b99dae604604cafc0db96e28a0f69be00f7435bc7607e1bbc45f9e2602d6"},
-    "iran_likely_working_obfs4.txt": {"bytes": 141094, "lines": 921, "sha256": "1b8d0e70f86b323265b16be3369ed0a750ba3d8234a09f4de5f93dabe83102a9"},
-    "iran_likely_working_snowflake.txt": {"bytes": 17742, "lines": 40, "sha256": "9d78643886e9e8e9fd422ee89537661030c5fba8482fc355c519ebd6069f47f7"},
-    "iran_likely_working_vanilla.txt": {"bytes": 37335, "lines": 624, "sha256": "fe92845507b1c2e5caf4b4c6eb06b84ffe93908f9f0f82ec8a58c63e8d66f791"},
-    "iran_likely_working_webtunnel.txt": {"bytes": 35140, "lines": 267, "sha256": "9a0aff032fc9f3374d072e0d76cd325f52b84a7119902f693c0647a583aa9aa2"},
-    "iran_results.json": {"bytes": 16487615, "lines": 468236, "sha256": "a3a3ee6a04502507ca96c7e3aeb53e70a168f9ddb0112e1efc4deb88c497864b"},
-    "meek-azure.txt": {"bytes": 6382, "lines": 59, "sha256": "b56fdf8a435d4e967f3366559fa0f2fe0fea0e6575190db777e87cf8ddd74ec6"},
-    "meek-azure_72h.txt": {"bytes": 6382, "lines": 59, "sha256": "18f96e7671ec2d92f739e2fbec1d482dfc3fafce737b63eed1af0ae31e4762f2"},
-    "meek-azure_all.txt": {"bytes": 9541, "lines": 87, "sha256": "c8ce5262da2e1475b8d765278c171626e72cd0f8458964a3e9c0c851431ef789"},
-    "meek-azure_tested.txt": {"bytes": 6382, "lines": 59, "sha256": "0898e3795e4fe4c3721fede11e020e520947b64345030ebb5e18baaaff454968"},
-    "meek_lite.txt": {"bytes": 6382, "lines": 59, "sha256": "0bbdf9018611f4451dbbc0b6d3b7226e5ee6422337aa5d1e5fc8cf6d621ba2bf"},
-    "meek_lite_72h.txt": {"bytes": 6382, "lines": 59, "sha256": "66bf8d1cb844de2e66e3992cb4abc3f40e3920720717dc5f12706de6876d2155"},
-    "meek_lite_72h_ipv4.txt": {"bytes": 6382, "lines": 59, "sha256": "63cbcb38ceaaa57838196e04f97cfe7a37c6043fa4c3d72d572ea6b2df90a30d"},
-    "meek_lite_72h_ipv6.txt": {"bytes": 6914, "lines": 63, "sha256": "7f61e8b2a0da5470d5484adcb004ac1359a0dbc29055a19fcaec5c40807402fb"},
-    "meek_lite_ipv4.txt": {"bytes": 6382, "lines": 59, "sha256": "b3cb98c6ed1a8ff134c6fb3c644cbce965db8b045ba7a4292170905ad123d95b"},
-    "meek_lite_ipv4_ipv6_all.txt": {"bytes": 9541, "lines": 87, "sha256": "47dfc7072721768479c07d9c414316764ba3ab96357b58bf995427e6b7497baf"},
-    "meek_lite_ipv6.txt": {"bytes": 6914, "lines": 63, "sha256": "4c40abd429731238f91d2cb108520fdb7fe4c452960d09cb3a2e6598c7541843"},
-    "meek_lite_ipv6_tested.txt": {"bytes": 6914, "lines": 63, "sha256": "46b6db777eb166277116f4a0e1edde26b35e490c3cf6d2d12225464affe4a769"},
-    "meek_lite_tested.txt": {"bytes": 6382, "lines": 59, "sha256": "57deec747335d4aa99ff65057f9caafd911cdb192989aba712ebd262248b466d"},
-    "obfs4.txt": {"bytes": 1230041, "lines": 8028, "sha256": "668a38488f1ec399bfd5222d180a81f4de2f9ce4fbdf66f9862b52a6b21599ed"},
-    "obfs4_72h.txt": {"bytes": 215977, "lines": 1410, "sha256": "f15506da8bab4b2b61dcb4a22662e5758f3bf60ffdaed59f3168c0c98423ff2f"},
-    "obfs4_72h_ipv4.txt": {"bytes": 215977, "lines": 1410, "sha256": "049667959e958ce53e436018e08a47a9f6c1bdb8c4b69a6b63346ee3637db91a"},
-    "obfs4_72h_ipv6.txt": {"bytes": 116833, "lines": 685, "sha256": "2d3e5439bb90a0a9f5ba6480b0fa548dd838ea98bc2f31784ae7efd535bf62d6"},
-    "obfs4_ipv4_ipv6_all.txt": {"bytes": 1346874, "lines": 8713, "sha256": "a02dd096e4a706e26688129aeae66e250764d71625569d0520cc05451ac603c9"},
-    "obfs4_ipv4_tested.txt": {"bytes": 141094, "lines": 921, "sha256": "0368f590e0ed00a21f1916eee3bcc696af9df2f210fcdfcff584f51d8179c5d1"},
-    "obfs4_ipv6.txt": {"bytes": 116833, "lines": 685, "sha256": "c09641b5c055e2888d4a4f9383191faa348f344d8bd7ba268e53f7a364fb8ff1"},
-    "obfs4_ipv6_72h.txt": {"bytes": 116833, "lines": 685, "sha256": "2d3e5439bb90a0a9f5ba6480b0fa548dd838ea98bc2f31784ae7efd535bf62d6"},
-    "obfs4_ipv6_tested.txt": {"bytes": 13701, "lines": 80, "sha256": "4ca0d4fb77299e67fc2612def20cc8df577b558c924cbdd81fd78897f39ce326"},
-    "obfs4_tested.txt": {"bytes": 141094, "lines": 921, "sha256": "1b142a377d6461c8cd25cb4dccaa84ef02a1089d63dfa78f7778ae0b2c413103"},
-    "snowflak_ipv4_ipv6_all.txt": {"bytes": 26674, "lines": 60, "sha256": "0ad56d6139e32001574c942150545a388de1f7dfa7157f9502d8bd9a76f7c841"},
-    "snowflake.txt": {"bytes": 17742, "lines": 40, "sha256": "9796f6ae9c7e2a3c30c12915e3f2ea848cddda9dada76a300d796b44e8b7d31c"},
-    "snowflake_72h.txt": {"bytes": 17742, "lines": 40, "sha256": "5d37363775d505bc72ef0e7f2f870a7429384e18032cb43f83676575ff4c2c9f"},
-    "snowflake_72h_ipv4.txt": {"bytes": 17742, "lines": 40, "sha256": "b989343c4766dd9ef6b4e8ad837816f1a5d4bf1301fa19285776590a15a27e72"},
-    "snowflake_72h_ipv6.txt": {"bytes": 22368, "lines": 50, "sha256": "e3cc2fb99f05db737aef467cd03cff9d5609ecc0f8fba36160b6e0b73a6176ff"},
-    "snowflake_ipv4_ipv6_all.txt": {"bytes": 26674, "lines": 60, "sha256": "0ad56d6139e32001574c942150545a388de1f7dfa7157f9502d8bd9a76f7c841"},
-    "snowflake_ipv6.txt": {"bytes": 22368, "lines": 50, "sha256": "c4a16b7a96b1e6a8f87216d5eef9199e099cc3d75773975b8a3d9a21f02538f8"},
-    "snowflake_ipv6_tested": {"bytes": 22368, "lines": 50, "sha256": "2cb8ac7b1a18dd5d007d52c78593a8ac90b8343a8d96b79aebda758805993d98"},
-    "snowflake_ipv6_tested.txt": {"bytes": 22368, "lines": 50, "sha256": "2cb8ac7b1a18dd5d007d52c78593a8ac90b8343a8d96b79aebda758805993d98"},
-    "snowflake_tested.txt": {"bytes": 17742, "lines": 40, "sha256": "9a9ea692d87373502355e518c6d71f820aa439dfde4777d539d49fa5ebcdc965"},
-    "tested_global_obfs4.txt": {"bytes": 141094, "lines": 921, "sha256": "36ee325929dfc0fccdbcc78558a59583f36b64a3ad0a35b4b31205e08bc29ae9"},
-    "tested_global_vanilla.txt": {"bytes": 37335, "lines": 624, "sha256": "31190b1dc5ecf18835a89a7dc2cde94e8d26fe5945eecffc617c17bbcb9f4b48"},
-    "tested_global_webtunnel.txt": {"bytes": 35138, "lines": 267, "sha256": "48d1a9cdc01af5e13f840a51fdee34ae1e56c949560cca5f06d68a02b4c5f48e"},
-    "vanilla.txt": {"bytes": 165064, "lines": 2754, "sha256": "81c1bac92e83919adb7704a2f1cdb12a3b6cf652ace9911afcb402da854a0b24"},
-    "vanilla_72h.txt": {"bytes": 57982, "lines": 966, "sha256": "cc79aa533e237903d8727a9ae374092636a1dc4489eff2f31ed0a9e6448bcc0c"},
-    "vanilla_72h_ipv6.txt": {"bytes": 13941, "lines": 193, "sha256": "b7d5377d615a507df1286a8a59feb3faee242ee9b56fc3ad8e53bd84aac198e9"},
-    "vanilla_ipv4.txt": {"bytes": 57982, "lines": 966, "sha256": "0becf9e85ab76081937075a0e25120bbe2b2f465f7db68a7d6ca326ff7cf7eaa"},
-    "vanilla_ipv4_72h.txt": {"bytes": 57982, "lines": 966, "sha256": "d78ef50ebaef7a00840a21c4367be3724f5d34edd21dd4bd563783f6a0695a00"},
-    "vanilla_ipv4_ipv6_all.txt": {"bytes": 179005, "lines": 2947, "sha256": "134b8a41762398dc8eb457d1645a750a394f02c2588e0b063dc0f9195e5cd44a"},
-    "vanilla_ipv4_tested.txt": {"bytes": 37335, "lines": 624, "sha256": "e4c60d7a3f9eb7007c71374a98342d788c953bfdf0017cd1ae951ad3a580d598"},
-    "vanilla_ipv6.txt": {"bytes": 13941, "lines": 193, "sha256": "0631c0b5d9173dab174d724fd33c56703ff687df5922f852ae9b344bdf86d522"},
-    "vanilla_ipv6_72h.txt": {"bytes": 13941, "lines": 193, "sha256": "b7d5377d615a507df1286a8a59feb3faee242ee9b56fc3ad8e53bd84aac198e9"},
-    "vanilla_ipv6_tested.txt": {"bytes": 5790, "lines": 80, "sha256": "b16d33f6964e3fd68f72ca687ea602836d4fd45dbc9dbf5b9f6f6ca1ae20ca5d"},
-    "vanilla_tested.txt": {"bytes": 37335, "lines": 624, "sha256": "2e28f5faaaa10ee2c5e0e9b1280c89aa2925c9cce61998b395cfda888b0cd771"},
-    "webtunnel.txt": {"bytes": 35057, "lines": 266, "sha256": "552c4a540c9b8ec2f35261284e273799e6e43576d84cf88f9741e6c86e00b8cf"},
-    "webtunnel_72h.txt": {"bytes": 35057, "lines": 266, "sha256": "0794cc547e42f851f8bbd03deb82e1318ce73a2fea76e1a05aa0b155d6c6d8b6"},
-    "webtunnel_72h_ipv4.txt": {"bytes": 35047, "lines": 266, "sha256": "bc2654c5e6acb23886be58f4095bde325c2d6bf190d2394c94c9f3449c37fac9"},
-    "webtunnel_72h_ipv6.txt": {"bytes": 49032, "lines": 308, "sha256": "b4cf45230e92dcf5d9af02e2ee22281304ccf75e023097da75735b93a811291f"},
-    "webtunnel_ipv4.txt": {"bytes": 35059, "lines": 266, "sha256": "70b2076f1d89d303ff9a0d4e8b44214886aa7bbba1b9c0fc4ac21bbf8e65d005"},
-    "webtunnel_ipv4_ipv6_all.txt": {"bytes": 112865, "lines": 759, "sha256": "4f69d5a8f74c277e144664675be5828c98c59db2eeba388ba6f6ce040ce4cde8"},
-    "webtunnel_ipv4_tested.txt": {"bytes": 34409, "lines": 261, "sha256": "5d5eb390fe041ae16883a881a9198db0074c1c0366f571d5def2e3439fa33ea5"},
-    "webtunnel_ipv6.txt": {"bytes": 77806, "lines": 493, "sha256": "e2277422da882dbbf93c0040b4737cd13e642a738d46da7fa163ca78acedb541"},
-    "webtunnel_ipv6_72h.txt": {"bytes": 49032, "lines": 308, "sha256": "b4cf45230e92dcf5d9af02e2ee22281304ccf75e023097da75735b93a811291f"},
-    "webtunnel_ipv6_tested.txt": {"bytes": 27408, "lines": 173, "sha256": "86884d61e50246a33e6f35a299aab04ccce07090c656e74d1f1f97eec472249d"},
-    "webtunnel_tested.txt": {"bytes": 34407, "lines": 261, "sha256": "cc22193beed59b38ff1975a8681cfaf540d978ba7ae600d084ddf05307004480"},
-    "telegram_manifest.json": {"bytes": 31638, "lines": 743, "sha256": "e4d1ba750985e349de9d7faf09d3fcd5dbdd5c8e9762a1c3652a277a8a89a495"},
-    "tor_bridges.zip": {"bytes": 4894726, "lines": 17143, "sha256": "202f862e924c00af21927150ca6e0b9ba02979ab05ec834bbfb2aa7f285e7a47"}
-  }
+    "bridge_history.json": {
+      "bytes": 2755279,
+      "count": 0,
+      "lines": 0,
+      "sha256": "74afa89e34034cc3eba3f2f24fef67fd02d84f1fdf8dfdfc0f379438a22b4153"
+    },
+    "bridge_list_for_testing.json": {
+      "bytes": 586797,
+      "count": 0,
+      "lines": 0,
+      "sha256": "fc1e0ae0ccc3fca2f7db6d0472f812a810450398c9ae04ee1a675bd4b7adc6e0"
+    },
+    "bridge_scores.json": {
+      "bytes": 816703,
+      "count": 0,
+      "lines": 0,
+      "sha256": "866c8c9d3848eea2b103841cc2c7b763409184880898964a1adb1c7e3b91694a"
+    },
+    "conjure.txt": {
+      "bytes": 6038,
+      "count": 35,
+      "lines": 35,
+      "sha256": "620ab3ad42ae684f7aa30355d7e757d4d9a5345419ce9f3440fda5833a62c22e"
+    },
+    "conjure_72h.txt": {
+      "bytes": 11585,
+      "count": 67,
+      "lines": 67,
+      "sha256": "d64e180da7fe9ccf8ff803e5e65ccf8348bf3832b54291ccace027722c093cc5"
+    },
+    "conjure_72h_ipv4.txt": {
+      "bytes": 6038,
+      "count": 35,
+      "lines": 35,
+      "sha256": "7ab6fc609e4ea7ef1998173d8e7d9fba92f80ed8f94c38906d3081263c20e202"
+    },
+    "conjure_72h_ipv6.txt": {
+      "bytes": 9519,
+      "count": 55,
+      "lines": 55,
+      "sha256": "40b376c00aa5aeaf2f5ee6d5bb5ce5af210a19d4944daf9622833269f5bbdcc1"
+    },
+    "conjure_ipv4_ipv6_all.txt": {
+      "bytes": 11585,
+      "count": 67,
+      "lines": 67,
+      "sha256": "53240b6914d1dbb8142241ca6765d27ee42823bad308f9b055425c5521390e7a"
+    },
+    "conjure_tested.txt": {
+      "bytes": 11585,
+      "count": 67,
+      "lines": 67,
+      "sha256": "8310425f62d439f1e5b6d2e506bd7baf3c1bb2674901ef7b6a29c9390f21799a"
+    },
+    "iran_blocked.txt": {
+      "bytes": 150072,
+      "count": 1132,
+      "lines": 1132,
+      "sha256": "8181d02084a8cfe78778ca4754097a66a9cf15d44cc62953726c1383b0afc884"
+    },
+    "iran_blocked_ipv4_ipv6_all.txt": {
+      "bytes": 150072,
+      "count": 1132,
+      "lines": 1132,
+      "sha256": "8181d02084a8cfe78778ca4754097a66a9cf15d44cc62953726c1383b0afc884"
+    },
+    "iran_likely_working_all.txt": {
+      "bytes": 289154,
+      "count": 2203,
+      "lines": 2203,
+      "sha256": "9af1fc35ce4e3169ad54618b4a300601b4a8dcd98f1a33f457952416555241e1"
+    },
+    "iran_likely_working_ipv4_ipv6_all.txt": {
+      "bytes": 289154,
+      "count": 2203,
+      "lines": 2203,
+      "sha256": "9af1fc35ce4e3169ad54618b4a300601b4a8dcd98f1a33f457952416555241e1"
+    },
+    "iran_likely_working_nin.txt": {
+      "bytes": 62634,
+      "count": 385,
+      "lines": 385,
+      "sha256": "4a0d4c32458f48ef15d2d80999d832213502c5bdf7fb4d71a2ea7d469e3fd2ba"
+    },
+    "iran_likely_working_obfs4.txt": {
+      "bytes": 141247,
+      "count": 922,
+      "lines": 922,
+      "sha256": "b84aa180c91771989c01cefda0fd67ef293a6581c0da5994c087813c7ae181ea"
+    },
+    "iran_likely_working_snowflake.txt": {
+      "bytes": 17742,
+      "count": 40,
+      "lines": 40,
+      "sha256": "9d78643886e9e8e9fd422ee89537661030c5fba8482fc355c519ebd6069f47f7"
+    },
+    "iran_likely_working_vanilla.txt": {
+      "bytes": 37391,
+      "count": 625,
+      "lines": 625,
+      "sha256": "a444f1e3fc5d911dfc121680bb853f44adc63ba52e0f074e8d06158e409673a0"
+    },
+    "iran_likely_working_webtunnel.txt": {
+      "bytes": 35140,
+      "count": 267,
+      "lines": 267,
+      "sha256": "9a0aff032fc9f3374d072e0d76cd325f52b84a7119902f693c0647a583aa9aa2"
+    },
+    "iran_results.json": {
+      "bytes": 16503529,
+      "count": 0,
+      "lines": 0,
+      "sha256": "f7ec28970164253b0e3aa9cc8e616032bf2e1d50b987957e0246463d8b327cd6"
+    },
+    "meek-azure.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "4205de14768f92e74d91076d08e148b599517d84d456093d54ae60b6547445ce"
+    },
+    "meek-azure_72h.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "b38af0fc3ab00ae43f4c666e38201c0fc766dd7d1664b4baa651021293ade1d9"
+    },
+    "meek-azure_all.txt": {
+      "bytes": 9541,
+      "count": 87,
+      "lines": 87,
+      "sha256": "b5d7695344e6e58682461905638b8697e1ac4606c8a04d9c5aea4233531814ed"
+    },
+    "meek-azure_tested.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "1ed430a9d2b6e22e064b37a86f4eddc8c8014e9ae64dc689e0316bb2d6841649"
+    },
+    "meek_lite.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "0876dd09425a28a69f61cee9518c06cd7036d11b808a025e35269087d69d1f84"
+    },
+    "meek_lite_72h.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "79481e73247e41564d588e5e79fb24cbf41f5c448b19d4be88a7529bb424f0d1"
+    },
+    "meek_lite_72h_ipv4.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "a6e87aa55fdf7cf43f5c3566c19b579f8b5e2c22a92dfd142bec0436615a9552"
+    },
+    "meek_lite_72h_ipv6.txt": {
+      "bytes": 6914,
+      "count": 63,
+      "lines": 63,
+      "sha256": "130196b29651231c18b41edceef05ec2b9fffb29e5eaac7dc26289f30d1b0018"
+    },
+    "meek_lite_ipv4.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "dfc5fc83e59b8dcf506190206d8fc88ff8033cac49867292807fa9184963cb1e"
+    },
+    "meek_lite_ipv4_ipv6_all.txt": {
+      "bytes": 9541,
+      "count": 87,
+      "lines": 87,
+      "sha256": "f2edca793b275940e5b1af303007048a5638815a105ddde1158066b260dee181"
+    },
+    "meek_lite_ipv6.txt": {
+      "bytes": 6914,
+      "count": 63,
+      "lines": 63,
+      "sha256": "24e21caff633e645b8c5ec671039f23ceb2a9b3f292b749d420eb9e227fb66e0"
+    },
+    "meek_lite_ipv6_tested.txt": {
+      "bytes": 6914,
+      "count": 63,
+      "lines": 63,
+      "sha256": "1e6b9d1d814c8459609b923a3ce2aac5770999859ee9999acd2342c90086a3ef"
+    },
+    "meek_lite_tested.txt": {
+      "bytes": 6382,
+      "count": 59,
+      "lines": 59,
+      "sha256": "a9b27315b5d314a00b6256248f652d62b8d2cb3833c337b67c60a785ff2c17e4"
+    },
+    "obfs4.txt": {
+      "bytes": 1230041,
+      "count": 8028,
+      "lines": 8028,
+      "sha256": "163bdf6c3a21af36907b28904bd7f0b9643e671d575ec51527d0e08df87a6e33"
+    },
+    "obfs4_72h.txt": {
+      "bytes": 215977,
+      "count": 1410,
+      "lines": 1410,
+      "sha256": "8bb3ebcece525e8172395393cfca3f07a19d2e886a49c0115e29dbe1a8279ad0"
+    },
+    "obfs4_72h_ipv4.txt": {
+      "bytes": 215977,
+      "count": 1410,
+      "lines": 1410,
+      "sha256": "114bc412d1e34674094ca1f7301b4a67457c25013afbdc6b1f757b0178731579"
+    },
+    "obfs4_72h_ipv6.txt": {
+      "bytes": 116833,
+      "count": 685,
+      "lines": 685,
+      "sha256": "26bc0351c9d1f9654ca67e47b626ca793a5f84b35a67adbf9f1573d096554ec9"
+    },
+    "obfs4_ipv4_ipv6_all.txt": {
+      "bytes": 1346874,
+      "count": 8713,
+      "lines": 8713,
+      "sha256": "cfbe2f4863f2097c30b3da3b095d498e7462b498e5b7b0d1b431a9500b769d5c"
+    },
+    "obfs4_ipv4_tested.txt": {
+      "bytes": 141247,
+      "count": 922,
+      "lines": 922,
+      "sha256": "28b4db8eb1485dfbc1b7d406ca464e582b6627b6191c42c24ccdaae2f6255cb3"
+    },
+    "obfs4_ipv6.txt": {
+      "bytes": 116833,
+      "count": 685,
+      "lines": 685,
+      "sha256": "8e1586d1dd75b8d3525d46f53507c7f428c1004ea895a6857f2d4e1622483bab"
+    },
+    "obfs4_ipv6_72h.txt": {
+      "bytes": 116833,
+      "count": 685,
+      "lines": 685,
+      "sha256": "26bc0351c9d1f9654ca67e47b626ca793a5f84b35a67adbf9f1573d096554ec9"
+    },
+    "obfs4_ipv6_tested.txt": {
+      "bytes": 13701,
+      "count": 80,
+      "lines": 80,
+      "sha256": "a085807e5d3f70d434bb45a158c2325e88e3b73e7d346aba272a6c099bd9829f"
+    },
+    "obfs4_tested.txt": {
+      "bytes": 141247,
+      "count": 922,
+      "lines": 922,
+      "sha256": "6154718fbdb707ec72343413f3345cdf74446e4cd4d1ca9b4f3056a644eae04c"
+    },
+    "snowflak_ipv4_ipv6_all.txt": {
+      "bytes": 26674,
+      "count": 60,
+      "lines": 60,
+      "sha256": "efa602564e9d58869fcef84b704ed539b20f69f75ad267bb365a74e986ca8b27"
+    },
+    "snowflake.txt": {
+      "bytes": 17742,
+      "count": 40,
+      "lines": 40,
+      "sha256": "7e9bd63cfc77799256611fa1a96fa561204a81a62a351cca484b7eaae151c050"
+    },
+    "snowflake_72h.txt": {
+      "bytes": 17742,
+      "count": 40,
+      "lines": 40,
+      "sha256": "5d37363775d505bc72ef0e7f2f870a7429384e18032cb43f83676575ff4c2c9f"
+    },
+    "snowflake_72h_ipv4.txt": {
+      "bytes": 17742,
+      "count": 40,
+      "lines": 40,
+      "sha256": "678f47a1747ca7f86e94ddf41ad1c648d721d8672e4955d9885c14ba31932a7d"
+    },
+    "snowflake_72h_ipv6.txt": {
+      "bytes": 22368,
+      "count": 50,
+      "lines": 50,
+      "sha256": "e9012d6e7c7714ba4f3a5637ff2eef7a64bbb711077042f1595868d2e36de7b9"
+    },
+    "snowflake_ipv4_ipv6_all.txt": {
+      "bytes": 26674,
+      "count": 60,
+      "lines": 60,
+      "sha256": "efa602564e9d58869fcef84b704ed539b20f69f75ad267bb365a74e986ca8b27"
+    },
+    "snowflake_ipv6.txt": {
+      "bytes": 22368,
+      "count": 50,
+      "lines": 50,
+      "sha256": "c4a16b7a96b1e6a8f87216d5eef9199e099cc3d75773975b8a3d9a21f02538f8"
+    },
+    "snowflake_ipv6_tested": {
+      "bytes": 22368,
+      "count": 50,
+      "lines": 50,
+      "sha256": "0e38014a7ecfd80dcc939ebcbf7c89a43e3c966e492eeb3c49cb79a2cca4b015"
+    },
+    "snowflake_ipv6_tested.txt": {
+      "bytes": 22368,
+      "count": 50,
+      "lines": 50,
+      "sha256": "0e38014a7ecfd80dcc939ebcbf7c89a43e3c966e492eeb3c49cb79a2cca4b015"
+    },
+    "snowflake_tested.txt": {
+      "bytes": 17742,
+      "count": 40,
+      "lines": 40,
+      "sha256": "9a9ea692d87373502355e518c6d71f820aa439dfde4777d539d49fa5ebcdc965"
+    },
+    "telegram_manifest.json": {
+      "bytes": 31638,
+      "count": 0,
+      "lines": 0,
+      "sha256": "979769ac3d51a637c24c575809e9d3ee44b01f746279111a05913d57b509bb8a"
+    },
+    "tested_global_obfs4.txt": {
+      "bytes": 141247,
+      "count": 922,
+      "lines": 922,
+      "sha256": "f74fbf63948f94cbbe7640095ec02da6aeb0c55839d3bb557759068ae4e25db3"
+    },
+    "tested_global_vanilla.txt": {
+      "bytes": 37391,
+      "count": 625,
+      "lines": 625,
+      "sha256": "989c5282a81dfa6c5ac21e5e1a4aabb39aa989036d9bab4d6096256c77043a35"
+    },
+    "tested_global_webtunnel.txt": {
+      "bytes": 35138,
+      "count": 267,
+      "lines": 267,
+      "sha256": "48d1a9cdc01af5e13f840a51fdee34ae1e56c949560cca5f06d68a02b4c5f48e"
+    },
+    "tor_bridges.zip": {
+      "bytes": 4900039,
+      "count": 0,
+      "lines": 0,
+      "sha256": "4f7eeadcbee9a5bff86d2ddae1d1f4216bbf1332a46e6dec971157e68e33743d"
+    },
+    "vanilla.txt": {
+      "bytes": 165064,
+      "count": 2754,
+      "lines": 2754,
+      "sha256": "e23eb386a8ce45f32868e5ee1864ea5e6647aa82bbac629a602ef03464a9567c"
+    },
+    "vanilla_72h.txt": {
+      "bytes": 58038,
+      "count": 967,
+      "lines": 967,
+      "sha256": "2f279bf1cf415ebe3a6f4c9e09f2d3ed3d3244b3e45d28303e2ddcfead02cdde"
+    },
+    "vanilla_72h_ipv6.txt": {
+      "bytes": 13941,
+      "count": 193,
+      "lines": 193,
+      "sha256": "e01b935a98a92a4ce335bbd430897438e77532ca4dfeabddc53ee109d5b70213"
+    },
+    "vanilla_ipv4.txt": {
+      "bytes": 58038,
+      "count": 967,
+      "lines": 967,
+      "sha256": "9318dc4e66ee09447747d41f9750245796f2730313e441f11e556923c3d7c2f2"
+    },
+    "vanilla_ipv4_72h.txt": {
+      "bytes": 58038,
+      "count": 967,
+      "lines": 967,
+      "sha256": "6b2ab0ef3dd1ca12c09978510f1d026c09c3d70d7d69429b019621c65e68a9ff"
+    },
+    "vanilla_ipv4_ipv6_all.txt": {
+      "bytes": 179005,
+      "count": 2947,
+      "lines": 2947,
+      "sha256": "38e8cd25b122a1845621e5fc660074280f78bd6538906e99b62aa76446626842"
+    },
+    "vanilla_ipv4_tested.txt": {
+      "bytes": 37391,
+      "count": 625,
+      "lines": 625,
+      "sha256": "9835c412bae6d8c553de533f86c72c20b48c1962d22dfaec6bd24ab48e4da18c"
+    },
+    "vanilla_ipv6.txt": {
+      "bytes": 13941,
+      "count": 193,
+      "lines": 193,
+      "sha256": "a51b69c9580901a66a3656046670ff91e6a98ad55f8d2f26f0679818bf8352f9"
+    },
+    "vanilla_ipv6_72h.txt": {
+      "bytes": 13941,
+      "count": 193,
+      "lines": 193,
+      "sha256": "e01b935a98a92a4ce335bbd430897438e77532ca4dfeabddc53ee109d5b70213"
+    },
+    "vanilla_ipv6_tested.txt": {
+      "bytes": 5790,
+      "count": 80,
+      "lines": 80,
+      "sha256": "4f97117d03000819b332503bc6f5e5cbcefb7bfd41ecaab8bf0dbe14aa86d609"
+    },
+    "vanilla_tested.txt": {
+      "bytes": 37391,
+      "count": 625,
+      "lines": 625,
+      "sha256": "f4921e0ef7c934efceeacb162207e57261dc2a1907bbd7eb31c91e0b5bfe70be"
+    },
+    "webtunnel.txt": {
+      "bytes": 35057,
+      "count": 266,
+      "lines": 266,
+      "sha256": "f9f3194556557e5f693be38429dd724a261303a9168d873ff196fca487c1547f"
+    },
+    "webtunnel_72h.txt": {
+      "bytes": 35057,
+      "count": 266,
+      "lines": 266,
+      "sha256": "0794cc547e42f851f8bbd03deb82e1318ce73a2fea76e1a05aa0b155d6c6d8b6"
+    },
+    "webtunnel_72h_ipv4.txt": {
+      "bytes": 35047,
+      "count": 266,
+      "lines": 266,
+      "sha256": "bc2654c5e6acb23886be58f4095bde325c2d6bf190d2394c94c9f3449c37fac9"
+    },
+    "webtunnel_72h_ipv6.txt": {
+      "bytes": 49032,
+      "count": 308,
+      "lines": 308,
+      "sha256": "c91e9f7d75f69ca44ecc0c9df9e3337a0eb60abe6a089691118d6e210c1cd4d5"
+    },
+    "webtunnel_ipv4.txt": {
+      "bytes": 35059,
+      "count": 266,
+      "lines": 266,
+      "sha256": "70b2076f1d89d303ff9a0d4e8b44214886aa7bbba1b9c0fc4ac21bbf8e65d005"
+    },
+    "webtunnel_ipv4_ipv6_all.txt": {
+      "bytes": 112865,
+      "count": 759,
+      "lines": 759,
+      "sha256": "4ec5fc7c589a9604c9088a660290a5af39253a3f60623af72d2aa4d330a0854f"
+    },
+    "webtunnel_ipv4_tested.txt": {
+      "bytes": 34409,
+      "count": 261,
+      "lines": 261,
+      "sha256": "5d5eb390fe041ae16883a881a9198db0074c1c0366f571d5def2e3439fa33ea5"
+    },
+    "webtunnel_ipv6.txt": {
+      "bytes": 77806,
+      "count": 493,
+      "lines": 493,
+      "sha256": "7539b1987ac73bd40829abe53e2b4ead480e2e6b0dbdd79965d30274b3419cce"
+    },
+    "webtunnel_ipv6_72h.txt": {
+      "bytes": 49032,
+      "count": 308,
+      "lines": 308,
+      "sha256": "c91e9f7d75f69ca44ecc0c9df9e3337a0eb60abe6a089691118d6e210c1cd4d5"
+    },
+    "webtunnel_ipv6_tested.txt": {
+      "bytes": 30244,
+      "count": 191,
+      "lines": 191,
+      "sha256": "846186b0350716b30f7a5201be94fe7f736fb6090bcded3e77ae75d25a74f6eb"
+    },
+    "webtunnel_tested.txt": {
+      "bytes": 34407,
+      "count": 261,
+      "lines": 261,
+      "sha256": "cc22193beed59b38ff1975a8681cfaf540d978ba7ae600d084ddf05307004480"
+    }
+  },
+  "generated_at": "2026-11-05T21:21:22.553811+00:00",
+  "required_files": 79,
+  "restored_last_known_good": []
 }
