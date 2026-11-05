@@ -810,6 +810,17 @@ EXTRA_RAW = [
     ("delta-vanilla-ipv6", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/vanilla_ipv6.txt"),
     ("delta-snowflake", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/snowflake.txt"),
     ("delta-meek", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/meek_lite.txt"),
+    ("onionhop-obfs4", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/obfs4.txt"),
+    ("onionhop-obfs4-ipv6", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/obfs4_ipv6.txt"),
+    ("onionhop-webtunnel", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/webtunnel.txt"),
+    ("onionhop-webtunnel-ipv6", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/webtunnel_ipv6.txt"),
+    ("onionhop-vanilla", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/vanilla.txt"),
+    ("delta-obfs4", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/obfs4.txt"),
+    ("delta-webtunnel", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/webtunnel.txt"),
+    ("delta-vanilla", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/vanilla.txt"),
+    ("scriptzteam-v2-obfs4", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/obfs4.txt"),
+    ("scriptzteam-v2-webtunnel", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/webtunnel.txt"),
+    ("scriptzteam-v2-vanilla", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/vanilla.txt"),
 ]
 
 
@@ -1748,6 +1759,17 @@ PY
 if [ "${FUSION_SKIP_ATTEST:-0}" = "1" ]; then
   echo "[fusion] attestation skipped (FUSION_SKIP_ATTEST=1)"
   exit 0
+fi
+
+# Orbot / Tor-Browser format guard (v43): strip the torrc-only "Bridge " prefix, drop malformed or
+# reserved endpoints, de-duplicate, refill any empty projection from its siblings, pull more public
+# bridges and write Orbot-ready lists to export/orbot/. It runs BEFORE the derived-artefact builders so
+# every derived file is regenerated from the final bytes. Offline-safe: a failed download never fails the run.
+if [ -f "$SCRIPT_DIR/bridge_sanitizer.sh" ]; then
+  bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" --fetch --probe \
+    || bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" --fetch \
+    || bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" \
+    || echo "[fusion] note: bridge_sanitizer.sh did not complete (non-fatal)"
 fi
 
 # Derived NIN / PQ / anti-DPI artefacts must stay byte-identical to a fresh regeneration of the bridge/ data

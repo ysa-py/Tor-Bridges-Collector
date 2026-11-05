@@ -122,6 +122,8 @@ jobs:
       # 2026-10-13/14 webtunnel wipe failures, runs 38465273560/38477508742).
       - name: Test publication guard restore re-attestation
         run: bash scripts/test_guard_bridge_publication.sh
+      - name: Test Orbot bridge sanitizer (Invalid bridge format guard)
+        run: bash scripts/test_bridge_sanitizer.sh
       - name: Test self-heal audit bootstrap failure path
         run: bash scripts/test_self_heal.sh
       - name: Test AI self-healing diagnostics summary and failure outputs
