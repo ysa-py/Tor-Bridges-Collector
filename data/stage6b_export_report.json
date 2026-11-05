@@ -1,23 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-05T02:58:28.778515504+00:00",
+  "generated_at": "2026-11-05T07:54:15.918576605+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1750,
-            "tested_working": 575,
-            "untested (probe error)": 1054,
-            "untested (rate-limited)": 192,
-            "untested (tcp timeout)": 601
+            "tcp_reachable_s1": 1762,
+            "tested_failing": 51,
+            "tested_working": 578,
+            "untested (probe error)": 1002,
+            "untested (rate-limited)": 193,
+            "untested (tcp timeout)": 603
           },
-          "stamped": 4172,
+          "stamped": 4189,
           "tiers": {
-            "tier_0_attempt": 1622,
-            "tier_1_tcp": 1975,
-            "tier_2_pt_handshake": 575
+            "tier_0_attempt": 1623,
+            "tier_1_tcp": 1988,
+            "tier_2_pt_handshake": 578
           }
         },
         "files": {
@@ -30,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 65,
-          "tested_global_webtunnel.txt": 218
+          "tested_global_webtunnel.txt": 213
         },
         "relay_evidence": {
-          "bridges_matched": 4172,
-          "relay_observations": 4506,
+          "bridges_matched": 4189,
+          "relay_observations": 4523,
           "s2plus_connected": 152,
-          "verification_upgrades": 4172
+          "verification_upgrades": 3719
         },
         "webtunnel_probe": {
-          "probed": 710,
-          "ws_101": 424,
-          "ws_fail": 286
+          "probed": 721,
+          "ws_101": 427,
+          "ws_fail": 294
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-05T02:57:44.179366019+00:00",
+      "started_at": "2026-11-05T07:53:33.697514850+00:00",
       "status": "ok"
     }
   ],
