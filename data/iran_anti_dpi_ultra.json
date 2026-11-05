@@ -1,15 +1,15 @@
 {
   "adaptive_transport_weights": {
-    "conjure": 0.8854,
-    "meek-azure": 0.9163,
+    "conjure": 0.8863,
+    "meek-azure": 0.9186,
     "obfs4": 0.7664,
-    "snowflake": 0.9364,
+    "snowflake": 0.9371,
     "vanilla": 0.4773,
     "webtunnel": 0.9621
   },
   "counts": {
-    "history": 4198,
-    "live": 2260
+    "history": 4201,
+    "live": 2311
   },
   "dns": {
     "avoid_system_resolver": true,
@@ -75,7 +75,7 @@
       "use": "vanilla"
     }
   ],
-  "generated_at": "2026-11-05T08:09:09.632776+00:00",
+  "generated_at": "2026-11-05T08:16:58.172537+00:00",
   "hour_seed": 498296,
   "nin_shutdown_survival": {
     "fallback_order": [
@@ -100,56 +100,56 @@
     "fastest_by_transport": {
       "conjure": [
         {
-          "ai_score": 0.8455,
-          "latency_ms": 58.35,
+          "ai_score": 0.8538,
+          "latency_ms": 49.085,
           "line": "conjure 23.128.36.60:80 A13CE1DE88F96022C0CE6CCF6436FC6F5401D35B url=https://1657793272.rsc.cdn77.org fronts=cdn.zk.mk,www.cdn77.com transport=prefix utls-imitate=HelloRandomizedALPN"
         },
         {
-          "ai_score": 0.8652,
-          "latency_ms": 58.627,
+          "ai_score": 0.8714,
+          "latency_ms": 58.268,
           "line": "conjure 192.0.2.33:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min"
         },
         {
-          "ai_score": 0.8088,
-          "latency_ms": 62.663,
+          "ai_score": 0.8111,
+          "latency_ms": 61.844,
           "line": "conjure [2001:db8::11]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min"
         },
         {
-          "ai_score": 0.8652,
-          "latency_ms": 74.601,
+          "ai_score": 0.8714,
+          "latency_ms": 70.837,
           "line": "conjure 192.0.2.25:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=prefix"
         },
         {
-          "ai_score": 0.8088,
-          "latency_ms": 74.872,
-          "line": "conjure [2001:db8::29]:443 8838024498816A039FCBBAB14E6F40A0843051FA url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=prefix"
+          "ai_score": 0.8111,
+          "latency_ms": 72.779,
+          "line": "conjure [2001:db8::19]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=prefix"
         }
       ],
       "meek-azure": [
         {
-          "ai_score": 0.8751,
-          "latency_ms": 46.118,
+          "ai_score": 0.9001,
+          "latency_ms": 52.212,
           "line": "meek_lite 192.0.2.29:80 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloRandomizedALPN"
         },
         {
-          "ai_score": 0.754,
-          "latency_ms": 46.353,
-          "line": "meek_lite [2001:db8::1e]:443 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloChrome_Auto"
-        },
-        {
-          "ai_score": 0.754,
-          "latency_ms": 46.934,
-          "line": "meek_lite [2001:db8::1f]:443 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloFirefox_Auto"
-        },
-        {
-          "ai_score": 0.8751,
-          "latency_ms": 48.839,
-          "line": "meek_lite 192.0.2.46:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloChrome_Auto"
-        },
-        {
-          "ai_score": 0.8751,
-          "latency_ms": 49.264,
+          "ai_score": 0.9001,
+          "latency_ms": 53.182,
           "line": "meek_lite 192.0.2.20:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedALPN"
+        },
+        {
+          "ai_score": 0.754,
+          "latency_ms": 54.261,
+          "line": "meek_lite [2001:db8::2c]:443 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.net utls=HelloRandomizedNoALPN"
+        },
+        {
+          "ai_score": 0.9001,
+          "latency_ms": 55.044,
+          "line": "meek_lite 192.0.2.25:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedALPN"
+        },
+        {
+          "ai_score": 0.8802,
+          "latency_ms": 58.656,
+          "line": "meek_lite 192.0.2.87:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloFirefox_Auto"
         }
       ],
       "obfs4": [
@@ -181,29 +181,29 @@
       ],
       "snowflake": [
         {
-          "ai_score": 0.8636,
-          "latency_ms": 38.521,
-          "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn"
-        },
-        {
-          "ai_score": 0.8788,
-          "latency_ms": 39.793,
-          "line": "snowflake 192.0.2.34:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
-        },
-        {
-          "ai_score": 0.7501,
-          "latency_ms": 40.262,
+          "ai_score": 0.7563,
+          "latency_ms": 36.979,
           "line": "snowflake [2001:db8::24]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         },
         {
-          "ai_score": 0.8788,
-          "latency_ms": 42.554,
-          "line": "snowflake 192.0.2.35:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+          "ai_score": 0.7563,
+          "latency_ms": 40.479,
+          "line": "snowflake [2001:db8::2d]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         },
         {
-          "ai_score": 0.8716,
-          "latency_ms": 42.773,
-          "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn"
+          "ai_score": 0.8718,
+          "latency_ms": 41.322,
+          "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn"
+        },
+        {
+          "ai_score": 0.7563,
+          "latency_ms": 42.501,
+          "line": "snowflake [2001:db8::23]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+        },
+        {
+          "ai_score": 0.8851,
+          "latency_ms": 42.557,
+          "line": "snowflake 192.0.2.34:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         }
       ],
       "vanilla": [
