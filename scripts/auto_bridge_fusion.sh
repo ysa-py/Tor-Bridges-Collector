@@ -810,6 +810,17 @@ EXTRA_RAW = [
     ("delta-vanilla-ipv6", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/vanilla_ipv6.txt"),
     ("delta-snowflake", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/snowflake.txt"),
     ("delta-meek", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/meek_lite.txt"),
+    ("onionhop-obfs4", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/obfs4.txt"),
+    ("onionhop-obfs4-ipv6", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/obfs4_ipv6.txt"),
+    ("onionhop-webtunnel", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/webtunnel.txt"),
+    ("onionhop-webtunnel-ipv6", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/webtunnel_ipv6.txt"),
+    ("onionhop-vanilla", "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/vanilla.txt"),
+    ("delta-obfs4", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/obfs4.txt"),
+    ("delta-webtunnel", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/webtunnel.txt"),
+    ("delta-vanilla", "https://raw.githubusercontent.com/Delta-Kronecker/Tor-Bridges-Collector/main/bridge/vanilla.txt"),
+    ("scriptzteam-v2-obfs4", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/obfs4.txt"),
+    ("scriptzteam-v2-webtunnel", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/webtunnel.txt"),
+    ("scriptzteam-v2-vanilla", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/vanilla.txt"),
 ]
 
 
@@ -1757,6 +1768,15 @@ for builder in build_iran_anti_dpi_elite build_iran_cut_pack build_pq_bridge_sco
     bash "$SCRIPT_DIR/$builder.sh" >/dev/null 2>&1 || echo "[fusion] note: $builder.sh did not complete (non-fatal)"
   fi
 done
+
+# Orbot / Tor-Browser format guard (v43): strip the torrc-only "Bridge " prefix, drop malformed or
+# reserved endpoints, de-duplicate, refill any empty projection from its siblings, pull more public
+# bridges, and write Orbot-ready lists to export/orbot/. Offline-safe: a failed download never fails the run.
+if [ -f "$SCRIPT_DIR/bridge_sanitizer.py" ]; then
+  python3 "$SCRIPT_DIR/bridge_sanitizer.py" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" --fetch \
+    || python3 "$SCRIPT_DIR/bridge_sanitizer.py" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" \
+    || echo "[fusion] note: bridge_sanitizer.py did not complete (non-fatal)"
+fi
 
 # Synchronize telegram_manifest.json non_empty_lines, reason_code, summary counts, and README table counts
 # before calling publication_contract.sh --rebuild so --check emits 0 errors and 0 advisories.

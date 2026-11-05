@@ -165,4 +165,11 @@ for k in sorted(counts):
         print(f"  {k}: (unchanged — no live candidates, kept existing)")
 PY
 
+# Keep every projection Orbot/Tor-Browser-safe right after it is rebuilt (offline, non-fatal).
+_san="$(dirname "${BASH_SOURCE[0]}")/bridge_sanitizer.py"
+if [ -f "$_san" ]; then
+  python3 "$_san" --root "$(dirname "$(dirname "$_san")")" --bridge-dir "${BRIDGE_DIR:-$(dirname "$(dirname "$_san")")/bridge}" \
+    || echo "[projections] note: bridge_sanitizer.py did not complete (non-fatal)"
+fi
+
 echo "═══ rebuild_bridge_projections done ═══"
