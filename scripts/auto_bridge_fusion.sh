@@ -1766,7 +1766,8 @@ fi
 # bridges and write Orbot-ready lists to export/orbot/. It runs BEFORE the derived-artefact builders so
 # every derived file is regenerated from the final bytes. Offline-safe: a failed download never fails the run.
 if [ -f "$SCRIPT_DIR/bridge_sanitizer.sh" ]; then
-  bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" --fetch \
+  bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" --fetch --probe \
+    || bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" --fetch \
     || bash "$SCRIPT_DIR/bridge_sanitizer.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" \
     || echo "[fusion] note: bridge_sanitizer.sh did not complete (non-fatal)"
 fi

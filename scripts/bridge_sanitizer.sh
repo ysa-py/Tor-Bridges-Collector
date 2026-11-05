@@ -20,12 +20,13 @@
 #   2. empty-output guard: a file that would become empty keeps its bytes; an
 #      empty / missing file is refilled from sibling files of the same
 #      transport (respecting the IPv4/IPv6 suffix) or from the aggregate pool;
-#   3. --fetch pulls extra public lists (non-fatal when offline);
+#   3. --fetch pulls extra public lists (non-fatal when offline); --probe TCP-checks untested
+#      candidates (canary-guarded, cached) so dead bridges never reach the Orbot lists;
 #   4. writes paste-ready Orbot lists into export/orbot/ (hourly rotated order)
 #      and re-validates them with Orbot's own regexes before finishing.
 #
 # Usage: scripts/bridge_sanitizer.sh [--root DIR] [--bridge-dir DIR]
-#                                    [--export-dir DIR] [--fetch] [--check]
+#                                    [--export-dir DIR] [--fetch] [--probe] [--check]
 # Exit: 0 ok, 1 --check found problems, 2 internal self-validation failure.
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -324,6 +325,15 @@ SEED_URLS = [
     "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/webtunnel.txt",
     "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/webtunnel_ipv6.txt",
     "https://raw.githubusercontent.com/center2055/OnionHop-Bridges-Collector/main/bridge/vanilla.txt",
+    "https://raw.githubusercontent.com/Koros0111/Tor-Bridges-Collector/main/bridge/obfs4.txt",
+    "https://raw.githubusercontent.com/Koros0111/Tor-Bridges-Collector/main/bridge/obfs4_ipv6.txt",
+    "https://raw.githubusercontent.com/Koros0111/Tor-Bridges-Collector/main/bridge/webtunnel.txt",
+    "https://raw.githubusercontent.com/Koros0111/Tor-Bridges-Collector/main/bridge/webtunnel_ipv6.txt",
+    "https://raw.githubusercontent.com/Koros0111/Tor-Bridges-Collector/main/bridge/vanilla.txt",
+    "https://raw.githubusercontent.com/javadz501/Tor-Bridges-Collector/main/bridge/obfs4.txt",
+    "https://raw.githubusercontent.com/javadz501/Tor-Bridges-Collector/main/bridge/obfs4_ipv6.txt",
+    "https://raw.githubusercontent.com/javadz501/Tor-Bridges-Collector/main/bridge/webtunnel.txt",
+    "https://raw.githubusercontent.com/javadz501/Tor-Bridges-Collector/main/bridge/webtunnel_ipv6.txt",
 ]
 
 
@@ -399,6 +409,116 @@ def merge_extra(bridge: str, extra: Dict[str, List[Tuple[str, bool]]], store: Di
     return added
 
 
+# ── Live reachability probe (--probe) ──────────────────────────────────────────
+PROBE_OK_TTL = 3 * 3600      # a fresh "alive" verdict is reused for 3 h
+PROBE_FAIL_TTL = 6 * 3600    # a "dead" verdict is reused for 6 h (bounded retry cost)
+PROBE_PRUNE = 3 * 86400
+PROBE_MAX_TARGETS = 4000
+PROBE_BUDGET_S = 150
+
+
+def probe_target(line: str) -> Optional[Tuple[str, int]]:
+    """Endpoint that can actually be dialled for this bridge (webtunnel's addr is a placeholder -> url host)."""
+    toks = line.split(" ")
+    if toks[0] == "obfs4" and len(toks) > 1:
+        m = HOSTPORT_RE.match(toks[1])
+        return ((m.group(1) or m.group(2)), int(m.group(3))) if m else None
+    if toks[0] == "webtunnel":
+        u = next((t[4:] for t in toks[2:] if t.startswith("url=")), "")
+        m = re.match(r"^https?://(\[[0-9A-Fa-f:]+\]|[^/:\s]+)(?::(\d+))?", u)
+        if not m:
+            return None
+        return m.group(1).strip("[]"), int(m.group(2) or (443 if u.startswith("https") else 80))
+    return None
+
+
+def _stub_alive() -> Optional[set]:
+    """Test hook: SANITIZER_PROBE_STUB=<file of 'host:port' lines that count as reachable>."""
+    path = os.environ.get("SANITIZER_PROBE_STUB")
+    if not path:
+        return None
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return {ln.strip() for ln in fh if ln.strip()}
+    except OSError:
+        return set()
+
+
+def _tcp_ok(host: str, port: int, timeout: float) -> bool:
+    import socket
+    stub = _stub_alive()
+    if stub is not None:
+        return f"{host}:{port}" in stub
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def network_is_honest() -> bool:
+    """Canary: a TEST-NET-1 address never answers. If it does, an egress proxy fakes every connect and
+    probing would mark dead bridges alive, so the whole probe result must be ignored."""
+    return not _tcp_ok("192.0.2.1", 81, 3.0)
+
+
+def load_probe_cache(root: str) -> Dict[str, Dict[str, object]]:
+    try:
+        with open(os.path.join(root, "data", "bridge_probe_cache.json"), encoding="utf-8") as fh:
+            d = json.load(fh)
+        return d if isinstance(d, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+
+def run_probe(root: str, candidates: List[str], timeout: float = 4.0) -> Dict[str, bool]:
+    """Return {dedupe_key: alive}. Never raises; unknown keys are simply absent."""
+    import concurrent.futures as cf
+    import time
+    cache = load_probe_cache(root)
+    now = int(time.time())
+    if not network_is_honest():
+        print("[sanitizer] probe skipped: transparent egress proxy detected (canary answered)")
+        return {k: bool(v.get("ok")) for k, v in cache.items() if isinstance(v, dict) and now - int(v.get("ts", 0)) < PROBE_PRUNE}
+    todo: List[Tuple[str, str]] = []
+    for ln in candidates:
+        n = normalize(ln)
+        if not n:
+            continue
+        v = cache.get(n[2])
+        ttl = PROBE_OK_TTL if (isinstance(v, dict) and v.get("ok")) else PROBE_FAIL_TTL
+        if isinstance(v, dict) and now - int(v.get("ts", 0)) < ttl:
+            continue
+        if probe_target(n[0]):
+            todo.append((n[2], n[0]))
+    todo.sort(key=lambda t: hashlib.sha1(f"{HOUR_SEED}|{t[0]}".encode()).hexdigest())
+    todo = todo[:PROBE_MAX_TARGETS]
+    deadline = time.time() + PROBE_BUDGET_S
+
+    def one(item: Tuple[str, str]) -> Optional[Tuple[str, bool]]:
+        if time.time() > deadline:
+            return None
+        tgt = probe_target(item[1])
+        return (item[0], _tcp_ok(tgt[0], tgt[1], timeout)) if tgt else None
+
+    done = 0
+    with cf.ThreadPoolExecutor(max_workers=200) as ex:
+        for res in ex.map(one, todo):
+            if res:
+                prev = cache.get(res[0]) if isinstance(cache.get(res[0]), dict) else {}
+                fails = 0 if res[1] else int(prev.get("fails", 0)) + 1  # type: ignore[union-attr]
+                cache[res[0]] = {"ok": res[1], "ts": now, "fails": fails}
+                done += 1
+    cache = {k: v for k, v in cache.items() if isinstance(v, dict) and now - int(v.get("ts", 0)) < PROBE_PRUNE}
+    data_dir = os.path.join(root, "data")
+    if os.path.isdir(data_dir):
+        write_if_changed(os.path.join(data_dir, "bridge_probe_cache.json"),
+                         json.dumps(cache, indent=0, sort_keys=True).split("\n"))
+    alive = sum(1 for v in cache.values() if v.get("ok"))
+    print(f"[sanitizer] probe: {done} new checks, {alive}/{len(cache)} cached bridges reachable")
+    return {k: bool(v.get("ok")) for k, v in cache.items()}
+
+
 # ── Orbot export ───────────────────────────────────────────────────────────────
 GOOD_PORTS = {443: 0, 80: 1, 8443: 2, 8080: 3, 993: 4, 995: 5, 465: 6, 587: 7, 8000: 8, 9001: 9}
 
@@ -408,7 +528,10 @@ def port_rank(line: str) -> int:
     return GOOD_PORTS.get(int(m.group(1)), 50) if m else 99
 
 
-def collect_orbot(bridge_dir: str) -> Dict[str, List[str]]:
+TESTED_TIER = re.compile(r"(tested|likely_working)")
+
+
+def collect_orbot(bridge_dir: str, alive: Optional[Dict[str, bool]] = None) -> Dict[str, List[str]]:
     tiers = [
         "iran_likely_working_obfs4.txt", "iran_likely_working_webtunnel.txt",
         "iran_likely_working_nin.txt",
@@ -428,22 +551,64 @@ def collect_orbot(bridge_dir: str) -> Dict[str, List[str]]:
             n = normalize(raw)
             if not n or n[1] not in res or not orbot_valid(n[0]) or n[2] in seen:
                 continue
+            verdict = (alive or {}).get(n[2])
+            if verdict is False and not TESTED_TIER.search(fname):
+                continue  # probed dead and not vouched for by a tested tier -> never recommend it
             seen.add(n[2])
-            tier_lines.append((n[3], port_rank(n[0]), n[0], n[1]))
+            tier_lines.append((0 if verdict else 1, n[3], port_rank(n[0]), n[0], n[1]))
         # IPv4 first, then friendly ports; ties are shuffled deterministically per UTC hour so the
         # recommended Orbot list rotates every hour (load spreading + harder to enumerate/block).
-        tier_lines.sort(key=lambda t: (t[0], t[1], hashlib.sha1(f"{HOUR_SEED}|{t[2]}".encode()).hexdigest()))
-        for _v6, _p, line, tr in tier_lines:
+        tier_lines.sort(key=lambda t: (t[0], t[1], t[2], hashlib.sha1(f"{HOUR_SEED}|{t[3]}".encode()).hexdigest()))
+        for _u, _v6, _p, line, tr in tier_lines:
             res[tr].append(line)
     return res
 
 
-def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web: int = 12) -> Dict[str, int]:
-    pools = collect_orbot(bridge_dir)
+def net_key(line: str) -> str:
+    """Blocking-domain of a bridge: IPv4 /16, IPv6 /32, or the webtunnel front's registrable domain."""
+    toks = line.split(" ")
+    if toks[0] == "webtunnel":
+        u = next((t[4:] for t in toks[2:] if t.startswith("url=")), "")
+        m = re.match(r"^https?://([^/:\s]+)", u)
+        if m and not m.group(1).startswith("["):
+            return "d:" + ".".join(m.group(1).lower().split(".")[-2:])
+    m = HOSTPORT_RE.match(toks[1]) if len(toks) > 1 else None
+    if not m:
+        return "?"
+    try:
+        ip = ipaddress.ip_address(m.group(1) or m.group(2))
+    except ValueError:
+        return "?"
+    parts = ip.exploded.split(":" if ip.version == 6 else ".")
+    return f"{ip.version}:" + ".".join(parts[:2])
+
+
+def diversify(lines: List[str], limit: int, per_net: int = 2) -> List[str]:
+    """Pick up to `limit` lines keeping rank order but at most `per_net` per blocking-domain (so one
+    IP-range/domain block cannot take the whole recommended list down); top up in rank order if short."""
+    picked: List[str] = []
+    used: Dict[str, int] = {}
+    for ln in lines:
+        if len(picked) >= limit:
+            break
+        k = net_key(ln)
+        if used.get(k, 0) < per_net:
+            used[k] = used.get(k, 0) + 1
+            picked.append(ln)
+    if len(picked) < limit:
+        have = set(picked)
+        picked += [ln for ln in lines if ln not in have][: limit - len(picked)]
+    return picked
+
+
+def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web: int = 12,
+                 alive: Optional[Dict[str, bool]] = None) -> Dict[str, int]:
+    pools = collect_orbot(bridge_dir, alive)
     o, w = pools["obfs4"], pools["webtunnel"]
-    top = o[:top_obfs4] + w[:top_web]
+    o_top, w_top = diversify(o, top_obfs4), diversify(w, top_web)
+    top = o_top + w_top
     if len(top) < top_obfs4 + top_web:  # one transport short -> top up from the other
-        extra = [x for x in o[top_obfs4:] + w[top_web:] if x not in top]
+        extra = [x for x in diversify(o, top_obfs4 + top_web) + diversify(w, top_obfs4 + top_web) if x not in top]
         top += extra[: top_obfs4 + top_web - len(top)]
     allv = o + w
     files = {
@@ -475,6 +640,9 @@ def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web:
         "Paste the content of `orbot_top.txt` (recommended, ~40 lines) into",
         "Orbot -> Connect -> Custom Bridges. Each line is `obfs4 ...` or `webtunnel ...`,",
         "no `Bridge` prefix, upper-case fingerprints, public addresses only.", "",
+        "`orbot_top.txt` is hourly-rotated, ranked (tested tiers first, 443/80 first, reachable first when",
+        "probed) and network-diversified: at most 2 bridges per IPv4 /16, IPv6 /32 or webtunnel domain, so",
+        "blocking one range cannot take the whole list down.", "",
         "* `orbot_obfs4.txt` / `orbot_webtunnel.txt` - everything per transport",
         "* `orbot_ipv4.txt` / `orbot_ipv6.txt` - per IP family",
         "* `orbot_all.txt` - union", "",
@@ -510,6 +678,8 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
     ap.add_argument("--bridge-dir", default=None)
     ap.add_argument("--export-dir", default=None)
     ap.add_argument("--fetch", action="store_true", help="also pull public bridge lists (network, non-fatal)")
+    ap.add_argument("--probe", action="store_true",
+                    help="TCP-probe untested candidates and keep dead ones out of the Orbot lists (network, non-fatal)")
     ap.add_argument("--check", action="store_true", help="report only, change nothing")
     a = ap.parse_args(list(argv) if argv is not None else None)
     root = os.path.abspath(a.root)
@@ -566,7 +736,17 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         print(f"[sanitizer] check: {problems} problem(s) across {len(names)} files")
         return 1 if problems else 0
 
-    counts = export_orbot(bridge, export)
+    alive: Optional[Dict[str, bool]] = None
+    if a.probe:
+        try:
+            cand: List[str] = []
+            for fname in ("obfs4.txt", "webtunnel.txt", "obfs4_ipv4_ipv6_all.txt", "webtunnel_ipv4_ipv6_all.txt",
+                          "obfs4_ipv6.txt", "webtunnel_ipv6.txt"):
+                cand += store.get(fname, [])
+            alive = run_probe(root, cand)
+        except Exception as exc:  # noqa: BLE001 - probing must never break publication
+            print(f"[sanitizer] probe skipped: {exc}", file=sys.stderr)
+    counts = export_orbot(bridge, export, alive=alive)
     report["orbot_export"] = counts
     report["warp_refilled"] = fill_warp(root, export)
     report["total_files"] = len(names)

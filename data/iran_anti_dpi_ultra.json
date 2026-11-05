@@ -1,15 +1,15 @@
 {
   "adaptive_transport_weights": {
-    "conjure": 0.8838,
-    "meek-azure": 0.9166,
+    "conjure": 0.8846,
+    "meek-azure": 0.9155,
     "obfs4": 0.7661,
-    "snowflake": 0.936,
-    "vanilla": 0.4777,
-    "webtunnel": 0.9626
+    "snowflake": 0.9362,
+    "vanilla": 0.4795,
+    "webtunnel": 0.9596
   },
   "counts": {
-    "history": 4221,
-    "live": 2302
+    "history": 4225,
+    "live": 2253
   },
   "dns": {
     "avoid_system_resolver": true,
@@ -75,8 +75,8 @@
       "use": "vanilla"
     }
   ],
-  "generated_at": "2026-11-05T16:46:51.432046+00:00",
-  "hour_seed": 498304,
+  "generated_at": "2026-11-05T19:39:58.249297+00:00",
+  "hour_seed": 498307,
   "nin_shutdown_survival": {
     "fallback_order": [
       "webtunnel",
@@ -100,164 +100,164 @@
     "fastest_by_transport": {
       "conjure": [
         {
-          "ai_score": 0.5863,
+          "ai_score": 0.8478,
+          "latency_ms": 52.629,
+          "line": "conjure 23.128.36.60:80 A13CE1DE88F96022C0CE6CCF6436FC6F5401D35B url=https://1657793272.rsc.cdn77.org fronts=cdn.zk.mk,www.cdn77.com transport=prefix utls-imitate=HelloRandomizedALPN"
+        },
+        {
+          "ai_score": 0.8478,
+          "latency_ms": 58.461,
+          "line": "conjure 143.110.214.222:80 50B99540A96C5E9F9F7704BAAE11DF01564711F4 url=https://1657793272.rsc.cdn77.org fronts=docs.plesk.com,maxst.icons8.com,app.datapacket.com transport=prefix utls-imitate=HelloRandomizedALPN"
+        },
+        {
+          "ai_score": 0.5833,
           "latency_ms": 85.0,
           "line": "conjure [2001:db8::12]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.datapacket.com,www.cdn77.com transport=min"
         },
         {
-          "ai_score": 0.5863,
+          "ai_score": 0.5833,
           "latency_ms": 85.0,
           "line": "conjure [2001:db8::15]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.cdn77.com,www.phpmyadmin.net transport=prefix"
         },
         {
-          "ai_score": 0.5863,
+          "ai_score": 0.5833,
           "latency_ms": 85.0,
           "line": "conjure [2001:db8::16]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=app.datapacket.com,www.datapacket.com transport=prefix"
-        },
-        {
-          "ai_score": 0.5863,
-          "latency_ms": 85.0,
-          "line": "conjure [2001:db8::17]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.phpmyadmin.net,cdn.zk.mk transport=prefix"
-        },
-        {
-          "ai_score": 0.5863,
-          "latency_ms": 85.0,
-          "line": "conjure [2001:db8::1a]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.datapacket.com,www.cdn77.com transport=prefix"
         }
       ],
       "meek-azure": [
         {
-          "ai_score": 0.8989,
-          "latency_ms": 77.966,
-          "line": "meek_lite 192.0.2.46:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloChrome_Auto"
+          "ai_score": 0.7553,
+          "latency_ms": 37.75,
+          "line": "meek_lite [2001:db8::1c]:443 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedNoALPN"
         },
         {
-          "ai_score": 0.8989,
-          "latency_ms": 81.148,
-          "line": "meek_lite 192.0.2.48:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedNoALPN"
+          "ai_score": 0.8741,
+          "latency_ms": 38.622,
+          "line": "meek_lite 192.0.2.28:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedNoALPN"
         },
         {
-          "ai_score": 0.8989,
-          "latency_ms": 83.972,
-          "line": "meek_lite 192.0.2.31:80 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloFirefox_Auto"
+          "ai_score": 0.7553,
+          "latency_ms": 52.574,
+          "line": "meek_lite [2001:db8::1a]:443 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloChrome_Auto"
         },
         {
-          "ai_score": 0.8989,
-          "latency_ms": 87.592,
-          "line": "meek_lite 192.0.2.29:80 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloRandomizedALPN"
+          "ai_score": 0.8741,
+          "latency_ms": 53.755,
+          "line": "meek_lite 192.0.2.38:80 url=https://1603026938.rsc.cdn77.org front=www.datapacket.com utls=HelloChrome_Auto"
         },
         {
-          "ai_score": 0.894,
-          "latency_ms": 89.416,
-          "line": "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com"
+          "ai_score": 0.7553,
+          "latency_ms": 54.267,
+          "line": "meek_lite [2001:db8::20]:443 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloRandomizedNoALPN"
         }
       ],
       "obfs4": [
         {
-          "ai_score": 0.9086,
-          "latency_ms": 17.036870999999998,
-          "line": "obfs4 172.86.73.100:443 A0A2F091E8592D3B1BA5934E642C87BEC569F7CF cert=c3QWhLGVXZ54w69u+xdH8wYUceVoHh1e6xit+ZzSkP8rL5rcyRB0mpUklR9EnHLMWnqVJA iat-mode=0"
+          "ai_score": 0.8697,
+          "latency_ms": 7.938410999999999,
+          "line": "obfs4 50.35.58.44:44172 14D77B5DB61D593DB1246B1A080D25B54479F24B cert=O9jgcfAceGnZf0vfuq6zUaAL9IuypUlS9zJai5dddZuE7ktFmMKfg25bKxZaknlLI4AtZA iat-mode=0"
         },
         {
-          "ai_score": 0.8277,
-          "latency_ms": 19.593052,
-          "line": "obfs4 23.150.136.252:9003 E5243F54BD47BC3E54BB24D74E8ED85C433B8027 cert=s1HASTX2r+ZsWBDQqBpPTVKIE8pLs5R95oHmKuGBNy21ouUkT9AMDrS79Yw9X9cXHei6ew iat-mode=0"
+          "ai_score": 0.9132,
+          "latency_ms": 7.976482,
+          "line": "obfs4 5.78.86.213:443 48ED1ADF017C0B084A7829331A413F5C36E220C5 cert=zr9om3XBXXqlKjJbTZz9p+5LRX7E6uHI8RH3vfWjoFcm9lSrq9SAWN40C7eFI7exeO8jXw iat-mode=0"
         },
         {
-          "ai_score": 0.8386,
-          "latency_ms": 21.417058,
-          "line": "obfs4 74.91.98.206:8089 4E3D519DEB6DD95D8E94320553E31D10721DE3A4 cert=ltUx+dFkZa/DHGfJRx56KEAV2GWcpcTQ57bCc7v0oa3hx/7xnNy6kRb/9ghkAAWU4Tr0Yw iat-mode=0"
+          "ai_score": 0.871,
+          "latency_ms": 9.740611,
+          "line": "obfs4 50.45.252.72:8443 FB2E86A068E492DF02F789C8E5B0A78EC27B30E6 cert=yZg8+qSkM8mMDR/kU7qO0Ku6ths+xGfW9S9ammPoAwNkstCJ6P/CZG2lFdQ4yst/Q1KxKQ iat-mode=0"
         },
         {
-          "ai_score": 0.8424,
-          "latency_ms": 21.696835,
-          "line": "obfs4 172.245.41.74:15000 5D164875CC3B694DB798C2546FAB6478605223B1 cert=6H4BaYVmGb18TTt5vSMLEfYXU7NxzUHI8kLLh8bGHBfvAEZYGWrnAoUlCReIeJW8vJ/TWQ iat-mode=0"
+          "ai_score": 0.8683,
+          "latency_ms": 14.548688,
+          "line": "obfs4 76.146.236.12:5003 94E00B732E8D01E4146F61AF761F8DA23F3BE0DA cert=6eZo7NAPexxAuTGBpfxfgLjTh1oLLVFZFtafXpN0R7supIK8cxgynCnfWmYJkQudW7ooSA iat-mode=0"
         },
         {
-          "ai_score": 0.8164,
-          "latency_ms": 22.019751,
-          "line": "obfs4 161.97.232.112:8082 D1036FDBE0D40F9C3297EF640FE9DE6427F7C3D5 cert=/HYLvuvsnFSw4SzGaA1Oss9VELxsLjGat/Ic5CX0dsr6EzpvV2BsaF0KvOYqkPKZMR9pCQ iat-mode=0"
+          "ai_score": 0.8683,
+          "latency_ms": 14.755206,
+          "line": "obfs4 76.146.236.12:5003 294C428D66EC554C336553DF82F43F4D1D97A94E cert=67JP4xAyTewUleLhaDOiPuuPorklNg0LmPh34ngbSIEI2po5DCDfvkpjhGvBO02vEMVmHg iat-mode=0"
         }
       ],
       "snowflake": [
         {
-          "ai_score": 0.8806,
-          "latency_ms": 72.127,
+          "ai_score": 0.8716,
+          "latency_ms": 42.808,
+          "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn"
+        },
+        {
+          "ai_score": 0.8716,
+          "latency_ms": 45.14,
+          "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn"
+        },
+        {
+          "ai_score": 0.7444,
+          "latency_ms": 46.885,
+          "line": "snowflake [2001:db8::24]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+        },
+        {
+          "ai_score": 0.8761,
+          "latency_ms": 47.05,
           "line": "snowflake 192.0.2.36:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         },
         {
-          "ai_score": 0.8712,
-          "latency_ms": 74.331,
-          "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn"
-        },
-        {
-          "ai_score": 0.7486,
-          "latency_ms": 75.109,
-          "line": "snowflake [2001:db8::2e]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
-        },
-        {
-          "ai_score": 0.7486,
-          "latency_ms": 75.291,
-          "line": "snowflake [2001:db8::2d]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
-        },
-        {
-          "ai_score": 0.8806,
-          "latency_ms": 76.206,
-          "line": "snowflake 192.0.2.46:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+          "ai_score": 0.8761,
+          "latency_ms": 48.241,
+          "line": "snowflake 192.0.2.31:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         }
       ],
       "vanilla": [
         {
-          "ai_score": 0.7692,
-          "latency_ms": 14.225554,
-          "line": "173.249.215.243:9001 0481EF56CC799D429E618781F6AF416B6792E1A4"
+          "ai_score": 0.7803,
+          "latency_ms": 5.256493,
+          "line": "104.168.147.91:40404 BD5086A67FDD5BE93734B3D8255AA4759DA40F0A"
         },
         {
-          "ai_score": 0.7692,
-          "latency_ms": 14.88837,
-          "line": "65.128.101.226:9001 02333793BA71FF404CF423C509F16713FED7DEC7"
+          "ai_score": 0.8348,
+          "latency_ms": 9.037421,
+          "line": "23.186.168.33:443 008EA22C040A4B5C262551195B5C34B54F353D83"
         },
         {
-          "ai_score": 0.8346,
-          "latency_ms": 15.159269,
-          "line": "204.8.96.79:443 041646640AB306EA74B001966E86169B04CC88D2"
+          "ai_score": 0.7728,
+          "latency_ms": 11.980447,
+          "line": "209.121.143.45:9001 08238BC0A9A707E7565DB0F25B3BD6FBDD7DF7FE"
         },
         {
-          "ai_score": 0.8346,
-          "latency_ms": 15.886985999999998,
-          "line": "204.8.96.174:443 00EB3A12C77E70F19F66A7BBD094D62969AF350D"
+          "ai_score": 0.7731,
+          "latency_ms": 22.541684,
+          "line": "45.79.76.174:9001 AB6690AAF45F53F7F3BC842E23779F24C9346DF9"
         },
         {
-          "ai_score": 0.7397,
-          "latency_ms": 16.366145,
-          "line": "45.41.204.203:9001 0645A80A17909D33FAFB5548E8A10F80AB38E65E"
+          "ai_score": 0.8386,
+          "latency_ms": 23.309393,
+          "line": "23.129.64.154:443 06F0BB4CDF4D75E5E8265A6270C10D2FDFE64AAA"
         }
       ],
       "webtunnel": [
         {
-          "ai_score": 0.6862,
-          "latency_ms": 18.479,
+          "ai_score": 0.6869,
+          "latency_ms": 9.919,
           "line": "webtunnel 104.26.1.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6853,
-          "latency_ms": 18.942,
-          "line": "webtunnel 172.67.69.9:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
-        },
-        {
-          "ai_score": 0.6852,
-          "latency_ms": 19.668,
+          "ai_score": 0.6858,
+          "latency_ms": 12.983,
           "line": "webtunnel 104.26.0.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6872,
-          "latency_ms": 43.489,
-          "line": "webtunnel 104.26.14.240:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3"
+          "ai_score": 0.6859,
+          "latency_ms": 13.508,
+          "line": "webtunnel 172.67.69.9:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6868,
-          "latency_ms": 45.753,
-          "line": "webtunnel 172.67.130.172:443 DB9E6D6AB7A3C7C47682F31F6A7D5F819BA9276E url=https://cz.tradebotz.site/DmMthZQhWQLaiP6a6pygK3ho ver=0.0.4"
+          "ai_score": 0.7932,
+          "latency_ms": 26.604,
+          "line": "webtunnel 104.21.10.213:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3"
+        },
+        {
+          "ai_score": 0.6875,
+          "latency_ms": 27.528,
+          "line": "webtunnel 104.26.15.240:443 28F5A0325B50F3EFB5FCC73194FCBF9D4972248E url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.4"
         }
       ]
     },
@@ -286,50 +286,48 @@
       {
         "fragment_bytes": 1,
         "padding_jitter_ms": [
-          10,
+          2,
+          120
+        ],
+        "record_split": [
           40
         ],
-        "record_split": [
-          100,
-          20
-        ],
         "utc_hour_offset": 0,
-        "utls": "HelloSafari_Auto"
+        "utls": "HelloEdge_Auto"
       },
       {
-        "fragment_bytes": 1,
+        "fragment_bytes": 5,
         "padding_jitter_ms": [
-          10,
-          60
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 1,
-        "utls": "HelloChrome_Auto"
-      },
-      {
-        "fragment_bytes": 1,
-        "padding_jitter_ms": [
-          5,
+          2,
           60
         ],
         "record_split": [
           3
         ],
-        "utc_hour_offset": 2,
-        "utls": "HelloSafari_Auto"
+        "utc_hour_offset": 1,
+        "utls": "HelloRandomizedALPN"
       },
       {
-        "fragment_bytes": 100,
+        "fragment_bytes": 5,
         "padding_jitter_ms": [
-          10,
+          5,
           120
         ],
         "record_split": [
-          100,
-          20
+          3
+        ],
+        "utc_hour_offset": 2,
+        "utls": "HelloFirefox_Auto"
+      },
+      {
+        "fragment_bytes": 1,
+        "padding_jitter_ms": [
+          5,
+          120
+        ],
+        "record_split": [
+          1,
+          5
         ],
         "utc_hour_offset": 3,
         "utls": "HelloEdge_Auto"
@@ -341,128 +339,131 @@
           60
         ],
         "record_split": [
-          100,
-          20
+          1,
+          5
         ],
         "utc_hour_offset": 4,
         "utls": "HelloSafari_Auto"
       },
       {
-        "fragment_bytes": 1,
+        "fragment_bytes": 40,
         "padding_jitter_ms": [
-          5,
+          10,
           40
         ],
         "record_split": [
-          100,
-          20
+          3
         ],
         "utc_hour_offset": 5,
         "utls": "HelloFirefox_Auto"
       },
       {
-        "fragment_bytes": 2,
+        "fragment_bytes": 100,
         "padding_jitter_ms": [
-          10,
+          5,
           120
         ],
         "record_split": [
-          3
+          100,
+          20
         ],
         "utc_hour_offset": 6,
-        "utls": "HelloRandomizedNoALPN"
+        "utls": "HelloEdge_Auto"
       },
       {
-        "fragment_bytes": 2,
+        "fragment_bytes": 5,
         "padding_jitter_ms": [
           10,
-          40
+          60
         ],
         "record_split": [
           1,
           5
         ],
         "utc_hour_offset": 7,
-        "utls": "HelloAndroid_11_OkHttp"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          5,
-          60
-        ],
-        "record_split": [
-          40
-        ],
-        "utc_hour_offset": 8,
         "utls": "HelloSafari_Auto"
       },
       {
-        "fragment_bytes": 5,
+        "fragment_bytes": 40,
         "padding_jitter_ms": [
           10,
-          120
-        ],
-        "record_split": [
-          40
-        ],
-        "utc_hour_offset": 9,
-        "utls": "HelloRandomizedNoALPN"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          10,
-          120
+          60
         ],
         "record_split": [
           3
         ],
-        "utc_hour_offset": 10,
-        "utls": "HelloSafari_Auto"
+        "utc_hour_offset": 8,
+        "utls": "HelloIOS_Auto"
+      },
+      {
+        "fragment_bytes": 40,
+        "padding_jitter_ms": [
+          10,
+          60
+        ],
+        "record_split": [
+          1,
+          5
+        ],
+        "utc_hour_offset": 9,
+        "utls": "HelloAndroid_11_OkHttp"
       },
       {
         "fragment_bytes": 5,
         "padding_jitter_ms": [
-          10,
-          60
+          5,
+          120
         ],
         "record_split": [
           100,
           20
         ],
+        "utc_hour_offset": 10,
+        "utls": "HelloChrome_Auto"
+      },
+      {
+        "fragment_bytes": 100,
+        "padding_jitter_ms": [
+          2,
+          60
+        ],
+        "record_split": [
+          1,
+          5
+        ],
         "utc_hour_offset": 11,
+        "utls": "HelloSafari_Auto"
+      },
+      {
+        "fragment_bytes": 100,
+        "padding_jitter_ms": [
+          5,
+          40
+        ],
+        "record_split": [
+          1,
+          5
+        ],
+        "utc_hour_offset": 12,
         "utls": "HelloFirefox_Auto"
       },
       {
-        "fragment_bytes": 2,
+        "fragment_bytes": 5,
         "padding_jitter_ms": [
           5,
           60
         ],
         "record_split": [
-          3
+          40
         ],
-        "utc_hour_offset": 12,
-        "utls": "HelloSafari_Auto"
+        "utc_hour_offset": 13,
+        "utls": "HelloChrome_Auto"
       },
       {
         "fragment_bytes": 2,
         "padding_jitter_ms": [
-          10,
-          40
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 13,
-        "utls": "HelloEdge_Auto"
-      },
-      {
-        "fragment_bytes": 1,
-        "padding_jitter_ms": [
-          2,
-          40
+          5,
+          120
         ],
         "record_split": [
           100,
@@ -472,32 +473,7 @@
         "utls": "HelloSafari_Auto"
       },
       {
-        "fragment_bytes": 5,
-        "padding_jitter_ms": [
-          10,
-          40
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 15,
-        "utls": "HelloFirefox_Auto"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          10,
-          120
-        ],
-        "record_split": [
-          100,
-          20
-        ],
-        "utc_hour_offset": 16,
-        "utls": "HelloIOS_Auto"
-      },
-      {
-        "fragment_bytes": 2,
+        "fragment_bytes": 1,
         "padding_jitter_ms": [
           2,
           120
@@ -506,84 +482,108 @@
           100,
           20
         ],
-        "utc_hour_offset": 17,
-        "utls": "HelloFirefox_Auto"
+        "utc_hour_offset": 15,
+        "utls": "HelloIOS_Auto"
       },
       {
         "fragment_bytes": 5,
         "padding_jitter_ms": [
-          10,
+          2,
           120
+        ],
+        "record_split": [
+          40
+        ],
+        "utc_hour_offset": 16,
+        "utls": "HelloSafari_Auto"
+      },
+      {
+        "fragment_bytes": 2,
+        "padding_jitter_ms": [
+          10,
+          40
+        ],
+        "record_split": [
+          1,
+          5
+        ],
+        "utc_hour_offset": 17,
+        "utls": "HelloIOS_Auto"
+      },
+      {
+        "fragment_bytes": 2,
+        "padding_jitter_ms": [
+          10,
+          40
         ],
         "record_split": [
           100,
           20
         ],
         "utc_hour_offset": 18,
-        "utls": "HelloRandomizedALPN"
-      },
-      {
-        "fragment_bytes": 5,
-        "padding_jitter_ms": [
-          5,
-          60
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 19,
-        "utls": "HelloEdge_Auto"
-      },
-      {
-        "fragment_bytes": 2,
-        "padding_jitter_ms": [
-          2,
-          60
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 20,
         "utls": "HelloSafari_Auto"
       },
       {
         "fragment_bytes": 40,
         "padding_jitter_ms": [
+          10,
+          120
+        ],
+        "record_split": [
+          3
+        ],
+        "utc_hour_offset": 19,
+        "utls": "HelloRandomizedNoALPN"
+      },
+      {
+        "fragment_bytes": 5,
+        "padding_jitter_ms": [
           5,
-          60
+          120
+        ],
+        "record_split": [
+          3
+        ],
+        "utc_hour_offset": 20,
+        "utls": "HelloChrome_Auto"
+      },
+      {
+        "fragment_bytes": 40,
+        "padding_jitter_ms": [
+          5,
+          40
         ],
         "record_split": [
           100,
           20
         ],
         "utc_hour_offset": 21,
-        "utls": "HelloRandomizedNoALPN"
+        "utls": "HelloSafari_Auto"
       },
       {
-        "fragment_bytes": 100,
+        "fragment_bytes": 40,
         "padding_jitter_ms": [
-          5,
-          60
+          2,
+          40
         ],
         "record_split": [
           100,
           20
         ],
         "utc_hour_offset": 22,
-        "utls": "HelloEdge_Auto"
+        "utls": "HelloIOS_Auto"
       },
       {
-        "fragment_bytes": 1,
+        "fragment_bytes": 100,
         "padding_jitter_ms": [
-          5,
+          10,
           40
         ],
         "record_split": [
           3
         ],
         "utc_hour_offset": 23,
-        "utls": "HelloAndroid_11_OkHttp"
+        "utls": "HelloFirefox_Auto"
       }
     ],
     "session_resumption": true

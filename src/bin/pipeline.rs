@@ -591,7 +591,15 @@ fn stage_ct() -> StageResult {
     });
     write_json(Path::new("data/ct_monitor_report.json"), &report)?;
     std::fs::create_dir_all("export")?;
-    std::fs::write("export/ct_flagged_domains.txt", "")?;
+    // Never ship a zero-byte artefact: an empty result is stated explicitly (one flagged domain per line
+    // follows the header when the CT monitor finds any).
+    std::fs::write(
+        "export/ct_flagged_domains.txt",
+        format!(
+            "# ct_flagged_domains: 0 flagged ({}) - one domain per line when non-empty\n",
+            Utc::now().to_rfc3339()
+        ),
+    )?;
     let clean = monitor.monitored_domains.join("\n");
     std::fs::write("export/ct_clean_bridges.txt", format!("{clean}\n"))?;
     Ok(Outcome::Ok(json!({
