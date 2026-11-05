@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-05T20:53:23.761187377+00:00",
+  "generated_at": "2026-11-05T22:56:17.276366773+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1781,
-            "tested_failing": 51,
-            "tested_working": 570,
-            "untested (probe error)": 1013,
-            "untested (rate-limited)": 194,
-            "untested (tcp timeout)": 618
+            "tcp_reachable_s1": 1775,
+            "tested_failing": 57,
+            "tested_working": 576,
+            "untested (probe error)": 994,
+            "untested (rate-limited)": 201,
+            "untested (tcp timeout)": 627
           },
-          "stamped": 4227,
+          "stamped": 4230,
           "tiers": {
             "tier_0_attempt": 1637,
-            "tier_1_tcp": 2020,
-            "tier_2_pt_handshake": 570
+            "tier_1_tcp": 2017,
+            "tier_2_pt_handshake": 576
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 65,
-          "tested_global_webtunnel.txt": 215
+          "tested_global_webtunnel.txt": 216
         },
         "relay_evidence": {
-          "bridges_matched": 4227,
-          "relay_observations": 4561,
+          "bridges_matched": 4230,
+          "relay_observations": 4564,
           "s2plus_connected": 152,
-          "verification_upgrades": 3748
+          "verification_upgrades": 3677
         },
         "webtunnel_probe": {
           "probed": 738,
-          "ws_101": 419,
-          "ws_fail": 319
+          "ws_101": 425,
+          "ws_fail": 313
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-05T20:52:31.904755477+00:00",
+      "started_at": "2026-11-05T22:55:26.181706666+00:00",
       "status": "ok"
     }
   ],
