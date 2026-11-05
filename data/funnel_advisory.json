@@ -8,54 +8,54 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 3490,
+      "count": 4060,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 3265,
+      "count": 3831,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 4219,
+      "count": 4793,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 1323,
+      "count": 1843,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 3490,
+      "count": 4060,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 1470,
+      "count": 1550,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 1208,
+      "count": 1751,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-04T23:34:31.250862487+00:00",
+  "generated_at": "2026-11-05T01:19:57.295075413+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
-      "DOCUMENTATION_RFC3849_2001_DB8": 389,
-      "TEST_NET_1_RFC5737": 128
+      "DOCUMENTATION_RFC3849_2001_DB8": 455,
+      "TEST_NET_1_RFC5737": 130
     },
     "by_transport": {
       "conjure": 64,
       "meek-azure": 87,
-      "snowflake": 57,
-      "webtunnel": 309
+      "snowflake": 59,
+      "webtunnel": 375
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
     "samples": [
@@ -68,7 +68,7 @@
       "conjure 192.0.2.17:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min",
       "conjure 192.0.2.18:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.datapacket.com,www.cdn77.com transport=min"
     ],
-    "total_non_routable": 517
+    "total_non_routable": 585
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -79,35 +79,35 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 1208,
-    "iran_likely_working_obfs4.txt": 554,
+    "iran_likely_working_all.txt": 1751,
+    "iran_likely_working_obfs4.txt": 850,
     "iran_likely_working_snowflake.txt": 0,
-    "iran_likely_working_vanilla.txt": 407,
-    "iran_likely_working_webtunnel.txt": 247,
-    "obfs4.txt": 1063,
-    "obfs4_tested.txt": 554,
-    "tested_global_obfs4.txt": 554,
-    "tested_global_vanilla.txt": 407,
-    "tested_global_webtunnel.txt": 247,
-    "vanilla.txt": 752,
-    "vanilla_tested.txt": 407,
-    "webtunnel.txt": 277,
-    "webtunnel_ipv6.txt": 84
+    "iran_likely_working_vanilla.txt": 597,
+    "iran_likely_working_webtunnel.txt": 304,
+    "obfs4.txt": 1370,
+    "obfs4_tested.txt": 850,
+    "tested_global_obfs4.txt": 850,
+    "tested_global_vanilla.txt": 597,
+    "tested_global_webtunnel.txt": 304,
+    "vanilla.txt": 946,
+    "vanilla_tested.txt": 597,
+    "webtunnel.txt": 326,
+    "webtunnel_ipv6.txt": 97
   },
   "relay_coverage": {
-    "candidates": 3265,
-    "relay_observations": 4219,
-    "relay_success": 1323,
+    "candidates": 3831,
+    "relay_observations": 4793,
+    "relay_success": 1843,
     "unobserved_by_transport": {
       "conjure": 64,
       "meek_lite": 87,
       "no_literal_endpoint": 4,
-      "snowflake": 57,
-      "webtunnel": 84
+      "snowflake": 59,
+      "webtunnel": 133
     },
-    "unobserved_candidates": 292,
-    "unobserved_non_routable": 292,
-    "unobserved_other": 0
+    "unobserved_candidates": 343,
+    "unobserved_non_routable": 307,
+    "unobserved_other": 36
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 292
+    "unobserved_candidates": 343
   },
   "sources": {
     "sources": [
@@ -219,6 +219,20 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "1-tll.sports-streams.org",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "2cold.independentlyreview.com",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "2jl.cc",
         "observations": 1,
         "successes": 0
@@ -263,6 +277,13 @@
         "endpoint_is_placeholder": false,
         "front": "adm.unicoridor.ru",
         "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "albator.ravion.org",
+        "observations": 4,
         "successes": 0
       },
       {
@@ -331,6 +352,13 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "awsfft.cdn.leohearts.com",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "b.img-cdn.net",
         "observations": 1,
         "successes": 0
@@ -340,6 +368,13 @@
         "endpoint_is_placeholder": true,
         "front": "balades-et-gouts.fr",
         "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "balanced-unity.eu",
+        "observations": 3,
         "successes": 0
       },
       {
@@ -367,6 +402,20 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "bg.808.re",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "birdbox.fun",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "bojack.pmvl.eu",
         "observations": 1,
         "successes": 0
       },
@@ -582,8 +631,22 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "chaosrealm.ru",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "chatbuddy.eu.org",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "cloudnexus.space",
         "observations": 1,
         "successes": 0
       },
@@ -592,6 +655,13 @@
         "endpoint_is_placeholder": true,
         "front": "coellen.xyz",
         "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "cool.pmvl.eu",
+        "observations": 1,
         "successes": 0
       },
       {
@@ -660,6 +730,20 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
+        "front": "d1tx7qo0tbzb6c.cloudfront.net",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "d2axzs2lvujkq3.cloudfront.net",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
         "front": "dallinbryce.com",
         "observations": 1,
         "successes": 0
@@ -675,7 +759,7 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "deimos.fedfe1.xyz",
-        "observations": 1,
+        "observations": 2,
         "successes": 0
       },
       {
@@ -710,7 +794,7 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "docs.prevails.org",
-        "observations": 1,
+        "observations": 2,
         "successes": 0
       },
       {
@@ -750,6 +834,20 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "fast.heelsn.eu",
+        "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "fastdeliverynetwork.website",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "fdmf.ch",
         "observations": 1,
@@ -760,6 +858,13 @@
         "endpoint_is_placeholder": false,
         "front": "foglab.net",
         "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "foto.pho.be",
+        "observations": 1,
         "successes": 0
       },
       {
@@ -779,6 +884,13 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
+        "front": "freifunk.ckgc.de",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
         "front": "front-eu1.webdeliveryonl.click",
         "observations": 1,
         "successes": 0
@@ -787,6 +899,20 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "fyhenry.uk",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "galleria.bm-dataprotect.ch",
+        "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "gateway.005184.xyz",
         "observations": 1,
         "successes": 0
       },
@@ -815,6 +941,20 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "girafe.tel",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "git.joinplu.me",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "google.com.gus.computer",
         "observations": 1,
         "successes": 0
       },
@@ -856,7 +996,21 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
+        "front": "ipoac.nl",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
         "front": "iwantabigblackdickinmyass.nayumi.dev",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "jiii.cc",
         "observations": 1,
         "successes": 0
       },
@@ -899,6 +1053,13 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "kochenjessler.de",
+        "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "kriptohomyaki.org",
         "observations": 1,
         "successes": 0
       },
@@ -906,6 +1067,13 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "le.nd-ai.de",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "learnstack.xyz",
         "observations": 1,
         "successes": 0
       },
@@ -927,6 +1095,13 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "lowkeykick.site",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "luhmann.ipv64.net",
         "observations": 1,
         "successes": 0
       },
@@ -975,6 +1150,13 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "matrix.entreri.de",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "mdapi.ch",
         "observations": 1,
         "successes": 0
@@ -1005,6 +1187,13 @@
         "endpoint_is_placeholder": false,
         "front": "metastable03.mori.yuka.org",
         "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "miau.sillykittens.net",
+        "observations": 1,
         "successes": 0
       },
       {
@@ -1044,9 +1233,23 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "mwumba.com",
+        "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "myprivatecloud82.fun",
         "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "n.yogasku.ng",
+        "observations": 2,
         "successes": 0
       },
       {
@@ -1101,13 +1304,20 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "notalot.org",
+        "observations": 3,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "nothing.localenby.is",
         "observations": 1,
         "successes": 0
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "np601p22.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -1200,21 +1410,21 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "pod01.oneclickhost.eu",
-        "observations": 5,
+        "observations": 6,
         "successes": 0
       },
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "pod02.oneclickhost.eu",
-        "observations": 5,
+        "observations": 6,
         "successes": 0
       },
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "pod03.oneclickhost.eu",
-        "observations": 5,
+        "observations": 6,
         "successes": 0
       },
       {
@@ -1240,7 +1450,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "qbxa1hay.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -1305,7 +1515,7 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "rot.ronaak.eu",
-        "observations": 1,
+        "observations": 2,
         "successes": 0
       },
       {
@@ -1327,6 +1537,20 @@
         "endpoint_is_placeholder": true,
         "front": "s3.vlue.dev",
         "observations": 3,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "samba.avhl.ru",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "send.mni.li",
+        "observations": 1,
         "successes": 0
       },
       {
@@ -1354,6 +1578,27 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "signaling.privacy-vbox.de",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "skyblond.info",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "softcode.cloud",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "soy.institute",
         "observations": 1,
         "successes": 0
       },
@@ -1410,7 +1655,7 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "stop.rechts.jetzt",
-        "observations": 1,
+        "observations": 2,
         "successes": 0
       },
       {
@@ -1432,6 +1677,13 @@
         "endpoint_is_placeholder": false,
         "front": "surf.mysticboarding.cz",
         "observations": 2,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "t.vps.webdock.cloud",
+        "observations": 1,
         "successes": 0
       },
       {
@@ -1493,6 +1745,13 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "tor.zug.io",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "tor1.woodie.dev",
         "observations": 2,
         "successes": 0
@@ -1521,6 +1780,20 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "us.g3wip.uk",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "us02-lax.beijing.st",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "us04-buf.beijing.st",
         "observations": 1,
         "successes": 0
@@ -1542,7 +1815,21 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "verry.org",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "vika7.space",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "vps.bahena.be",
         "observations": 1,
         "successes": 0
       },
@@ -1564,6 +1851,13 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "webtunnel.buhhenbaldence.com",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "webtunnel.defencegeeks.net",
         "observations": 1,
         "successes": 0
       },
@@ -1618,6 +1912,13 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "wt.skynetcloud.site",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wt.xoomlia.com",
         "observations": 1,
@@ -1639,6 +1940,13 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "wtb002.unshakled.net",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wtb007.unshakled.net",
         "observations": 1,
@@ -1648,6 +1956,13 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": true,
         "front": "wtrelay7.duckdns.org",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "ww2.buxnet.net",
         "observations": 1,
         "successes": 0
       },
@@ -1667,8 +1982,22 @@
       },
       {
         "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "www.kfc911.top",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "www.readthefinemanual.net",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
+        "front": "www.ryanwagner.phd",
         "observations": 1,
         "successes": 0
       },
@@ -1701,15 +2030,15 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 84,
+    "fronts_with_placeholder_endpoints": 97,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 361,
+    "lines_examined": 423,
     "summary": {
       "degraded": 0,
       "healthy": 1,
       "no_evidence": 1,
-      "unreachable_from_relay": 212
+      "unreachable_from_relay": 259
     },
-    "unique_fronts": 214
+    "unique_fronts": 261
   }
 }
