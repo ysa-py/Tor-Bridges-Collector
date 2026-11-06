@@ -2810,17 +2810,12 @@ mod tests {
             &mut BTreeMap::new(),
         )
         .expect("write meek-azure");
-        for name in ["meek-azure.txt"] {
-            let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
-            assert!(
-                body.lines().count() > 0,
-                "{name} must contain static inventory"
-            );
-        }
-        for name in [
-            "meek-azure_72h.txt",
-            "meek-azure_tested.txt",
-        ] {
+        let body = std::fs::read_to_string(bridge_dir.join("meek-azure.txt")).expect("file");
+        assert!(
+            body.lines().count() > 0,
+            "meek-azure.txt must contain static inventory"
+        );
+        for name in ["meek-azure_72h.txt", "meek-azure_tested.txt"] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
             assert!(body.trim().is_empty(), "{name} must reflect evidence only");
         }

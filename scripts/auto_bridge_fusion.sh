@@ -796,6 +796,33 @@ EXTRA_RAW = [
     ("scriptzteam-v2-vanilla", "https://raw.githubusercontent.com/scriptzteam/Tor-Bridges-Collector-v2/main/bridges/vanilla.txt"),
 ]
 
+# Wider, self-expanding community supply: every known Tor-Bridges-Collector fork / mirror is polled in every layout it
+# is known to use (root, bridge/, bridges/) and for every public projection name. Dead URLs miss softly (HTTP 404) and
+# cost nothing; anything that answers is validated, deduplicated, probed and AI-ranked like every other source.
+_MIRROR_REPOS = (
+    "Delta-Kronecker/Tor-Bridges-Collector",
+    "scriptzteam/Tor-Bridges-Collector",
+    "scriptzteam/Tor-Bridges-Collector-v2",
+    "Koros0111/Tor-Bridges-Collector",
+    "javadz501/Tor-Bridges-Collector",
+    "Learntous7/Collect",
+    "center2055/OnionHop-Bridges-Collector",
+)
+_MIRROR_DIRS = ("", "bridge/", "bridges/")
+_MIRROR_FILES = tuple(
+    f"{fam}{suffix}.txt"
+    for fam in ("obfs4", "webtunnel", "vanilla")
+    for suffix in ("", "_ipv6", "_tested", "_ipv6_tested", "_72h", "_ipv6_72h", "_168h", "_ipv6_168h")
+) + ("recent_bridges_24h.txt", "snowflake.txt", "meek_lite.txt")
+_known_extra = {u for _, u in EXTRA_RAW}
+for _repo in _MIRROR_REPOS:
+    for _dir in _MIRROR_DIRS:
+        for _file in _MIRROR_FILES:
+            _url = f"https://raw.githubusercontent.com/{_repo}/main/{_dir}{_file}"
+            if _url not in _known_extra:
+                _known_extra.add(_url)
+                EXTRA_RAW.append((f"mirror:{_repo.split('/')[0]}:{_dir}{_file}", _url))
+
 
 def discover_extra():
     reg_path = os.path.join(DATA, "ai_fusion_extra_sources.json")
@@ -814,7 +841,7 @@ def discover_extra():
         return url, extract(body.decode("utf-8", "replace"))
 
     ok = fresh = 0
-    with cf.ThreadPoolExecutor(max_workers=8) as ex:
+    with cf.ThreadPoolExecutor(max_workers=24) as ex:
         for url, cands in ex.map(pull, work):
             meta = urls[url]
             if cands is None:
