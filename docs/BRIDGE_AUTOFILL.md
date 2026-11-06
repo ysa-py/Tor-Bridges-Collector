@@ -95,3 +95,45 @@ for Orbot. The `.torrc` files themselves are left untouched.
 Still only conjure is removed (Orbot has no such transport). The script drops conjure
 lines it finds, `--check` fails if one reappears, and `scripts/purge_conjure.sh` keeps
 handling the wider repository.
+
+---
+
+## Self-extending harvester + Iran anti-DPI model (`scripts/bridge_harvest.mjs`)
+
+Runs every hour **before** the autofill step (see `.github/workflows/bridge-pool-autofill.yml`).
+
+| Stage | What happens |
+|-------|--------------|
+| Discover | GitHub search + tree API finds *new* collector repos and their bridge files; they are stored in `data/bridge_harvest_sources.json` and polled from then on. |
+| Fetch | Built-in mirrors + `data/ai_fusion_extra_sources.json` + discovered files; retry/back-off, dead sources are quarantined with exponential back-off and retried automatically. A dead network is never fatal. |
+| Validate | Only real **obfs4 / webtunnel / vanilla** lines that match Orbot's regex survive. Conjure is dropped, reserved/private endpoints are dropped, bad certs/urls/fingerprints are dropped, duplicate params are collapsed. |
+| Probe | TCP connect + RTT. The probe switches itself off when the environment cannot answer truthfully (egress proxy, no IPv6) and the AI ranking is used on its own. |
+| Pool | `data/bridge_harvest_pool.json` is the durable pool (alive streak, fail streak, RTT, first/last seen). The hourly collector may rewrite `bridge/*.txt`; the pool re-injects live bridges on the next run. Entries that stopped validating are dropped from the pool only. |
+| Publish | Live bridges are **appended** to `bridge/*.txt` (never removed) and `export/orbot/orbot_harvest_live.txt` (probe-verified, one per /24 or domain, fastest + best first). |
+
+### Internal Iran anti-DPI model (`scripts/lib/iran_antidpi_model.mjs`)
+
+Deterministic, explainable, offline, no API key. Terms: transport (WebTunnel > Snowflake > obfs4 > meek),
+TLS-like ports, flagged classic Tor ports (9001/9030/…), CDN-shielded endpoints (Cloudflare / Fastly / Azure),
+`iat-mode`, domain fronting, IPv6 penalty, pinned fingerprint, probe liveness and RTT (speed).
+`export/orbot/orbot_iran_antidpi.txt` additionally hardens obfs4 lines client-side (`iat-mode=0` -> `1`,
+randomised packet timing against flow-timing DPI). The list rotates hourly.
+
+### Correction: TEST-NET addresses are not always placeholders
+
+Tor itself writes **Snowflake, meek_lite and WebTunnel** lines with `192.0.2.x` / `2001:db8::` as a dummy
+address; the real connection goes through `url=` / `front=`. Those lines are real and working, so the
+autofill/validator now treat TEST-NET as a dead placeholder **only for obfs4 and vanilla** (which dial the
+IP). Previously snowflake/meek were scored -80 and could never reach the AI-ranked list.
+
+### CI invariants
+
+`--fix` no longer rewrites byte-exact derived artifacts (`iran_cut_pack.txt`, `iran_anti_dpi_elite.*`) and the
+workflow regenerates the cut pack and NIN manifest after every refresh, so invariants C11/C13 stay green.
+All workflow jobs use pinned runners (`ubuntu-24.04`), satisfying C15.
+
+```
+node scripts/bridge_harvest.mjs --discover --probe        # harvest + probe (hourly in CI)
+node scripts/bridge_harvest.mjs --dry --no-fetch          # inspect the pool only
+node scripts/bridge_autofill.mjs --fix --fill --dynamic   # rank + rotate
+```

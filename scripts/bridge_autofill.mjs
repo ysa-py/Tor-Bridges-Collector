@@ -30,12 +30,30 @@
 import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
+import { iranScore, hardenObfs4 } from "./lib/iran_antidpi_model.mjs";
 
 const ORBOT_LINE = /^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+])(:\d{1,5})?)\s+([\da-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$/;
 const LEGACY_LINE = /^(obfs4|webtunnel)\s+((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d{1,5})\s+)([0-9A-F]{40})(\s+\S+)*$/;
 const FP40 = /(?:^|\s)([0-9a-fA-F]{40})(?=\s|$)/;
 const TEST_NET = /(?:^|\s)(?:192\.0\.2\.|198\.51\.100\.|203\.0\.113\.)/;
 const TRANSPORTS = ["obfs4", "webtunnel", "snowflake", "meek_lite", "dnstt"];
+
+
+const DUMMY_HOST = /^(192\.0\.2\.|198\.51\.100\.|203\.0\.113\.|2001:0?db8:)/i;
+const isDummyHost = (host) => DUMMY_HOST.test(host);
+
+/** Diversity key: network prefix for dialled transports, front/url domain for tunnelled ones. */
+function divKey(transport, host, params, isIpv4, octets) {
+  if (transport === "webtunnel" || transport === "snowflake" || transport === "meek_lite") {
+    const raw = params.url ?? params.front ?? params.fronts ?? "";
+    try {
+      return raw ? new URL(raw.includes("://") ? raw : `https://${raw}`).hostname : isDummyHost(host) ? `dummy:${host}` : null;
+    } catch {
+      return isDummyHost(host) ? `dummy:${host}` : null;
+    }
+  }
+  return isIpv4 ? host.split(".").slice(0, octets).join(".") : null;
+}
 
 const argv = process.argv.slice(2);
 const has = (flag) => argv.includes(flag);
@@ -57,6 +75,7 @@ const MODE = {
 const SCAN_DIRS = ["bridge", "export/orbot", "export"];
 const PASTE_DIRS = ["export/orbot"];
 const ROTATION_BUCKETS = 6;
+const DERIVED_FILES = new Set(["export/iran_cut_pack.txt", "export/iran_anti_dpi_elite.txt", "export/iran_anti_dpi_elite.json"]);
 
 /* ------------------------------------------------------------------ helpers */
 
@@ -123,10 +142,14 @@ function parse(line) {
     isIpv6,
     valid: ORBOT_LINE.test(text),
     legacySafe: LEGACY_LINE.test(text),
-    placeholder: TEST_NET.test(text),
+    // A TEST-NET / documentation address is only a dead placeholder when the transport
+    // actually dials it (obfs4, vanilla). Snowflake, meek_lite and WebTunnel lines written
+    // by Tor itself use 192.0.2.x / 2001:db8:: as a dummy address and connect through
+    // url= / front= instead, so those are REAL, working bridges.
+    placeholder: isDummyHost(host) && !(transport !== "obfs4" && transport !== "vanilla" && (params.url || params.front || params.fronts)),
     identity: `${transport}|${host}|${port}|${(fpMatch ?? "").toUpperCase()}`,
-    subnet16: isIpv4 ? host.split(".").slice(0, 2).join(".") : null,
-    subnet24: isIpv4 ? host.split(".").slice(0, 3).join(".") : null,
+    subnet16: divKey(transport, host, params, isIpv4, 2),
+    subnet24: divKey(transport, host, params, isIpv4, 3),
   };
 }
 
@@ -162,34 +185,7 @@ async function listFiles(dir) {
  * key, deterministic, and every term is explainable.
  */
 function scoreLine(parsed, ctx) {
-  const why = [];
-  let score = 40;
-  const bump = (value, reason) => {
-    score += value;
-    if (value !== 0) why.push(`${reason}${value > 0 ? "+" : ""}${value}`);
-  };
-  if (parsed.transport === "webtunnel") bump(24, "webtunnel(HTTPS mimics real traffic)");
-  else if (parsed.transport === "snowflake") bump(18, "snowflake(volunteer proxies)");
-  else if (parsed.transport === "obfs4") bump(15, "obfs4");
-  else if (parsed.transport === "meek_lite") bump(4, "meek_slow");
-  if (parsed.port === 443) bump(12, "port443");
-  else if (parsed.port === 80) bump(3, "port80");
-  else if (parsed.port > 1024 && parsed.port < 40000) bump(2, "mid-port");
-  if (parsed.isIpv4) bump(6, "ipv4");
-  if (parsed.isIpv6) bump(-10, "ipv6(blocked more often in IR)");
-  if (parsed.fp) bump(6, "pinned-fingerprint");
-  const iat = parsed.params["iat-mode"];
-  if (iat === "1") bump(9, "iat-mode=1");
-  else if (iat === "2") bump(5, "iat-mode=2");
-  if (parsed.params.front) bump(6, "domain-fronted");
-  if (parsed.params.url && /^https:\/\//i.test(parsed.params.url)) bump(4, "https-url");
-  if (parsed.placeholder) bump(-80, "TEST-NET placeholder(unreachable)");
-  if (!parsed.valid) bump(-100, "invalid-for-orbot");
-  if (ctx?.freshHours !== undefined) {
-    const freshness = Math.max(-4, 6 - Math.min(6, ctx.freshHours / 12));
-    if (freshness > 0) bump(Math.round(freshness), "fresh-source");
-  }
-  return { score: Math.round(score * 10) / 10, why };
+  return iranScore(parsed, ctx);
 }
 
 function bucketOf(identity) {
@@ -375,6 +371,9 @@ if (MODE.fix) {
     // torrc syntax REQUIRES the "Bridge " prefix, so those files are never
     // rewritten here; export/orbot/orbot_from_torrc.txt carries the Orbot form.
     if (entry.file.endsWith(".torrc")) continue;
+    // Byte-exact derived artifacts (invariants C8 / C11 compare them with a fresh regeneration):
+    // their generators own the formatting, rewriting them here would make CI fail.
+    if (DERIVED_FILES.has(entry.file)) continue;
     const absolute = path.join(ROOT, entry.file);
     const raw = await readFile(absolute, "utf8");
     const out = [];
@@ -420,6 +419,18 @@ if (MODE.dynamic) {
   }
 
   const pool = new Map();
+  // Probe / speed evidence gathered by bridge_harvest.mjs (alive streak, fail streak, RTT).
+  const harvestEvidence = new Map();
+  try {
+    const harvestDoc = JSON.parse(await readFile(path.join(ROOT, "data/bridge_harvest_pool.json"), "utf8"));
+    for (const rec of harvestDoc.bridges ?? []) {
+      const parsedRec = parse(rec.l);
+      if (parsedRec) harvestEvidence.set(parsedRec.identity, rec);
+    }
+  } catch {
+    /* no harvest pool yet */
+  }
+
   for (const entry of inventory.values()) {
     if (!entry.pasteReady && !entry.file.startsWith("bridge/")) continue;
     if (/blocked|flagged/i.test(entry.file)) continue;
@@ -429,7 +440,14 @@ if (MODE.dynamic) {
       if (parsed.transport === "vanilla" || parsed.transport === "dnstt") continue;
       if (blocklists.has(parsed.identity)) continue;
       const key = parsed.identity;
-      const { score, why } = scoreLine(parsed, { freshHours });
+      const evidence = harvestEvidence.get(parsed.identity);
+      const { score, why } = scoreLine(parsed, {
+        freshHours,
+        alive: evidence ? (evidence.as ?? 0) > 0 : undefined,
+        aliveStreak: evidence?.as,
+        failStreak: evidence?.fl,
+        rttMs: evidence?.rtt,
+      });
       const previous = pool.get(key);
       const candidate = {
         parsed,
@@ -448,7 +466,12 @@ if (MODE.dynamic) {
   const rotate = Math.floor(Date.now() / 3_600_000) % ROTATION_BUCKETS;
   const selected = selectDiverse([...pool.values()], MODE.top, rotate);
   const ordered = [...selected].sort((a, b) => b.score - a.score);
-  const lines = ordered.map((candidate) => candidate.parsed.line);
+  // obfs4 iat-mode is a client-side option: raise 0 -> 1 so flow-timing DPI sees randomised
+  // inter-arrival times. Only applied when the hardened line is still Orbot-valid.
+  const lines = ordered.map((candidate) => {
+    const hardened = hardenObfs4(candidate.parsed.line);
+    return ORBOT_LINE.test(hardened) ? hardened : candidate.parsed.line;
+  });
   const invalidWritten = ordered.filter((candidate) => !ORBOT_LINE.test(candidate.parsed.line));
 
   if (invalidWritten.length > 0) {

@@ -112,7 +112,10 @@ for (const file of files) {
       if (entry.samples.length < 3) entry.samples.push(line.slice(0, 150));
     }
     if (!LEGACY_ORBOT.test(line)) entry.legacyInvalid += 1;
-    if (TEST_NET.test(line)) entry.placeholders += 1;
+    // TEST-NET is only a dead placeholder for transports that dial the IP (obfs4 / vanilla).
+    // Snowflake / meek_lite / webtunnel lines from Tor itself use it as a dummy address
+    // and connect through url= / front=, so they are real bridges.
+    if (TEST_NET.test(line) && (/^(obfs4\s|\d)/i.test(line.trim()) || !/\b(url|front|fronts)=/.test(line))) entry.placeholders += 1;
     if (!FINGERPRINT40.test(line)) entry.noFingerprint += 1;
   }
 

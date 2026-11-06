@@ -7,6 +7,8 @@ name: bridge-pool-autofill
 #   * expose an Orbot-pasteable projection of the torrc exports,
 #   * report every line Orbot would reject instead of deleting it,
 #   * keep conjure out (Orbot cannot use that transport).
+#   * harvest NEW bridges every hour (GitHub discovery + mirrors), probe liveness/RTT,
+#     rank with the internal Iran anti-DPI model and append the live ones.
 # Runs hourly, commits only when something actually changed.
 
 on:
@@ -19,6 +21,8 @@ on:
       - "bridge/**"
       - "export/**"
       - "scripts/bridge_autofill.mjs"
+      - "scripts/bridge_harvest.mjs"
+      - "scripts/lib/**"
 
 permissions:
   contents: write
@@ -29,7 +33,7 @@ concurrency:
 
 jobs:
   autofill:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - name: Checkout
@@ -42,6 +46,15 @@ jobs:
         with:
           node-version: 22
 
+      # Self-extending harvester: discovers new collector repos through the GitHub API,
+      # pulls every mirror, validates for Orbot, TCP-probes (alive + RTT) and keeps a
+      # durable pool. Never fatal: a dead network just leaves the pool as it is.
+      - name: Harvest, discover and probe bridges
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/bridge_harvest.mjs --discover --probe --json "$RUNNER_TEMP/harvest-report.json" || echo "harvest step failed - continuing with existing pool"
+
       - name: Autofill, dedupe and hourly AI merge
         run: node scripts/bridge_autofill.mjs --fix --fill --dynamic --json "$RUNNER_TEMP/autofill-report.json"
 
@@ -52,6 +65,14 @@ jobs:
           else
             echo "scripts/purge_conjure.sh not present - skipped"
           fi
+
+      # Derived artifacts are compared byte-for-byte with a fresh regeneration by the
+      # repository invariant audit (C11 / C13): rebuild them from the refreshed lists.
+      - name: Regenerate derived artifacts
+        run: |
+          for s in scripts/build_iran_cut_pack.sh scripts/build_nin_recommended_transport.sh; do
+            if [ -f "$s" ]; then bash "$s" || echo "$s failed - continuing"; fi
+          done
 
       - name: Orbot conformance gate (paste-ready lists)
         run: |
@@ -88,7 +109,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: bridge-autofill-report
-          path: ${{ runner.temp }}/autofill-report.json
+          path: |
+            ${{ runner.temp }}/autofill-report.json
+            ${{ runner.temp }}/harvest-report.json
           if-no-files-found: warn
 
       - name: Commit refreshed lists
@@ -96,7 +119,7 @@ jobs:
           set -euo pipefail
           git config user.name "bridge-bot"
           git config user.email "bridge-bot@users.noreply.github.com"
-          git add bridge export README.md
+          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json README.md
           if git diff --staged --quiet; then
             echo "nothing to commit - lists already up to date"
             exit 0
