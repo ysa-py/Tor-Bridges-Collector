@@ -8,17 +8,17 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 4216,
+      "count": 4217,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 3932,
+      "count": 3933,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 4825,
+      "count": 4826,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
@@ -28,7 +28,7 @@
       "stage": "relay_success"
     },
     {
-      "count": 4212,
+      "count": 4213,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
@@ -91,9 +91,9 @@
     "tested_global_vanilla.txt": 613,
     "tested_global_webtunnel.txt": 322,
     "vanilla.txt": 972,
-    "vanilla_tested.txt": 611,
-    "webtunnel.txt": 352,
-    "webtunnel_ipv6.txt": 109
+    "vanilla_tested.txt": 613,
+    "webtunnel.txt": 353,
+    "webtunnel_ipv6.txt": 108
   },
   "relay_coverage": {
     "candidates": 3933,
@@ -106,8 +106,8 @@
       "webtunnel": 114
     },
     "unobserved_candidates": 274,
-    "unobserved_non_routable": 269,
-    "unobserved_other": 5
+    "unobserved_non_routable": 268,
+    "unobserved_other": 6
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -1534,7 +1534,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "push.hieronymus.uk",
         "observations": 1,
         "successes": 0
@@ -2142,7 +2142,7 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 109,
+    "fronts_with_placeholder_endpoints": 108,
     "generated_by": "webtunnel_v2::front_health_advisory",
     "lines_examined": 461,
     "summary": {

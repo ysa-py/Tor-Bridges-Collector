@@ -9,11 +9,11 @@
 
 | Metric | Value |
 | :--- | :--- |
-| Total bridges analysed | `4212` |
+| Total bridges analysed | `4213` |
 | Composite score > 0.5 | `0` (0%) |
 | OONI clean (Iran) | `0` |
 | OONI anomaly/blocked | `0` |
-| OONI no data | `4212` |
+| OONI no data | `4213` |
 | Quality gate (≥ 30 %) | `FAIL 🚨` |
 
 ---
