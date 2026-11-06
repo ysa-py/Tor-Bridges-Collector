@@ -2,7 +2,7 @@
 
 Workflow: `.github/workflows/iran-vantage.yml` (hourly at :20, `workflow_dispatch`, one job, one quota).
 Code: `scripts/iran_vantage.mjs`, `scripts/lib/iran_vantage.mjs`. Tests: `scripts/test_iran_vantage.mjs` (offline, also run in `main-ci`).
-Output (append-only): `bridge/iran_vantage.jsonl`; cursors: `data/iran_vantage_cursors.json`.
+Output (append-only): `data/iran_vantage.jsonl` (not `bridge/`: that directory is an exact 73-file publication contract enforced by invariant C2 and `REQUIRED_FILES`); cursors: `data/iran_vantage_cursors.json`.
 
 ## What it proves - and what it does not
 

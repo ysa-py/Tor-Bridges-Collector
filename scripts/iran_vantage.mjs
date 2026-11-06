@@ -6,7 +6,7 @@
 //   node scripts/iran_vantage.mjs --smoke    live parser smoke (1.1.1.1:443 + https://example.com), writes nothing
 //
 // Reads only public bridge/ projections, never sends a fingerprint, cert or url
-// path to check-host, appends to bridge/iran_vantage.jsonl and keeps one cursor
+// path to check-host, appends to data/iran_vantage.jsonl and keeps one cursor
 // per source file in data/iran_vantage_cursors.json.  It never edits any
 // iran_likely_working_*.txt and never fails the collector (exit 0 on API trouble).
 // A check-host Iran node is a datacenter TCP/HTTPS vantage - NOT a Tor, obfs4,
@@ -20,7 +20,7 @@ import {
 
 const BASE = "https://check-host.net";
 const ROOT = process.env.IV_ROOT || process.cwd();
-const OUT = path.join(ROOT, "bridge/iran_vantage.jsonl");
+const OUT = path.join(ROOT, "data/iran_vantage.jsonl");
 const CURSORS = path.join(ROOT, "data/iran_vantage_cursors.json");
 const MAX_BODY = 1_000_000;
 const args = new Set(process.argv.slice(2));
