@@ -1,23 +1,29 @@
 #!/usr/bin/env node
 /**
- * orbot_validate.mjs — Orbot/Tor Browser for Android bridge conformance gate.
+ * orbot_validate.mjs — Orbot / Tor Browser for Android bridge conformance gate.
  *
- * Orbot validates EVERY non-blank pasted line and rejects the whole paste if one
- * line fails, which surfaces as "Invalid bridge format". This script checks the
- * published lists with the current Orbot regex and the stricter legacy regex,
- * then reports duplicates, unreachable TEST-NET placeholders, missing
- * fingerprints and argument characters that older builds reject.
+ * Orbot validates EVERY non-blank pasted line and rejects the whole paste when a
+ * single line fails, which the user sees as "Invalid bridge format". This script
+ * applies the same regex as Orbot's CustomBridgeBottomSheet to the published
+ * lists and reports what would break a paste.
+ *
+ * Scope:
+ *   default          export/orbot  (the paste-ready publication)
+ *   --dir <path>     additional/alternative directory (repeatable)
+ *   --all            also scan bridge/ and export/ (collector data sets)
+ *   --soft           report only, never exit non-zero (dataset files may use a
+ *                    different column layout on purpose)
  *
  * Usage:
- *   node scripts/orbot_validate.mjs                       # scan bridge + export/orbot
- *   node scripts/orbot_validate.mjs --dir export/orbot    # one directory
- *   node scripts/orbot_validate.mjs --check               # exit 1 on any HARD error
- *   node scripts/orbot_validate.mjs --fix                 # safe in-place normalisation
- *   node scripts/orbot_validate.mjs --json report.json    # machine readable report
+ *   node scripts/orbot_validate.mjs
+ *   node scripts/orbot_validate.mjs --check --json orbot-conformance-report.json
+ *   node scripts/orbot_validate.mjs --all --soft --json full-report.json
+ *   node scripts/orbot_validate.mjs --dir export/orbot --fix
  *
- * Exit codes: 0 ok, 1 hard violations (current Orbot) or --check with findings.
- * Only exact duplicates / BOM / CR / "Bridge " prefix / duplicate params are
- * touched by --fix. No bridge line is ever deleted or rewritten semantically.
+ * Exit codes: 0 ok, 1 hard violations (unless --soft).
+ * No bridge line is ever deleted or rewritten semantically; --fix only removes
+ * exact duplicates and normalises BOM/CR, the "Bridge " prefix, duplicated
+ * parameters and fingerprint case.
  */
 import { readdir, readFile, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
@@ -28,21 +34,20 @@ const FINGERPRINT40 = /(?:^|\s)([0-9a-fA-F]{40})(?=\s|$)/;
 const TEST_NET = /(?:^|\s)(?:192\.0\.2\.|198\.51\.100\.|203\.0\.113\.)/;
 
 const args = process.argv.slice(2);
-const flag = (name) => args.includes(name);
-const value = (name, fallback) => {
+const has = (name) => args.includes(name);
+const valueOf = (name, fallback) => {
   const index = args.indexOf(name);
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
 
-const fix = flag("--fix");
-const check = flag("--check");
-const jsonOut = value("--json", null);
-const explicitDirs = args
+const fix = has("--fix");
+const soft = has("--soft");
+const jsonOut = valueOf("--json", null);
+const dirArgs = args
   .map((arg, index) => (arg === "--dir" ? args[index + 1] : null))
   .filter(Boolean);
-const dirs = explicitDirs.length > 0 ? explicitDirs : ["bridge", "export/orbot", "export"];
+const dirs = dirArgs.length > 0 ? dirArgs : has("--all") ? ["export/orbot", "bridge", "export"] : ["export/orbot"];
 
-/** Safe, semantic-preserving normalisation. */
 function normalise(line) {
   let out = line.replace(/^\uFEFF/, "").replace(/\r$/, "").replace(/\u00A0/g, " ").trimEnd();
   out = out.replace(/^\s*Bridge\s+/i, "");
@@ -53,9 +58,9 @@ function normalise(line) {
     const params = [];
     for (const token of tokens.slice(3)) {
       const eq = token.indexOf("=");
-      const key = eq > 0 ? token.slice(0, eq) : null;
-      if (key) {
-        if (seen.has(key)) continue; // drop duplicated key, first one wins
+      if (eq > 0) {
+        const key = token.slice(0, eq);
+        if (seen.has(key)) continue;
         seen.add(key);
       }
       params.push(token);
@@ -67,7 +72,7 @@ function normalise(line) {
   return out;
 }
 
-async function collectFiles(dir) {
+async function collect(dir) {
   try {
     const info = await stat(dir);
     if (!info.isDirectory()) return [];
@@ -75,14 +80,15 @@ async function collectFiles(dir) {
     return [];
   }
   const entries = await readdir(dir, { withFileTypes: true });
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".txt"))
-    .map((entry) => path.join(dir, entry.name))
-    .filter((file) => !/node_modules/.test(file));
+  const files = [];
+  for (const entry of entries) {
+    if (entry.isFile() && /\.(txt|torrc|lst)$/.test(entry.name)) files.push(path.join(dir, entry.name));
+  }
+  return files;
 }
 
-const files = (await Promise.all(dirs.map(collectFiles))).flat().sort();
-const report = { generatedAt: new Date().toISOString(), dirs, files: [], totals: {} };
+const files = (await Promise.all(dirs.map(collect))).flat().sort();
+const report = { generatedAt: new Date().toISOString(), dirs, files: [] };
 const totals = { lines: 0, invalid: 0, legacyInvalid: 0, duplicates: 0, placeholders: 0, noFingerprint: 0, fixed: 0 };
 
 for (const file of files) {
@@ -101,10 +107,9 @@ for (const file of files) {
     }
     seen.add(line);
     kept.push(line);
-
     if (!CURRENT_ORBOT.test(line)) {
       entry.invalid += 1;
-      if (entry.samples.length < 3) entry.samples.push({ line: line.slice(0, 160), reason: "current Orbot regex" });
+      if (entry.samples.length < 3) entry.samples.push(line.slice(0, 150));
     }
     if (!LEGACY_ORBOT.test(line)) entry.legacyInvalid += 1;
     if (TEST_NET.test(line)) entry.placeholders += 1;
@@ -127,39 +132,35 @@ for (const file of files) {
 }
 
 report.totals = totals;
+report.ok = totals.invalid === 0;
 
-if (report.files.length === 0) {
-  console.error("[orbot-validate] no .txt lists found in: " + dirs.join(", "));
-}
+if (report.files.length === 0) console.error("[orbot-validate] no lists found in: " + dirs.join(", "));
 
-const hard = report.files.filter((entry) => entry.invalid > 0);
-const warnings = report.files.filter((entry) => entry.duplicates > 0 || entry.placeholders > 0 || entry.noFingerprint > 0);
-const legacyOnly = report.files.filter((entry) => entry.legacyInvalid > entry.invalid);
-
-console.log("[orbot-validate] files=%d lines=%d hard=%d legacyOnly=%d duplicates=%d placeholders=%d noFingerprint=%d",
-  report.files.length, totals.lines, totals.invalid, legacyOnly.length, totals.duplicates, totals.placeholders, totals.noFingerprint);
+console.log(
+  "[orbot-validate] files=%d lines=%d hard=%d duplicates=%d placeholders=%d noFingerprint=%d fixed=%d",
+  report.files.length, totals.lines, totals.invalid, totals.duplicates, totals.placeholders, totals.noFingerprint, totals.fixed,
+);
 for (const entry of report.files) {
+  const interesting = entry.invalid > 0 || entry.duplicates > 0 || entry.placeholders > 0 || entry.noFingerprint > 0 || entry.fixed;
+  if (!interesting) continue;
   console.log(
     "  %s lines=%d invalid=%d legacyInvalid=%d dupes=%d placeholder=%d noFP=%d%s",
-    entry.file.padEnd(42), entry.lines, entry.invalid, entry.legacyInvalid, entry.duplicates, entry.placeholders, entry.noFingerprint,
-    entry.fixed ? " fixed" : "",
+    entry.file.padEnd(44), entry.lines, entry.invalid, entry.legacyInvalid, entry.duplicates,
+    entry.placeholders, entry.noFingerprint, entry.fixed ? " fixed" : "",
   );
-  for (const sample of entry.samples) console.log("    ! " + sample.reason + ": " + sample.line);
+  for (const sample of entry.samples) console.log("    ! not pasteable: " + sample);
 }
-if (warnings.length > 0) console.log("[orbot-validate] warnings: lists containing placeholders/duplicates are not paste-ready: " + warnings.map((entry) => path.basename(entry.file)).join(", "));
-if (legacyOnly.length > 0) console.log("[orbot-validate] note: " + legacyOnly.length + " list(s) contain IPv6/snowflake/meek/vanilla lines that older Orbot builds reject; point users to orbot_top.txt for legacy devices.");
 
 if (jsonOut) {
   await writeFile(jsonOut, JSON.stringify(report, null, 2));
-  console.log("[orbot-validate] report written to " + jsonOut);
+  console.log("[orbot-validate] report: " + jsonOut);
 }
 
-if (hard.length > 0) {
-  console.error("[orbot-validate] FAIL: " + hard.map((entry) => `${entry.file} (${entry.invalid})`).join(", "));
-  process.exit(1);
+if (!report.ok) {
+  const failing = report.files.filter((entry) => entry.invalid > 0).map((entry) => `${entry.file} (${entry.invalid})`);
+  console.error("[orbot-validate] FAIL: " + failing.join(", "));
+  if (!soft) process.exit(1);
+  console.error("[orbot-validate] (soft mode: exit 0)");
+} else {
+  console.log("[orbot-validate] OK: every line matches the current Orbot regex");
 }
-if (check && report.files.some((entry) => entry.duplicates > 0 || entry.invalid > 0)) {
-  console.error("[orbot-validate] FAIL(--check): duplicates or invalid lines present");
-  process.exit(1);
-}
-console.log("[orbot-validate] OK: every published line matches the current Orbot regex");

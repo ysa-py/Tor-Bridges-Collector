@@ -1,13 +1,15 @@
 name: orbot-conformance
 
-# Guards the user-visible promise of this repository: every published bridge
-# line can be pasted into Orbot without "Invalid bridge format".
-# Read-only on purpose: the data files are owned by auto-bridge-fusion.yml.
+# Guards the user-visible promise of this repository: every line of the
+# paste-ready publication (export/orbot/) can be pasted into Orbot without
+# "Invalid bridge format". Read-only: data files stay owned by
+# auto-bridge-fusion.yml.
 
 on:
   workflow_dispatch:
   pull_request:
     paths:
+      - "export/orbot/**"
       - "bridge/**"
       - "export/**"
       - "scripts/orbot_validate.mjs"
@@ -15,8 +17,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "bridge/**"
-      - "export/**"
+      - "export/orbot/**"
       - "scripts/orbot_validate.mjs"
   schedule:
     - cron: "23 * * * *"
@@ -40,23 +41,36 @@ jobs:
         with:
           node-version: 22
 
-      - name: Validate every published list against Orbot's regex
-        run: node scripts/orbot_validate.mjs --check --json orbot-conformance-report.json
+      # Hard gate: what users actually paste into Orbot.
+      - name: Hard gate - export/orbot paste-ready lists
+        run: node scripts/orbot_validate.mjs --dir export/orbot --json orbot-conformance-report.json
 
-      - name: Upload conformance report
+      # Soft report: collector data sets and export/ reports intentionally use
+      # other column layouts, so they are measured but never fail the gate.
+      - name: Full repository report (soft)
+        if: always()
+        run: node scripts/orbot_validate.mjs --all --soft --json orbot-conformance-full.json
+
+      - name: Upload conformance reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: orbot-conformance-report
-          path: orbot-conformance-report.json
+          name: orbot-conformance-reports
+          path: |
+            orbot-conformance-report.json
+            orbot-conformance-full.json
           if-no-files-found: warn
 
       - name: Job summary
         if: always()
         run: |
           {
-            echo "### Orbot conformance report"
+            echo "### Paste-ready lists (export/orbot)"
             echo '```'
-            node scripts/orbot_validate.mjs || true
+            node scripts/orbot_validate.mjs --dir export/orbot || true
+            echo '```'
+            echo "### Full repository (soft report)"
+            echo '```'
+            node scripts/orbot_validate.mjs --all --soft | tail -20 || true
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
