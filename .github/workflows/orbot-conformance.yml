@@ -1,0 +1,62 @@
+name: orbot-conformance
+
+# Guards the user-visible promise of this repository: every published bridge
+# line can be pasted into Orbot without "Invalid bridge format".
+# Read-only on purpose: the data files are owned by auto-bridge-fusion.yml.
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - "bridge/**"
+      - "export/**"
+      - "scripts/orbot_validate.mjs"
+      - ".github/workflows/orbot-conformance.yml"
+  push:
+    branches: [main]
+    paths:
+      - "bridge/**"
+      - "export/**"
+      - "scripts/orbot_validate.mjs"
+  schedule:
+    - cron: "23 * * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: orbot-conformance
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate every published list against Orbot's regex
+        run: node scripts/orbot_validate.mjs --check --json orbot-conformance-report.json
+
+      - name: Upload conformance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: orbot-conformance-report
+          path: orbot-conformance-report.json
+          if-no-files-found: warn
+
+      - name: Job summary
+        if: always()
+        run: |
+          {
+            echo "### Orbot conformance report"
+            echo '```'
+            node scripts/orbot_validate.mjs || true
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
