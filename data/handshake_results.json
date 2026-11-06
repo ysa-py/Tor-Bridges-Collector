@@ -420,21 +420,6 @@
     }
   },
   {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "meek_lite [2001:db8::1a]:443 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloChrome_Auto",
-    "observed_at": "2026-11-06T22:19:34.361597Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "HTTP 400 from snowflake",
     "error_class": "snowflake:http_error",
     "line": "snowflake 192.0.2.37:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
@@ -5917,38 +5902,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 121.110.203.115:443 663CA956519E58543823153A3303C46737395903",
-    "observed_at": "2026-11-06T22:19:40.036553Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 490.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 178.175.148.241:443 DC9B99C0B4B903A97920DA2636BE3D70CCED4D4C url=https://remember.irish/r8eQCNXV8aFc5Uw4rED2MbRA ver=0.0.1",
-    "observed_at": "2026-11-06T22:19:40.441032Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 948.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
