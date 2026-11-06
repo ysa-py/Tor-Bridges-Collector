@@ -9,7 +9,9 @@ name: workflow-run-janitor
 
 on:
   schedule:
-    - cron: "23 * * * *"
+    # twice an hour: the API budget (1000 req/h for GITHUB_TOKEN) drains a big backlog in ~2 h,
+    # afterwards a pass costs only a handful of requests
+    - cron: "23,53 * * * *"
   workflow_dispatch:
     inputs:
       dry_run:
@@ -45,12 +47,12 @@ jobs:
     timeout-minutes: 25
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -70,7 +72,7 @@ jobs:
 
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: workflow-run-janitor-report
           path: ${{ runner.temp }}/janitor-report.json

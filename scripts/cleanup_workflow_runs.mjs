@@ -3,7 +3,7 @@
  * cleanup_workflow_runs.mjs — keep GitHub Actions history small and debuggable.
  *
  *   GITHUB_TOKEN=... GITHUB_REPOSITORY=owner/repo node scripts/cleanup_workflow_runs.mjs
- *        [--dry] [--max-delete 800] [--stale-hours 6] [--concurrency 6] [--json out.json]
+ *        [--dry] [--max-delete 800] [--stale-hours 6] [--concurrency 4] [--pace-ms 120] [--json out.json]
  *
  * Policy lives in scripts/lib/run_cleanup_plan.mjs (newest success + newest failure per workflow,
  * active runs untouched, stuck runs cancelled). Rate-limit aware: stops cleanly when the token
@@ -24,7 +24,7 @@ const REPO = process.env.GITHUB_REPOSITORY || opt("--repo", "");
 const DRY = has("--dry");
 const MAX_DELETE = Number(opt("--max-delete", "800"));
 const STALE_HOURS = Number(opt("--stale-hours", "6"));
-const CONCURRENCY = Math.max(1, Number(opt("--concurrency", "6")));
+const CONCURRENCY = Math.max(1, Number(opt("--concurrency", "4")));
 const MIN_REMAINING = 30;
 const CURRENT = process.env.GITHUB_RUN_ID ?? null;
 const log = (...a) => console.log("[run-janitor]", ...a);
@@ -34,20 +34,53 @@ if (!TOKEN || !REPO) {
   process.exit(0);
 }
 let remaining = Infinity;
+let resetAt = 0; // epoch seconds when the primary budget refills
+let pauseUntil = 0; // shared back-off: when GitHub throttles one worker, every worker waits
+const PACE_MS = Math.max(0, Number(opt("--pace-ms", "120"))); // gentle spacing keeps secondary limits away
+let nextSlot = 0;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function api(method, path, { retries = 3 } = {}) {
+async function throttle() {
+  const now = Date.now();
+  const slot = Math.max(now, nextSlot, pauseUntil);
+  nextSlot = slot + PACE_MS;
+  if (slot > now) await sleep(slot - now);
+}
+
+async function api(method, path, { retries = 4 } = {}) {
   for (let attempt = 0; attempt <= retries; attempt++) {
-    const res = await fetch(`https://api.github.com/repos/${REPO}${path}`, {
-      method,
-      headers: { authorization: `Bearer ${TOKEN}`, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28", "user-agent": "run-janitor" },
-    });
+    await throttle();
+    let res;
+    try {
+      res = await fetch(`https://api.github.com/repos/${REPO}${path}`, {
+        method,
+        headers: { authorization: `Bearer ${TOKEN}`, accept: "application/vnd.github+json", "x-github-api-version": "2022-11-28", "user-agent": "run-janitor" },
+      });
+    } catch {
+      await sleep(1000 * (attempt + 1)); // network hiccup: retry, never fatal
+      continue;
+    }
     const left = Number(res.headers.get("x-ratelimit-remaining"));
     if (Number.isFinite(left)) remaining = left;
+    const reset = Number(res.headers.get("x-ratelimit-reset"));
+    if (Number.isFinite(reset) && reset > 0) resetAt = reset;
     if (res.status === 403 || res.status === 429) {
-      const wait = Number(res.headers.get("retry-after")) || 0;
-      if (remaining <= 0 && !wait) return { status: res.status, rateLimited: true };
-      await sleep((wait || 5 * (attempt + 1)) * 1000);
+      const retryAfter = Number(res.headers.get("retry-after")) || 0;
+      if (remaining <= 0) {
+        // primary budget exhausted: only worth waiting when the refill is close, otherwise stop cleanly
+        const waitSec = Math.max(0, resetAt - Math.floor(Date.now() / 1000)) + 2;
+        if (waitSec > 90) return { status: res.status, rateLimited: true };
+        pauseUntil = Math.max(pauseUntil, Date.now() + waitSec * 1000);
+        continue;
+      }
+      // secondary (abuse) limit: honour Retry-After, otherwise exponential back-off, for ALL workers
+      const waitSec = retryAfter || Math.min(120, 20 * 2 ** attempt);
+      pauseUntil = Math.max(pauseUntil, Date.now() + waitSec * 1000);
+      log(`throttled (HTTP ${res.status}); pausing ${waitSec}s`);
+      continue;
+    }
+    if (res.status >= 500) {
+      await sleep(1500 * (attempt + 1));
       continue;
     }
     const body = res.status === 204 ? null : await res.json().catch(() => null);

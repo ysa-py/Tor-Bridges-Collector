@@ -38,12 +38,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 22
 
@@ -127,9 +127,14 @@ jobs:
             echo "scripts/publication_contract.sh not present - skipped"
           fi
 
+      # Makes silence visible: empty lists / lists whose content stopped moving are reported in the
+      # job summary and in data/bridge_freshness.json. Report-only, never deletes, never fails the run.
+      - name: Bridge freshness watchdog
+        run: node scripts/bridge_freshness.mjs || echo "freshness watchdog failed - continuing"
+
       - name: Upload report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bridge-autofill-report
           path: |
@@ -143,7 +148,7 @@ jobs:
           set -euo pipefail
           git config user.name "bridge-bot"
           git config user.email "bridge-bot@users.noreply.github.com"
-          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json data/iran_antidpi_weights.json data/iran_adaptive_profile.json README.md
+          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json data/iran_antidpi_weights.json data/iran_adaptive_profile.json data/bridge_freshness.json README.md
           if git diff --staged --quiet; then
             echo "nothing to commit - lists already up to date"
             exit 0
