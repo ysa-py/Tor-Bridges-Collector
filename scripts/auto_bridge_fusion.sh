@@ -1800,6 +1800,25 @@ if [ -f "$SCRIPT_DIR/bridge_sanitizer.sh" ]; then
     || echo "[fusion] note: bridge_sanitizer.sh did not complete (non-fatal)"
 fi
 
+# v44 Orbot self-heal pass (Node tools). The Rust publisher and the bash sanitizer cannot see damaged Snowflake
+# fingerprints (39 hex chars), template webtunnel URLs (example.org) or address-less lines, so fresh data drifted
+# back to "Orbot Configuration Invalid" every hour. Heal it BEFORE the derived builders so they read clean bytes.
+# Never fatal: a failed pass keeps the previous bytes and the next run retries.
+orbot_heal_pass() {
+  if ! command -v node >/dev/null 2>&1; then
+    echo "[fusion] note: node not available - Orbot heal pass skipped"
+    return 0
+  fi
+  node "$SCRIPT_DIR/bridge_autofill.mjs" --root "$ROOT" --fix --fill --dynamic \
+    || echo "[fusion] note: bridge_autofill.mjs did not complete (non-fatal)"
+  node "$SCRIPT_DIR/iran_antidpi_adaptive.mjs" --root "$ROOT" \
+    || echo "[fusion] note: iran_antidpi_adaptive.mjs did not complete (non-fatal)"
+  node "$SCRIPT_DIR/bridge_fill_empty.mjs" --root "$ROOT" \
+    || echo "[fusion] note: bridge_fill_empty.mjs did not complete (non-fatal)"
+}
+orbot_heal_pass
+purge_conjure
+
 # Derived NIN / PQ / anti-DPI artefacts must stay byte-identical to a fresh regeneration of the bridge/ data
 # we just wrote (repo invariants C8-C13). The builders are deterministic, so refreshing them is idempotent.
 for builder in build_iran_anti_dpi_elite build_iran_cut_pack build_pq_bridge_scores build_nin_recommended_transport; do
@@ -1808,6 +1827,17 @@ for builder in build_iran_anti_dpi_elite build_iran_cut_pack build_pq_bridge_sco
   fi
 done
 
+purge_conjure
+
+# v44 Orbot paste-ready projection: export/ packs were just rebuilt by the builders above, so project them into
+# export/orbot/orbot_pack_*.txt (only lines Orbot accepts and Tor can use; sources are never modified) and run the
+# same conformance gate the orbot-conformance workflow uses. Results are reported, never fatal for publication.
+if command -v node >/dev/null 2>&1; then
+  node "$SCRIPT_DIR/orbot_project.mjs" --root "$ROOT" \
+    || echo "[fusion] note: orbot_project.mjs did not complete (non-fatal)"
+  (cd "$ROOT" && node "$SCRIPT_DIR/orbot_validate.mjs" --dir export/orbot) \
+    || echo "::warning::orbot_validate.mjs still reports lines Orbot would reject"
+fi
 purge_conjure
 
 # Synchronize telegram_manifest.json non_empty_lines, reason_code, summary counts, and README table counts

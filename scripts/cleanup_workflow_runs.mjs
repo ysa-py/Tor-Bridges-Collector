@@ -6,11 +6,12 @@
  *        [--dry] [--max-delete 800] [--stale-hours 6] [--concurrency 4] [--pace-ms 120] [--json out.json]
  *
  * Policy lives in scripts/lib/run_cleanup_plan.mjs (newest success + newest failure per workflow,
- * active runs untouched, stuck runs cancelled). Rate-limit aware: stops cleanly when the token
+ * active runs untouched, stuck runs cancelled, runs of workflows whose file no longer exists purged). Rate-limit aware: stops cleanly when the token
  * budget runs low and simply continues on the next scheduled pass. Never fails the pipeline
  * because of API hiccups (exit 0), only on programming errors.
  */
 import { writeFile, appendFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { planCleanup } from "./lib/run_cleanup_plan.mjs";
 
 const argv = process.argv.slice(2);
@@ -111,12 +112,37 @@ async function listAllRuns() {
   return { runs, total };
 }
 
+/**
+ * Workflows whose file is gone from the repository (deleted, or disabled with no file left in the
+ * checkout) can never be re-run or debugged: every finished run of them is dead weight.
+ * Conservative: an incomplete workflow listing disables this (nothing is purged on doubt).
+ */
+async function findOrphanWorkflowIds(runs) {
+  const known = new Map();
+  for (let page = 1; page <= 10; page++) {
+    const { status, body, rateLimited } = await api("GET", `/actions/workflows?per_page=100&page=${page}`);
+    if (rateLimited || status !== 200 || !body) return [];
+    for (const w of body.workflows ?? []) known.set(w.id, w);
+    if ((body.workflows ?? []).length < 100) break;
+  }
+  const haveCheckout = existsSync(".github/workflows");
+  const orphans = new Set();
+  for (const w of known.values()) {
+    const fileGone = haveCheckout && String(w.path).startsWith(".github/workflows/") && !existsSync(w.path);
+    if (w.state === "deleted" || fileGone) orphans.add(w.id);
+  }
+  for (const run of runs) if (!known.has(run.workflow_id)) orphans.add(run.workflow_id);
+  return [...orphans];
+}
+
 const started = Date.now();
 const { runs, total } = await listAllRuns();
-const plan = planCleanup(runs, { staleHours: STALE_HOURS, currentRunId: CURRENT });
+const orphanIds = await findOrphanWorkflowIds(runs);
+const plan = planCleanup(runs, { staleHours: STALE_HOURS, currentRunId: CURRENT, purgeWorkflowIds: orphanIds });
+if (orphanIds.length) log(`workflows without a file (all finished runs purged): ${orphanIds.join(", ")}`);
 log(`runs seen ${runs.length}/${total}; keep ${plan.keep.length}; delete ${plan.remove.length}; cancel-stuck ${plan.cancel.length}${DRY ? " [dry-run]" : ""}`);
 
-const result = { repo: REPO, dry: DRY, total, seen: runs.length, keep: plan.keep.length, candidates: plan.remove.length, deleted: 0, cancelled: 0, failed: 0, stoppedByBudget: false };
+const result = { repo: REPO, dry: DRY, total, seen: runs.length, keep: plan.keep.length, candidates: plan.remove.length, deleted: 0, cancelled: 0, failed: 0, stoppedByBudget: false, orphanWorkflows: orphanIds.length };
 
 if (!DRY) {
   for (const run of plan.cancel.slice(0, 40)) {
@@ -146,6 +172,10 @@ if (!DRY) {
 }
 result.remainingCandidates = Math.max(0, plan.remove.length - result.deleted);
 result.seconds = Math.round((Date.now() - started) / 1000);
+// Self-chaining: when the pass ended because MAX_DELETE was reached (not because the API budget ran
+// out) the workflow immediately dispatches itself again, so even a 2500+ run backlog drains in
+// minutes instead of hours. The workflow caps the chain depth.
+result.chain = !DRY && !result.stoppedByBudget && result.remainingCandidates > 0 && result.deleted > 0;
 log(JSON.stringify(result));
 
 if (process.env.GITHUB_STEP_SUMMARY) {
@@ -154,5 +184,6 @@ if (process.env.GITHUB_STEP_SUMMARY) {
     `### Workflow-run janitor\n\n| metric | value |\n|---|---|\n${Object.entries(result).map(([k, v]) => `| ${k} | ${v} |`).join("\n")}\n`,
   ).catch(() => {});
 }
+if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `chain=${result.chain}\nremaining=${result.remainingCandidates}\n`).catch(() => {});
 const out = opt("--json", null);
 if (out) await writeFile(out, JSON.stringify(result, null, 1) + "\n");

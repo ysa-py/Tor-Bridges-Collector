@@ -43,4 +43,15 @@ ok("2500 runs collapse to at most 2 per workflow", () => {
   assert.ok(p.keep.length <= 6);
   assert.equal(p.keep.length + p.remove.length, 2500);
 });
+ok("runs of deleted workflows are purged completely, active/current ones survive", () => {
+  const gone = [mk(8, "completed", "success", 1), mk(8, "completed", "failure", 2), mk(8, "completed", "success", 3)];
+  const live = [mk(9, "completed", "success", 1), mk(9, "completed", "failure", 2), mk(9, "completed", "success", 3)];
+  const active = mk(8, "in_progress", null, 1);
+  const p = planCleanup([...gone, ...live, active], { now: NOW, purgeWorkflowIds: [8] });
+  assert.equal(p.remove.filter((r) => r.workflow_id === 8).length, 3);
+  assert.ok(p.keep.some((r) => r.id === active.id));
+  assert.equal(p.keep.filter((r) => r.workflow_id === 9).length, 2);
+  const cur = planCleanup(gone, { now: NOW, purgeWorkflowIds: [8], currentRunId: gone[0].id });
+  assert.deepEqual(cur.keep.map((r) => r.id), [gone[0].id]);
+});
 console.log(`[test-run-cleanup-plan] ${n} checks passed`);

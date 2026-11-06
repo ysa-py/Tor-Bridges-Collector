@@ -42,6 +42,18 @@ jobs:
           ref: main
           fetch-depth: 1
 
+      # Node powers the Orbot self-heal pass (damaged fingerprints, template URLs, paste-ready
+      # twins) that scripts/auto_bridge_fusion.sh runs before attesting the publication.
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Self-test (Orbot format + anti-DPI model)
+        run: |
+          node scripts/test_orbot_format.mjs
+          node scripts/test_iran_adaptive.mjs
+
       - name: Fuse, fill, attest and publish (self-retrying)
         shell: bash
         env:

@@ -10,6 +10,8 @@
  *   keep  active runs younger than `staleHours` (never touch something that is still running)
  *   cancel active runs older than `staleHours` (stuck); they are deleted on a later pass
  *   delete everything else.
+ * Workflows listed in `purgeWorkflowIds` (their file was deleted from the repository, so there is
+ * nothing left to debug) lose every finished run - only active runs and the current run survive.
  * The run that is executing the clean-up (`currentRunId`) is always kept.
  */
 const ACTIVE = new Set(["queued", "in_progress", "waiting", "pending", "requested"]);
@@ -23,7 +25,8 @@ const time = (run) => new Date(run.created_at ?? run.run_started_at ?? 0).getTim
  * @param {{now?:number, staleHours?:number, currentRunId?:number|string|null}} [options]
  * @returns {{keep:Array, remove:Array, cancel:Array, perWorkflow:Record<string,{kept:number,removed:number}>}}
  */
-export function planCleanup(runs, { now = Date.now(), staleHours = 6, currentRunId = null } = {}) {
+export function planCleanup(runs, { now = Date.now(), staleHours = 6, currentRunId = null, purgeWorkflowIds = [] } = {}) {
+  const purge = new Set([...purgeWorkflowIds].map(String));
   const byWorkflow = new Map();
   for (const run of runs) {
     if (!byWorkflow.has(run.workflow_id)) byWorkflow.set(run.workflow_id, []);
@@ -38,15 +41,17 @@ export function planCleanup(runs, { now = Date.now(), staleHours = 6, currentRun
     const kept = new Set();
     const completed = sorted.filter((run) => !ACTIVE.has(run.status));
     const pick = (predicate) => completed.find((run) => predicate(run) && !kept.has(run.id));
-    const success = pick((run) => run.conclusion === "success");
-    if (success) kept.add(success.id);
-    const failure = pick((run) => FAILED.has(run.conclusion));
-    if (failure) kept.add(failure.id);
-    for (const predicate of [(run) => !MEANINGLESS.has(run.conclusion), () => true]) {
-      while (kept.size < 2) {
-        const extra = pick(predicate);
-        if (!extra) break;
-        kept.add(extra.id);
+    if (!purge.has(String(workflowId))) {
+      const success = pick((run) => run.conclusion === "success");
+      if (success) kept.add(success.id);
+      const failure = pick((run) => FAILED.has(run.conclusion));
+      if (failure) kept.add(failure.id);
+      for (const predicate of [(run) => !MEANINGLESS.has(run.conclusion), () => true]) {
+        while (kept.size < 2) {
+          const extra = pick(predicate);
+          if (!extra) break;
+          kept.add(extra.id);
+        }
       }
     }
     // a workflow with a healthy success AND a failure keeps exactly those two; with only one

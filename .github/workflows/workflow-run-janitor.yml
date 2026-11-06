@@ -26,6 +26,10 @@ on:
         description: "Maximum deletions in this pass"
         required: false
         default: "700"
+      chain_depth:
+        description: "Internal: how many self-dispatched follow-up passes already ran"
+        required: false
+        default: "0"
   push:
     branches: [main]
     paths:
@@ -60,8 +64,11 @@ jobs:
         run: node scripts/test_run_cleanup_plan.mjs
 
       - name: Clean up workflow runs
+        id: janitor
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional repository secret RUN_CLEANUP_TOKEN (fine-grained PAT, Actions: read+write)
+          # raises the budget from 1000 to 5000 requests/hour; without it GITHUB_TOKEN is used.
+          GITHUB_TOKEN: ${{ secrets.RUN_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
           DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
           MAX_DELETE: ${{ github.event.inputs.max_delete || '700' }}
         run: |
@@ -69,6 +76,23 @@ jobs:
           args=(--max-delete "$MAX_DELETE" --json "$RUNNER_TEMP/janitor-report.json")
           if [ "$DRY_RUN" = "true" ]; then args+=(--dry); fi
           node scripts/cleanup_workflow_runs.mjs "${args[@]}"
+
+      # Backlog drain: dispatch the next pass right away while work is left (max 6 follow-ups).
+      - name: Chain next pass while a backlog remains
+        if: steps.janitor.outputs.chain == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RUN_CLEANUP_TOKEN || secrets.GITHUB_TOKEN }}
+          DEPTH: ${{ github.event.inputs.chain_depth || '0' }}
+          MAX_DELETE: ${{ github.event.inputs.max_delete || '700' }}
+        run: |
+          set -euo pipefail
+          if [ "${DEPTH}" -ge 6 ]; then
+            echo "chain depth limit reached - the next scheduled pass continues"
+            exit 0
+          fi
+          gh workflow run workflow-run-janitor.yml --repo "$GITHUB_REPOSITORY" --ref "${GITHUB_REF_NAME}" \
+            -f dry_run=false -f max_delete="$MAX_DELETE" -f chain_depth="$((DEPTH + 1))" \
+            || echo "::notice::could not chain a follow-up pass (token cannot dispatch) - the schedule continues"
 
       - name: Upload report
         if: always()
