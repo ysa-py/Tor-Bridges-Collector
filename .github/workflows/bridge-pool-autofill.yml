@@ -1,0 +1,154 @@
+name: bridge-pool-autofill
+
+# Advanced, fully automatic pool maintenance:
+#   * refill empty / under-populated bridge lists from sibling lists,
+#   * drop exact duplicates and normalise lines (never a semantic change),
+#   * rebuild the AI-ranked, network-diversified Iran anti-DPI rotation list,
+#   * expose an Orbot-pasteable projection of the torrc exports,
+#   * report every line Orbot would reject instead of deleting it,
+#   * keep conjure out (Orbot cannot use that transport).
+#   * harvest NEW bridges every hour (GitHub discovery + mirrors), probe liveness/RTT,
+#     rank with the internal Iran anti-DPI model and append the live ones.
+# Runs hourly, commits only when something actually changed.
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "bridge/**"
+      - "export/**"
+      - "scripts/bridge_autofill.mjs"
+      - "scripts/bridge_harvest.mjs"
+      - "scripts/lib/**"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bridge-pool-autofill
+  cancel-in-progress: false
+
+jobs:
+  autofill:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Self-test (Orbot format + anti-DPI model)
+        run: node scripts/test_orbot_format.mjs
+
+      # Self-extending harvester: discovers new collector repos through the GitHub API,
+      # pulls every mirror, validates for Orbot, TCP-probes (alive + RTT) and keeps a
+      # durable pool. Never fatal: a dead network just leaves the pool as it is.
+      - name: Harvest, discover and probe bridges
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node scripts/bridge_harvest.mjs --discover --probe --json "$RUNNER_TEMP/harvest-report.json" || echo "harvest step failed - continuing with existing pool"
+
+      - name: Autofill, dedupe and hourly AI merge
+        run: node scripts/bridge_autofill.mjs --fix --fill --dynamic --json "$RUNNER_TEMP/autofill-report.json"
+
+      # Orphan lists that no generator refreshed (export/ech_top_bridges.txt) + byte-identical
+      # alias files (bridge/snowflake_ipv6_tested, bridge/snowflak_ipv4_ipv6_all.txt).
+      - name: Fill orphan lists and sync aliases
+        run: node scripts/bridge_fill_empty.mjs || echo "fill-empty failed - continuing"
+
+      - name: Purge conjure (only conjure is removed)
+        run: |
+          if [ -f scripts/purge_conjure.sh ]; then
+            bash scripts/purge_conjure.sh
+          else
+            echo "scripts/purge_conjure.sh not present - skipped"
+          fi
+
+      # Derived artifacts are compared byte-for-byte with a fresh regeneration by the
+      # repository invariant audit (C11 / C13): rebuild them from the refreshed lists.
+      - name: Regenerate derived artifacts
+        run: |
+          for s in scripts/build_iran_cut_pack.sh scripts/build_nin_recommended_transport.sh; do
+            if [ -f "$s" ]; then bash "$s" || echo "$s failed - continuing"; fi
+          done
+
+      # Permanent "Invalid bridge format" fix: every export/ pack that Orbot would reject
+      # (Bridge prefix, # headers, address-less snowflake/meek_lite) gets a paste-ready twin in
+      # export/orbot/orbot_pack_*.txt. Sources are never modified (their generators are byte-exact).
+      - name: Project Orbot-pasteable twins of export packs
+        run: node scripts/orbot_project.mjs --check
+
+      - name: Orbot conformance gate (paste-ready lists)
+        run: |
+          if [ -f scripts/orbot_validate.mjs ]; then
+            node scripts/orbot_validate.mjs --dir export/orbot
+          else
+            node scripts/bridge_autofill.mjs --check
+          fi
+
+      - name: Hard self-check
+        run: node scripts/bridge_autofill.mjs --check
+
+      # bridge/ is covered by a publication contract (manifest SHA-256 <-> payload
+      # <-> tor_bridges.zip <-> README archive hash). Any payload change must be
+      # re-attested, otherwise the Quality Gate fails with a contract violation.
+      - name: Re-attest publication contract
+        run: |
+          if [ -f scripts/publication_contract.sh ]; then
+            bash scripts/publication_contract.sh --rebuild --sync-counts
+          else
+            echo "scripts/publication_contract.sh not present - skipped"
+          fi
+
+      - name: Publication contract gate
+        run: |
+          if [ -f scripts/publication_contract.sh ]; then
+            bash scripts/publication_contract.sh --check
+          else
+            echo "scripts/publication_contract.sh not present - skipped"
+          fi
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-autofill-report
+          path: |
+            ${{ runner.temp }}/autofill-report.json
+            ${{ runner.temp }}/harvest-report.json
+          if-no-files-found: warn
+
+      - name: Commit refreshed lists
+        run: |
+          set -euo pipefail
+          git config user.name "bridge-bot"
+          git config user.email "bridge-bot@users.noreply.github.com"
+          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json data/iran_antidpi_weights.json README.md
+          if git diff --staged --quiet; then
+            echo "nothing to commit - lists already up to date"
+            exit 0
+          fi
+          git commit -m "chore(bridge): hourly autofill + AI anti-DPI rotation [skip ci]"
+          # Other hourly bots push to main too: never fail the run on a lost race.
+          for attempt in 1 2 3 4; do
+            if git push; then exit 0; fi
+            echo "push rejected (attempt $attempt) - rebasing on origin/main"
+            git fetch origin main
+            if ! git rebase -X theirs origin/main; then
+              git rebase --abort || true
+              echo "state moved on - nothing lost, lists are regenerated next hour"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "push still rejected - lists are regenerated next hour"
