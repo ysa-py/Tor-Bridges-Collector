@@ -364,3 +364,80 @@ export function buildRecord({ target, iranNode, controlNode, requestId, testedAt
     claim_ceiling: CLAIM_CEILING[m],
   };
 }
+
+// ───────────────────────── multi-node selection + aggregate (additive) ─────────────────────────
+
+/**
+ * Pick up to k distinct Iran nodes for ONE check-host call, rotating through
+ * every node discovered this run (ir1..irN, never hard-coded). Different cities
+ * are preferred first so the observations are as independent as the free node
+ * set allows. Deterministic for a given (nodes, offset).
+ */
+export function pickIranNodes(iran, offset, k) {
+  const n = iran.length;
+  if (!n || k <= 0) return [];
+  const rotated = [];
+  for (let i = 0; i < n; i++) rotated.push(iran[(((offset + i) % n) + n) % n]);
+  const picked = [];
+  const cities = new Set();
+  for (const node of rotated) {
+    if (picked.length >= k) break;
+    const c = (node.city || node.name).toLowerCase();
+    if (!cities.has(c)) { cities.add(c); picked.push(node); }
+  }
+  for (const node of rotated) {
+    if (picked.length >= k) break;
+    if (!picked.includes(node)) picked.push(node);
+  }
+  return picked;
+}
+
+const NEG_CLASSES = new Set(["iran_tcp_unreachable", "iran_https_unreachable"]);
+const POS_CLASSES = new Set(["iran_tcp_open", "iran_https_open"]);
+
+/**
+ * Aggregate per-target view over records inside a time window.
+ * suspected_blocked_from_iran_datacenters is set ONLY when at least two DISTINCT
+ * Iranian nodes failed while the foreign control answered AND no Iranian node
+ * answered. It is a TCP/HTTPS datacenter signal; it never says anything about a
+ * Tor, obfs4, WebTunnel, meek or Snowflake handshake and is never copied to a
+ * working/blocked bridge list. Missing data stays "inconclusive".
+ */
+export function summarizeVantage(records, nowMs, windowMs = 24 * 3600 * 1000) {
+  const per = new Map();
+  for (const r of records) {
+    if (!r || typeof r !== "object" || !r.target || !r.iran_node || !r.tested_at) continue;
+    const t = Date.parse(r.tested_at);
+    if (!Number.isFinite(t) || nowMs - t > windowMs) continue;
+    const key = `${r.transport}|${r.method}|${r.target}`;
+    let e = per.get(key);
+    if (!e) {
+      e = { transport: r.transport, method: r.method, target: r.target, open: new Set(), failed: new Set(), other: new Set(), latest: r.tested_at };
+      per.set(key, e);
+    }
+    if (r.tested_at > e.latest) e.latest = r.tested_at;
+    if (POS_CLASSES.has(r.class)) e.open.add(r.iran_node);
+    else if (NEG_CLASSES.has(r.class)) e.failed.add(r.iran_node);
+    else e.other.add(r.iran_node);
+  }
+  const targets = [];
+  const counts = { reachable_from_iran_datacenter: 0, suspected_blocked_from_iran_datacenters: 0, inconclusive: 0 };
+  for (const e of [...per.values()].sort((a, b) => (a.target < b.target ? -1 : 1))) {
+    let verdict = "inconclusive";
+    if (e.open.size > 0) verdict = "reachable_from_iran_datacenter";
+    else if (e.failed.size >= 2) verdict = "suspected_blocked_from_iran_datacenters";
+    counts[verdict] += 1;
+    targets.push({
+      transport: e.transport, method: e.method, target: e.target, verdict,
+      iran_nodes_open: [...e.open].sort(), iran_nodes_failed: [...e.failed].sort(),
+      latest_tested_at: e.latest,
+    });
+  }
+  return {
+    schema: "iran-vantage-summary/1",
+    generated_at: new Date(nowMs).toISOString().replace(/\.\d{3}Z$/, "Z"),
+    window_hours: Math.round(windowMs / 3600000),
+    claim_ceiling: "tcp-or-https-from-iran-datacenters-only; not a Tor/PT handshake; GitHub runners are not in Iran",
+    counts, targets,
+  };
+}
