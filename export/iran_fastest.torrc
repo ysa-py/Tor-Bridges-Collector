@@ -1,9 +1,8 @@
-# Auto-generated FASTEST-FIRST Iran torrc — 2026-11-06T03:49:17.462340+00:00
+# Auto-generated FASTEST-FIRST Iran torrc — 2026-11-06T06:12:32.436266+00:00
 # Lowest measured handshake latency first, one bridge set per transport. Regenerated hourly.
 UseBridges 1
 ClientTransportPlugin obfs4,meek_lite,webtunnel exec /usr/bin/lyrebird
 ClientTransportPlugin snowflake exec /usr/bin/snowflake-client
-ClientTransportPlugin conjure exec /usr/bin/conjure-client
 LearnCircuitBuildTimeout 1
 CircuitBuildTimeout 25
 KeepalivePeriod 60
@@ -28,12 +27,6 @@ Bridge meek_lite 192.0.2.32:80 url=https://1603026938.rsc.cdn77.org front=www.cd
 Bridge meek_lite 192.0.2.108:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedNoALPN
 Bridge meek_lite 192.0.2.29:80 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloRandomizedALPN
 Bridge meek_lite [2001:db8::2d]:443 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN
-Bridge conjure [2001:db8::11]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min
-Bridge conjure 192.0.2.25:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=prefix
-Bridge conjure 192.0.2.41:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=prefix
-Bridge conjure 23.128.36.60:80 A13CE1DE88F96022C0CE6CCF6436FC6F5401D35B url=https://1657793272.rsc.cdn77.org fronts=cdn.zk.mk,www.cdn77.com transport=prefix utls-imitate=HelloRandomizedALPN
-Bridge conjure [2001:db8::21]:443 8838024498816A039FCBBAB14E6F40A0843051FA url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min
-Bridge conjure 192.0.2.33:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min
 Bridge obfs4 147.90.235.92:8443 3BEB330982AFC350926F492B136217EEF152AAAC cert=CwegZVuJVYHX4fvz+OokL7gMDQd/OMWPi8liD061I6KddknB1mL3lmm4KRJqUYiv09wTHQ iat-mode=0
 Bridge obfs4 50.35.58.44:44172 14D77B5DB61D593DB1246B1A080D25B54479F24B cert=O9jgcfAceGnZf0vfuq6zUaAL9IuypUlS9zJai5dddZuE7ktFmMKfg25bKxZaknlLI4AtZA iat-mode=0
 Bridge obfs4 5.78.86.213:443 48ED1ADF017C0B084A7829331A413F5C36E220C5 cert=zr9om3XBXXqlKjJbTZz9p+5LRX7E6uHI8RH3vfWjoFcm9lSrq9SAWN40C7eFI7exeO8jXw iat-mode=0

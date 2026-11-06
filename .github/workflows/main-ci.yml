@@ -124,6 +124,10 @@ jobs:
         run: bash scripts/test_guard_bridge_publication.sh
       - name: Test Orbot bridge sanitizer (Invalid bridge format guard)
         run: bash scripts/test_bridge_sanitizer.sh
+      - name: Test conjure purge (Orbot cannot use conjure)
+        run: bash scripts/test_purge_conjure.sh
+      - name: Verify no conjure leftovers are published
+        run: bash scripts/purge_conjure.sh --check
       - name: Test self-heal audit bootstrap failure path
         run: bash scripts/test_self_heal.sh
       - name: Test AI self-healing diagnostics summary and failure outputs

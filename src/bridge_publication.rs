@@ -43,12 +43,6 @@ pub const REQUIRED_FILES: &[&str] = &[
     "bridge_history.json",
     "bridge_list_for_testing.json",
     "bridge_scores.json",
-    "conjure.txt",
-    "conjure_72h.txt",
-    "conjure_72h_ipv4.txt",
-    "conjure_72h_ipv6.txt",
-    "conjure_ipv4_ipv6_all.txt",
-    "conjure_tested.txt",
     "iran_blocked.txt",
     "iran_blocked_ipv4_ipv6_all.txt",
     "iran_likely_working_all.txt",
@@ -1172,32 +1166,7 @@ fn write_requested_projections(
     // *_72h and *_tested files must reflect recorded evidence only.
     type OutputProjection = (&'static str, &'static str, Option<bool>, bool, bool, bool);
     const PROJECTIONS: &[OutputProjection] = &[
-        (
-            "conjure_ipv4_ipv6_all.txt",
-            "conjure",
-            None,
-            false,
-            false,
-            true,
-        ),
-        (
-            "conjure_72h_ipv4.txt",
-            "conjure",
-            Some(false),
-            true,
-            false,
-            false,
-        ),
-        (
-            "conjure_72h_ipv6.txt",
-            "conjure",
-            Some(true),
-            true,
-            false,
-            false,
-        ),
-        ("conjure_72h.txt", "conjure", None, true, false, false),
-        ("conjure_tested.txt", "conjure", None, false, true, false),
+        // conjure projections intentionally removed: Orbot / Tor Browser for Android cannot use conjure.
         ("meek-azure_all.txt", "meek-azure", None, false, false, true),
         ("meek-azure_72h.txt", "meek-azure", None, true, false, false),
         (
@@ -2098,7 +2067,6 @@ fn empty_file_reason_code(
             "snowflake",
             "meek_lite",
             "meek-azure",
-            "conjure",
         ],
     )
     .is_none()
@@ -2159,7 +2127,6 @@ fn write_manifest(
         "snowflake",
         "meek_lite",
         "meek-azure",
-        "conjure",
     ];
     let mut supply: BTreeMap<&str, usize> = transports.iter().map(|t| (*t, 0)).collect();
     let mut ipv6_supply: BTreeMap<&str, usize> = transports.iter().map(|t| (*t, 0)).collect();
@@ -2507,15 +2474,6 @@ pub fn publish_at(
     write_transport_family(
         &options.bridge_dir,
         &candidates,
-        "conjure",
-        "conjure",
-        false,
-        &mut counts,
-        &mut evidence_tiers,
-    )?;
-    write_transport_family(
-        &options.bridge_dir,
-        &candidates,
         "meek-azure",
         "meek-azure",
         false,
@@ -2837,21 +2795,11 @@ mod tests {
     }
 
     #[test]
-    fn write_transport_family_populates_conjure_and_meek_azure() {
+    fn write_transport_family_populates_meek_azure_without_conjure() {
         let dir = std::env::temp_dir().join(format!("pub_fb2_{}", std::process::id()));
         let bridge_dir = dir.join("bridge");
         std::fs::create_dir_all(&bridge_dir).expect("temp dir");
         let mut counts = BTreeMap::new();
-        write_transport_family(
-            &bridge_dir,
-            &[],
-            "conjure",
-            "conjure",
-            false,
-            &mut counts,
-            &mut BTreeMap::new(),
-        )
-        .expect("write conjure");
         write_transport_family(
             &bridge_dir,
             &[],
@@ -2862,7 +2810,7 @@ mod tests {
             &mut BTreeMap::new(),
         )
         .expect("write meek-azure");
-        for name in ["conjure.txt", "meek-azure.txt"] {
+        for name in ["meek-azure.txt"] {
             let body = std::fs::read_to_string(bridge_dir.join(name)).expect("file");
             assert!(
                 body.lines().count() > 0,
@@ -2870,8 +2818,6 @@ mod tests {
             );
         }
         for name in [
-            "conjure_72h.txt",
-            "conjure_tested.txt",
             "meek-azure_72h.txt",
             "meek-azure_tested.txt",
         ] {

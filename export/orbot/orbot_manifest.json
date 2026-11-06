@@ -1,16 +1,21 @@
 {
-  "generated_at": "2026-11-06T03:52:43Z",
+  "generated_at": "2026-11-06T06:13:03Z",
   "purpose": "Ready to paste into Orbot > Custom Bridges (every line passes Orbot's own regex).",
   "counts": {
     "orbot_top.txt": 40,
-    "orbot_obfs4.txt": 1016,
+    "orbot_obfs4.txt": 1067,
     "orbot_webtunnel.txt": 532,
-    "orbot_all.txt": 1548,
+    "orbot_all.txt": 1599,
     "orbot_ipv4.txt": 1204,
-    "orbot_ipv6.txt": 344
+    "orbot_ipv6.txt": 395,
+    "orbot_vanilla.txt": 2951,
+    "orbot_snowflake.txt": 61,
+    "orbot_meek.txt": 88,
+    "orbot_extended.txt": 4699
   },
   "validator": {
     "obfs4": "^obfs4\\s+(?:\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|\\[[0-9a-fA-F:]+\\]):\\d+\\s+[A-F0-9]{40}(\\s+cert=[a-zA-Z0-9+/=]+)?(\\s+iat-mode=\\d+)?$",
-    "webtunnel": "^webtunnel\\s+(?:\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|\\[[0-9a-fA-F:]+\\]):\\d+\\s+[A-F0-9]{40}(\\s+url=https?://\\S+)?(\\s+ver=\\d+\\.\\d+\\.\\d+)?$"
+    "webtunnel": "^webtunnel\\s+(?:\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|\\[[0-9a-fA-F:]+\\]):\\d+\\s+[A-F0-9]{40}(\\s+url=https?://\\S+)?(\\s+ver=\\d+\\.\\d+\\.\\d+)?$",
+    "latest_orbot": "^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\\s+)?((\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}\\.\\d{1,3}|\\[[\\da-fA-F:]+\\])(:\\d{1,5})?)\\s+([\\da-fA-F]{40})?[ \\t\\f\\w\\-/+:=.,\\[\\]]*$"
   }
 }

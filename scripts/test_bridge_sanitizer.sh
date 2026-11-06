@@ -54,6 +54,7 @@ RO="^obfs4[[:space:]]+(${IP4}|${IP6}):[0-9]+[[:space:]]+[A-F0-9]{40}([[:space:]]
 RW="^webtunnel[[:space:]]+(${IP4}|${IP6}):[0-9]+[[:space:]]+[A-F0-9]{40}([[:space:]]+url=https?://[^[:space:]]+)?([[:space:]]+ver=[0-9]+\.[0-9]+\.[0-9]+)?\$"
 n=0
 for f in "$TMP"/export/orbot/orbot_*.txt; do
+  case "$(basename "$f")" in orbot_vanilla.txt|orbot_snowflake.txt|orbot_meek.txt|orbot_extended.txt) continue ;; esac
   while IFS= read -r l || [ -n "$l" ]; do
     [ -z "${l// /}" ] && continue
     n=$((n + 1))
@@ -61,6 +62,14 @@ for f in "$TMP"/export/orbot/orbot_*.txt; do
   done <"$f"
 done
 [ "$n" -gt 0 ] || fail "no Orbot lines were exported"
+# extended lists (current Orbot validator: also snowflake / meek_lite / vanilla) must satisfy the latest regex
+python3 - "$TMP/export/orbot" <<'LATEST' || fail "extended Orbot list violates current Orbot validBridgeRegex"
+import glob, os, re, sys
+R = re.compile(r"^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+\])(:\d{1,5})?)\s+([\da-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$", re.A)
+bad = [(os.path.basename(f), l) for f in glob.glob(os.path.join(sys.argv[1], "orbot_*.txt"))
+       for l in open(f, encoding="utf-8").read().splitlines() if l.strip() and not R.fullmatch(l)]
+sys.exit(1 if bad else 0)
+LATEST
 [ -s "$TMP/export/orbot/orbot_top.txt" ] || fail "orbot_top.txt is empty"
 
 sum1="$(cd "$TMP" && find bridge export -type f -print0 | sort -z | xargs -0 sha256sum | grep -v manifest | sha256sum)"

@@ -12,7 +12,7 @@
 #        * Tor Project Onionoo live dual-stack / global IPv6 ORPort discovery
 #          (populates vanilla_ipv6*.txt with real, TCP-verified running nodes)
 #        * Autonomous AI Front-Domain & Rendezvous Combinator for domain-fronted
-#          transports (conjure, meek_lite, meek-azure, snowflake across IPv4 &
+#          transports (meek_lite, meek-azure, snowflake across IPv4 &
 #          AAAA-verified IPv6 endpoints, multi-STUN, CovertDTLS, uTLS profiles)
 #        * GitHub repository search + persistent yield memory
 #          (data/ai_fusion_sources.json)
@@ -154,15 +154,15 @@ FP = r"([0-9A-Fa-f]{40})"
 OBFS4_RE = re.compile(r"obfs4\s+" + EP + r"\s+" + FP + r"\s+cert=([A-Za-z0-9+/]{70})(?:\s+iat-mode=([0-2]))?")
 WEB_RE = re.compile(r"webtunnel\s+" + EP + r"\s+" + FP + r"\s+url=(https?://[^\s\"'<>,\\]+)(?:\s+ver=([0-9.]+))?")
 VAN_RE = re.compile(r"(?m)^[ \t]*(?:Bridge[ \t]+)?(?:vanilla[ \t]+)?" + EP + r"[ \t]+" + FP + r"[ \t]*$")
-FRONTED_RE = re.compile(r"^(snowflake|meek_lite|meek-lite|meek-azure|conjure)\s+\S.*\burl=https?://\S+", re.I)
+FRONTED_RE = re.compile(r"^(snowflake|meek_lite|meek-lite|meek-azure)\s+\S.*\burl=https?://\S+", re.I)
 FRONT_RE = re.compile(r"(?:^|\s)fronts?=([^\s]+)")
 URL_RE = re.compile(r"\burl=(https?://[^\s]+)")
 DECOYS = {"1.1.1.1", "1.0.0.1", "8.8.8.8", "8.8.4.4", "9.9.9.9", "149.112.112.112",
           "208.67.222.222", "208.67.220.220", "0.0.0.0", "127.0.0.1"}
 PLACEHOLDER_NETS = [ipaddress.ip_network(n) for n in
                     ("192.0.2.0/24", "198.51.100.0/24", "203.0.113.0/24", "2001:db8::/32")]
-FRONTED = ("snowflake", "meek_lite", "meek-azure", "conjure")
-FAMILIES = ("obfs4", "vanilla", "webtunnel", "snowflake", "meek_lite", "conjure", "meek-azure")
+FRONTED = ("snowflake", "meek_lite", "meek-azure")
+FAMILIES = ("obfs4", "vanilla", "webtunnel", "snowflake", "meek_lite", "meek-azure")
 
 
 def split_ep(host, port):
@@ -197,7 +197,7 @@ def url_host(url):
 
 def make_key(raw, transport):
     first = raw.split()[0].lower() if raw.split() else ""
-    return raw if first in ("obfs4", "webtunnel", "snowflake", "meek_lite", "meek-azure", "conjure") else "Bridge " + raw
+    return raw if first in ("obfs4", "webtunnel", "snowflake", "meek_lite", "meek-azure") else "Bridge " + raw
 
 
 def parse_one(m_kind, m):
@@ -243,8 +243,6 @@ def parse_fronted(line, declared=None):
         transport = "meek-azure"
     elif first == "snowflake":
         transport = "snowflake"
-    elif first == "conjure":
-        transport = "conjure"
     else:
         return None
     um = URL_RE.search(s)
@@ -499,7 +497,7 @@ def discover_moat():
             if isinstance(v, list):
                 lines += [x for x in v if isinstance(x, str)]
     for country in ("ir", "tm", "cn"):
-        for tr in ("obfs4", "webtunnel", "snowflake", "meek", "conjure"):
+        for tr in ("obfs4", "webtunnel", "snowflake", "meek"):
             if left() < 90:
                 break
             d = moat_post("settings", {"country": country, "transports": [tr]})
@@ -564,39 +562,14 @@ def discover_onionoo_ipv6():
 
 
 def build_fronted_matrix_candidates():
-    """Autonomous AI Anti-DPI Combinator for Conjure, Meek-Lite, Meek-Azure, and Snowflake (IPv4 + IPv6)."""
+    """Autonomous AI Anti-DPI Combinator for Meek-Lite, Meek-Azure, and Snowflake (IPv4 + IPv6)."""
     cands = []
-    # 1. Conjure matrix (Refraction Networking) — IPv4 (192.0.2.x) + IPv6 ([2001:db8::x])
-    conjure_fronts = [
-        "cdn.sstatic.net,assets.cloud.censys.io",
-        "assets.cloud.censys.io,cdn.sstatic.net",
-        "www.cdn77.com,www.phpmyadmin.net",
-        "app.datapacket.com,www.datapacket.com",
-        "www.phpmyadmin.net,cdn.zk.mk",
-        "cdn.ampproject.org,www.google.com",
-        "ajax.aspnetcdn.com,cdn.sstatic.net",
-        "www.datapacket.com,www.cdn77.com",
-    ]
-    conjure_fps = [
+    # Conjure is intentionally NOT generated: Orbot / Tor Browser for Android do not support it and a single
+    # conjure line makes Orbot answer "Invalid bridge format" for the whole paste.
+    fronted_fps = [
         "2B280B23E1107BB62ABFC40DDCC8824814F80A72",
         "8838024498816A039FCBBAB14E6F40A0843051FA",
     ]
-    conjure_transports = ["min", "prefix"]
-    idx = 10
-    for fp in conjure_fps:
-        for tr_mode in conjure_transports:
-            for fr in conjure_fronts:
-                idx += 1
-                ln_v4 = (f"conjure 192.0.2.{idx}:80 {fp} "
-                         f"url=https://registration.refraction.network/api fronts={fr} transport={tr_mode}")
-                c4 = parse_fronted(ln_v4, declared="conjure")
-                if c4:
-                    cands.append(c4)
-                ln_v6 = (f"conjure [2001:db8::{idx:x}]:443 {fp} "
-                         f"url=https://registration.refraction.network/api fronts={fr} transport={tr_mode}")
-                c6 = parse_fronted(ln_v6, declared="conjure")
-                if c6:
-                    cands.append(c6)
 
     # 2. Meek-Lite & Meek-Azure matrix (CDN77 + multi-front + uTLS profiles, IPv4 & IPv6)
     meek_fronts = [
@@ -647,7 +620,7 @@ def build_fronted_matrix_candidates():
         ("https://snowflake-broker.torproject.net.global.prod.fastly.net/", "cdn.sstatic.net,www.cdn77.com", ""),
     ]
     s_idx = 30
-    for fp in conjure_fps:
+    for fp in fronted_fps:
         for url, fr, amp in sf_configs:
             for stun in sf_stuns[:2]:
                 s_idx += 1
@@ -678,9 +651,9 @@ QUERIES = [
     "webtunnel obfs4 snowflake collector", "tor relay bridge list github actions",
     "tor bridges persian", "tor bridges censorship circumvention list", "lyrebird bridges list",
     "tor bridge scraper moat", "obfs4 bridge lines txt", "webtunnel bridge lines", "tor bridges tested working",
-    "tor bridges hourly updated", "tor bridges auto update", "meek snowflake conjure bridges",
+    "tor bridges hourly updated", "tor bridges auto update", "meek snowflake bridges",
     "tor bridges russia china iran", "bridge pool tor onionoo",
-    "tor bridges conjure meek", "iran tor bridges anti dpi", "lyrebird webtunnel obfs4 bridges",
+    "tor bridges meek", "iran tor bridges anti dpi", "lyrebird webtunnel obfs4 bridges",
 ]
 TOPICS = ["tor-bridges", "obfs4", "webtunnel", "snowflake", "tor-bridge", "bridges", "censorship-circumvention"]
 SEED_REPOS = {
@@ -691,7 +664,7 @@ SEED_REPOS = {
     "center2055/OnionHop": "main",
     "igareck/vpn-configs-for-russia": "main",
 }
-NAME_RE = re.compile(r"(bridge|obfs4|webtunnel|vanilla|ipv6|ipv4|tested|working|alive|snowflake|conjure|meek|torrc|relay)", re.I)
+NAME_RE = re.compile(r"(bridge|obfs4|webtunnel|vanilla|ipv6|ipv4|tested|working|alive|snowflake|meek|torrc|relay)", re.I)
 EXT_RE = re.compile(r"\.(txt|list|json|csv|conf|md|lst|torrc)$", re.I)
 SKIP_PATH = re.compile(r"(node_modules|/\.git/|\.min\.|lock|package|license|changelog|/docs?/|/test)", re.I)
 
@@ -908,12 +881,12 @@ def implausible(res, limit):
     return len(vals) >= 50 and sum(1 for v in vals if v[0]) / len(vals) > limit
 
 
-if implausible({k: v for k, v in probe_old.items() if not k.startswith(("snowflake", "meek", "conjure"))}, 0.65):
+if implausible({k: v for k, v in probe_old.items() if not k.startswith(("snowflake", "meek"))}, 0.65):
     note("history re-probe success ratio is implausibly high for previously-dead bridges — discarded")
-    probe_old = {k: v for k, v in probe_old.items() if k.startswith(("snowflake", "meek", "conjure"))}
-if implausible({k: v for k, v in probe_new.items() if not k.startswith(("snowflake", "meek", "conjure"))}, 0.92):
+    probe_old = {k: v for k, v in probe_old.items() if k.startswith(("snowflake", "meek"))}
+if implausible({k: v for k, v in probe_new.items() if not k.startswith(("snowflake", "meek"))}, 0.92):
     note("new-candidate probe success ratio is implausibly high — non-fronted discarded")
-    probe_new = {k: v for k, v in probe_new.items() if k.startswith(("snowflake", "meek", "conjure"))}
+    probe_new = {k: v for k, v in probe_new.items() if k.startswith(("snowflake", "meek"))}
 
 admitted = 0
 for c in new_cands:
@@ -960,7 +933,7 @@ for c in new_cands:
 log(f"admitted {unverified} validated-but-unprobed IPv6 candidates")
 
 # Guarantee rich baseline supply in history even if offline or rate-limited:
-# 1) Ensure fronted matrix (conjure, meek_lite, meek-azure, snowflake IPv4+IPv6) has >=12 records per family
+# 1) Ensure fronted matrix (meek_lite, meek-azure, snowflake IPv4+IPv6) has >=12 records per family
 for fc in build_fronted_matrix_candidates():
     key = make_key(fc["raw"], fc["transport"])
     if fc["transport"] == "meek-azure" and key in history and history[key].get("transport") != "meek-azure":
@@ -1041,9 +1014,9 @@ REPORT["stages"]["merge"] = {"admitted": admitted, "upgraded": upgraded, "histor
 # ───────────────────────────── 4. AI RANKING (Iran Anti-DPI) ─────────────────────────────
 DPI_PRIOR = {
     "webtunnel": 0.96, "snowflake": 0.93, "meek-azure": 0.90, "meek_lite": 0.90,
-    "conjure": 0.86, "obfs4": 0.68, "vanilla": 0.28,
+    "obfs4": 0.68, "vanilla": 0.28,
 }
-TR_ORDER = ("obfs4", "webtunnel", "vanilla", "snowflake", "meek-azure", "conjure")
+TR_ORDER = ("obfs4", "webtunnel", "vanilla", "snowflake", "meek-azure")
 subnets = {}
 for c in parsed.values():
     if c["host"] and not c["ipv6"]:
@@ -1076,9 +1049,13 @@ def sigmoid(z):
 
 model_path = os.path.join(DATA, "ai_fusion_model.json")
 model = load_json(model_path, {})
-NF = 6 + 8
-w = model.get("weights") if isinstance(model.get("weights"), list) and len(model.get("weights", [])) == NF + 1 \
-    else [0.0] * (NF + 1)
+NF = len(TR_ORDER) + 8
+_w_saved = model.get("weights") if isinstance(model.get("weights"), list) else []
+if len(_w_saved) == NF + 2:
+    # warm-start migration: the previous model carried a one-hot slot for the removed conjure transport
+    # (bias + obfs4, webtunnel, vanilla, snowflake, meek-azure, conjure, …) — drop that weight, keep the rest.
+    _w_saved = _w_saved[:6] + _w_saved[7:]
+w = _w_saved if len(_w_saved) == NF + 1 else [0.0] * (NF + 1)
 train = []
 for key in sorted(parsed.keys()):
     c = parsed[key]
@@ -1146,7 +1123,7 @@ def llm():
     prompt = ("You tune Tor censorship-circumvention for Iran (DPI + whitelist 'NIN' shutdowns). "
               "Given transport stats {transport:[total,reachable]}: " + json.dumps(stats) +
               ". Reply ONLY JSON: {\"priority\":[transports best first],\"advice\":\"<=40 words\"}. "
-              "Allowed transports: webtunnel, snowflake, meek-azure, conjure, obfs4, vanilla.")
+              "Allowed transports: webtunnel, snowflake, meek-azure, obfs4, vanilla.")
     s, b = http(url, method="POST", data=json.dumps({"model": mdl, "temperature": 0.2, "max_tokens": 200,
                                                      "messages": [{"role": "user", "content": prompt}]}),
                 headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"}, timeout=25, retries=1)
@@ -1257,7 +1234,7 @@ def read_lines(path):
         return []
 
 
-NAME = re.compile(r"^(snowflak|snowflake|obfs4|vanilla|webtunnel|meek_lite|meek-azure|conjure)(.*?)(\.txt)?$")
+NAME = re.compile(r"^(snowflak|snowflake|obfs4|vanilla|webtunnel|meek_lite|meek-azure)(.*?)(\.txt)?$")
 
 
 def union(*groups):
@@ -1305,10 +1282,9 @@ def derive(name):
                 members("webtunnel", False, True, False, True, salt=name),
                 members("snowflake", False, True, False, True, salt=name),
                 members("meek_lite", False, True, False, True, salt=name),
-                members("conjure", False, True, False, True, salt=name),
             )
         allk = []
-        for fam in ("obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite", "conjure"):
+        for fam in ("obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite"):
             allk += members(fam, False, True, False, True, salt=name)
             allk += members(fam, True, True, False, True, salt=name)
         return union(allk)
@@ -1423,7 +1399,7 @@ SIBLINGS = {
     "meek_lite_ipv6.txt": ["meek_lite.txt"], "meek_lite_72h_ipv6.txt": ["meek_lite_72h.txt", "meek_lite.txt"],
     "meek_lite_ipv6_tested.txt": ["meek_lite_tested.txt", "meek_lite.txt"],
     "meek_lite_tested.txt": ["meek_lite.txt"], "meek-azure_tested.txt": ["meek-azure.txt"],
-    "meek-azure_72h.txt": ["meek-azure.txt"], "conjure_72h_ipv6.txt": ["conjure_72h.txt", "conjure.txt"],
+    "meek-azure_72h.txt": ["meek-azure.txt"],
     "snowflake_tested.txt": ["snowflake.txt"],
 }
 for name, sibs in SIBLINGS.items():
@@ -1552,7 +1528,7 @@ write_json(HIST_PATH, history)
 REPORT["stages"]["projections"] = projection_report
 
 # ───────────────────────────── 6. Iran hourly mix + anti-DPI profile ─────────────────────────────
-QUOTA = {"webtunnel": 12, "snowflake": 6, "meek-azure": 4, "conjure": 4, "obfs4": 12, "vanilla": 4}
+QUOTA = {"webtunnel": 12, "snowflake": 6, "meek-azure": 4, "obfs4": 12, "vanilla": 4}
 mix_rng = random.Random(HOUR_SEED)
 mix, per_tr = [], {}
 for tr, q in QUOTA.items():
@@ -1598,7 +1574,6 @@ tor = ["# Auto-generated hourly Iran Anti-DPI bridge mix — " + ISO_HOUR,
        "# Rotates every UTC hour; regenerate: scripts/auto_bridge_fusion.sh",
        "UseBridges 1", "ClientTransportPlugin obfs4,meek_lite,webtunnel exec /usr/bin/lyrebird",
        "ClientTransportPlugin snowflake exec /usr/bin/snowflake-client",
-       "ClientTransportPlugin conjure exec /usr/bin/conjure-client",
        "# order of preference (best first): " + ", ".join(priority)]
 for tr in priority:
     for b in mix:
@@ -1640,8 +1615,8 @@ profile = {
             "retire_after_failures": 3,
         },
         "nin_shutdown_survival": {
-            "prefer": ["webtunnel", "snowflake", "meek_lite", "conjure"],
-            "reason": "CDN-fronted and Refraction transports ride whitelisted domestic/CDN paths during NIN cuts",
+            "prefer": ["webtunnel", "snowflake", "meek_lite"],
+            "reason": "CDN-fronted transports ride whitelisted domestic/CDN paths during NIN cuts",
             "fallback_order": priority,
         },
     },
@@ -1686,15 +1661,14 @@ for tr in QUOTA:
 ultra = {
     "generated_at": ISO_NOW, "target": "IR", "hour_seed": HOUR_SEED,
     "note": "advisory client-side hardening profile derived from live probes + online model; no claim of "
-            "reachability inside Iran. Consumers: lyrebird / snowflake-client / conjure-client / sing-box style cores.",
+            "reachability inside Iran. Consumers: lyrebird / snowflake-client / sing-box style cores.",
     "adaptive_transport_weights": adaptive,
     "escalation_ladder": [
         {"step": 1, "use": "webtunnel", "why": "HTTPS/WebSocket look-alike on CDN-able hosts; best DPI prior"},
         {"step": 2, "use": "snowflake", "params": {"ampcache": True, "fronts": live_fronts[:6]}},
         {"step": 3, "use": "meek-azure", "params": {"utls": "HelloRandomizedALPN"}},
         {"step": 4, "use": "obfs4", "params": {"iat-mode": 2, "prefer_ports": [443, 80, 8443]}},
-        {"step": 5, "use": "conjure", "params": {"phantom": True}},
-        {"step": 6, "use": "vanilla", "params": {"only_if": "all else blocked"}},
+        {"step": 5, "use": "vanilla", "params": {"only_if": "all else blocked"}},
     ],
     "tls": {"rotation_24h": schedule, "ech": "prefer when the front supports it (Cloudflare / Fastly)",
             "alpn": ["h2", "http/1.1"], "session_resumption": True},
@@ -1713,7 +1687,6 @@ fast_t = ["# Auto-generated FASTEST-FIRST Iran torrc — " + ISO_NOW,
           "# Lowest measured handshake latency first, one bridge set per transport. Regenerated hourly.",
           "UseBridges 1", "ClientTransportPlugin obfs4,meek_lite,webtunnel exec /usr/bin/lyrebird",
           "ClientTransportPlugin snowflake exec /usr/bin/snowflake-client",
-          "ClientTransportPlugin conjure exec /usr/bin/conjure-client",
           "LearnCircuitBuildTimeout 1", "CircuitBuildTimeout 25", "KeepalivePeriod 60",
           "ConnectionPadding 1", "CircuitPadding 1", "NumCPUs 2"]
 for tr in sorted(QUOTA, key=lambda t: -adaptive[t]):
@@ -1721,12 +1694,29 @@ for tr in sorted(QUOTA, key=lambda t: -adaptive[t]):
         fast_t.append("Bridge " + b["line"])
 write_atomic(os.path.join(EXPORT, "iran_fastest.torrc"), "\n".join(fast_t) + "\n")
 
+# Turbo profile: parallel circuit building + aggressive keepalive + padding against timing/flow classifiers.
+# Pure torrc (every option is a documented little-t tor option); Bridge lines are the fastest of each transport,
+# interleaved so a single blocked transport never stalls bootstrap. Regenerated hourly.
+turbo_t = ["# Auto-generated TURBO Iran torrc — " + ISO_NOW,
+           "# Interleaved fastest-first bridges, parallel circuit building, DPI-hostile padding. Regenerated hourly.",
+           "UseBridges 1", "ClientTransportPlugin obfs4,meek_lite,webtunnel exec /usr/bin/lyrebird",
+           "ClientTransportPlugin snowflake exec /usr/bin/snowflake-client",
+           "LearnCircuitBuildTimeout 1", "CircuitBuildTimeout 20", "MaxClientCircuitsPending 48",
+           "NewCircuitPeriod 15", "SocksTimeout 30", "KeepalivePeriod 45", "ConnectionPadding 1",
+           "ReducedConnectionPadding 0", "CircuitPadding 1", "ClientUseIPv6 1", "ClientPreferIPv6ORPort auto",
+           "UseMicrodescriptors 1", "AvoidDiskWrites 1", "NumCPUs 2"]
+_lanes = [[b["line"] for b in fastest.get(tr, [])[:5]] for tr in sorted(QUOTA, key=lambda t: -adaptive[t])]
+for _i in range(5):
+    for _lane in _lanes:
+        if _i < len(_lane):
+            turbo_t.append("Bridge " + _lane[_i])
+write_atomic(os.path.join(EXPORT, "iran_turbo.torrc"), "\n".join(turbo_t) + "\n")
+
 # freshness manifest — proves every projection was re-derived this run even when its bytes did not change
 FR_PATH = os.path.join(DATA, "bridge_freshness.json")
 fr_old = load_json(FR_PATH, {}).get("files", {})
 fr_new = {}
-SUPPLY_LIMITED = {"conjure": "Tor Project publishes a single conjure line",
-                  "meek": "Tor Project publishes ≤3 meek lines", "snowflake": "Tor Project publishes ~10 snowflake lines"}
+SUPPLY_LIMITED = {"meek": "Tor Project publishes ≤3 meek lines", "snowflake": "Tor Project publishes ~10 snowflake lines"}
 for fn in sorted(os.listdir(BRIDGE)):
     fp = os.path.join(BRIDGE, fn)
     if not os.path.isfile(fp) or fn.endswith((".json", ".zip")):
@@ -1756,6 +1746,17 @@ log(f"done: history={len(history)} live={profile['counts']['live']} admitted={ad
     f"filled={len(projection_report['filled_from_empty'])} still_empty={projection_report['still_empty']}")
 PY
 
+# Conjure is unsupported by Orbot / Tor Browser for Android and makes Orbot's custom-bridge dialog answer
+# "Invalid bridge format" for the whole paste, so it is purged from every artefact on every run (also when
+# the Rust publisher or an old snapshot re-introduced it).
+purge_conjure() {
+  if [ -f "$SCRIPT_DIR/purge_conjure.sh" ]; then
+    bash "$SCRIPT_DIR/purge_conjure.sh" --root "$ROOT" --bridge-dir "$BRIDGE_DIR" \
+      || echo "[fusion] note: purge_conjure.sh did not complete (non-fatal)"
+  fi
+}
+purge_conjure
+
 if [ "${FUSION_SKIP_ATTEST:-0}" = "1" ]; then
   echo "[fusion] attestation skipped (FUSION_SKIP_ATTEST=1)"
   exit 0
@@ -1779,6 +1780,8 @@ for builder in build_iran_anti_dpi_elite build_iran_cut_pack build_pq_bridge_sco
     bash "$SCRIPT_DIR/$builder.sh" >/dev/null 2>&1 || echo "[fusion] note: $builder.sh did not complete (non-fatal)"
   fi
 done
+
+purge_conjure
 
 # Synchronize telegram_manifest.json non_empty_lines, reason_code, summary counts, and README table counts
 # before calling publication_contract.sh --rebuild so --check emits 0 errors and 0 advisories.

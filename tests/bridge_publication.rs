@@ -200,11 +200,6 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
         "bridge_scores.json",
         "iran_results.json",
         "telegram_manifest.json",
-        "conjure_ipv4_ipv6_all.txt",
-        "conjure_72h_ipv4.txt",
-        "conjure_72h_ipv6.txt",
-        "conjure_72h.txt",
-        "conjure_tested.txt",
         "iran_blocked_ipv4_ipv6_all.txt",
         "iran_likely_working_ipv4_ipv6_all.txt",
         "iran_likely_working_nin.txt",
@@ -278,10 +273,6 @@ fn publisher_rebuilds_every_required_file_and_verified_archive() {
         std::fs::read_to_string(options.bridge_dir.join("webtunnel_ipv6_72h.txt")).unwrap()
     );
     let read = |name: &str| std::fs::read_to_string(options.bridge_dir.join(name)).unwrap();
-    assert!(read("conjure_72h_ipv4.txt").contains("conjure 1.2.3.9:443"));
-    assert!(read("conjure_72h_ipv6.txt").trim().is_empty());
-    assert!(read("conjure_72h.txt").contains("conjure 1.2.3.9:443"));
-    assert!(read("conjure_tested.txt").contains("conjure 1.2.3.9:443"));
     assert!(read("obfs4_72h_ipv4.txt").contains("obfs4 1.2.3.10:443"));
     assert!(read("obfs4_72h_ipv6.txt").trim().is_empty());
     assert!(read("obfs4_ipv4_tested.txt").contains("obfs4 1.2.3.10:443"));

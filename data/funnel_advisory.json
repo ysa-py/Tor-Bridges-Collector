@@ -52,23 +52,13 @@
       "TEST_NET_1_RFC5737": 131
     },
     "by_transport": {
-      "conjure": 64,
       "meek-azure": 28,
       "meek_lite": 59,
       "snowflake": 60,
       "webtunnel": 396
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
-    "samples": [
-      "conjure 192.0.2.11:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.sstatic.net,assets.cloud.censys.io transport=min",
-      "conjure 192.0.2.12:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=assets.cloud.censys.io,cdn.sstatic.net transport=min",
-      "conjure 192.0.2.13:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.cdn77.com,www.phpmyadmin.net transport=min",
-      "conjure 192.0.2.14:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=app.datapacket.com,www.datapacket.com transport=min",
-      "conjure 192.0.2.15:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.phpmyadmin.net,cdn.zk.mk transport=min",
-      "conjure 192.0.2.16:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=cdn.ampproject.org,www.google.com transport=min",
-      "conjure 192.0.2.17:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=ajax.aspnetcdn.com,cdn.sstatic.net transport=min",
-      "conjure 192.0.2.18:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://registration.refraction.network/api fronts=www.datapacket.com,www.cdn77.com transport=min"
-    ],
+    "samples": [],
     "total_non_routable": 607
   },
   "publications_gate": {
@@ -100,7 +90,6 @@
     "relay_observations": 4975,
     "relay_success": 1911,
     "unobserved_by_transport": {
-      "conjure": 64,
       "meek_lite": 87,
       "no_literal_endpoint": 4,
       "snowflake": 60,

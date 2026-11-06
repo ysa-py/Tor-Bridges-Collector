@@ -9,9 +9,13 @@
 # guardianproject/orbot-android CustomBridgeBottomSheet.kt):
 #   ^obfs4\s+(IPv4|[IPv6]):\d+\s+[A-F0-9]{40}(\s+cert=[a-zA-Z0-9+/=]+)?(\s+iat-mode=\d+)?$
 #   ^webtunnel\s+(IPv4|[IPv6]):\d+\s+[A-F0-9]{40}(\s+url=https?://\S+)?(\s+ver=\d+\.\d+\.\d+)?$
-# so a leading torrc-style "Bridge " prefix, vanilla/snowflake/meek/conjure
-# lines, lower-case fingerprints or extra webtunnel parameters make the whole
-# paste fail.
+# (older Orbot) and, in current Orbot master, one single "latest" regex
+#   ^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?(IPv4|[IPv6])(:port)?\s+([0-9a-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$
+# so a leading torrc-style "Bridge " prefix, conjure (or any unknown transport),
+# comments, address-less meek/snowflake lines, '?' '~' '%' '@' '&' inside the
+# arguments or extra webtunnel parameters make the whole paste fail.  This script
+# therefore keeps every published line valid under BOTH generations of Orbot, and
+# the conjure transport is removed completely (Orbot cannot use it).
 #
 # Every run (hourly via auto_bridge_fusion.sh / rebuild_bridge_projections.sh):
 #   1. normalises every bridge/*.txt (strips "Bridge ", CR/BOM, upper-cases
@@ -51,15 +55,26 @@ ORBOT_OBFS4 = re.compile(
 ORBOT_WEBTUNNEL = re.compile(
     rf"^webtunnel\s+{_ADDR}:\d+\s+[A-F0-9]{{40}}(\s+url=https?://\S+)?(\s+ver=\d+\.\d+\.\d+)?$")
 
+# Current Orbot master (CustomBridgeBottomSheet.kt validBridgeRegex), translated 1:1.
+ORBOT_LATEST = re.compile(
+    r"^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?"
+    r"((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+\])(:\d{1,5})?)\s+"
+    r"([\da-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$", re.ASCII)
+
+# Placeholder endpoints used by Tor's own built-in snowflake / meek_lite lines (the PT ignores them).
+DEFAULT_PLACEHOLDER = {"snowflake": "192.0.2.3:80", "meek_lite": "192.0.2.18:80"}
+
 FP_RE = re.compile(r"^[0-9A-Fa-f]{40}$")
-CERT_RE = re.compile(r"^[A-Za-z0-9+/]{43,}={0,2}$")
+# obfs4 cert = base64 of 52 bytes (node-id + public key) without padding = exactly 70 characters.
+CERT_RE = re.compile(r"^[A-Za-z0-9+/]{70}$")
 HOSTPORT_RE = re.compile(r"^(?:(\d{1,3}(?:\.\d{1,3}){3})|\[([0-9A-Fa-f:]+)\]):(\d{1,5})$")
 URL_RE = re.compile(r"^https?://[^\s/]+\S*$")
 VER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 
 # Transports whose placeholder addresses (192.0.2.x etc.) are legitimate PT syntax.
-PLACEHOLDER_OK = {"snowflake", "meek_lite", "conjure"}
-KNOWN_PT = {"obfs4", "webtunnel", "snowflake", "meek_lite", "conjure"}
+PLACEHOLDER_OK = {"snowflake", "meek_lite"}
+# conjure is intentionally unknown: Orbot cannot use it, so it is dropped everywhere.
+KNOWN_PT = {"obfs4", "webtunnel", "snowflake", "meek_lite"}
 
 STRICT_NAME = re.compile(
     r"^(obfs4|webtunnel)(?:[_-].*)?\.txt$|^iran_likely_working_(obfs4|webtunnel)\.txt$"
@@ -164,6 +179,10 @@ def normalize(line: str) -> Optional[Tuple[str, str, str, bool]]:
     if tr in PLACEHOLDER_OK:
         if len(toks) < 2:
             return None
+        if not HOSTPORT_RE.match(toks[1]):
+            # Address-less builtin form ("meek_lite <FP> url=…", "snowflake <FP> …"): Tor and Orbot both
+            # require an addr:port token, so insert the standard TEST-NET placeholder endpoint.
+            toks = [toks[0], DEFAULT_PLACEHOLDER[tr]] + toks[1:]
         hp = parse_hostport(toks[1], False)
         if not hp:
             return None
@@ -175,8 +194,13 @@ def normalize(line: str) -> Optional[Tuple[str, str, str, bool]]:
     return None
 
 
+def orbot_latest_valid(line: str) -> bool:
+    return bool(ORBOT_LATEST.fullmatch(line))
+
+
 def orbot_valid(line: str) -> bool:
-    return bool(ORBOT_OBFS4.fullmatch(line) or ORBOT_WEBTUNNEL.fullmatch(line))
+    """Valid for the older strict regexes AND for current Orbot master."""
+    return bool((ORBOT_OBFS4.fullmatch(line) or ORBOT_WEBTUNNEL.fullmatch(line)) and ORBOT_LATEST.fullmatch(line))
 
 
 # ── File helpers ───────────────────────────────────────────────────────────────
@@ -228,6 +252,9 @@ def sanitize_file(path: str, name: str) -> Tuple[List[str], int, int]:
         if strict and not orbot_valid(line):
             dropped += 1
             continue
+        if not strict and not orbot_latest_valid(line):
+            dropped += 1  # would make Orbot's whole-paste validation fail
+            continue
         if key in seen:
             continue
         seen.add(key)
@@ -238,7 +265,7 @@ def sanitize_file(path: str, name: str) -> Tuple[List[str], int, int]:
 def name_transport(name: str) -> Optional[str]:
     base = name.lower()
     for pref, tr in (("obfs4", "obfs4"), ("webtunnel", "webtunnel"), ("vanilla", "vanilla"),
-                     ("snowflak", "snowflake"), ("meek", "meek_lite"), ("conjure", "conjure"),
+                     ("snowflak", "snowflake"), ("meek", "meek_lite"),
                      ("tested_global_obfs4", "obfs4"), ("tested_global_webtunnel", "webtunnel"),
                      ("tested_global_vanilla", "vanilla"), ("iran_likely_working_obfs4", "obfs4"),
                      ("iran_likely_working_webtunnel", "webtunnel"),
@@ -250,8 +277,8 @@ def name_transport(name: str) -> Optional[str]:
 
 
 AGGREGATES = {
-    "iran_likely_working_all.txt": ("obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite", "conjure"),
-    "iran_likely_working_ipv4_ipv6_all.txt": ("obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite", "conjure"),
+    "iran_likely_working_all.txt": ("obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite"),
+    "iran_likely_working_ipv4_ipv6_all.txt": ("obfs4", "webtunnel", "vanilla", "snowflake", "meek_lite"),
     "iran_likely_working_nin.txt": ("webtunnel", "snowflake", "meek_lite"),
 }
 
@@ -564,6 +591,31 @@ def collect_orbot(bridge_dir: str, alive: Optional[Dict[str, bool]] = None) -> D
     return res
 
 
+def collect_extended(bridge_dir: str) -> Dict[str, List[str]]:
+    """vanilla / snowflake / meek_lite lines valid under current Orbot's validator (best evidence first)."""
+    spec = {
+        "vanilla": ["iran_likely_working_vanilla.txt", "tested_global_vanilla.txt", "vanilla_tested.txt",
+                    "vanilla_ipv4_tested.txt", "vanilla.txt", "vanilla_ipv4_ipv6_all.txt", "vanilla_ipv6_tested.txt",
+                    "vanilla_ipv6.txt"],
+        "snowflake": ["snowflake_tested.txt", "snowflake.txt", "snowflake_ipv4_ipv6_all.txt"],
+        "meek_lite": ["meek_lite_tested.txt", "meek_lite.txt", "meek_lite_ipv4_ipv6_all.txt"],
+    }
+    res: Dict[str, List[str]] = {k: [] for k in spec}
+    for tr, files in spec.items():
+        seen = set()
+        for fname in files:
+            tier = []
+            for raw in read_lines(os.path.join(bridge_dir, fname)):
+                n = normalize(raw)
+                if not n or n[1] != tr or n[2] in seen or not orbot_latest_valid(n[0]):
+                    continue
+                seen.add(n[2])
+                tier.append((port_rank(n[0]), hashlib.sha1(f"{HOUR_SEED}|{n[2]}".encode()).hexdigest(), n[0]))
+            tier.sort()
+            res[tr] += [t[2] for t in tier]
+    return res
+
+
 def net_key(line: str) -> str:
     """Blocking-domain of a bridge: IPv4 /16, IPv6 /32, or the webtunnel front's registrable domain."""
     toks = line.split(" ")
@@ -611,10 +663,15 @@ def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web:
         extra = [x for x in diversify(o, top_obfs4 + top_web) + diversify(w, top_obfs4 + top_web) if x not in top]
         top += extra[: top_obfs4 + top_web - len(top)]
     allv = o + w
+    ext = collect_extended(bridge_dir)
     files = {
         "orbot_top.txt": top, "orbot_obfs4.txt": o, "orbot_webtunnel.txt": w, "orbot_all.txt": allv,
         "orbot_ipv4.txt": [x for x in allv if "[" not in x.split(" ")[1]],
         "orbot_ipv6.txt": [x for x in allv if "[" in x.split(" ")[1]],
+        # Accepted by current Orbot (validBridgeRegex also lists snowflake / meek_lite / vanilla).
+        "orbot_vanilla.txt": ext["vanilla"], "orbot_snowflake.txt": ext["snowflake"],
+        "orbot_meek.txt": ext["meek_lite"],
+        "orbot_extended.txt": allv + ext["vanilla"] + ext["snowflake"] + ext["meek_lite"],
     }
     counts: Dict[str, int] = {}
     for name, lines in files.items():
@@ -622,8 +679,9 @@ def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web:
         if not lines and os.path.isfile(p) and any(x.strip() for x in read_lines(p)):
             counts[name] = len([x for x in read_lines(p) if x.strip()])  # keep last-known-good
             continue
+        ext_file = name in ("orbot_vanilla.txt", "orbot_snowflake.txt", "orbot_meek.txt", "orbot_extended.txt")
         for ln in lines:
-            if not orbot_valid(ln):
+            if not (orbot_latest_valid(ln) if ext_file else orbot_valid(ln)):
                 raise SystemExit(f"self-validation failed for {name}: {ln[:80]}")
         write_if_changed(p, lines)
         counts[name] = len(lines)
@@ -631,7 +689,8 @@ def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web:
         "generated_at": utcnow(),
         "purpose": "Ready to paste into Orbot > Custom Bridges (every line passes Orbot's own regex).",
         "counts": counts,
-        "validator": {"obfs4": ORBOT_OBFS4.pattern, "webtunnel": ORBOT_WEBTUNNEL.pattern},
+        "validator": {"obfs4": ORBOT_OBFS4.pattern, "webtunnel": ORBOT_WEBTUNNEL.pattern,
+                      "latest_orbot": ORBOT_LATEST.pattern},
     }
     write_if_changed(os.path.join(export_dir, "orbot_manifest.json"),
                      json.dumps(manifest, indent=2, ensure_ascii=False).split("\n"))
@@ -646,8 +705,11 @@ def export_orbot(bridge_dir: str, export_dir: str, top_obfs4: int = 28, top_web:
         "* `orbot_obfs4.txt` / `orbot_webtunnel.txt` - everything per transport",
         "* `orbot_ipv4.txt` / `orbot_ipv6.txt` - per IP family",
         "* `orbot_all.txt` - union", "",
-        "Snowflake / Meek / Conjure / vanilla lines are not accepted by Orbot's custom-bridge",
-        "dialog (use Orbot's built-in Snowflake option instead).",
+        "* `orbot_vanilla.txt` / `orbot_snowflake.txt` / `orbot_meek.txt` / `orbot_extended.txt` - only for",
+        "  current Orbot (its validator also lists snowflake, meek_lite and vanilla lines); older Orbot",
+        "  releases reject them, so use the lists above if you see \"Invalid bridge format\".", "",
+        "Conjure is not supported by Orbot and is not published anywhere in this repository.",
+        "Never paste comment lines, `Bridge ` prefixes or lines from the torrc exports into Orbot.",
     ])
     return counts
 
@@ -689,7 +751,13 @@ def main(argv: Optional[Iterable[str]] = None) -> int:
         print(f"[sanitizer] bridge dir not found: {bridge}", file=sys.stderr)
         return 0
 
-    names = sorted(n for n in os.listdir(bridge) if is_bridge_text(n) and os.path.isfile(os.path.join(bridge, n)))
+    for stale in sorted(n for n in os.listdir(bridge) if n.lower().startswith("conjure")):
+        if not a.check and os.path.isfile(os.path.join(bridge, stale)):
+            os.remove(os.path.join(bridge, stale))  # conjure is unsupported by Orbot: removed for good
+            print(f"[sanitizer] removed unsupported conjure file {stale}")
+    names = sorted(n for n in os.listdir(bridge)
+                   if is_bridge_text(n) and not n.lower().startswith("conjure")
+                   and os.path.isfile(os.path.join(bridge, n)))
     store: Dict[str, List[str]] = {}
     report: Dict[str, object] = {"generated_at": utcnow(), "files": {}, "filled_from_siblings": [],
                                  "kept_last_known_good": []}

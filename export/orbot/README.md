@@ -12,5 +12,9 @@ blocking one range cannot take the whole list down.
 * `orbot_ipv4.txt` / `orbot_ipv6.txt` - per IP family
 * `orbot_all.txt` - union
 
-Snowflake / Meek / Conjure / vanilla lines are not accepted by Orbot's custom-bridge
-dialog (use Orbot's built-in Snowflake option instead).
+* `orbot_vanilla.txt` / `orbot_snowflake.txt` / `orbot_meek.txt` / `orbot_extended.txt` - only for
+  current Orbot (its validator also lists snowflake, meek_lite and vanilla lines); older Orbot
+  releases reject them, so use the lists above if you see "Invalid bridge format".
+
+Conjure is not supported by Orbot and is not published anywhere in this repository.
+Never paste comment lines, `Bridge ` prefixes or lines from the torrc exports into Orbot.

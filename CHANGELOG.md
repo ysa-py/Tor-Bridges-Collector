@@ -1,5 +1,26 @@
 # Changelog
 
+## [Session 33] — Orbot "Invalid bridge format" root cause, conjure removal, turbo profile
+
+### Fixed
+- **Orbot `Invalid bridge format`**: Orbot rejects the whole paste when one line fails its validator. The
+  aggregate files (`iran_likely_working_all/ipv4_ipv6_all/nin`) and several `export/` packs contained
+  `conjure` lines, address-less `snowflake`/`meek_lite` lines, `Bridge ` prefixes and comments. All are now
+  removed or normalised on every run; the sanitizer validates against the current Orbot `validBridgeRegex`
+  in addition to the older strict obfs4/webtunnel regexes. See `docs/ORBOT_COMPAT.md`.
+- obfs4 certificates must be exactly 70 base64 characters (a 67-character one was published).
+- AI model feature vector no longer assumes a conjure one-hot slot (old weights migrate automatically).
+
+### Removed
+- The **conjure** transport only (Orbot / Tor Browser for Android cannot use it): `bridge/conjure*.txt`,
+  conjure lines everywhere, conjure JSON records, `ClientTransportPlugin conjure`, the Rust
+  `REQUIRED_FILES` / projection entries and the synthetic conjure matrix. `scripts/purge_conjure.sh`
+  (+ `scripts/test_purge_conjure.sh`, CI step) keeps it out for good.
+
+### Added
+- `export/iran_turbo.torrc` — interleaved fastest-first bridges, parallel circuit building, padding.
+- `export/orbot/orbot_{vanilla,snowflake,meek,extended}.txt` for current Orbot.
+
 ## [Session 32b] — 2026-10-15 — THE front-liveness root cause: the probe dialled port 44, not 443
 
 Follow-up to Session 32 with a dispatched runner-vantage matrix (run

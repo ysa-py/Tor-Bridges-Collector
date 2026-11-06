@@ -1,16 +1,16 @@
 {
   "ai": {
-    "accuracy": 0.788856,
+    "accuracy": 0.789408,
     "llm_advice": null,
     "model": "online-logistic-v2-iran-anti-dpi",
     "trained_on": 4003
   },
   "counts": {
-    "admitted_this_run": 1,
+    "admitted_this_run": 0,
     "empty_projections": 0,
-    "history": 4246,
-    "hourly_mix": 34,
-    "live": 2406
+    "history": 4179,
+    "hourly_mix": 32,
+    "live": 2354
   },
   "dpi_countermeasures": {
     "bridge_rotation": {
@@ -23,12 +23,9 @@
       "live_fronts": [
         "ajax.aspnetcdn.com",
         "app.datapacket.com",
-        "assets.cloud.censys.io",
         "cdn.ampproject.org",
         "cdn.sstatic.net",
         "cdn.zk.mk",
-        "docs.plesk.com",
-        "maxst.icons8.com",
         "www.cdn77.com",
         "www.datapacket.com",
         "www.google.com",
@@ -40,19 +37,17 @@
     "nin_shutdown_survival": {
       "fallback_order": [
         "webtunnel",
-        "meek-azure",
         "snowflake",
-        "conjure",
+        "meek-azure",
         "obfs4",
         "vanilla"
       ],
       "prefer": [
         "webtunnel",
         "snowflake",
-        "meek_lite",
-        "conjure"
+        "meek_lite"
       ],
-      "reason": "CDN-fronted and Refraction transports ride whitelisted domestic/CDN paths during NIN cuts"
+      "reason": "CDN-fronted transports ride whitelisted domestic/CDN paths during NIN cuts"
     },
     "port_policy": {
       "avoid_fixed_high_ports_first": true,
@@ -100,14 +95,13 @@
       "webrtc_covertdtls": "randomizemimic"
     }
   },
-  "generated_at": "2026-11-06T03:00:00+00:00",
-  "hour_seed": 498315,
+  "generated_at": "2026-11-06T06:00:00+00:00",
+  "hour_seed": 498318,
   "target": "IR",
   "transport_priority": [
     "webtunnel",
-    "meek-azure",
     "snowflake",
-    "conjure",
+    "meek-azure",
     "obfs4",
     "vanilla"
   ]
