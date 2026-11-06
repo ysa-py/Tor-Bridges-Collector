@@ -1,0 +1,78 @@
+name: workflow-run-janitor
+
+# Keeps the Actions history small and debuggable, fully automatically:
+#   * per workflow: newest SUCCESS (reference) + newest FAILURE (what you debug) are kept,
+#   * runs that are still running are never touched; stuck ones (> 6 h) are force-cancelled,
+#   * everything else is deleted, in rate-limit-aware batches (the backlog drains hour by hour).
+# Policy + tests: scripts/lib/run_cleanup_plan.mjs, scripts/test_run_cleanup_plan.mjs.
+# The older "AI Ultra-Pro Cleanup" workflow stays as a reusable no-op guard for CI validation.
+
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only report what would be deleted"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+      max_delete:
+        description: "Maximum deletions in this pass"
+        required: false
+        default: "700"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/cleanup_workflow_runs.mjs"
+      - "scripts/lib/run_cleanup_plan.mjs"
+      - ".github/workflows/workflow-run-janitor.yml"
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: workflow-run-janitor
+  cancel-in-progress: false
+
+jobs:
+  janitor:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Self-test (retention policy)
+        run: node scripts/test_run_cleanup_plan.mjs
+
+      - name: Clean up workflow runs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || 'false' }}
+          MAX_DELETE: ${{ github.event.inputs.max_delete || '700' }}
+        run: |
+          set -euo pipefail
+          args=(--max-delete "$MAX_DELETE" --json "$RUNNER_TEMP/janitor-report.json")
+          if [ "$DRY_RUN" = "true" ]; then args+=(--dry); fi
+          node scripts/cleanup_workflow_runs.mjs "${args[@]}"
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: workflow-run-janitor-report
+          path: ${{ runner.temp }}/janitor-report.json
+          if-no-files-found: ignore
+          retention-days: 3

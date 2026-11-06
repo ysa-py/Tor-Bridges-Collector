@@ -22,6 +22,7 @@ on:
       - "export/**"
       - "scripts/bridge_autofill.mjs"
       - "scripts/bridge_harvest.mjs"
+      - "scripts/iran_antidpi_adaptive.mjs"
       - "scripts/lib/**"
 
 permissions:
@@ -47,7 +48,9 @@ jobs:
           node-version: 22
 
       - name: Self-test (Orbot format + anti-DPI model)
-        run: node scripts/test_orbot_format.mjs
+        run: |
+          node scripts/test_orbot_format.mjs
+          node scripts/test_iran_adaptive.mjs
 
       # Self-extending harvester: discovers new collector repos through the GitHub API,
       # pulls every mirror, validates for Orbot, TCP-probes (alive + RTT) and keeps a
@@ -60,6 +63,12 @@ jobs:
 
       - name: Autofill, dedupe and hourly AI merge
         run: node scripts/bridge_autofill.mjs --fix --fill --dynamic --json "$RUNNER_TEMP/autofill-report.json"
+
+      # Online Iran anti-DPI selector: Thompson-sampled transport mix from the repo's own
+      # blocked / likely-working evidence, hourly uTLS + iat-mode shaping, burn-risk diversity.
+      # Never fatal: a failure keeps the previous adaptive list.
+      - name: Adaptive Iran anti-DPI list (hourly Thompson mix)
+        run: node scripts/iran_antidpi_adaptive.mjs --json "$RUNNER_TEMP/adaptive-report.json" || echo "adaptive selector failed - previous list kept"
 
       # Orphan lists that no generator refreshed (export/ech_top_bridges.txt) + byte-identical
       # alias files (bridge/snowflake_ipv6_tested, bridge/snowflak_ipv4_ipv6_all.txt).
@@ -126,6 +135,7 @@ jobs:
           path: |
             ${{ runner.temp }}/autofill-report.json
             ${{ runner.temp }}/harvest-report.json
+            ${{ runner.temp }}/adaptive-report.json
           if-no-files-found: warn
 
       - name: Commit refreshed lists
@@ -133,7 +143,7 @@ jobs:
           set -euo pipefail
           git config user.name "bridge-bot"
           git config user.email "bridge-bot@users.noreply.github.com"
-          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json data/iran_antidpi_weights.json README.md
+          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json data/iran_antidpi_weights.json data/iran_adaptive_profile.json README.md
           if git diff --staged --quiet; then
             echo "nothing to commit - lists already up to date"
             exit 0

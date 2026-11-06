@@ -2,8 +2,10 @@
 name: AI Ultra-Pro Cleanup
 
 'on':
-  schedule:
-    - cron: '0 */6 * * *'
+  # The 6-hourly schedule was removed: on schedule events `inputs.dry_run` is empty, so the
+  # expression below always fell back to 'true' and the run never deleted anything while still
+  # creating 4 runs a day (and a self-healing callback for each). Retention is now handled by
+  # workflow-run-janitor.yml (hourly, keeps newest success + newest failure per workflow).
   workflow_dispatch:
     inputs:
       keep_last_n:

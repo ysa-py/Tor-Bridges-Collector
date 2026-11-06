@@ -31,6 +31,7 @@ import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { iranScore, hardenObfs4 } from "./lib/iran_antidpi_model.mjs";
+import { scrubLine } from "./lib/orbot_format.mjs";
 import { iranScoreAI, loadModel, trainModel, saveModel } from "./lib/iran_antidpi_learn.mjs";
 
 const ORBOT_LINE = /^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+])(:\d{1,5})?)\s+([\da-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$/;
@@ -397,7 +398,16 @@ if (MODE.fix) {
         report.actions.push({ kind: "purge", file: entry.file, line: line.trim(), applied: true });
         continue;
       }
-      const fixed = normalise(line);
+      // Damaged fingerprints (a lost hex digit makes Tor reject the bridge although Orbot's
+      // regex accepts it) are healed from the known public set; template lines such as
+      // `url=https://yourdomain/and/path` can never connect and are removed as pure noise.
+      const scrubbed = scrubLine(normalise(line));
+      if (scrubbed.drop) {
+        report.actions.push({ kind: "purge-noise", file: entry.file, reason: scrubbed.drop, line: line.trim().slice(0, 160), applied: true });
+        continue;
+      }
+      if (scrubbed.changed) report.actions.push({ kind: "heal-fingerprint", file: entry.file, line: scrubbed.line.slice(0, 160), applied: true });
+      const fixed = normalise(scrubbed.line);
       if (!fixed) continue;
       if (seen.has(fixed)) {
         report.actions.push({ kind: "dedupe", file: entry.file, line: fixed, applied: true });
@@ -412,6 +422,25 @@ if (MODE.fix) {
       if (!report.actions.some((action) => action.kind === "normalise" && action.file === entry.file)) {
         report.actions.push({ kind: "normalise", file: entry.file, applied: true });
       }
+    }
+  }
+}
+
+/* ------------------------------------------------------------- alias sync */
+
+// Extension-less / typo aliases that older generators published next to the canonical list
+// were never refreshed (their .txt twin was). Keep them byte-identical to the twin.
+if (MODE.fix) {
+  const ALIASES = [["bridge/snowflake_ipv6_tested", "bridge/snowflake_ipv6_tested.txt"]];
+  for (const [alias, canonical] of ALIASES) {
+    try {
+      const [a, c] = await Promise.all([readFile(path.join(ROOT, alias), "utf8"), readFile(path.join(ROOT, canonical), "utf8")]);
+      if (a !== c && c.trim()) {
+        await writeFile(path.join(ROOT, alias), c, "utf8");
+        report.actions.push({ kind: "alias-sync", file: alias, from: canonical, applied: true });
+      }
+    } catch {
+      /* alias or canonical not present: nothing to sync */
     }
   }
 }
@@ -601,7 +630,9 @@ if (MODE.dynamic) {
     const info = inventory.get(file);
     if (!info) continue;
     for (const line of await readLines(path.join(ROOT, file))) {
-      const fixed = normalise(line);
+      const scrubbed = scrubLine(normalise(line));
+      if (scrubbed.drop) continue; // damaged fingerprint / template url: can never connect
+      const fixed = normalise(scrubbed.line);
       if (!fixed || fixed.startsWith("#")) continue;
       const parsed = parse(fixed);
       if (!parsed || !parsed.valid || parsed.placeholder) continue;
