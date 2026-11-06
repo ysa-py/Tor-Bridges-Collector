@@ -18,9 +18,9 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-11-06T12:36:55.569809293Z",
+      "observed_at": "2026-11-06T14:25:52.516451664Z",
       "probe_type": "tcp",
-      "rtt_ms": 58.959,
+      "rtt_ms": 50.61,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -48,7 +48,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-11-06T12:36:55.909348241Z",
+      "observed_at": "2026-11-06T14:25:55.594910049Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -75,42 +75,12 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-11-06T12:36:55.909385447Z",
+      "observed_at": "2026-11-06T14:25:55.594921516Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
       "status": "inconclusive",
       "vantage": null
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "2001:db8::1f",
-    "iran_status": "iran_unknown",
-    "line": "snowflake [2001:db8::1f]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 443,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection failed",
-      "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:55.909468612Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "error",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
     }
   },
   {
@@ -132,7 +102,37 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:55.932248353Z",
+      "observed_at": "2026-11-06T14:25:55.597107913Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "error",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "2001:db8::1f",
+    "iran_status": "iran_unknown",
+    "line": "snowflake [2001:db8::1f]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 443,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection failed",
+      "error_class": "tcp_connect_error",
+      "observed_at": "2026-11-06T14:25:55.595019163Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -162,37 +162,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:55.95788692Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "error",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "2001:db8::23",
-    "iran_status": "iran_unknown",
-    "line": "snowflake [2001:db8::23]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 443,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection failed",
-      "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:55.981146593Z",
+      "observed_at": "2026-11-06T14:25:55.648109151Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -222,7 +192,37 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:55.980858524Z",
+      "observed_at": "2026-11-06T14:25:55.654425026Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "error",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "2001:db8::23",
+    "iran_status": "iran_unknown",
+    "line": "snowflake [2001:db8::23]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 443,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection failed",
+      "error_class": "tcp_connect_error",
+      "observed_at": "2026-11-06T14:25:55.698540672Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -252,7 +252,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.008025403Z",
+      "observed_at": "2026-11-06T14:25:55.706028129Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -282,7 +282,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.021999751Z",
+      "observed_at": "2026-11-06T14:25:55.749265724Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -312,7 +312,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.026354996Z",
+      "observed_at": "2026-11-06T14:25:55.756479369Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -342,7 +342,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.034891509Z",
+      "observed_at": "2026-11-06T14:25:55.769194776Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -372,7 +372,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.060402523Z",
+      "observed_at": "2026-11-06T14:25:55.796940852Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -402,7 +402,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.072381641Z",
+      "observed_at": "2026-11-06T14:25:55.800728706Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -432,7 +432,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.073898085Z",
+      "observed_at": "2026-11-06T14:25:55.809358981Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -462,37 +462,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.080842775Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "error",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "2001:db8::2c",
-    "iran_status": "iran_unknown",
-    "line": "snowflake [2001:db8::2c]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 443,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection failed",
-      "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.097249277Z",
+      "observed_at": "2026-11-06T14:25:55.823451728Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -522,7 +492,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.106208572Z",
+      "observed_at": "2026-11-06T14:25:55.851846418Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -552,7 +522,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.113086916Z",
+      "observed_at": "2026-11-06T14:25:55.863365016Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -582,7 +552,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.123692856Z",
+      "observed_at": "2026-11-06T14:25:55.893937709Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -612,7 +582,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.126273633Z",
+      "observed_at": "2026-11-06T14:25:55.903427948Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -642,7 +612,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.135362798Z",
+      "observed_at": "2026-11-06T14:25:55.906529841Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -672,7 +642,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.147791093Z",
+      "observed_at": "2026-11-06T14:25:55.913791709Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -702,7 +672,37 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.157518634Z",
+      "observed_at": "2026-11-06T14:25:55.944059635Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "error",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "2001:db8::2c",
+    "iran_status": "iran_unknown",
+    "line": "snowflake [2001:db8::2c]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 443,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection failed",
+      "error_class": "tcp_connect_error",
+      "observed_at": "2026-11-06T14:25:55.848017111Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -732,7 +732,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.164846251Z",
+      "observed_at": "2026-11-06T14:25:55.953997677Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -762,7 +762,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.170132914Z",
+      "observed_at": "2026-11-06T14:25:55.956716504Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -792,7 +792,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.172288611Z",
+      "observed_at": "2026-11-06T14:25:55.964718625Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -822,7 +822,7 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.176829801Z",
+      "observed_at": "2026-11-06T14:25:55.995947657Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -852,191 +852,11 @@
     "verification": {
       "detail": "TCP connection failed",
       "error_class": "tcp_connect_error",
-      "observed_at": "2026-11-06T12:36:56.186545835Z",
+      "observed_at": "2026-11-06T14:25:56.003129744Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
       "status": "error",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.35",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.35:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.538602291Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.562821995Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=fastly.jsdelivr.net",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.583105561Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.48",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.48:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.583080879Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.39",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.39:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.59384696Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.590706379Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
       "vantage": {
         "region": null,
         "type": "github_actions_runner"
@@ -1062,697 +882,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.594991373Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.41",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.41:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.597203635Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.34",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.34:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.59827594Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.604490631Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.38",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.38:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.606696994Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.61290867Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.61298129Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ front=docs.plesk.com",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.617720923Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ fronts=cdn.sstatic.net ice=stun:stun.voip.blackberry.com:3478,stun:stun.miwifi.com:3478,stun:stun.voipbuster.com:3478,stun:stun.sip.us:3478,stun:stun.freeswitch.org:3478",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.614577884Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.618843414Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.40",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.40:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.622022498Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.47",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.47:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.628207774Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.5",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.639167081Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.649190192Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ front=app.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.649177859Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.49",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.49:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.649201574Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478,stun:stun.sonetel.net:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.664483482Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.43",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.43:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.671635284Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.674799029Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.671620155Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.67487281Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.44",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.44:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.68878591Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.36",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.36:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.690926049Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.32",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.32:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.695266967Z",
+      "observed_at": "2026-11-06T14:26:08.486013539Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -1782,7 +912,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.701773097Z",
+      "observed_at": "2026-11-06T14:26:08.496109248Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -1798,7 +928,7 @@
     "composite_score_orig": 0.5,
     "host": "192.0.2.3",
     "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
     "ooni_checked": false,
     "ooni_factor": 0.5,
     "ooni_measurements_ir": 0,
@@ -1812,7 +942,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.702925653Z",
+      "observed_at": "2026-11-06T14:26:08.518304748Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -1826,9 +956,9 @@
   {
     "composite_score": 0.4375,
     "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
+    "host": "192.0.2.36",
     "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net",
+    "line": "snowflake 192.0.2.36:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
     "ooni_checked": false,
     "ooni_factor": 0.5,
     "ooni_measurements_ir": 0,
@@ -1842,307 +972,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.710137305Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ front=www.google.com",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.713361291Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "193.187.88.43",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 193.187.88.43:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 132,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.713351756Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.5",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.718725345Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.726313069Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.31",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.31:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.726833017Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.739255633Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.46",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.46:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.740328133Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.50",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.50:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.746599839Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.42",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.42:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.753990997Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.3",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.760120149Z",
+      "observed_at": "2026-11-06T14:26:08.522498153Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2172,97 +1002,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.761235779Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.4",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.767649599Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.45",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.45:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 80,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.771854442Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "193.187.88.42",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 193.187.88.42:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 132,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.770782673Z",
+      "observed_at": "2026-11-06T14:26:08.535656216Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2292,7 +1032,787 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.783314263Z",
+      "observed_at": "2026-11-06T14:26:08.557308409Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.34",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.34:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.55737548Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.565468879Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.32",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.32:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.572013087Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.577324814Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.58281629Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.40",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.40:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.584987063Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ fronts=cdn.sstatic.net ice=stun:stun.voip.blackberry.com:3478,stun:stun.miwifi.com:3478,stun:stun.voipbuster.com:3478,stun:stun.sip.us:3478,stun:stun.freeswitch.org:3478",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.582833185Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.43",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.43:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.595175532Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.610839071Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.46",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.46:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.622720986Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.42",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.42:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.62915528Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.41",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.41:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.631341897Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.31",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.31:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.633547113Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.35",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.35:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.637159263Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.38",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.38:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.640213125Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ front=www.google.com",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.653728445Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.65480248Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.668119171Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.44",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.44:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.669274328Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.45",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.45:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.674566534Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.678776644Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.39",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.39:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.678786159Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.3",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ front=docs.plesk.com",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.727696324Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.48",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.48:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.798936212Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.47",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.47:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.910121906Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.49",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.49:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:08.951366377Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2322,7 +1842,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.800859254Z",
+      "observed_at": "2026-11-06T14:26:09.126745537Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2336,39 +1856,9 @@
   {
     "composite_score": 0.4375,
     "composite_score_orig": 0.5,
-    "host": "193.187.88.45",
+    "host": "192.0.2.4",
     "iran_status": "iran_unknown",
-    "line": "snowflake 193.187.88.45:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 132,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": false,
-    "transport": "snowflake",
-    "verification": {
-      "detail": "TCP connection timed out after one jittered retry",
-      "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.844870669Z",
-      "probe_type": "tcp",
-      "rtt_ms": null,
-      "stage": "S0",
-      "status": "timeout",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "host": "192.0.2.6",
-    "iran_status": "iran_unknown",
-    "line": "snowflake 192.0.2.6:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com",
     "ooni_checked": false,
     "ooni_factor": 0.5,
     "ooni_measurements_ir": 0,
@@ -2382,7 +1872,397 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.871865918Z",
+      "observed_at": "2026-11-06T14:26:09.135908823Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.181615321Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=fastly.jsdelivr.net",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.228111748Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ front=app.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.311567592Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.362745978Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org front=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.426302374Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.429537888Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.553740172Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.665526231Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478,stun:stun.sonetel.net:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.voys.nl:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:09.824082487Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.4",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:10.12225354Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.50",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.50:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:10.326027821Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.5",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:10.439199372Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.5",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:10.665684828Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2412,7 +2292,97 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.875990461Z",
+      "observed_at": "2026-11-06T14:26:10.856589429Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "192.0.2.6",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 192.0.2.6:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 80,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:11.072976682Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "193.187.88.43",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 193.187.88.43:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 132,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:11.124219715Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "193.187.88.42",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 193.187.88.42:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 132,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:11.157463868Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2442,7 +2412,37 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.887205162Z",
+      "observed_at": "2026-11-06T14:26:11.197577431Z",
+      "probe_type": "tcp",
+      "rtt_ms": null,
+      "stage": "S0",
+      "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "host": "193.187.88.45",
+    "iran_status": "iran_unknown",
+    "line": "snowflake 193.187.88.45:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 132,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": false,
+    "transport": "snowflake",
+    "verification": {
+      "detail": "TCP connection timed out after one jittered retry",
+      "error_class": "tcp_connect_timeout",
+      "observed_at": "2026-11-06T14:26:11.314080019Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2472,11 +2472,47 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:37:11.904734405Z",
+      "observed_at": "2026-11-06T14:26:11.5029329Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
       "status": "timeout",
+      "vantage": {
+        "region": null,
+        "type": "github_actions_runner"
+      }
+    }
+  },
+  {
+    "asn": "AS14061",
+    "asn_country": "GB",
+    "asn_org": "AS14061 DigitalOcean, LLC",
+    "composite_score": 0.4375,
+    "composite_score_orig": 0.5,
+    "flags": [
+      "domain_front_cdn_ok"
+    ],
+    "host": "209.97.139.217",
+    "iran_status": "iran_unknown",
+    "line": "webtunnel 209.97.139.217:443 4F4571C3E0FD8D23C0C0AF76D63F7A5B08199A86 url=https://talnett.com/RLzWM1yDLRjlDiNxzdBQr8DR ver=0.0.3",
+    "ooni_checked": false,
+    "ooni_factor": 0.5,
+    "ooni_measurements_ir": 0,
+    "port": 443,
+    "predicted_block_prob": 0.5,
+    "quarantined": false,
+    "ripe_reachable": null,
+    "ripe_tested": false,
+    "tcp_reachable": true,
+    "transport": "webtunnel",
+    "verification": {
+      "detail": "TCP connection established; no transport handshake was performed",
+      "error_class": "",
+      "observed_at": "2026-11-06T14:25:57.818551054Z",
+      "probe_type": "tcp",
+      "rtt_ms": 142.336,
+      "stage": "S1",
+      "status": "connected",
       "vantage": {
         "region": null,
         "type": "github_actions_runner"
@@ -2508,9 +2544,9 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-11-06T12:36:58.41074685Z",
+      "observed_at": "2026-11-06T14:25:57.825913373Z",
       "probe_type": "tcp",
-      "rtt_ms": 138.244,
+      "rtt_ms": 137.929,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -2544,45 +2580,9 @@
     "verification": {
       "detail": "TCP connection established; no transport handshake was performed",
       "error_class": "",
-      "observed_at": "2026-11-06T12:36:58.411183647Z",
+      "observed_at": "2026-11-06T14:25:57.832342538Z",
       "probe_type": "tcp",
-      "rtt_ms": 138.112,
-      "stage": "S1",
-      "status": "connected",
-      "vantage": {
-        "region": null,
-        "type": "github_actions_runner"
-      }
-    }
-  },
-  {
-    "asn": "AS14061",
-    "asn_country": "GB",
-    "asn_org": "AS14061 DigitalOcean, LLC",
-    "composite_score": 0.4375,
-    "composite_score_orig": 0.5,
-    "flags": [
-      "domain_front_cdn_ok"
-    ],
-    "host": "209.97.139.217",
-    "iran_status": "iran_unknown",
-    "line": "webtunnel 209.97.139.217:443 4F4571C3E0FD8D23C0C0AF76D63F7A5B08199A86 url=https://talnett.com/RLzWM1yDLRjlDiNxzdBQr8DR ver=0.0.3",
-    "ooni_checked": false,
-    "ooni_factor": 0.5,
-    "ooni_measurements_ir": 0,
-    "port": 443,
-    "predicted_block_prob": 0.5,
-    "quarantined": false,
-    "ripe_reachable": null,
-    "ripe_tested": false,
-    "tcp_reachable": true,
-    "transport": "webtunnel",
-    "verification": {
-      "detail": "TCP connection established; no transport handshake was performed",
-      "error_class": "",
-      "observed_at": "2026-11-06T12:36:58.416442804Z",
-      "probe_type": "tcp",
-      "rtt_ms": 144.394,
+      "rtt_ms": 137.172,
       "stage": "S1",
       "status": "connected",
       "vantage": {
@@ -2610,7 +2610,7 @@
     "verification": {
       "detail": "no literal TCP endpoint is available to this probe stage",
       "error_class": "endpoint_unavailable",
-      "observed_at": "2026-11-06T12:35:47.850785749Z",
+      "observed_at": "2026-11-06T14:24:36.650812142Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
@@ -2637,7 +2637,7 @@
     "verification": {
       "detail": "TCP connection timed out after one jittered retry",
       "error_class": "tcp_connect_timeout",
-      "observed_at": "2026-11-06T12:35:49.561256396Z",
+      "observed_at": "2026-11-06T14:24:42.82183252Z",
       "probe_type": "tcp",
       "rtt_ms": null,
       "stage": "S0",
