@@ -1275,96 +1275,6 @@
     }
   },
   {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "meek_lite 192.0.2.102:80 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.net utls=HelloChrome_Auto",
-    "observed_at": "2026-11-06T07:04:04.014582Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 113.20.7.52:8443 2664651DE3173B7280099B1DD92F88EBF084FAA5 cert=iNq+9/9ImDhevW6w9Dbo65xRLVj6xco2UhqJeGuGWH/8Cd7Eb4dyzkWBvBX2W+tFTH7gaQ iat-mode=0",
-    "observed_at": "2026-11-06T07:04:04.027644Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 119.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 104.152.210.181:1105 2CF11CD4B8334A365952D7139BE356E55F2DEBC3",
-    "observed_at": "2026-11-06T07:04:04.042818Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 73.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 109.228.46.207:9001 64ACC1122B8DC64793FB6F0BFA2593BF30F46871 cert=UZZ2sxFj+pClt8Nw07gQny0H15dP8tRXhPWZW8onFU1Rz/ZhmQ/sga4zk/cW0bUtyPCHFQ iat-mode=0",
-    "observed_at": "2026-11-06T07:04:04.053186Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 192.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "protocol error (snowflake): connection closed before HTTP headers completed",
-    "error_class": "snowflake:protocol_error",
-    "line": "snowflake 192.0.2.40:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "observed_at": "2026-11-06T07:04:04.059919Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "inconclusive",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from snowflake",
-    "error_class": "snowflake:http_error",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.bethesda.net:3478,stun:stun.mixvoip.com:3478",
-    "observed_at": "2026-11-06T07:04:04.103943Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "connection reset during read",
     "error_class": "obfs4:connection_reset",
     "line": "obfs4 128.0.64.112:443 3E0294834B3B6F601B553DA3DB22897D22CB3F46 cert=C9JXClthzTkrlm/z8ZBz+EfGpdnmNkOdA3GhMcTibjiKDgARp+jPeltifqOFsI8mg0pHFg iat-mode=0",
@@ -5375,7 +5285,7 @@
     "line": "obfs4 108.175.13.9:443 F9A4DE8B36FA492A05277FAD58F93F5EFEA1E926 cert=FZ3jH8PSjY5frHhjoJ+7NNQYzviED0/j67ZPqJUhkeYOu9tNOV0KqotnVox/Ugta5d7dBg iat-mode=0",
     "observed_at": "2026-11-06T07:59:11.948359Z",
     "probe_type": "obfs4-framing",
-    "rtt_ms": 88.0,
+    "rtt_ms": 136.0,
     "source": "handshake-probe",
     "stage": "S3",
     "status": "connected",
