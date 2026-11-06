@@ -1,0 +1,77 @@
+name: iran-vantage
+
+# Iran-datacenter vantage (check-host.net, keyless): TCP/HTTPS reachability from
+# check-host's Iranian datacenter nodes vs a German/Dutch control node.
+# Evidence ceiling: tcp/https-from-iran-datacenter-only. This is NOT a Tor, obfs4,
+# WebTunnel, meek or Snowflake handshake and is never copied into any
+# working-bridge list. GitHub-hosted runners are outside Iran; the only Iranian
+# vantage here is the probe operated by check-host.net.
+# Replaces the earlier TCP-only vantage job: this is the single vantage workflow.
+# Logic + tests: scripts/lib/iran_vantage.mjs, scripts/test_iran_vantage.mjs.
+
+on:
+  schedule:
+    - cron: "20 * * * *"
+  workflow_dispatch:
+    inputs:
+      smoke:
+        description: "Run the live parser smoke test first (1.1.1.1:443 + https://example.com)"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: iran-vantage
+  cancel-in-progress: false
+
+jobs:
+  vantage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Offline tests
+        run: node scripts/test_iran_vantage.mjs
+
+      - name: Live smoke (manual only, nothing written)
+        if: github.event_name == 'workflow_dispatch' && github.event.inputs.smoke == 'true'
+        run: node scripts/iran_vantage.mjs --smoke
+
+      - name: Measure (max 20 check-host calls)
+        run: node scripts/iran_vantage.mjs
+
+      - name: Commit measurements
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/iran_vantage.jsonl data/iran_vantage_cursors.json
+          if git diff --cached --quiet; then
+            echo "no vantage changes"
+            exit 0
+          fi
+          git commit -m "measure: iran datacenter vantage"
+          for attempt in 1 2 3 4 5; do
+            if git push origin HEAD:main; then exit 0; fi
+            echo "push rejected (attempt ${attempt}); rebasing"
+            git fetch origin main
+            if ! git rebase origin/main; then git rebase --abort || true; fi
+            sleep $((attempt * 5))
+          done
+          echo "::warning::could not push vantage commit; the next hourly run continues"
+          exit 0
