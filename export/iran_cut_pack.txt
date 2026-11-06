@@ -1,11 +1,11 @@
 # TorShield-IR — Internet Cut Pack (شبکه ملی / NIN Mode)
-# Bridges: 941  (survivable during full international internet cut)
+# Bridges: 947  (survivable during full international internet cut)
 # Order: source priority — strict NIN-eligible, classifier packs, then
 # probe-survivable domestic/CDN set (each stage's own internal order).
 #
 # Merged automatically (Stage 8p2) from every NIN-cut intelligence artifact:
 #   data/nin_eligible.json=67 lines (+67 unique)
-#   bridge/iran_likely_working_nin.txt=382 lines (+340 unique)
+#   bridge/iran_likely_working_nin.txt=388 lines (+346 unique)
 #   export/nin_cut_bridges.txt=73 lines (+0 unique)
 #   export/iran_nin_pack.txt=893 lines (+235 unique)
 #   export/nin_cut_survivable.txt=299 lines (+299 unique)
@@ -340,15 +340,21 @@ webtunnel 152.53.49.65:443 DAEFF07E181A420069F9944C12BAA0DE6FD59B6D url=https://
 webtunnel 107.189.17.60:443 C9628ABAC17E75C70B32C0830E08CA85A9DFF0B0 url=https://wt3.vkurage.zip/CJLc2A5gsTw8NIahLyYhvBlZ ver=0.0.3
 snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net
 snowflake 10.0.3.2:8080 A478B32B16FC1F371677F9F41D9C5272B8EBB0F7 url=https://snowflake-broker.triplebit.dev/ front=www.gstatic.com
+snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ front=docs.plesk.com
 snowflake 193.187.88.42:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
+snowflake 193.187.88.46:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
+snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ front=www.google.com
 snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com
 snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=foursquare.com
+snowflake 10.0.3.2:443 A478B32B16FC1F371677F9F41D9C5272B8EBB0F7 url=https://snowflake-broker.triplebit.dev/ front=www.gstatic.com
 snowflake 193.187.88.43:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
 snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com
 snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net
 snowflake 10.0.3.1:443 53B65F538F5E9A5FA6DFE5D75C78CB66C5515EF7 url=https://snowflake-broker.triplebit.dev/ front=www.google.com
 snowflake 193.187.88.44:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
 snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=fastly.jsdelivr.net
+snowflake 141.212.118.18:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net/
+snowflake 193.187.88.45:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
 snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ front=docs.plesk.com
 snowflake 192.0.2.3:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn
 meek_lite 192.0.2.33:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloRandomizedALPN
@@ -371,8 +377,8 @@ meek_lite 192.0.2.41:80 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.n
 meek_lite 192.0.2.31:80 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloFirefox_Auto
 meek_lite 192.0.2.81:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN
 meek_lite 192.0.2.94:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloChrome_Auto
-meek_lite 192.0.2.36:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloRandomizedNoALPN
 meek_lite 192.0.2.95:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloFirefox_Auto
+meek_lite 192.0.2.36:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloRandomizedNoALPN
 meek_lite 192.0.2.82:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloChrome_Auto
 meek_lite 192.0.2.100:80 url=https://1603026938.rsc.cdn77.org front=www.datapacket.com utls=HelloRandomizedNoALPN
 meek_lite 192.0.2.104:80 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.net utls=HelloRandomizedNoALPN
@@ -396,8 +402,8 @@ meek_lite 192.0.2.37:80 url=https://1603026938.rsc.cdn77.org front=www.datapacke
 meek_lite 192.0.2.102:80 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.net utls=HelloChrome_Auto
 meek_lite 192.0.2.23:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloFirefox_Auto
 meek_lite 192.0.2.107:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloFirefox_Auto
-meek_lite 192.0.2.34:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloChrome_Auto
 meek_lite 192.0.2.25:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedALPN
+meek_lite 192.0.2.34:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloChrome_Auto
 meek_lite 192.0.2.98:80 url=https://1603026938.rsc.cdn77.org front=www.datapacket.com utls=HelloChrome_Auto
 meek_lite 192.0.2.86:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloChrome_Auto
 meek_lite 192.0.2.91:80 url=https://1603026938.rsc.cdn77.org front=www.cdn77.com utls=HelloFirefox_Auto
