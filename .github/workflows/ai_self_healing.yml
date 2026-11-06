@@ -77,7 +77,21 @@ env:
 
 'on':
   workflow_run:
-    workflows: ["*"]
+    # LOOP FIX (2026-11): `["*"]` also matched THIS workflow (and every housekeeping bot): each
+    # completed self-healing run - even one whose jobs were all skipped by the name guard below -
+    # fired another workflow_run event, which is how this workflow reached 4000+ runs. The
+    # watched set is now an explicit list of the pipeline workflows; AI Self-Healing Engine itself
+    # and the workflow-run janitor / Dependabot are deliberately NOT in it.
+    workflows:
+      - "TorShield-IR Bridge Intelligence"
+      - "TorShield-IR Main CI"
+      - "AI Gateway Health Check"
+      - "AI Ultra-Pro Cleanup"
+      - "Auto Dependency Heal"
+      - "Auto Bridge Fusion (Hourly AI)"
+      - "bridge-pool-autofill"
+      - "orbot-conformance"
+      - "Egress Diagnostic (meek/conjure TLS timeout isolation)"
     types: [completed]
   schedule:
     # Merged from self-heal.yml — independent 6h heartbeat, does not depend

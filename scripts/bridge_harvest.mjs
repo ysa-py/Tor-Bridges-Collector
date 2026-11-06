@@ -32,6 +32,7 @@ import net from "node:net";
 import dns from "node:dns/promises";
 import path from "node:path";
 import { iranScore, ipv4ToInt } from "./lib/iran_antidpi_model.mjs";
+import { isPlaceholderUrl } from "./lib/orbot_format.mjs";
 
 const argv = process.argv.slice(2);
 const has = (flag) => argv.includes(flag);
@@ -90,6 +91,18 @@ const BUILTIN_SOURCES = [
   "scriptzteam/Tor-Bridges-Collector@main:bridges-obfs4-ipv6",
   "scriptzteam/Tor-Bridges-Collector@main:bridges-webtunnel",
   "scriptzteam/Tor-Bridges-Collector@main:bridges-vanilla",
+  // Verified live sources added 2026-11 (each returns real bridge lines; dead ones are demoted
+  // automatically by the per-source ok/fail statistics, never fatal).
+  "Delta-Kronecker/Delta-Tor@HEAD:Android/app/src/main/assets/bridges/obfs4.txt",
+  "Delta-Kronecker/Delta-Tor@HEAD:Android/app/src/main/assets/bridges/obfs4_72h.txt",
+  "Delta-Kronecker/Delta-Tor@HEAD:Android/app/src/main/assets/bridges/obfs4_ipv6_72h.txt",
+  "Delta-Kronecker/Delta-Tor@HEAD:Android/app/src/main/assets/bridges/webtunnel.txt",
+  "Delta-Kronecker/Delta-Tor@HEAD:Android/app/src/main/assets/bridges/webtunnel_72h.txt",
+  "Delta-Kronecker/Delta-Tor@HEAD:Android/app/src/main/assets/bridges/vanilla.txt",
+  "githubkdskkd/Tor-Bridges-List@HEAD:obfs4.txt",
+  "githubkdskkd/Tor-Bridges-List@HEAD:webtunnel.txt",
+  "maximusTIT/tor-bridges@HEAD:bridges.txt",
+  "shahab7e/Gommage@HEAD:assets/bridges.txt",
 ].map((spec) => {
   const [repo, rest] = spec.split("@");
   const [branch, file] = rest.split(":");
@@ -242,7 +255,7 @@ function parseBridge(raw, stats) {
   if (transport === "webtunnel") {
     try {
       const url = new URL(params.url ?? "");
-      if (url.protocol !== "https:" || !url.hostname.includes(".") || /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname)) throw new Error("url");
+      if (url.protocol !== "https:" || !url.hostname.includes(".") || isPlaceholderUrl(params.url) || /^\d+\.\d+\.\d+\.\d+$/.test(url.hostname)) throw new Error("url");
     } catch {
       stats.badUrl += 1;
       return null;
@@ -330,6 +343,17 @@ async function discover(state, report) {
     "bridge collector obfs4 webtunnel vanilla in:readme",
     "iran tor bridges in:name,description,readme",
     "orbot bridges in:name,description",
+    // wider net (2026-11): app assets, Persian / Russian ecosystem, feeds and pools
+    "tor bridges android assets obfs4 webtunnel in:readme",
+    "bridge pool obfs4 webtunnel snowflake in:name,description",
+    "tor bridges feed in:name,description",
+    "topic:tor-bridge",
+    "topic:snowflake topic:tor",
+    "topic:censorship-circumvention topic:tor",
+    "obfs4 iat-mode bridges list in:readme",
+    "پل تور بریج",
+    "tor bridges telegram bot obfs4 in:readme",
+    "bridgedb mirror obfs4 in:name,description",
   ];
   const repos = new Map();
   for (const query of queries) {
@@ -359,6 +383,9 @@ async function discover(state, report) {
       "obfs4 cert= iat-mode= extension:txt",
       "webtunnel url=https ver=0.0.1 extension:txt",
       "obfs4 cert iat-mode filename:bridges",
+      "obfs4 cert= iat-mode= filename:bridges.txt",
+      "webtunnel url=https ver= filename:webtunnel",
+      "obfs4 cert= iat-mode=0 extension:list",
     ];
     for (const query of codeQueries) {
       try {

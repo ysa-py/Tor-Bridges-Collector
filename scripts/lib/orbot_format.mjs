@@ -65,6 +65,88 @@ export function splitAddress(token) {
   };
 }
 
+/** Fingerprints of the public Snowflake bridges shipped with Tor Browser (used to heal corrupted copies). */
+export const KNOWN_FINGERPRINTS = [
+  "2B280B23E1107BB62ABFC40DDCC8824814F80A72",
+  "8838024498816A039FCBBAB14E6F40A0843051FA",
+];
+
+/** Documentation / template hosts that appear in sample lines and can never be reached. */
+const PLACEHOLDER_HOST =
+  /^(?:yourdomain|your-domain|yourdomain\.\w+|example\.(?:com|org|net)|www\.example\.(?:com|org|net)|domain\.(?:tld|com)|localhost|[a-z0-9.-]+\.(?:example|invalid|test|localhost))$/i;
+
+export function isPlaceholderUrl(value) {
+  try {
+    const url = new URL(String(value));
+    return PLACEHOLDER_HOST.test(url.hostname);
+  } catch {
+    return /yourdomain|example\.(com|org|net)/i.test(String(value));
+  }
+}
+
+function editDistance(a, b, max = 3) {
+  if (Math.abs(a.length - b.length) > max) return max + 1;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+/**
+ * Heal a hex token that is a damaged fingerprint (one or two characters lost / flipped).
+ * Orbot's regex lets such a token through (it falls into the free-form tail) but Tor then
+ * refuses the bridge ("Invalid fingerprint"), so the whole bridge is dead on arrival.
+ * @returns {null | {fp: string | null, repaired: boolean}} null = not fingerprint-like;
+ *          fp === null = fingerprint-like but unrecoverable.
+ */
+export function repairFingerprint(token) {
+  if (FP40.test(token)) return { fp: token.toUpperCase(), repaired: token !== token.toUpperCase() };
+  if (!/^[0-9a-fA-F]{34,46}$/.test(token)) return null;
+  const upper = token.toUpperCase();
+  const known = KNOWN_FINGERPRINTS.find((candidate) => editDistance(upper, candidate, 2) <= 2);
+  return known ? { fp: known, repaired: true } : { fp: null, repaired: false };
+}
+
+/**
+ * Token-wise scrub of one raw bridge line: heals damaged fingerprints and flags lines that
+ * can never connect. Whitespace and every other byte of the line are preserved.
+ * @returns {{drop: string | null, line: string, changed: boolean}}
+ */
+export function scrubLine(raw) {
+  const parts = String(raw).split(/(\s+)/);
+  let changed = false;
+  for (let i = 0; i < parts.length; i++) {
+    const token = parts[i];
+    if (!token || /^\s+$/.test(token)) continue;
+    const eq = token.indexOf("=");
+    if (eq > 0) {
+      const key = token.slice(0, eq).toLowerCase();
+      const value = token.slice(eq + 1);
+      if (key === "fingerprint") {
+        const fixed = repairFingerprint(value);
+        if (fixed && fixed.fp === null) return { drop: "bad-fingerprint", line: raw, changed: false };
+        if (fixed && fixed.fp !== value) {
+          parts[i] = `${token.slice(0, eq)}=${fixed.fp}`;
+          changed = true;
+        }
+      } else if (key === "url" && isPlaceholderUrl(value)) {
+        return { drop: "placeholder-url", line: raw, changed: false };
+      }
+    } else if (/^[0-9a-fA-F]{34,46}$/.test(token) && token.length !== 40) {
+      const fixed = repairFingerprint(token);
+      if (!fixed || fixed.fp === null) return { drop: "bad-fingerprint", line: raw, changed: false };
+      parts[i] = fixed.fp;
+      changed = true;
+    }
+  }
+  return { drop: null, line: parts.join(""), changed };
+}
+
 /** Problems the regex cannot catch but Tor/Orbot reject at connect time. Empty array = fine. */
 export function semanticProblems(line) {
   const problems = [];
@@ -82,6 +164,9 @@ export function semanticProblems(line) {
       .filter((t) => t.includes("="))
       .map((t) => [t.slice(0, t.indexOf("=")).toLowerCase(), t.slice(t.indexOf("=") + 1)]),
   );
+  if (rest.some((token) => /^[0-9a-fA-F]{34,46}$/.test(token) && token.length !== 40)) problems.push("bad-fingerprint");
+  if (kv.fingerprint !== undefined && !FP40.test(kv.fingerprint)) problems.push("bad-fingerprint");
+  if (kv.url && isPlaceholderUrl(kv.url)) problems.push("placeholder-url");
   if (transport === "obfs4" && !/^[A-Za-z0-9+/]{40,90}$/.test(kv.cert ?? "")) problems.push("obfs4-cert");
   if (transport === "obfs4" && kv["iat-mode"] !== undefined && !/^[012]$/.test(kv["iat-mode"])) problems.push("obfs4-iat");
   if (transport === "webtunnel" && !/^https?:\/\/[^/\s]+\.[^/\s]+/i.test(kv.url ?? "")) problems.push("webtunnel-url");
@@ -103,6 +188,9 @@ export function repairForOrbot(raw) {
   text = text.replace(/^Bridge\s+/i, "").replace(/\s+/g, " ").trim();
   if (/^conjure\b/i.test(text)) return { ok: false, reason: "conjure" };
   if (UNSUPPORTED.test(text)) return { ok: false, reason: "unsupported" };
+  const scrubbed = scrubLine(text);
+  if (scrubbed.drop) return { ok: false, reason: scrubbed.drop };
+  text = scrubbed.line;
 
   let tokens = text.split(" ");
   const first = tokens[0].toLowerCase();

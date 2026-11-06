@@ -134,6 +134,11 @@ jobs:
         run: bash scripts/test_self_healing_diagnostics.sh
       - name: Test AI Ultra-Pro cleanup safety and batch limits
         run: bash scripts/test_ai_ultra_pro_cleanup.sh
+      - name: Test Orbot format repair, adaptive Iran anti-DPI selector and run-retention policy
+        run: |
+          node scripts/test_orbot_format.mjs
+          node scripts/test_iran_adaptive.mjs
+          node scripts/test_run_cleanup_plan.mjs
       - name: Optional secret availability
         id: secret_presence
         env:
