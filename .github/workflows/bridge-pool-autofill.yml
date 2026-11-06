@@ -1,0 +1,86 @@
+name: bridge-pool-autofill
+
+# Advanced, fully automatic pool maintenance:
+#   * refill empty / under-populated bridge lists from sibling lists,
+#   * drop exact duplicates and normalise lines (never a semantic change),
+#   * rebuild the AI-ranked, network-diversified Iran anti-DPI rotation list,
+#   * expose an Orbot-pasteable projection of the torrc exports,
+#   * report every line Orbot would reject instead of deleting it,
+#   * keep conjure out (Orbot cannot use that transport).
+# Runs hourly, commits only when something actually changed.
+
+on:
+  schedule:
+    - cron: "7 * * * *"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "bridge/**"
+      - "export/**"
+      - "scripts/bridge_autofill.mjs"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: bridge-pool-autofill
+  cancel-in-progress: false
+
+jobs:
+  autofill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Autofill, dedupe and hourly AI merge
+        run: node scripts/bridge_autofill.mjs --fix --fill --dynamic --json "$RUNNER_TEMP/autofill-report.json"
+
+      - name: Purge conjure (only conjure is removed)
+        run: |
+          if [ -f scripts/purge_conjure.sh ]; then
+            bash scripts/purge_conjure.sh
+          else
+            echo "scripts/purge_conjure.sh not present - skipped"
+          fi
+
+      - name: Orbot conformance gate (paste-ready lists)
+        run: |
+          if [ -f scripts/orbot_validate.mjs ]; then
+            node scripts/orbot_validate.mjs --dir export/orbot
+          else
+            node scripts/bridge_autofill.mjs --check
+          fi
+
+      - name: Hard self-check
+        run: node scripts/bridge_autofill.mjs --check
+
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-autofill-report
+          path: ${{ runner.temp }}/autofill-report.json
+          if-no-files-found: warn
+
+      - name: Commit refreshed lists
+        run: |
+          set -euo pipefail
+          git config user.name "bridge-bot"
+          git config user.email "bridge-bot@users.noreply.github.com"
+          git add bridge export
+          if git diff --staged --quiet; then
+            echo "nothing to commit - lists already up to date"
+            exit 0
+          fi
+          git commit -m "chore(bridge): hourly autofill + AI anti-DPI rotation [skip ci]"
+          git push
