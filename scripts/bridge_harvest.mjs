@@ -54,7 +54,7 @@ const CFG = {
   timeoutMs: num("--timeout-ms", 4000),
   poolCap: num("--pool-cap", 14000),
   ttlDays: num("--ttl-days", 14),
-  maxUnverified: num("--max-unverified", 1500),
+  maxUnverified: num("--max-unverified", 4500),
   perFileAdd: num("--per-file-add", 2000),
   json: opt("--json", null),
 };
@@ -311,8 +311,8 @@ async function buildSourceList(state) {
 
 async function discover(state, report) {
   const lastRun = state.lastDiscover ? new Date(state.lastDiscover).getTime() : 0;
-  if (NOW.getTime() - lastRun < 5 * 3_600_000) {
-    log("discovery: ran less than 5h ago — skipped");
+  if (NOW.getTime() - lastRun < 2 * 3_600_000) {
+    log("discovery: ran less than 2h ago — skipped");
     return;
   }
   const headers = { accept: "application/vnd.github+json" };
@@ -322,13 +322,21 @@ async function discover(state, report) {
     "obfs4 bridges in:name,description",
     "webtunnel bridges in:name,description",
     "tor bridge list obfs4 snowflake in:readme",
+    "topic:tor-bridges",
+    "topic:obfs4",
+    "topic:webtunnel",
+    "topic:bridges topic:tor",
+    "tor-bridges in:name",
+    "bridge collector obfs4 webtunnel vanilla in:readme",
+    "iran tor bridges in:name,description,readme",
+    "orbot bridges in:name,description",
   ];
   const repos = new Map();
   for (const query of queries) {
     try {
       const body = JSON.parse(
         await fetchText(
-          `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=updated&order=desc&per_page=15`,
+          `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=updated&order=desc&per_page=30`,
           { headers, retries: 1 },
         ),
       );
@@ -340,10 +348,42 @@ async function discover(state, report) {
     } catch (error) {
       report.warnings.push(`discovery search failed: ${error.message}`);
     }
-    await sleep(1200);
+    await sleep(2200); // search API: 30 req/min with a token, 10 without
   }
   let found = 0;
-  for (const [full, branch] of [...repos.entries()].slice(0, 24)) {
+
+  // GitHub code search (needs a token): finds raw bridge files directly, even inside
+  // repositories whose name/description never mention bridges.
+  if (process.env.GITHUB_TOKEN) {
+    const codeQueries = [
+      "obfs4 cert= iat-mode= extension:txt",
+      "webtunnel url=https ver=0.0.1 extension:txt",
+      "obfs4 cert iat-mode filename:bridges",
+    ];
+    for (const query of codeQueries) {
+      try {
+        const body = JSON.parse(
+          await fetchText(`https://api.github.com/search/code?q=${encodeURIComponent(query)}&per_page=50`, { headers, retries: 1 }),
+        );
+        for (const item of body.items ?? []) {
+          const full = item.repository?.full_name;
+          if (!full || full.toLowerCase() === OWN_REPO) continue;
+          if (/\.(md|json|zip|gz|py|js|ts|go|rs|yml|yaml|sh|html|toml)$/i.test(item.path)) continue;
+          if (/readme|license|changelog|blocked|conjure/i.test(item.path)) continue;
+          const url = `https://raw.githubusercontent.com/${full}/HEAD/${item.path.split("/").map(encodeURIComponent).join("/")}`;
+          if (!state.sources[url]) {
+            state.sources[url] = { name: `code-search:${full}/${item.path}`, origin: "discovered", added: NOW_ISO, ok: 0, fail: 0, miss: 0, yield: 0 };
+            found += 1;
+          }
+        }
+      } catch (error) {
+        report.warnings.push(`code search failed: ${error.message}`);
+      }
+      await sleep(7000); // code search is limited to ~10 requests / minute
+    }
+  }
+
+  for (const [full, branch] of [...repos.entries()].slice(0, 70)) {
     try {
       const tree = JSON.parse(
         await fetchText(`https://api.github.com/repos/${full}/git/trees/${encodeURIComponent(branch)}?recursive=1`, { headers, retries: 1 }),
@@ -354,7 +394,7 @@ async function discover(state, report) {
         .filter((node) => !/\.(md|json|zip|gz|png|jpg|py|js|ts|go|rs|yml|yaml|sh|csv|html|toml|lock)$/i.test(node.path))
         .filter((node) => !/readme|license|changelog|manifest|blocked|snowflake|meek|conjure|dnstt/i.test(node.path))
         .sort((a, b) => b.size - a.size)
-        .slice(0, 6);
+        .slice(0, 10);
       for (const node of files) {
         const url = `https://raw.githubusercontent.com/${full}/${branch}/${node.path}`;
         if (!state.sources[url]) {

@@ -27,6 +27,7 @@
  */
 import { readdir, readFile, writeFile, stat } from "node:fs/promises";
 import path from "node:path";
+import { semanticProblems } from "./lib/orbot_format.mjs";
 
 const CURRENT_ORBOT = /^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+])(:\d{1,5})?)\s+([\da-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$/;
 const LEGACY_ORBOT = /^(obfs4|webtunnel)\s+((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d{1,5})\s+)([0-9A-F]{40})(\s+\S+)*$/;
@@ -110,6 +111,15 @@ for (const file of files) {
     if (!CURRENT_ORBOT.test(line)) {
       entry.invalid += 1;
       if (entry.samples.length < 3) entry.samples.push(line.slice(0, 150));
+    } else if (!line.startsWith("#")) {
+      // Regex-valid but unusable: Orbot accepts the paste, then Tor answers "configuration is
+      // invalid" when the user taps Connect (octet > 255, port 0 / > 65535, obfs4 without cert=...).
+      const problems = semanticProblems(line);
+      if (problems.length > 0) {
+        entry.invalid += 1;
+        entry.semantic = (entry.semantic ?? 0) + 1;
+        if (entry.samples.length < 3) entry.samples.push(`[${problems[0]}] ${line.slice(0, 140)}`);
+      }
     }
     if (!LEGACY_ORBOT.test(line)) entry.legacyInvalid += 1;
     // TEST-NET is only a dead placeholder for transports that dial the IP (obfs4 / vanilla).

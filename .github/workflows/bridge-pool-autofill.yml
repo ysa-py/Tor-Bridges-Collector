@@ -46,6 +46,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Self-test (Orbot format + anti-DPI model)
+        run: node scripts/test_orbot_format.mjs
+
       # Self-extending harvester: discovers new collector repos through the GitHub API,
       # pulls every mirror, validates for Orbot, TCP-probes (alive + RTT) and keeps a
       # durable pool. Never fatal: a dead network just leaves the pool as it is.
@@ -57,6 +60,11 @@ jobs:
 
       - name: Autofill, dedupe and hourly AI merge
         run: node scripts/bridge_autofill.mjs --fix --fill --dynamic --json "$RUNNER_TEMP/autofill-report.json"
+
+      # Orphan lists that no generator refreshed (export/ech_top_bridges.txt) + byte-identical
+      # alias files (bridge/snowflake_ipv6_tested, bridge/snowflak_ipv4_ipv6_all.txt).
+      - name: Fill orphan lists and sync aliases
+        run: node scripts/bridge_fill_empty.mjs || echo "fill-empty failed - continuing"
 
       - name: Purge conjure (only conjure is removed)
         run: |
@@ -73,6 +81,12 @@ jobs:
           for s in scripts/build_iran_cut_pack.sh scripts/build_nin_recommended_transport.sh; do
             if [ -f "$s" ]; then bash "$s" || echo "$s failed - continuing"; fi
           done
+
+      # Permanent "Invalid bridge format" fix: every export/ pack that Orbot would reject
+      # (Bridge prefix, # headers, address-less snowflake/meek_lite) gets a paste-ready twin in
+      # export/orbot/orbot_pack_*.txt. Sources are never modified (their generators are byte-exact).
+      - name: Project Orbot-pasteable twins of export packs
+        run: node scripts/orbot_project.mjs --check
 
       - name: Orbot conformance gate (paste-ready lists)
         run: |
@@ -119,10 +133,22 @@ jobs:
           set -euo pipefail
           git config user.name "bridge-bot"
           git config user.email "bridge-bot@users.noreply.github.com"
-          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json README.md
+          git add bridge export data/bridge_harvest_pool.json data/bridge_harvest_sources.json data/iran_antidpi_weights.json README.md
           if git diff --staged --quiet; then
             echo "nothing to commit - lists already up to date"
             exit 0
           fi
           git commit -m "chore(bridge): hourly autofill + AI anti-DPI rotation [skip ci]"
-          git push
+          # Other hourly bots push to main too: never fail the run on a lost race.
+          for attempt in 1 2 3 4; do
+            if git push; then exit 0; fi
+            echo "push rejected (attempt $attempt) - rebasing on origin/main"
+            git fetch origin main
+            if ! git rebase -X theirs origin/main; then
+              git rebase --abort || true
+              echo "state moved on - nothing lost, lists are regenerated next hour"
+              exit 0
+            fi
+            sleep $((attempt * 5))
+          done
+          echo "push still rejected - lists are regenerated next hour"

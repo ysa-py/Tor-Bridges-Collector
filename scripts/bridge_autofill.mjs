@@ -31,6 +31,7 @@ import { readdir, readFile, stat, writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { iranScore, hardenObfs4 } from "./lib/iran_antidpi_model.mjs";
+import { iranScoreAI, loadModel, trainModel, saveModel } from "./lib/iran_antidpi_learn.mjs";
 
 const ORBOT_LINE = /^((meek_lite|obfs4|webtunnel|snowflake|dnstt)\s+)?((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[[\da-fA-F:]+])(:\d{1,5})?)\s+([\da-fA-F]{40})?[ \t\f\w\-/+:=.,\[\]]*$/;
 const LEGACY_LINE = /^(obfs4|webtunnel)\s+((\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})(:\d{1,5})\s+)([0-9A-F]{40})(\s+\S+)*$/;
@@ -185,8 +186,12 @@ async function listFiles(dir) {
  * key, deterministic, and every term is explainable.
  */
 function scoreLine(parsed, ctx) {
-  return iranScore(parsed, ctx);
+  // hand-tuned prior + self-trained adjustment (data/iran_antidpi_weights.json); with no
+  // model on disk this is exactly the prior, so the pipeline never depends on training.
+  return MODEL ? iranScoreAI(parsed, ctx ?? {}, MODEL) : iranScore(parsed, ctx);
 }
+
+let MODEL = await loadModel(ROOT);
 
 function bucketOf(identity) {
   const digest = createHash("sha1").update(identity).digest();
@@ -319,7 +324,11 @@ for (const dir of SCAN_DIRS) {
 /* ---------------------------------------------------------------------- fill */
 
 const fillTargets = [...inventory.values()].filter(
-  (entry) => entry.valid < MODE.minLines && (entry.file.startsWith("bridge/") || entry.file.startsWith("export/orbot/")),
+  // orbot_pack_* are exact projections of export/ packs (scripts/orbot_project.mjs): never padded.
+  (entry) =>
+    entry.valid < MODE.minLines &&
+    (entry.file.startsWith("bridge/") || entry.file.startsWith("export/orbot/")) &&
+    !path.basename(entry.file).startsWith("orbot_pack_"),
 );
 
 for (const target of fillTargets) {
@@ -410,6 +419,24 @@ if (MODE.fix) {
 /* ------------------------------------------------------------------- dynamic */
 
 if (MODE.dynamic) {
+  // Hourly self-training on the repository's own Iran evidence (blocked vs likely-working).
+  // A failure or too little evidence keeps the previous model; it is never fatal.
+  try {
+    const trained = await trainModel(ROOT);
+    if (trained.ok) {
+      MODEL = trained.model;
+      await saveModel(ROOT, MODEL);
+      report.actions.push({ kind: "train", file: "data/iran_antidpi_weights.json", written: MODEL.samples.positive + MODEL.samples.negative, applied: true });
+      console.log(
+        "[bridge-autofill] AI model retrained: samples=%d holdout-auc=%s confidence=%s ranges=%d",
+        MODEL.samples.positive + MODEL.samples.negative, MODEL.holdout.auc, MODEL.confidence, Object.keys(MODEL.ranges).length,
+      );
+    } else {
+      report.warnings.push(`AI model not retrained: ${trained.reason}`);
+    }
+  } catch (error) {
+    report.warnings.push(`AI model training failed (${error.message}) — previous model kept`);
+  }
   const blocklists = new Set();
   for (const name of await listFiles("bridge")) {
     if (!/blocked|iran_blocked|flagged/i.test(name)) continue;
@@ -431,6 +458,20 @@ if (MODE.dynamic) {
     /* no harvest pool yet */
   }
 
+  // /24 density over every candidate: ranges stuffed with bridges get blocked together.
+  const density = new Map();
+  const seenIdentity = new Set();
+  for (const entry of inventory.values()) {
+    if (!entry.pasteReady && !entry.file.startsWith("bridge/")) continue;
+    if (/blocked|flagged/i.test(entry.file)) continue;
+    for (const parsed of entry.entries) {
+      if (seenIdentity.has(parsed.identity) || !parsed.isIpv4) continue;
+      seenIdentity.add(parsed.identity);
+      const key = parsed.host.split(".").slice(0, 3).join(".");
+      density.set(key, (density.get(key) ?? 0) + 1);
+    }
+  }
+
   for (const entry of inventory.values()) {
     if (!entry.pasteReady && !entry.file.startsWith("bridge/")) continue;
     if (/blocked|flagged/i.test(entry.file)) continue;
@@ -447,6 +488,7 @@ if (MODE.dynamic) {
         aliveStreak: evidence?.as,
         failStreak: evidence?.fl,
         rttMs: evidence?.rtt,
+        density: parsed.isIpv4 ? density.get(parsed.host.split(".").slice(0, 3).join(".")) : 1,
       });
       const previous = pool.get(key);
       const candidate = {
@@ -505,6 +547,36 @@ if (MODE.dynamic) {
     await writeFile(path.join(ROOT, "export/orbot/orbot_rotation_plan.json"), JSON.stringify(manifest, null, 2) + "\n", "utf8");
     report.dynamic = { target, written: lines.length, poolSize: pool.size, rotationBucket: rotate, perTransport: manifest.perTransport };
     report.actions.push({ kind: "dynamic", file: target, written: lines.length, applied: true });
+
+    // Objective-specific profiles from the same AI-scored pool (all Orbot-valid, hourly rotation):
+    //   stealth : maximum DPI resistance (HTTPS-mimicking / fronted / CDN-shielded, timing-randomised)
+    //   fast    : least overhead (direct obfs4 / vanilla, iat-mode kept at the bridge default, RTT when probed)
+    const profiles = {
+      "export/orbot/orbot_iran_stealth.txt": (candidate) =>
+        candidate.score +
+        (candidate.parsed.transport === "webtunnel" ? 14 : 0) +
+        (candidate.parsed.params.front || candidate.parsed.params.fronts ? 6 : 0) +
+        (candidate.parsed.port === 443 ? 6 : 0) +
+        (/iat-mode=[12]/.test(candidate.parsed.line) ? 4 : 0),
+      "export/orbot/orbot_iran_fast.txt": (candidate) =>
+        candidate.score +
+        (candidate.parsed.transport === "obfs4" || candidate.parsed.transport === "vanilla" ? 10 : -12) +
+        (candidate.parsed.port === 443 ? 3 : 0) -
+        (candidate.parsed.isIpv6 ? 10 : 0) +
+        (typeof candidate.rtt === "number" ? Math.max(-6, 12 - candidate.rtt / 40) : 0),
+    };
+    for (const [profileFile, adjust] of Object.entries(profiles)) {
+      const adjusted = [...pool.values()].map((candidate) => {
+        const evidence = harvestEvidence.get(candidate.parsed.identity);
+        return { ...candidate, rtt: evidence?.rtt, score: adjust({ ...candidate, rtt: evidence?.rtt }) };
+      });
+      const chosen = selectDiverse(adjusted, Math.min(MODE.top, 40), rotate).sort((a, b) => b.score - a.score);
+      const profileLines = chosen.map((candidate) => (profileFile.includes("stealth") ? hardenObfs4(candidate.parsed.line) : candidate.parsed.line));
+      if (profileLines.length > 0 && profileLines.every((line) => ORBOT_LINE.test(line))) {
+        await writeFile(path.join(ROOT, profileFile), profileLines.join("\n") + "\n", "utf8");
+        report.actions.push({ kind: "dynamic-profile", file: profileFile, written: profileLines.length, applied: true });
+      }
+    }
   }
 
   // Transparency: lines that Orbot cannot paste are reported, never deleted.
@@ -548,7 +620,7 @@ if (MODE.dynamic) {
 
 if (MODE.check && report.hard.length > 0) {
   for (const problem of report.hard) console.error("[bridge-autofill] HARD: " + problem);
-  if (MODE.json) await writeFile(path.join(ROOT, MODE.json), JSON.stringify(report, null, 2) + "\n", "utf8");
+  if (MODE.json) await writeFile(path.resolve(ROOT, MODE.json), JSON.stringify(report, null, 2) + "\n", "utf8");
   process.exit(1);
 }
 
@@ -588,7 +660,7 @@ for (const warning of report.warnings.slice(0, 12)) console.log("[bridge-autofil
 for (const hard of report.hard) console.error("[bridge-autofill] HARD: " + hard);
 
 if (MODE.json) {
-  await writeFile(path.join(ROOT, MODE.json), JSON.stringify(report, null, 2) + "\n", "utf8");
+  await writeFile(path.resolve(ROOT, MODE.json), JSON.stringify(report, null, 2) + "\n", "utf8");
   console.log("[bridge-autofill] report: " + MODE.json);
 }
 
