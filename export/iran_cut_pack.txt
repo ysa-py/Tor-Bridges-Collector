@@ -1,13 +1,13 @@
 # TorShield-IR — Internet Cut Pack (شبکه ملی / NIN Mode)
-# Bridges: 957  (survivable during full international internet cut)
+# Bridges: 966  (survivable during full international internet cut)
 # Order: source priority — strict NIN-eligible, classifier packs, then
 # probe-survivable domestic/CDN set (each stage's own internal order).
 #
 # Merged automatically (Stage 8p2) from every NIN-cut intelligence artifact:
 #   data/nin_eligible.json=88 lines (+88 unique)
-#   bridge/iran_likely_working_nin.txt=390 lines (+333 unique)
+#   bridge/iran_likely_working_nin.txt=389 lines (+342 unique)
 #   export/nin_cut_bridges.txt=88 lines (+0 unique)
-#   export/iran_nin_pack.txt=904 lines (+237 unique)
+#   export/iran_nin_pack.txt=605 lines (+237 unique)
 #   export/nin_cut_survivable.txt=299 lines (+299 unique)
 #
 # Advisory: runner-side evidence, not Iranian-side measurement.
@@ -359,10 +359,20 @@ webtunnel 172.67.174.228:443 439C2F45FA99C9255F079ACBF59060D3EC2C3637 url=https:
 webtunnel 107.189.17.60:443 C9628ABAC17E75C70B32C0830E08CA85A9DFF0B0 url=https://wt3.vkurage.zip/CJLc2A5gsTw8NIahLyYhvBlZ ver=0.0.3
 webtunnel 104.26.15.240:443 28F5A0325B50F3EFB5FCC73194FCBF9D4972248E url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.4
 webtunnel 152.53.49.65:443 DAEFF07E181A420069F9944C12BAA0DE6FD59B6D url=https://nthpyro.dev ver=0.0.3
+snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ front=docs.plesk.com
+snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=fastly.jsdelivr.net
+snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com
 snowflake 10.0.3.2:8080 A478B32B16FC1F371677F9F41D9C5272B8EBB0F7 url=https://snowflake-broker.triplebit.dev/ front=www.gstatic.com
+snowflake 141.212.118.18:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/
+snowflake 193.187.88.45:132 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
 snowflake 10.0.3.2:443 A478B32B16FC1F371677F9F41D9C5272B8EBB0F7 url=https://snowflake-broker.triplebit.dev/ front=www.gstatic.com
 snowflake 10.0.3.1:443 53B65F538F5E9A5FA6DFE5D75C78CB66C5515EF7 url=https://snowflake-broker.triplebit.dev/ front=www.google.com
+snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net
+snowflake 193.187.88.44:132 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
 snowflake 10.0.3.1:8080 53B65F538F5E9A5FA6DFE5D75C78CB66C5515EF7 url=https://snowflake-broker.triplebit.dev/ front=www.google.com
+snowflake 193.187.88.46:132 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
+snowflake 193.187.88.43:132 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
+snowflake 193.187.88.42:132 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/
 snowflake 192.0.2.3:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn
 meek_lite 192.0.2.22:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloChrome_Auto
 meek_lite 192.0.2.35:80 url=https://1603026938.rsc.cdn77.org front=app.datapacket.com utls=HelloFirefox_Auto
@@ -425,7 +435,6 @@ meek_lite 192.0.2.96:80 url=https://1603026938.rsc.cdn77.org front=app.datapacke
 meek_lite 192.0.2.18:80 97700DFE9F483596DDA6264C4D7DF7641E1E39CE url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com
 webtunnel 103.75.118.28:443 0526BEBCFD23E42EE2A581271D3C19B7F55BE78D url=https://cyberbuncafe.com/kOEVpfTJG0LKqQ5l4Vb2gOlD ver=0.0.1
 webtunnel 147.79.105.9:443 955F0FEF5D2EC860C0A1CEE9F6C24137A5DFE2D8 url=https://softcode.cloud/shel1phai9beXohpheHa ver=0.0.1
-webtunnel 172.66.157.237:443 8838024498816A039FCBBAB14E6F40A0843051FA url=https://example.org/path ver=0.0.1
 webtunnel 172.67.208.101:2053 F799A0A458365388600F54BD44A99B5887D54911 url=https://wt.aaronstory2026.xyz:2053/vicmackey ver=0.0.4
 webtunnel 195.128.102.85:443 933C998EC827D1C17CC93D1292BBC41735867CF8 url=https://x7t2qctb.xoomlia.com/qzxrtfmu/ ver=0.0.1
 webtunnel 64.190.63.111:443 D92B26A44D3EE84278F6F8205862A0917706819A url=https://birdbox.fun ver=0.0.1
@@ -640,7 +649,6 @@ webtunnel 83.199.78.107:443 230C4BDC223F6A0494C41EB2DE2694B98C635D13 url=https:/
 webtunnel 83.199.78.107:443 230C4BDC223F6A0494C41EB2DE2694B98C635D13 url=https://albator.ravion.org/L59vmiDPK0nthIw3cZtYSFev ver=0.0.1
 webtunnel 92.27.137.134:443 339281F7912780D8A7FB118A48A65FFBF92F043F url=https://mwumba.com/9f2jjnAR9LR1fInBy60tbS57 ver=0.0.1
 webtunnel 84.200.81.99:443 CC7178BBFA80A917CDF495587FFCE4A7ED74FA7A url=https://balanced-unity.eu/CC7178BBFA80A917CDF495587FFCE4A7ED74FA7A ver=0.0.1
-webtunnel 104.20.26.136:443 8838024498816A039FCBBAB14E6F40A0843051FA url=https://example.org/path ver=0.0.1
 webtunnel 104.21.74.152:443 90F74ACFAE366AB7A442F4F6685E2179BD3A23FE url=https://samba.avhl.ru/L3S0hgHznlPUa0eGJXSedAj6 ver=0.0.3
 meek_lite [2001:db8::15]:443 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN
 meek_lite [2001:db8::16]:443 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloChrome_Auto
@@ -670,7 +678,8 @@ meek_lite [2001:db8::2d]:443 url=https://1603026938.rsc.cdn77.org front=ajax.asp
 meek_lite [2001:db8::2e]:443 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloChrome_Auto
 meek_lite [2001:db8::2f]:443 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloFirefox_Auto
 meek_lite [2001:db8::30]:443 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedNoALPN
-Bridge 13.39.4.64:443 E70A3744F75123EC619A94D70191A2B42235F0D3
+snowflake [2607:f018:600:8:be30:5bff:fe1:c6fa]:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/
+13.39.4.64:443 E70A3744F75123EC619A94D70191A2B42235F0D3
 5.161.255.247:8080 5C70E3D1E109F2192C07CDE8F3E3E3708C6CA68F
 obfs4 103.149.168.186:8443 2D16215A86522A3CFCBBBE30BFF7C706413336A9 cert=ebVLQlo1wEnp/HYtJ+nSuikwe+dSt632ka33wJAiUeVK0IeYs5M6w5DwoPX8gYLsJfADSA iat-mode=0
 obfs4 103.149.168.234:8443 2DF354DFB45E818F3437B525A312166ACE94D2F0 cert=bNk4dmMz77mVUxInj7ca7++JO8RceUxXzLkBAD3fQg3/yxoVfH5l0GtQ8FcNpjrkgyzhLQ iat-mode=0
