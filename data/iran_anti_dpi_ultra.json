@@ -1,14 +1,14 @@
 {
   "adaptive_transport_weights": {
-    "meek-azure": 0.9247,
+    "meek-azure": 0.925,
     "obfs4": 0.7665,
-    "snowflake": 0.9402,
+    "snowflake": 0.9388,
     "vanilla": 0.48,
     "webtunnel": 0.9617
   },
   "counts": {
-    "history": 4217,
-    "live": 2419
+    "history": 4220,
+    "live": 2422
   },
   "dns": {
     "avoid_system_resolver": true,
@@ -67,7 +67,7 @@
       "use": "vanilla"
     }
   ],
-  "generated_at": "2026-11-06T13:05:23.183635+00:00",
+  "generated_at": "2026-11-06T13:13:41.180647+00:00",
   "hour_seed": 498325,
   "nin_shutdown_survival": {
     "fallback_order": [
@@ -90,28 +90,28 @@
     "fastest_by_transport": {
       "meek-azure": [
         {
-          "ai_score": 0.9572,
-          "latency_ms": 29.656,
+          "ai_score": 0.958,
+          "latency_ms": 25.357,
           "line": "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com"
         },
         {
-          "ai_score": 0.9149,
-          "latency_ms": 30.927,
+          "ai_score": 0.9164,
+          "latency_ms": 25.425,
           "line": "meek_lite 192.0.2.108:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedNoALPN"
         },
         {
           "ai_score": 0.9605,
-          "latency_ms": 35.238,
-          "line": "meek_lite 192.0.2.47:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloFirefox_Auto"
-        },
-        {
-          "ai_score": 0.9597,
-          "latency_ms": 35.884,
+          "latency_ms": 28.127,
           "line": "meek_lite 192.0.2.45:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN"
         },
         {
-          "ai_score": 0.9605,
-          "latency_ms": 37.675,
+          "ai_score": 0.9613,
+          "latency_ms": 28.169,
+          "line": "meek_lite 192.0.2.47:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloFirefox_Auto"
+        },
+        {
+          "ai_score": 0.9613,
+          "latency_ms": 29.248,
           "line": "meek_lite 192.0.2.46:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloChrome_Auto"
         }
       ],
@@ -144,29 +144,29 @@
       ],
       "snowflake": [
         {
-          "ai_score": 0.9433,
-          "latency_ms": 38.255,
-          "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com"
-        },
-        {
-          "ai_score": 0.9433,
-          "latency_ms": 39.917,
+          "ai_score": 0.9474,
+          "latency_ms": 36.219,
           "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com"
         },
         {
-          "ai_score": 0.9201,
-          "latency_ms": 51.875,
-          "line": "snowflake 192.0.2.36:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+          "ai_score": 0.9215,
+          "latency_ms": 43.4,
+          "line": "snowflake 192.0.2.34:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         },
         {
-          "ai_score": 0.7873,
-          "latency_ms": 52.225,
-          "line": "snowflake [2001:db8::23]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+          "ai_score": 0.9474,
+          "latency_ms": 43.968,
+          "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com"
         },
         {
-          "ai_score": 0.9201,
-          "latency_ms": 53.069,
-          "line": "snowflake 192.0.2.35:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+          "ai_score": 0.9215,
+          "latency_ms": 48.367,
+          "line": "snowflake 192.0.2.33:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
+        },
+        {
+          "ai_score": 0.9249,
+          "latency_ms": 48.881,
+          "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn"
         }
       ],
       "vanilla": [
