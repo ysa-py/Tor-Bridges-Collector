@@ -210,3 +210,36 @@ func TestLoadCacheCorruptFileIsNonFatal(t *testing.T) {
 		t.Fatalf("missing cache file must be non-fatal, got %v", err)
 	}
 }
+
+// A spent live-query budget must leave the IP "unchecked" (never blocked,
+// never working) and must not wait on the rate-limit ticker.
+func TestLiveQueryBudgetExhaustedReturnsUncheckedImmediately(t *testing.T) {
+	c := New()
+	defer c.Close()
+	c.SetLiveQueryBudget(1)
+	// Pretend the single slot is already spent by another IP.
+	if !c.takeLiveBudget() {
+		t.Fatal("first slot must be granted")
+	}
+	start := time.Now()
+	status, rate, checked := c.Classify(context.Background(), "198.51.100.77")
+	if checked || status != StatusUnknown || rate != 0 {
+		t.Fatalf("got status=%q rate=%v checked=%v, want unknown/0/unchecked", status, rate, checked)
+	}
+	if time.Since(start) > 150*time.Millisecond {
+		t.Fatalf("budget-exhausted Classify must not block on the ticker (took %s)", time.Since(start))
+	}
+	if c.LiveQueriesSkipped() != 1 {
+		t.Fatalf("skipped=%d, want 1", c.LiveQueriesSkipped())
+	}
+}
+
+func TestLiveQueryBudgetZeroMeansUnlimited(t *testing.T) {
+	c := New()
+	defer c.Close()
+	for i := 0; i < 1000; i++ {
+		if !c.takeLiveBudget() {
+			t.Fatalf("unlimited budget refused slot %d", i)
+		}
+	}
+}

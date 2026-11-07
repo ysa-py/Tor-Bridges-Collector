@@ -849,9 +849,10 @@ jobs:
         timeout --signal=TERM --kill-after=15s 10m ./iran_tester \
           --input  bridge/bridge_list_for_testing.json \
           --output "$staging" \
-          --workers 100 \
+          --workers 300 \
           --timeout 8s \
           --run-timeout 9m \
+          --ooni-live-budget 450 \
           --ooni-cache data/ooni_cache.json
         status=$?
         set -e

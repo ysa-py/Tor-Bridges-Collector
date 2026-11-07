@@ -11,7 +11,19 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
+)
+
+const (
+	// maxConcurrentLookups bounds simultaneous ipinfo.io requests no matter how
+	// many probe workers run; the free anonymous tier is easily rate limited.
+	maxConcurrentLookups = 24
+	// breakerThreshold is the number of consecutive failed lookups after which
+	// the circuit opens for the rest of the run. A failed lookup only means
+	// "ASN unknown" for that bridge (never blocked, never working), so skipping
+	// the remaining calls is safe and keeps the run inside its deadline.
+	breakerThreshold = 12
 )
 
 // Response is the subset of the ipinfo.io JSON response we care about.
@@ -38,6 +50,11 @@ type Client struct {
 	mu    sync.Mutex
 	cache map[string]*Response
 	hc    *http.Client
+
+	base        string        // overridable in tests
+	sem         chan struct{} // concurrency cap
+	consecFails atomic.Int64  // consecutive failures (reset on success)
+	skipped     atomic.Int64  // lookups short-circuited by the open breaker
 }
 
 // New creates a new Client with a pre-allocated cache and an HTTP client
@@ -48,8 +65,16 @@ func New() *Client {
 		hc: &http.Client{
 			Timeout: 10 * time.Second,
 		},
+		base: "https://ipinfo.io",
+		sem:  make(chan struct{}, maxConcurrentLookups),
 	}
 }
+
+// BreakerOpen reports whether lookups are being short-circuited.
+func (c *Client) BreakerOpen() bool { return c.consecFails.Load() >= breakerThreshold }
+
+// SkippedLookups reports how many lookups the open breaker skipped.
+func (c *Client) SkippedLookups() int64 { return c.skipped.Load() }
 
 // Lookup resolves an IP address to its ASN and country code.
 // Results are cached in-memory to avoid duplicate API calls within one run.
@@ -67,7 +92,22 @@ func (c *Client) Lookup(ctx context.Context, ip string) (*Response, error) {
 	}
 	c.mu.Unlock()
 
-	url := fmt.Sprintf("https://ipinfo.io/%s/json", ip)
+	if c.BreakerOpen() {
+		c.skipped.Add(1)
+		return nil, fmt.Errorf("ipinfo.io circuit open after %d consecutive failures", breakerThreshold)
+	}
+	select {
+	case c.sem <- struct{}{}:
+		defer func() { <-c.sem }()
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
+
+	base := c.base
+	if base == "" {
+		base = "https://ipinfo.io"
+	}
+	url := fmt.Sprintf("%s/%s/json", base, ip)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
@@ -77,18 +117,24 @@ func (c *Client) Lookup(ctx context.Context, ip string) (*Response, error) {
 
 	resp, err := c.hc.Do(req)
 	if err != nil {
+		if ctx.Err() == nil {
+			c.consecFails.Add(1)
+		}
 		return nil, fmt.Errorf("HTTP GET %s: %w", url, err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		c.consecFails.Add(1)
 		return nil, fmt.Errorf("ipinfo.io returned HTTP %d for %s", resp.StatusCode, ip)
 	}
 
 	var result Response
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		c.consecFails.Add(1)
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
+	c.consecFails.Store(0)
 
 	c.mu.Lock()
 	c.cache[ip] = &result
