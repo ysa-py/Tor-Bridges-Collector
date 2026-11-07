@@ -25,7 +25,22 @@ SLEEP_SECS="${POST_PUSH_VERIFY_SLEEP_SECS:-10}"
 # payload is small text files and the whole point is byte-level certainty.
 
 repo="${GITHUB_REPOSITORY:-ysa-py/Tor-Bridges-Collector}"
-base_url="https://raw.githubusercontent.com/${repo}/refs/heads/${BRANCH}"
+# Race-free reference: when POST_PUSH_VERIFY_REF is a commit SHA (the exact commit
+# this run pushed) the payload is verified against that immutable commit, so a
+# concurrent push by another workflow (autofill / fusion / vantage) to the same
+# branch can no longer be mistaken for sha256 drift. Without it the branch head
+# is used (legacy behaviour).
+REF="${POST_PUSH_VERIFY_REF:-}"
+if [[ -n "$REF" && ! "$REF" =~ ^[0-9a-f]{40}$ ]]; then
+  echo "::warning::POST_PUSH_VERIFY_REF is not a 40-hex commit SHA; falling back to branch ${BRANCH}"
+  REF=""
+fi
+if [[ -n "$REF" ]]; then
+  base_url="https://raw.githubusercontent.com/${repo}/${REF}"
+  BRANCH="${REF:0:12} (pinned commit)"
+else
+  base_url="https://raw.githubusercontent.com/${repo}/refs/heads/${BRANCH}"
+fi
 manifest_local="${BRIDGE_DIR}/telegram_manifest.json"
 
 if [[ ! -s "$manifest_local" ]]; then

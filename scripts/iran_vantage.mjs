@@ -15,7 +15,7 @@ import fs from "node:fs";
 import path from "node:path";
 import {
   SOURCES, MAX_CALLS_PER_RUN, MIN_START_GAP_MS, POLL_INTERVAL_MS, MAX_POLLS, USER_AGENT,
-  discoverNodes, planSource, parseNodeResult, buildRecord,
+  discoverNodes, planSource, parseNodeResult, buildRecord, pickIranNodes, summarizeVantage,
 } from "./lib/iran_vantage.mjs";
 
 const BASE = "https://check-host.net";
@@ -26,6 +26,9 @@ const MAX_BODY = 1_000_000;
 const args = new Set(process.argv.slice(2));
 const DRY = args.has("--dry");
 const SMOKE = args.has("--smoke");
+const SUMMARY = path.join(ROOT, "data/iran_vantage_summary.json");
+// Iran nodes per check-host call (same quota: one start call covers all of them).
+const NODES_PER_CALL = Math.min(4, Math.max(1, Number.parseInt(process.env.IV_IRAN_NODES_PER_CALL || "3", 10) || 3));
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const log = (m) => console.log(`[iran-vantage] ${m}`);
@@ -71,18 +74,19 @@ async function pollResult(requestId, names) {
   return last;
 }
 
-/** One check-host call: one Iran node + one control node. */
-async function measure(target, iranNode, controlNode) {
+/** One check-host call: up to NODES_PER_CALL Iran nodes + one control node -> one record per Iran node. */
+async function measure(target, iranNodes, controlNode) {
   const kind = target.method === "https" ? "http" : "tcp";
-  const hostParam = target.target;
-  const id = await startCheck(kind, hostParam, [iranNode.name, controlNode.name]);
-  const res = await pollResult(id, [iranNode.name, controlNode.name]);
-  const iran = parseNodeResult(res[iranNode.name], target.method);
+  const nodes = Array.isArray(iranNodes) ? iranNodes : [iranNodes];
+  const names = [...nodes.map((n) => n.name), controlNode.name];
+  const id = await startCheck(kind, target.target, names);
+  const res = await pollResult(id, names);
   const control = parseNodeResult(res[controlNode.name], target.method);
-  return buildRecord({
-    target, iranNode, controlNode, requestId: id,
-    testedAt: new Date().toISOString().replace(/\.\d{3}Z$/, "Z"), iran, control,
-  });
+  const testedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+  return nodes.map((iranNode) => buildRecord({
+    target, iranNode, controlNode, requestId: id, testedAt,
+    iran: parseNodeResult(res[iranNode.name], target.method), control,
+  }));
 }
 
 function readLines(rel) {
@@ -126,6 +130,18 @@ function saveCursors(c) {
   fs.writeFileSync(CURSORS, `${JSON.stringify(sorted, null, 2)}\n`);
 }
 
+function writeSummary() {
+  if (DRY) return;
+  try {
+    const raw = fs.existsSync(OUT) ? fs.readFileSync(OUT, "utf8").split(/\r?\n/).slice(-6000) : [];
+    const recs = [];
+    for (const l of raw) { if (!l) continue; try { recs.push(JSON.parse(l)); } catch { /* skip torn line */ } }
+    fs.writeFileSync(SUMMARY, `${JSON.stringify(summarizeVantage(recs, Date.now()), null, 2)}\n`);
+  } catch (e) {
+    warn(`summary not written: ${e.message}`);
+  }
+}
+
 function unavailable(reason) {
   const rec = {
     status: "vantage_unavailable",
@@ -151,7 +167,7 @@ async function smoke() {
     { method: "tcp", target: "1.1.1.1:443", transport: "smoke", line_verb: "smoke", source_file: "smoke" },
     { method: "https", target: "https://example.com/", transport: "smoke", line_verb: "smoke", source_file: "smoke" },
   ]) {
-    const r = await measure(t, ir, nodes.control);
+    const [r] = await measure(t, [ir], nodes.control);
     const want = t.method === "tcp" ? "open" : "answered";
     const ok = r.iran === want && r.control === want;
     log(`  ${t.method} ${t.target}: iran=${r.iran} control=${r.control} codes=${r.http_code_iran}/${r.http_code_control} class=${r.class} ${ok ? "OK" : "FAIL"}`);
@@ -199,13 +215,15 @@ async function main() {
     for (const item of plan.items) {
       let done = true;
       for (const t of item.targets) {
-        const node = iran[(seed + calls) % iran.length];
+        const picked = pickIranNodes(iran, seed + calls * NODES_PER_CALL, NODES_PER_CALL);
         try {
-          const rec = await measure(t, node, control);
+          const recs = await measure(t, picked, control);
           calls += 1;
-          appendRecord(rec);
-          tally[rec.class] = (tally[rec.class] || 0) + 1;
-          log(`  ${t.method} ${t.target} via ${node.name} -> ${rec.class} (${rec.request_id})`);
+          for (const rec of recs) {
+            appendRecord(rec);
+            tally[rec.class] = (tally[rec.class] || 0) + 1;
+          }
+          log(`  ${t.method} ${t.target} via ${picked.map((n) => n.name).join(",")} -> ${recs.map((r) => r.class).join(",")} (${recs[0].request_id})`);
         } catch (e) {
           done = false;
           aborted = true;
@@ -221,6 +239,7 @@ async function main() {
   }
 
   saveCursors(cursors);
+  writeSummary();
   log(`done: ${calls} measurement(s), classes ${JSON.stringify(tally)}${aborted ? " (batch stopped early)" : ""}`);
   if (process.env.GITHUB_STEP_SUMMARY && !DRY) {
     fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,

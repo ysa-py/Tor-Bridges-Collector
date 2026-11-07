@@ -46,3 +46,22 @@ bridge pool, and produce the advisory artifacts in `bridge/`
 Iran-readiness of the *advisory intelligence pipeline*: **75/100** — strong
 module coverage and honest labeling, capped by the lack of Iranian-side or
 multi-vantage measurement and the tier-2 relay dependency.
+
+## Iran datacenter vantage (check-host.net) — multi-node, additive
+
+- Workflow `iran-vantage` (hourly, single job) rediscovers the check-host nodes every run
+  (`/nodes/hosts`, `location[0] == "ir"`; currently ir1..ir8 are listed, any further `irN` is picked up
+  automatically — nothing is hard-coded) and uses up to 3 Iranian nodes per start call
+  (different cities first, rotating across all nodes) plus one foreign control node. The quota stays
+  at 20 start calls per run.
+- `data/iran_vantage.jsonl` gets one record per Iranian node (same schema as before).
+  `data/iran_vantage_summary.json` aggregates the last 24 h per target:
+  `suspected_blocked_from_iran_datacenters` needs **>= 2 distinct Iranian nodes failing, no Iranian
+  node answering**, and the records already require the foreign control to have answered.
+  Missing or pending data is `inconclusive`.
+- Ceiling: TCP/HTTPS from Iranian *datacenters*. Not a Tor, obfs4, WebTunnel, meek or Snowflake
+  handshake; never copied into any `iran_likely_working_*.txt` list. GitHub-hosted runners are
+  not in Iran, and GitHub can still associate workflow runs with the repository account.
+- Post-push verification (`scripts/post_push_verification.sh`) now checks the exact pushed commit
+  (`POST_PUSH_VERIFY_REF`) instead of the moving branch head, so concurrent pushes by other
+  workflows cannot be misreported as sha256 drift.

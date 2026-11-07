@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import {
   buildTargets, classify, parseNodeResult, discoverNodes, isPublicIPv4, planSource, buildRecord,
+  pickIranNodes, summarizeVantage,
 } from "./lib/iran_vantage.mjs";
 
 let n = 0;
@@ -154,6 +155,44 @@ ok("record has the contract keys and no fingerprint/path; class never lands in a
   assert.equal(rec.class, "iran_https_open");
   assert.equal(rec.claim_ceiling, "https-from-iran-datacenter-only");
   assert.ok(!/jLoIaf|FINGERPRINT|permanent/.test(JSON.stringify(rec)));
+});
+
+// ── multi-node (ir1..irN) selection + aggregate; all fixtures are simulated, never live ──
+const IRN = [
+  ["ir1", "Tehran"], ["ir2", "Tehran"], ["ir3", "Isfahan"], ["ir4", "Shiraz"], ["ir5", "Qom"],
+  ["ir6", "Tehran"], ["ir7", "Shiraz"], ["ir8", "Tehran"], ["ir9", "Tehran"],
+].map(([k, city]) => ({ name: `${k}.node.check-host.net`, ip: "x", asn: "AS1", country: "ir", city }));
+ok("pickIranNodes: distinct nodes, different cities first, rotates over all 9", () => {
+  const a = pickIranNodes(IRN, 0, 3);
+  assert.equal(new Set(a.map((x) => x.name)).size, 3);
+  assert.equal(new Set(a.map((x) => x.city)).size, 3);
+  const seen = new Set();
+  for (let o = 0; o < 9; o++) for (const x of pickIranNodes(IRN, o, 3)) seen.add(x.name);
+  assert.equal(seen.size, 9);
+  assert.deepEqual(pickIranNodes([], 5, 3), []);
+  assert.equal(pickIranNodes(IRN.slice(0, 2), 0, 3).length, 2);
+});
+const rec = (node, cls, t = "2026-11-06T10:00:00Z") => ({
+  transport: "obfs4", method: "tcp", target: "8.8.8.8:443", iran_node: node, class: cls, tested_at: t,
+});
+const NOW = Date.parse("2026-11-06T12:00:00Z");
+ok("summary: one failing Iran node is NOT suspected_blocked", () => {
+  const s = summarizeVantage([rec("ir1", "iran_tcp_unreachable"), rec("ir2", "inconclusive")], NOW);
+  assert.equal(s.targets[0].verdict, "inconclusive");
+});
+ok("summary: >=2 distinct Iran nodes fail and none opens -> suspected_blocked (datacenter signal only)", () => {
+  const s = summarizeVantage([rec("ir1", "iran_tcp_unreachable"), rec("ir3", "iran_tcp_unreachable"), rec("ir1", "iran_tcp_unreachable")], NOW);
+  assert.equal(s.targets[0].verdict, "suspected_blocked_from_iran_datacenters");
+  assert.match(s.claim_ceiling, /not a Tor/);
+});
+ok("summary: any Iranian open wins; the same node failing twice counts once; stale rows ignored", () => {
+  assert.equal(summarizeVantage([rec("ir1", "iran_tcp_unreachable"), rec("ir2", "iran_tcp_unreachable"), rec("ir3", "iran_tcp_open")], NOW).targets[0].verdict, "reachable_from_iran_datacenter");
+  assert.equal(summarizeVantage([rec("ir1", "iran_tcp_unreachable"), rec("ir1", "iran_tcp_unreachable")], NOW).targets[0].verdict, "inconclusive");
+  assert.equal(summarizeVantage([rec("ir1", "iran_tcp_unreachable", "2026-11-01T00:00:00Z")], NOW).targets.length, 0);
+});
+ok("summary: endpoint_down / node_refused never count as a block", () => {
+  const s = summarizeVantage([rec("ir1", "endpoint_down"), rec("ir2", "endpoint_down"), rec("ir3", "iran_node_refused")], NOW);
+  assert.equal(s.targets[0].verdict, "inconclusive");
 });
 ok("none of the decisions touched iran_likely_working_all.txt", () => assert.equal(sha(WORKING), before));
 

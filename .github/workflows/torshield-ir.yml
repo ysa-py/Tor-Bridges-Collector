@@ -2855,7 +2855,10 @@ jobs:
           echo "self no-op: no publication contract on this run"
           exit 0
         fi
-        bash scripts/post_push_verification.sh bridge
+        # Pin the check to the exact commit this job pushed (HEAD after the
+        # push loop) so concurrent pushes by autofill/fusion/vantage cannot
+        # create false sha256 drift against the moving branch head.
+        POST_PUSH_VERIFY_REF="$(git rev-parse HEAD)" bash scripts/post_push_verification.sh bridge
         echo "- post-push raw-CDN re-verification: passed (all payload files byte-match the manifest)" >> "${GITHUB_STEP_SUMMARY}"
 
     # Self-healing: a degraded publication (empty-output guard restored
