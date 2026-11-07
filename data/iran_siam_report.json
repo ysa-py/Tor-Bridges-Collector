@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-07T02:44:01.491434+00:00",
+  "generated_at": "2026-11-07T03:58:38.974199+00:00",
   "results": [
     {
       "bridge_line": "meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -14271,6 +14271,29 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:47ef:dd99:3e57:e35:9ee8:4cd4]:443 2939CA6BE2D73F83FC21B98C98B0C75B5AE3E0C9 url=https://old.mywire.org/yaVaCfOOTMUCwdcvgNsUoFES ver=0.0.5",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "webtunnel_non_cdn_sni",
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.8718,
+      "layer_scores": {
+        "L1_packet_length": 1.0,
+        "L2_iat_timing": 0.95,
+        "L3_flow_features": 0.96,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.9,
+        "L6_alpn_anomaly": 0.96,
+        "L7_temporal": 0.95,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 7,
+      "port": 443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:493d:9209:cc8:f1d5:d4c:6c06]:443 0526BEBCFD23E42EE2A581271D3C19B7F55BE78D url=https://cyberbuncafe.com/kOEVpfTJG0LKqQ5l4Vb2gOlD ver=0.0.1",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
@@ -16664,6 +16687,29 @@
     },
     {
       "bridge_line": "webtunnel [2001:db8:7c55:4216:fa04:55e0:372c:8c57]:443 74A9E9BC6908DE84D7429CF6A13ABFF8FA5B21B2 url=https://onethirtysix.chummer.online/6bbKOCF7uQBebN17kxDy1PV8 ver=0.0.1",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "webtunnel_non_cdn_sni",
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.8718,
+      "layer_scores": {
+        "L1_packet_length": 1.0,
+        "L2_iat_timing": 0.95,
+        "L3_flow_features": 0.96,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.9,
+        "L6_alpn_anomaly": 0.96,
+        "L7_temporal": 0.95,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 7,
+      "port": 443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "webtunnel"
+    },
+    {
+      "bridge_line": "webtunnel [2001:db8:7cd6:db36:e668:8e7e:c150:9e37]:443 4B034C2AD9DC46C040B75D887C1D00D2A053B9FA url=https://cdn.grapejam.de/PmNOmxu6SQWR3d2uSHgTYltt ver=0.0.5",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
         "webtunnel_non_cdn_sni",
@@ -37836,6 +37882,29 @@
       },
       "layers_bypassed": 2,
       "port": 28700,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 193.200.238.133:9002 BCA2642A45A2CFE8AAACCCFC032A895EF0E9F7E0 cert=bY89cIEcCUNnpUFA4BIEOH761bkPGsLICX1tFULAZ1N7TaYJBsEoaVepwRWCAZeFMb5TSg iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 9002,
       "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
       "transport": "obfs4"
     },
@@ -95601,16 +95670,16 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 1991,
+    "COVERT": 1992,
     "DETECTED": 1176,
     "PHANTOM": 100,
-    "STEALTH": 969
+    "STEALTH": 971
   },
-  "total_scored": 4236,
+  "total_scored": 4239,
   "transport_summary": {
-    "obfs4": 2142,
+    "obfs4": 2143,
     "snowflake": 83,
     "vanilla": 1176,
-    "webtunnel": 835
+    "webtunnel": 837
   }
 }
