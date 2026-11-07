@@ -97,67 +97,75 @@
       "transport": "webtunnel"
     },
     {
-      "ai_score": 0.9695,
+      "ai_score": 0.97,
       "dpi_resistance": 0.93,
-      "latency_ms": 143.517,
+      "latency_ms": 140.361,
       "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ front=www.google.com",
-      "speed": 0.9821,
+      "speed": 0.9825,
       "transport": "snowflake"
     },
     {
-      "ai_score": 0.9695,
+      "ai_score": 0.97,
       "dpi_resistance": 0.93,
-      "latency_ms": 112.358,
+      "latency_ms": 113.726,
       "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net",
-      "speed": 0.986,
+      "speed": 0.9858,
       "transport": "snowflake"
     },
     {
-      "ai_score": 0.9696,
+      "ai_score": 0.9701,
       "dpi_resistance": 0.93,
-      "latency_ms": 52.17,
+      "latency_ms": 48.841,
       "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ front=docs.plesk.com",
-      "speed": 0.9935,
+      "speed": 0.9939,
       "transport": "snowflake"
     },
     {
-      "ai_score": 0.9369,
+      "ai_score": 0.9377,
       "dpi_resistance": 0.93,
-      "latency_ms": 30.193,
+      "latency_ms": 29.014,
       "line": "snowflake 192.0.2.34:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-      "speed": 0.9962,
+      "speed": 0.9964,
       "transport": "snowflake"
     },
     {
-      "ai_score": 0.9677,
+      "ai_score": 0.9675,
       "dpi_resistance": 0.93,
-      "latency_ms": 141.149,
+      "latency_ms": 34.717,
+      "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBA14E6F40A0843051FA url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com",
+      "speed": 0.9957,
+      "transport": "snowflake"
+    },
+    {
+      "ai_score": 0.9682,
+      "dpi_resistance": 0.93,
+      "latency_ms": 140.656,
       "line": "snowflake 10.0.3.2:8080 A478B32B16FC1F371677F9F41D9C5272B8EBB0F7 url=https://snowflake-broker.triplebit.dev/ front=www.gstatic.com",
       "speed": 0.9824,
       "transport": "snowflake"
     },
     {
-      "ai_score": 0.9677,
-      "dpi_resistance": 0.93,
-      "latency_ms": 138.478,
-      "line": "snowflake 10.0.3.1:8080 53B65F538F5E9A5FA6DFE5D75C78CB66C5515EF7 url=https://snowflake-broker.triplebit.dev/ front=www.google.com",
-      "speed": 0.9827,
-      "transport": "snowflake"
-    },
-    {
-      "ai_score": 0.9671,
+      "ai_score": 0.9673,
       "dpi_resistance": 0.9,
-      "latency_ms": 175.21,
-      "line": "meek_lite 192.0.2.37:80 url=https://1603026938.rsc.cdn77.org front=www.datapacket.com utls=HelloRandomizedALPN",
-      "speed": 0.9781,
+      "latency_ms": 195.109,
+      "line": "meek_lite 192.0.2.39:80 url=https://1603026938.rsc.cdn77.org front=www.datapacket.com utls=HelloFirefox_Auto",
+      "speed": 0.9756,
       "transport": "meek_lite"
     },
     {
-      "ai_score": 0.9673,
+      "ai_score": 0.9676,
       "dpi_resistance": 0.9,
-      "latency_ms": 71.674,
+      "latency_ms": 65.206,
       "line": "meek_lite 192.0.2.48:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedNoALPN",
-      "speed": 0.991,
+      "speed": 0.9918,
+      "transport": "meek_lite"
+    },
+    {
+      "ai_score": 0.9637,
+      "dpi_resistance": 0.9,
+      "latency_ms": 75.533,
+      "line": "meek_lite 192.0.2.18:80 BE776A53492E1E044A26F17306E1BC46A55A1625 url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com",
+      "speed": 0.9906,
       "transport": "meek_lite"
     },
     {
@@ -281,7 +289,7 @@
       "transport": "vanilla"
     }
   ],
-  "count": 35,
+  "count": 36,
   "generated_at": "2026-11-07T09:00:00+00:00",
   "hour_seed": 498345,
   "note": "runner-side liveness + Iran Anti-DPI AI prior; dynamically re-combined every UTC hour",
