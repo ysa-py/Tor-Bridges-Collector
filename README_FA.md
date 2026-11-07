@@ -137,7 +137,7 @@ python scraper.py
 ./iran_tester \
   --input bridge/bridge_list_for_testing.json \
   --output bridge/iran_results.json \
-  --workers 100 --timeout 8s
+  --workers 300 --timeout 8s --ooni-live-budget 450
 
 # ۳. پروب PT handshake (Rust)
 cat bridge/bridge_list_for_testing.json \

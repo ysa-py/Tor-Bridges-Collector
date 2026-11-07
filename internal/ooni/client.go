@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -63,6 +64,17 @@ type Client struct {
 	cache   map[string]*analysisResult
 	cacheMu sync.Mutex
 	now     func() time.Time
+
+	// liveBudget caps how many IPs may trigger live OONI queries in one run
+	// (0 = unlimited, the historical behaviour). Once it is spent, Classify
+	// returns "unchecked" immediately instead of queueing behind the 5 req/s
+	// ticker: an unchecked IP is honest "no evidence" (never blocked, never
+	// working) and is picked up by a later run because every real result is
+	// persisted in the OONI cache. Without this cap a cold cache made workers
+	// wait on the ticker for minutes and exhausted the run deadline.
+	liveBudget  atomic.Int64
+	liveUsed    atomic.Int64
+	liveSkipped atomic.Int64
 }
 
 type analysisResult struct {
@@ -184,6 +196,32 @@ func New() *Client {
 		cache:  make(map[string]*analysisResult),
 		now:    func() time.Time { return time.Now().UTC() },
 	}
+}
+
+// SetLiveQueryBudget limits the number of distinct IPs that may trigger live
+// OONI queries during this client's lifetime. n <= 0 disables the cap.
+func (c *Client) SetLiveQueryBudget(n int) {
+	if n < 0 {
+		n = 0
+	}
+	c.liveBudget.Store(int64(n))
+}
+
+// LiveQueriesSkipped reports how many IPs were left unchecked because the
+// live-query budget was exhausted (they stay unknown, never blocked).
+func (c *Client) LiveQueriesSkipped() int64 { return c.liveSkipped.Load() }
+
+// takeLiveBudget reserves one live-query slot; false means the budget is spent.
+func (c *Client) takeLiveBudget() bool {
+	budget := c.liveBudget.Load()
+	if budget <= 0 {
+		return true
+	}
+	if c.liveUsed.Add(1) > budget {
+		c.liveSkipped.Add(1)
+		return false
+	}
+	return true
 }
 
 // Close releases the rate-limiting ticker.
@@ -421,6 +459,10 @@ func (c *Client) Classify(ctx context.Context, ip string) (OONIStatus, float64, 
 		return cached.Status, cached.RecurrenceRate, cached.Checked
 	}
 	c.cacheMu.Unlock()
+
+	if !c.takeLiveBudget() {
+		return StatusUnknown, 0, false
+	}
 
 	now := c.clock()
 	recentWindow := time.Duration(recentDays) * 24 * time.Hour

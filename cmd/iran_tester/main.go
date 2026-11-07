@@ -656,6 +656,7 @@ func main() {
 	runTimeoutFlag := flag.Duration("run-timeout", 9*time.Minute, "Hard deadline for the complete classification run")
 	cacheFlag := flag.String("ooni-cache", "", "Optional persistent OONI classification cache path (loaded before, saved after the run)")
 	cacheTTLFlag := flag.Duration("ooni-cache-ttl", 12*time.Hour, "Maximum age of persisted OONI classifications reused from the cache")
+	ooniBudgetFlag := flag.Int("ooni-live-budget", 0, "Max distinct IPs that may trigger live OONI queries this run (0 = unlimited). Spent budget leaves IPs unchecked (unknown, never blocked); results persist in --ooni-cache so later runs cover the rest")
 	flag.Parse()
 
 	// ── Read input ────────────────────────────────────────────────────────
@@ -684,6 +685,10 @@ func main() {
 	ipClient := ipinfo.New()
 	ooniClient := ooni.New()
 	defer ooniClient.Close()
+	if *ooniBudgetFlag > 0 {
+		ooniClient.SetLiveQueryBudget(*ooniBudgetFlag)
+		log.Printf("OONI live-query budget: %d IPs this run (cache hits are free)", *ooniBudgetFlag)
+	}
 
 	// ── Persistent OONI cache ─────────────────────────────────────────────
 	// OONI coverage for a bridge IP changes on the scale of days. Loading
@@ -706,6 +711,13 @@ func main() {
 
 	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
 		log.Printf("WARNING: overall run deadline %s exhausted; outstanding network work was cancelled and remaining bridge records stay inconclusive", *runTimeoutFlag)
+	}
+
+	if skipped := ooniClient.LiveQueriesSkipped(); skipped > 0 {
+		log.Printf("OONI: %d IP(s) left unchecked (live-query budget spent); they stay unknown, not blocked, and are queried by later runs", skipped)
+	}
+	if ipClient.BreakerOpen() {
+		log.Printf("WARNING: ipinfo.io circuit opened after repeated failures; %d ASN lookup(s) skipped (ASN stays unknown)", ipClient.SkippedLookups())
 	}
 
 	// ── Build summary ─────────────────────────────────────────────────────
