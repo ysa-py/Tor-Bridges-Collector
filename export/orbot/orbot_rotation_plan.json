@@ -7,10 +7,9 @@
   "nextRotation": "2026-11-07T22:00:00.000Z",
   "poolSize": 8587,
   "perTransport": {
-    "obfs4": 30,
     "webtunnel": 27,
-    "snowflake": 2,
-    "meek_lite": 1
+    "obfs4": 30,
+    "snowflake": 3
   },
   "top": [
     {
@@ -18,10 +17,10 @@
       "score": 130,
       "bucket": 3,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
-        "pinned-fingerprint+6"
+        "cdn-shielded+10"
       ]
     },
     {
@@ -118,61 +117,6 @@
       "bucket": 3,
       "why": [
         "obfs4+15",
-        "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
-      ]
-    },
-    {
-      "line": "webtunnel 172.67.164.136:443 60EA71C9493B9B5792CF12F684273B1B06DD156C url=https://tired.social/0r2DRKvagEsZtvZgItdN0fo1 ver=0.0.3",
-      "score": 128.1,
-      "bucket": 2,
-      "why": [
-        "webtunnel(HTTPS mimics real traffic)+24",
-        "port443+12",
-        "ipv4+6",
-        "cdn-shielded+10"
-      ]
-    },
-    {
-      "line": "obfs4 103.196.181.200:443 A588FDD17CD20AC2B36ECAE50002EE1990BE5AB7 cert=3yjs4IYwoNe3YPskH8IC0AMnZyXJjD0kENtNREMW9Vzb8RAsJlzLN+WbPRztPQv2GmxEOg iat-mode=2",
-      "score": 127.9,
-      "bucket": 2,
-      "why": [
-        "obfs4+15",
-        "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
-      ]
-    },
-    {
-      "line": "webtunnel 104.21.17.45:443 F86E5FA2FD7FD0B358919C5396C22705F7911AE0 url=https://fastdeliverynetwork.website/Hai1aeJaipooliz ver=0.0.1",
-      "score": 127.8,
-      "bucket": 2,
-      "why": [
-        "webtunnel(HTTPS mimics real traffic)+24",
-        "port443+12",
-        "ipv4+6",
-        "cdn-shielded+10"
-      ]
-    },
-    {
-      "line": "webtunnel 104.26.1.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3",
-      "score": 125.3,
-      "bucket": 2,
-      "why": [
-        "webtunnel(HTTPS mimics real traffic)+24",
-        "port443+12",
-        "ipv4+6",
-        "cdn-shielded+10"
-      ]
-    },
-    {
-      "line": "webtunnel 132.243.164.239:443 56626E4B996EB1C9F4C0B573888E8EE3C4E28472 url=https://kriptohomyaki.org/4USXwPrEoemgJOXPmgjxPOAkQa1UG7To ver=0.0.2",
-      "score": 123.5,
-      "bucket": 2,
-      "why": [
-        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
         "pinned-fingerprint+6"
