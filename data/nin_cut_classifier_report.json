@@ -459,6 +459,14 @@
     {
       "ip": "193.187.88.46",
       "port": 132,
+      "raw": "snowflake 193.187.88.46:132 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
+      "sni": "snowflake-broker.torproject.net",
+      "tier": "GREEN",
+      "transport": "snowflake"
+    },
+    {
+      "ip": "193.187.88.46",
+      "port": 132,
       "raw": "snowflake 193.187.88.46:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
       "sni": "snowflake-broker.torproject.net",
       "tier": "GREEN",
@@ -1517,6 +1525,14 @@
       "port": 443,
       "raw": "webtunnel 173.249.203.13:443 082B13E0A1E5D8D2585B6C84914B1810B7E884EC url=https://bootstrap.gosuda.org/s33gf0iiidqo9lacdqzbjgy6 ver=0.0.7",
       "sni": "bootstrap.gosuda.org",
+      "tier": "YELLOW",
+      "transport": "webtunnel"
+    },
+    {
+      "ip": "176.158.140.146",
+      "port": 443,
+      "raw": "webtunnel 176.158.140.146:443 C60156BBBF160072A800BB6B41C205CAC54DA21E url=https://visio.bolobolo.fr.eu.org/zuWSBusovKLgh1tKh7CSWg ver=0.0.4",
+      "sni": "visio.bolobolo.fr.eu.org",
       "tier": "YELLOW",
       "transport": "webtunnel"
     },
@@ -3838,10 +3854,10 @@
     "RED": "obfs4 on non-standard port, vanilla, or bridge with no CDN routing",
     "YELLOW": "WebTunnel via Akamai/Fastly/CloudFront OR obfs4 on port 443"
   },
-  "generated_at": "2026-11-08T07:45:22.077539+00:00",
-  "green_count": 120,
+  "generated_at": "2026-11-08T14:11:12.731339+00:00",
+  "green_count": 121,
   "red_count": 0,
   "scenario": "Complete international internet blackout. Only traffic through Iranian domestic ASNs reachable. GREEN = high confidence reachable, YELLOW = CDN-dependent, RED = blocked.",
-  "total_bridges": 479,
-  "yellow_count": 359
+  "total_bridges": 481,
+  "yellow_count": 360
 }
