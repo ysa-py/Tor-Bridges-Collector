@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2026-11-08T01:43:15.180Z",
+  "generatedAt": "2026-11-08T07:03:30.886Z",
   "file": "export/orbot/orbot_iran_antidpi.txt",
   "total": 60,
   "rotationBucket": 1,
   "rotationBuckets": 6,
-  "nextRotation": "2026-11-08T02:00:00.000Z",
-  "poolSize": 8590,
+  "nextRotation": "2026-11-08T08:00:00.000Z",
+  "poolSize": 8603,
   "perTransport": {
     "obfs4": 30,
     "webtunnel": 27,
@@ -15,7 +15,7 @@
   "top": [
     {
       "line": "obfs4 161.35.120.32:443 0A11187F3EBE7167598DD702BDAD902735612416 cert=0PSwGJY2pxzLMGKI4ikzhwD/p73nQ2xaBPThcN/Ef/e6jOCE/v7M56kJ0QZbjfR4pIMbBQ iat-mode=1",
-      "score": 135.6,
+      "score": 135.4,
       "bucket": 1,
       "why": [
         "obfs4+15",
@@ -26,18 +26,7 @@
     },
     {
       "line": "obfs4 205.185.115.159:443 DE1BFC451DEFC37C3C634FE488C75ED6D7E0F583 cert=RWYuTO/Cl+2ikkVHRqAKza9MvH6SuC4I94/2AaN0sXCmY1PTaTvFYf7istfI0QKk+QCjZQ iat-mode=1",
-      "score": 134.6,
-      "bucket": 1,
-      "why": [
-        "obfs4+15",
-        "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
-      ]
-    },
-    {
-      "line": "obfs4 207.154.253.134:443 D965CFA5A64EDF737F1CB7CAD6D197018E92E2B0 cert=QuK7XI+EP8pNZWvDvLcpEzXucufwTJD9BU1cOzeBjCmi44I94K+XdVEVgLHurr7zC5pwWA iat-mode=1",
-      "score": 133.6,
+      "score": 134.4,
       "bucket": 1,
       "why": [
         "obfs4+15",
@@ -48,7 +37,18 @@
     },
     {
       "line": "obfs4 46.101.240.246:443 4D0A170DA6AFD2303F33F7C7066D7F64F208DA6C cert=wmxL7h6m8woARSulwwcZHlMjG6R6DEhzxEUgz4zZpVm6pdmpCdiQbTd1G88+hjcTVapebQ iat-mode=1",
-      "score": 133.6,
+      "score": 133.4,
+      "bucket": 1,
+      "why": [
+        "obfs4+15",
+        "port443+12",
+        "ipv4+6",
+        "pinned-fingerprint+6"
+      ]
+    },
+    {
+      "line": "obfs4 207.154.253.134:443 D965CFA5A64EDF737F1CB7CAD6D197018E92E2B0 cert=QuK7XI+EP8pNZWvDvLcpEzXucufwTJD9BU1cOzeBjCmi44I94K+XdVEVgLHurr7zC5pwWA iat-mode=1",
+      "score": 133.4,
       "bucket": 1,
       "why": [
         "obfs4+15",
@@ -59,7 +59,7 @@
     },
     {
       "line": "obfs4 94.103.188.53:443 BFD5F83BE97EEAF8B3B8505B036ED7BB8A91E850 cert=Z0esGc0eTMaBA8c2ofxwuDP4sYF1U0Hd7IQA4XGv7Hyyic2hlFf0FXM2xowDA3HPUiixEg iat-mode=1",
-      "score": 133.6,
+      "score": 133.4,
       "bucket": 1,
       "why": [
         "obfs4+15",
@@ -70,7 +70,7 @@
     },
     {
       "line": "obfs4 185.66.200.17:443 E0F0DA2773E13378D02D1FF817D7737B70D8798F cert=+0cNbkXyuUuHKBF6inmbzOLeBn1RPfgTmHC1DzUb+UEYigWyS2vQz2z7mSfWxB04W2LjFQ iat-mode=1",
-      "score": 131.1,
+      "score": 130.9,
       "bucket": 1,
       "why": [
         "obfs4+15",
@@ -81,7 +81,18 @@
     },
     {
       "line": "webtunnel 172.66.156.239:443 4946C9B8410CF59953455C158F957CAB2055A61D url=https://mstdn.party/fooghee7naChifi0 ver=0.0.2",
-      "score": 129.9,
+      "score": 129.8,
+      "bucket": 1,
+      "why": [
+        "webtunnel(HTTPS mimics real traffic)+24",
+        "port443+12",
+        "ipv4+6",
+        "cdn-shielded+10"
+      ]
+    },
+    {
+      "line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
+      "score": 129.5,
       "bucket": 1,
       "why": [
         "webtunnel(HTTPS mimics real traffic)+24",
@@ -92,7 +103,7 @@
     },
     {
       "line": "webtunnel 172.67.199.231:443 4FA98FE9568D850B675CB828B9E84DE2E2B3B45C url=https://tor.kwe-private.net/E45hEt4K3GQCChZ4B7jfrQ2b ver=0.0.4",
-      "score": 129.6,
+      "score": 129.5,
       "bucket": 1,
       "why": [
         "webtunnel(HTTPS mimics real traffic)+24",
@@ -102,18 +113,7 @@
       ]
     },
     {
-      "line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.4",
-      "score": 129.6,
-      "bucket": 1,
-      "why": [
-        "webtunnel(HTTPS mimics real traffic)+24",
-        "port443+12",
-        "ipv4+6",
-        "cdn-shielded+10"
-      ]
-    },
-    {
-      "line": "webtunnel 104.21.65.78:443 CFB5DD5A5CC4AAB0435C1C5B27D46C0E2AB54C6E url=https://sexgrueselbox.ch/Tha8Iequ4Goo9ku ver=0.0.7",
+      "line": "webtunnel 104.21.53.49:443 77B60C7540BA105297FB91DD7BA3557F6ED15C5B url=https://alina-photos.art/da495ccdc73b948387c45c2ab82c1b1aac4b1582 ver=0.0.3",
       "score": 129.3,
       "bucket": 1,
       "why": [
