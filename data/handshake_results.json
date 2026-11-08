@@ -292,8 +292,8 @@
     "probe_type": "obfs4-framing",
     "rtt_ms": 62.0,
     "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
+    "stage": "S3",
+    "status": "connected",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -2940,21 +2940,6 @@
     }
   },
   {
-    "detail": "HTTP 400 from snowflake",
-    "error_class": "snowflake:http_error",
-    "line": "snowflake [2001:db8::2f]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "observed_at": "2026-11-08T14:23:12.054384Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 172.245.97.177:443 7CC64C882F0098BCE3AC6D1C14ED5BA017B15AD8 url=https://ie01-dub.beijing.st/sorryiamlateijustdontgiveafoook ver=0.0.3",
@@ -2964,126 +2949,6 @@
     "source": "handshake-probe",
     "stage": "S2",
     "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 107.173.9.76:9130 A61AE67B8A87D1052B65FA00BDE5DCBCFA5A9E0D cert=YBs5yN68+o3HulHwvpW5mqN5plcxcOSUOItagQ1PsefwUXbTCVGtNUD7EuuAlxSKBoqPcw iat-mode=0",
-    "observed_at": "2026-11-08T14:23:12.075499Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 89.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 159.69.71.58:9001 040085FFE1E88CF48AB0B5B2AB39035758C65F0C",
-    "observed_at": "2026-11-08T14:23:12.178849Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 499.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 156.246.94.137:9001 03FDBF0E3FE1C91C926FFAF65564C5D3CCF606A2",
-    "observed_at": "2026-11-08T14:23:12.185353Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 547.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "connection reset during read",
-    "error_class": "obfs4:connection_reset",
-    "line": "obfs4 128.0.64.112:443 3E0294834B3B6F601B553DA3DB22897D22CB3F46 cert=C9JXClthzTkrlm/z8ZBz+EfGpdnmNkOdA3GhMcTibjiKDgARp+jPeltifqOFsI8mg0pHFg iat-mode=0",
-    "observed_at": "2026-11-08T14:23:12.188091Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 130.162.234.23:18768 6017A229DDAABB13473590A8BA578BCC11EE2B32 cert=LvOWbpwz34U+ZJSdBCP9k3G6etsCqlxoDwzX0T1Z8X2vPworRsoelK7y/+7/TerwCkGVNw iat-mode=0",
-    "observed_at": "2026-11-08T14:23:12.188654Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 246.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "meek_lite [2001:db8::29]:443 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.net utls=HelloRandomizedALPN",
-    "observed_at": "2026-11-08T14:23:12.221431Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "Bridge meek_lite 192.0.2.88:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedNoALPN",
-    "observed_at": "2026-11-08T14:23:12.223805Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from snowflake",
-    "error_class": "snowflake:http_error",
-    "line": "snowflake [2001:db8::30]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ fronts=www.google.com,cdn.ampproject.org ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "observed_at": "2026-11-08T14:23:12.224047Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5918,66 +5783,6 @@
     "rtt_ms": 692.0,
     "source": "handshake-probe",
     "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 185.220.101.199:443 6E0DF0A5B7F3FFFB45E1AA078D136F5DEBD228AB",
-    "observed_at": "2026-11-08T14:23:16.873476Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 486.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 192.67.197.242:443 05D0531304F2DB161921D6D03CE38DB1CA2332D6 url=https://pod03.oneclickhost.eu/d0NbsV36v0Q4MDdDTs3ZhCCJ ver=0.0.4",
-    "observed_at": "2026-11-08T14:23:16.883917Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 381.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 185.220.101.192:443 9A66718A54FBF5751A7416502BA4738CEFA4823E",
-    "observed_at": "2026-11-08T14:23:17.024128Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 537.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 185.220.101.199:8443 E1AF5373E3240566B598FA481AD3860549F6168B",
-    "observed_at": "2026-11-08T14:23:17.429829Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 977.0,
-    "source": "handshake-probe",
-    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
