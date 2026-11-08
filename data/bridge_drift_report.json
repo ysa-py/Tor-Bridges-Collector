@@ -1,6 +1,6 @@
 {
   "advisory_only": true,
-  "generated_at": "2026-11-08T00:28:51.200291608+00:00",
+  "generated_at": "2026-11-08T01:28:05.642791591+00:00",
   "stale_positives": [
     {
       "days_since_last_probe": 0,
@@ -907,7 +907,7 @@
     "counts": {
       "fronted_unreachable": 6,
       "healthy": 2503,
-      "no_history": 1703,
+      "no_history": 1702,
       "stale_positive": 90
     },
     "median_drift_evidence_by_class": {
@@ -917,6 +917,6 @@
       "stale_positive": 0.05
     },
     "note": "drift evidence = collector EWMA health_score (0.8*old + 0.2*outcome, src/tor_collector/storage.rs::record_probe) with lifetime success-ratio fallback; stale_positive = historical successes + currently unreachable + non-fronted transport",
-    "total_records": 4302
+    "total_records": 4301
   }
 }
