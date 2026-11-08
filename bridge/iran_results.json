@@ -366,8 +366,8 @@
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
       "verification": {
-        "detail": "timed out during tls",
-        "error_class": "vanilla:timeout",
+        "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
+        "error_class": null,
         "observations": [
           {
             "detail": "TCP connection established",
@@ -437,8 +437,8 @@
             "probe_type": "tor-handshake",
             "rtt_ms": 227.0,
             "source": "handshake-probe",
-            "stage": "S0",
-            "status": "timeout",
+            "stage": "S3",
+            "status": "connected",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -449,8 +449,8 @@
         "probe_type": "tor-handshake",
         "rtt_ms": 227.0,
         "source": "handshake-probe",
-        "stage": "S0",
-        "status": "timeout",
+        "stage": "S3",
+        "status": "connected",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -613,7 +613,7 @@
                 "http_status": null,
                 "observed_at": "2026-11-08T20:13:39.296Z",
                 "probe_type": "tcp",
-                "rtt_ms": 16,
+                "rtt_ms": 4,
                 "source": "probe-relay",
                 "stage": "S1",
                 "status": "connected",
@@ -625,7 +625,7 @@
             ],
             "observed_at": "2026-11-08T20:13:39.296Z",
             "probe_type": "tcp",
-            "rtt_ms": 16,
+            "rtt_ms": 4,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -640,7 +640,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:13:39.296Z",
             "probe_type": "tcp",
-            "rtt_ms": 16,
+            "rtt_ms": 4,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -1187,7 +1187,7 @@
                 "http_status": null,
                 "observed_at": "2026-11-08T20:13:28.733Z",
                 "probe_type": "tcp",
-                "rtt_ms": 123,
+                "rtt_ms": 27,
                 "source": "probe-relay",
                 "stage": "S1",
                 "status": "connected",
@@ -1199,7 +1199,7 @@
             ],
             "observed_at": "2026-11-08T20:13:28.733Z",
             "probe_type": "tcp",
-            "rtt_ms": 123,
+            "rtt_ms": 27,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -1214,7 +1214,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:13:28.733Z",
             "probe_type": "tcp",
-            "rtt_ms": 123,
+            "rtt_ms": 27,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -1258,7 +1258,7 @@
       "host": "135.148.54.106",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T07:28:03.935717826Z",
+        "queried_at": "2026-11-08T14:52:12.48121295Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -1267,7 +1267,7 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 192.131.142.119:45827 AE436F0E55D0F2010A6BBDAA75F5FA3F01F11808",
+      "line": "Bridge 135.148.54.106:443 BE1114D1B41895C2D67C5962CE356AE689CE0CD1",
       "ooni_checked": true,
       "port": 443,
       "tcp_reachable": true,
@@ -1477,7 +1477,7 @@
         "rtt_ms": 0.0,
         "source": "handshake-probe",
         "stage": "S0",
-        "status": "refused",
+        "status": "error",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -23015,19 +23015,17 @@
       "ooni_checked": true,
       "port": 6400,
       "tcp_reachable": false,
-      "test_result": "untested (probe error)",
+      "test_result": "tested_failing",
       "test_tier": "untested",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
       "verification": {
-        "detail": "probe failed before a positive connection stage was recorded",
-        "error_class": "probe_error",
-        "http_status": null,
+        "detail": "TCP connection was refused",
+        "error_class": "connection_refused",
         "observations": [
           {
-            "detail": "probe failed before a positive connection stage was recorded",
-            "error_class": "probe_error",
-            "http_status": null,
+            "detail": "TCP connection was refused",
+            "error_class": "connection_refused",
             "observations": [
               {
                 "detail": "TCP connection was refused",
@@ -32376,7 +32374,7 @@
       "host": "5.150.241.99",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T07:28:20.690660152Z",
+        "queried_at": "2026-11-08T14:52:15.68803553Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -32385,9 +32383,9 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 45.86.86.229:8080 BA082BE2F93F034C56BBAFC4B07778A153718724",
+      "line": "Bridge 5.150.241.99:9001 06A1B706723D2C8E4E5097DC82FCB9C53C1971F7",
       "ooni_checked": true,
-      "port": 8080,
+      "port": 9001,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "untested",
@@ -37703,7 +37701,7 @@
       }
     },
     {
-      "asn": "AS36849",
+      "asn": "AS14061",
       "asn_country": "US",
       "asn_org": "AS14061 DigitalOcean, LLC",
       "composite_score": 0.1758,
@@ -37927,7 +37925,7 @@
       "iran_status": "iran_unknown",
       "line": "Bridge 209.133.193.6:8443 06B0DAAFB86622AA43669335398CAE76BCD7359B",
       "ooni_checked": true,
-      "port": 443,
+      "port": 8443,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "untested",
@@ -37963,7 +37961,7 @@
                 "http_status": null,
                 "observed_at": "2026-11-08T20:14:16.891Z",
                 "probe_type": "tcp",
-                "rtt_ms": 104,
+                "rtt_ms": 33,
                 "source": "probe-relay",
                 "stage": "S1",
                 "status": "connected",
@@ -37975,7 +37973,7 @@
             ],
             "observed_at": "2026-11-08T20:14:16.891Z",
             "probe_type": "tcp",
-            "rtt_ms": 104,
+            "rtt_ms": 33,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -37990,7 +37988,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:14:16.891Z",
             "probe_type": "tcp",
-            "rtt_ms": 104,
+            "rtt_ms": 33,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -38002,7 +38000,7 @@
         ],
         "observed_at": "2026-11-08T20:14:16.891Z",
         "probe_type": "tcp",
-        "rtt_ms": 104,
+        "rtt_ms": 33,
         "source": "probe-relay",
         "stage": "S1",
         "status": "connected",
@@ -38125,10 +38123,10 @@
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "85.223.19.187",
+      "host": "46.142.134.9",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T14:52:29.955185985Z",
+        "queried_at": "2026-11-08T14:52:30.01561886Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -38137,11 +38135,11 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 85.223.19.187:9001 064D183D34DECB84F72C4335B0C24D1E8946A9BA",
+      "line": "Bridge 46.142.134.9:9001 964400BD72F85E4EF3541DD8578E9131EA628DD8",
       "ooni_checked": true,
       "port": 9001,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
+      "tcp_reachable": false,
+      "test_result": "untested (probe error)",
       "test_tier": "untested",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
@@ -42744,13 +42742,13 @@
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
       "verification": {
-        "detail": "probe failed before a positive connection stage was recorded",
-        "error_class": "probe_error",
+        "detail": "TCP connection established",
+        "error_class": null,
         "http_status": null,
         "observations": [
           {
-            "detail": "probe failed before a positive connection stage was recorded",
-            "error_class": "probe_error",
+            "detail": "TCP connection established",
+            "error_class": null,
             "http_status": null,
             "observations": [
               {
@@ -42760,16 +42758,16 @@
                 "probe_type": "tcp",
                 "rtt_ms": 45.404,
                 "source": "iran_results",
-                "stage": "S0",
-                "status": "refused",
+                "stage": "S1",
+                "status": "connected",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
                 }
               },
               {
-                "detail": "probe failed before a positive connection stage was recorded",
-                "error_class": "probe_error",
+                "detail": "TCP connection established",
+                "error_class": null,
                 "http_status": null,
                 "observed_at": "2026-11-08T20:14:44.538Z",
                 "probe_type": "tcp",
@@ -43589,7 +43587,7 @@
       "iran_status": "iran_unknown",
       "line": "Bridge 68.183.130.144:8443 B010467EF245A2A0510BDA69EB387F9EB48A62BE",
       "ooni_checked": true,
-      "port": 4690,
+      "port": 8443,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "untested",
@@ -47776,7 +47774,7 @@
       "host": "5.15.1.212",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T14:52:30.70554285Z",
+        "queried_at": "2026-11-08T14:52:31.162532579Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -47785,11 +47783,11 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 86.30.100.123:16350 F3FA0D45D35E987484848345F8D92AB1D883889B",
+      "line": "Bridge 5.15.1.212:4000 7F7608132E2FB2A438BBF410D8181F9E12736934",
       "ooni_checked": true,
-      "port": 16350,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
+      "port": 4000,
+      "tcp_reachable": false,
+      "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
@@ -61022,7 +61020,7 @@
       "host": "88.198.27.62",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T14:52:35.325930565Z",
+        "queried_at": "2026-11-08T14:52:36.511086508Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -61031,9 +61029,9 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 87.236.197.123:80 C5F03E7A798CA237E7BDD44091BEFE35F2F59AE1",
+      "line": "Bridge 88.198.27.62:443 009CEE5478B53F49FD67DC5EC32C95621001D1CD",
       "ooni_checked": true,
-      "port": 80,
+      "port": 443,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "untested",
@@ -63660,13 +63658,13 @@
     },
     {
       "asn": "AS197540",
-      "asn_country": "DE",
+      "asn_country": "AT",
       "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.7297,
       "host": "89.58.60.70",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T14:52:40.347159453Z",
+        "queried_at": "2026-11-08T14:52:41.149142994Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -63675,9 +63673,9 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 89.58.34.53:9001 01B8F18C11CE2877E8190FA2C81808CD087515C0",
+      "line": "Bridge 89.58.60.70:8777 3494EC8445ADD849C1DEFAAF5553C752285B77E9",
       "ooni_checked": true,
-      "port": 9001,
+      "port": 8777,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "untested",
@@ -64190,7 +64188,7 @@
       "host": "91.118.31.104",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-08T14:52:41.149142994Z",
+        "queried_at": "2026-11-08T14:52:42.642976853Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -64199,9 +64197,9 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 89.58.60.70:8777 3494EC8445ADD849C1DEFAAF5553C752285B77E9",
+      "line": "Bridge 91.118.31.104:7012 6705A703015B05CAD535D7CEE4D82581B7BDBA0A",
       "ooni_checked": true,
-      "port": 8777,
+      "port": 7012,
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "untested",
@@ -66639,8 +66637,8 @@
                 "stage": "S1",
                 "status": "connected",
                 "vantage": {
-                  "colo": "ATL",
-                  "type": "cloudflare_worker"
+                  "region": null,
+                  "type": "github_actions_runner"
                 }
               },
               {
@@ -70342,54 +70340,42 @@
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
       "verification": {
-        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain n.yogasku.ng:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
-        "error_class": null,
+        "detail": "TCP connection timed out",
+        "error_class": "tcp_connect_timeout",
+        "http_status": null,
         "observations": [
           {
-            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain n.yogasku.ng:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
-            "error_class": null,
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
+            "http_status": null,
             "observations": [
               {
                 "detail": "TCP connection timed out after one jittered retry",
                 "error_class": "tcp_connect_timeout",
                 "observed_at": "2026-11-08T20:10:26.958808285Z",
                 "probe_type": "tcp",
-                "rtt_ms": 2.071,
+                "rtt_ms": null,
                 "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
                 }
               },
               {
-                "detail": "connection reached the endpoint but its protocol signature was not verified",
-                "error_class": "protocol_response_unverified",
+                "detail": "TCP connection timed out",
+                "error_class": "tcp_connect_timeout",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:14:05.623Z",
                 "probe_type": "tcp",
                 "rtt_ms": 5000,
                 "source": "probe-relay",
-                "stage": "S1",
-                "status": "inconclusive",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
-                }
-              },
-              {
-                "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain n.yogasku.ng:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
-                "error_class": null,
-                "observed_at": "2026-11-08T19:25:22.372296006+00:00",
-                "probe_type": "websocket-101",
-                "rtt_ms": 769.069213,
-                "source": "webtunnel_front_probe",
-                "stage": "S2",
-                "status": "connected",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
                 }
               }
             ],
@@ -70430,8 +70416,7 @@
           "colo": "DFW",
           "type": "cloudflare_worker"
         }
-      },
-      "websocket_signature_verified": false
+      }
     },
     {
       "asn": "AS20473",
@@ -106480,32 +106465,27 @@
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
+          "country": "IR",
+          "type": "ooni_probe"
         }
       },
-      "websocket_signature_verified": false
-    },
-    {
-      "composite_score": 0.2926,
-      "host": "79.112.25.215",
       "iran_status": "iran_unknown",
-      "line": "obfs4 79.112.25.215:6405 94817D5C6E51B51A8716335D054A589AB2518405 cert=A3DRNMb9IWzeV7HA54Npru4Vodmv501G5RmoXO3sJua9iZr9zBy0z26WmZmzbvKF1KCrMg iat-mode=0",
-      "ooni_checked": false,
-      "port": 6405,
+      "line": "Bridge 84.118.26.104:9001 A63A5F6ED7DB003EF8E262C725E5947ED6226350",
+      "ooni_checked": true,
+      "port": 9001,
       "tcp_reachable": false,
-      "test_result": "untested (tcp timeout)",
+      "test_result": "untested (probe error)",
       "test_tier": "untested",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "vanilla",
       "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
+        "detail": "probe failed before a positive connection stage was recorded",
+        "error_class": "probe_error",
         "http_status": null,
         "observations": [
           {
-            "detail": "TCP connection timed out",
-            "error_class": "tcp_connect_timeout",
+            "detail": "probe failed before a positive connection stage was recorded",
+            "error_class": "probe_error",
             "http_status": null,
             "observations": [
               {
@@ -106523,15 +106503,15 @@
                 }
               },
               {
-                "detail": "TCP connection timed out",
-                "error_class": "tcp_connect_timeout",
+                "detail": "probe failed before a positive connection stage was recorded",
+                "error_class": "probe_error",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:14:55.759Z",
                 "probe_type": "tcp",
                 "rtt_ms": 137,
                 "source": "probe-relay",
                 "stage": "S0",
-                "status": "timeout",
+                "status": "error",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
@@ -106543,22 +106523,22 @@
             "rtt_ms": 137,
             "source": "probe-relay",
             "stage": "S0",
-            "status": "timeout",
+            "status": "error",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
             }
           },
           {
-            "detail": "TCP connection timed out",
-            "error_class": "tcp_connect_timeout",
+            "detail": "probe failed before a positive connection stage was recorded",
+            "error_class": "probe_error",
             "http_status": null,
             "observed_at": "2026-11-08T20:14:55.759Z",
             "probe_type": "tcp",
             "rtt_ms": 137,
             "source": "probe-relay",
             "stage": "S0",
-            "status": "timeout",
+            "status": "error",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -106570,7 +106550,7 @@
         "rtt_ms": 137,
         "source": "probe-relay",
         "stage": "S0",
-        "status": "timeout",
+        "status": "error",
         "vantage": {
           "colo": "DFW",
           "type": "cloudflare_worker"
@@ -364576,20 +364556,6 @@
             }
           },
           {
-            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain au.2jl.cc:443. Generic HTTP response received; no transport handshake was verified.",
-            "error_class": null,
-            "observed_at": "2026-11-08T19:25:30.038192096+00:00",
-            "probe_type": "websocket-front-check",
-            "rtt_ms": 1258.013571,
-            "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
             "detail": "WS upgrade write: Resource temporarily unavailable (os error 11)",
             "error_class": "error",
             "observed_at": "2026-11-08T20:39:52.040651463+00:00",
@@ -366863,7 +366829,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain mstdn.party:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:1f1e:4d2f:321b:6626:823e:c504",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.20.26.62:443 4946C9B8410CF59953455C158F957CAB2055A61D url=https://mstdn.party/fooghee7naChifi0 ver=0.0.2",
+      "line": "webtunnel 172.66.156.239:443 4946C9B8410CF59953455C158F957CAB2055A61D url=https://mstdn.party/fooghee7naChifi0 ver=0.0.2",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
@@ -367323,7 +367289,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:38.899Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 2,
+            "rtt_ms": 1,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -368338,7 +368304,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain steuern-sind-raub.ch:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:2638:b1a0:f262:490b:f15c:6798",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 172.67.153.141:443 FFBAE1B459A6CB5C6751F9BE72284EAB9E36CD0F url=https://steuern-sind-raub.ch/rohzaaSae8meith4oo ver=0.0.3",
+      "line": "webtunnel 104.21.80.200:443 FFBAE1B459A6CB5C6751F9BE72284EAB9E36CD0F url=https://steuern-sind-raub.ch/rohzaaSae8meith4oo ver=0.0.3",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
@@ -368418,7 +368384,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:28.988Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 1,
+            "rtt_ms": 2,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -371499,7 +371465,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:24.406Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 1,
+            "rtt_ms": 2,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -371743,7 +371709,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:24.370Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 1,
+            "rtt_ms": 2,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -371865,7 +371831,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:24.370Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 1,
+            "rtt_ms": 2,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -376160,24 +376126,24 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain cdn.yuvalbloch.com:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:4953:96a1:8299:af7:7895:2800",
       "iran_status": "iran_unknown",
-      "line": "webtunnel [2001:db8:4953:96a1:8299:af7:7895:2800]:443 AFEA7AA741841104DD4B05BB40EB429D9D9984D3 url=https://cdn.yuvalbloch.com/hFu8FeeWjl9Fq4djXVFzuKPn ver=0.0.5",
+      "line": "webtunnel 108.61.99.200:443 AFEA7AA741841104DD4B05BB40EB429D9D9984D3 url=https://cdn.yuvalbloch.com/hFu8FeeWjl9Fq4djXVFzuKPn ver=0.0.5",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
-      "probe_status": "websocket_failed",
+      "probe_status": "websocket_101_canonical",
       "tcp_reachable": true,
       "test_result": "tested_working",
       "test_tier": "tier_2_pt_handshake",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "webtunnel",
-      "transport_capable": false,
+      "transport_capable": true,
       "verification": {
-        "detail": "WS upgrade write: Connection reset by peer (os error 104)",
-        "error_class": "error",
+        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain cdn.yuvalbloch.com:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
+        "error_class": null,
         "observations": [
           {
-            "detail": "WS upgrade write: unexpected end of file",
-            "error_class": "error",
+            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain cdn.yuvalbloch.com:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
+            "error_class": null,
             "observations": [
               {
                 "detail": "TCP connection failed",
@@ -376215,8 +376181,8 @@
                 "probe_type": "websocket-101",
                 "rtt_ms": 565.563101,
                 "source": "webtunnel_front_probe",
-                "stage": "S1",
-                "status": "error",
+                "stage": "S2",
+                "status": "connected",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
@@ -376227,8 +376193,8 @@
             "probe_type": "websocket-101",
             "rtt_ms": 565.563101,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "error",
+            "stage": "S2",
+            "status": "connected",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -376270,8 +376236,8 @@
             "probe_type": "websocket-101",
             "rtt_ms": 642.006973,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "error",
+            "stage": "S2",
+            "status": "connected",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -376282,8 +376248,8 @@
         "probe_type": "websocket-101",
         "rtt_ms": 642.006973,
         "source": "webtunnel_front_probe",
-        "stage": "S1",
-        "status": "error",
+        "stage": "S2",
+        "status": "connected",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -377255,7 +377221,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain tor.kwe-private.net:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:4bf5:5825:626a:b253:3a97:7231",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 172.67.199.231:443 4FA98FE9568D850B675CB828B9E84DE2E2B3B45C url=https://tor.kwe-private.net/E45hEt4K3GQCChZ4B7jfrQ2b ver=0.0.4",
+      "line": "webtunnel 104.21.84.251:443 4FA98FE9568D850B675CB828B9E84DE2E2B3B45C url=https://tor.kwe-private.net/E45hEt4K3GQCChZ4B7jfrQ2b ver=0.0.4",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
@@ -377335,7 +377301,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:38.889Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 1,
+            "rtt_ms": 2,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -377914,9 +377880,9 @@
             "error_class": "tcp_connect_error",
             "observed_at": "2026-11-08T20:11:42.575893463Z",
             "probe_type": "tcp",
-            "rtt_ms": 6834.087506999999,
-            "source": "webtunnel_front_probe",
-            "stage": "S1",
+            "rtt_ms": null,
+            "source": "iran_results",
+            "stage": "S0",
             "status": "error",
             "vantage": {
               "region": null,
@@ -378350,23 +378316,23 @@
       "websocket_signature_verified": false
     },
     {
-      "composite_score": 0.45,
-      "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. Generic HTTP response received; no transport handshake was verified.",
+      "composite_score": 0.7,
+      "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:4fcd:461f:cbce:edea:fb74:a1e8",
       "iran_status": "iran_unknown",
       "line": "webtunnel 172.67.208.101:2053 F799A0A458365388600F54BD44A99B5887D54911 url=https://wt.aaronstory2026.xyz:2053/vicmackey ver=0.0.4",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
-      "probe_status": "http_response",
+      "probe_status": "websocket_101_canonical",
       "tcp_reachable": true,
       "test_result": "tested_working",
       "test_tier": "tier_2_pt_handshake",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "webtunnel",
-      "transport_capable": false,
+      "transport_capable": true,
       "verification": {
-        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. Generic HTTP response received; no transport handshake was verified.",
+        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
         "error_class": null,
         "observations": [
           {
@@ -378413,13 +378379,13 @@
             }
           },
           {
-            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. Generic HTTP response received; no transport handshake was verified.",
+            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain wt.aaronstory2026.xyz:2053. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
             "error_class": null,
             "observed_at": "2026-11-08T20:39:55.048378062+00:00",
             "probe_type": "websocket-101",
             "rtt_ms": 278.766955,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
+            "stage": "S2",
             "status": "connected",
             "vantage": {
               "region": null,
@@ -378431,7 +378397,7 @@
         "probe_type": "websocket-101",
         "rtt_ms": 278.766955,
         "source": "webtunnel_front_probe",
-        "stage": "S1",
+        "stage": "S2",
         "status": "connected",
         "vantage": {
           "region": null,
@@ -380670,20 +380636,20 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain tomorefreedomitis.com:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:5bad:2592:cf4d:ca9:90a1:c73d",
       "iran_status": "iran_unknown",
-      "line": "webtunnel [2001:db8:5bad:2592:cf4d:ca9:90a1:c73d]:443 351EBCA3042AF25ED2D9DC09F53D0C971153ACE7 url=https://tomorefreedomitis.com/BiBLE9ERvDcO0mBoGZKzZTAm ver=0.0.2",
+      "line": "webtunnel 92.27.137.133:443 351EBCA3042AF25ED2D9DC09F53D0C971153ACE7 url=https://tomorefreedomitis.com/BiBLE9ERvDcO0mBoGZKzZTAm ver=0.0.2",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
-      "probe_status": "websocket_failed",
+      "probe_status": "websocket_101_canonical",
       "tcp_reachable": true,
       "test_result": "tested_working",
       "test_tier": "tier_2_pt_handshake",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "webtunnel",
-      "transport_capable": false,
+      "transport_capable": true,
       "verification": {
-        "detail": "flush: Resource temporarily unavailable (os error 11)",
-        "error_class": "error",
+        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain tomorefreedomitis.com:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
+        "error_class": null,
         "observations": [
           {
             "detail": "WS upgrade write: Resource temporarily unavailable (os error 11)",
@@ -380847,8 +380813,8 @@
                 "probe_type": "websocket-101",
                 "rtt_ms": 605.6147619999999,
                 "source": "webtunnel_front_probe",
-                "stage": "S1",
-                "status": "error",
+                "stage": "S2",
+                "status": "connected",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
@@ -380859,8 +380825,8 @@
             "probe_type": "websocket-101",
             "rtt_ms": 605.6147619999999,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "error",
+            "stage": "S2",
+            "status": "connected",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -380888,8 +380854,8 @@
             "probe_type": "websocket-101",
             "rtt_ms": 570.809663,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "error",
+            "stage": "S2",
+            "status": "connected",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -380900,8 +380866,8 @@
         "probe_type": "websocket-101",
         "rtt_ms": 570.809663,
         "source": "webtunnel_front_probe",
-        "stage": "S1",
-        "status": "error",
+        "stage": "S2",
+        "status": "connected",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -380930,8 +380896,8 @@
         "error_class": null,
         "observations": [
           {
-            "detail": "flush: Resource temporarily unavailable (os error 11)",
-            "error_class": "error",
+            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain tomorefreedomitis.com:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
+            "error_class": null,
             "observations": [
               {
                 "detail": "TCP connection failed",
@@ -380969,8 +380935,8 @@
                 "probe_type": "websocket-101",
                 "rtt_ms": 2814.687076,
                 "source": "webtunnel_front_probe",
-                "stage": "S1",
-                "status": "error",
+                "stage": "S2",
+                "status": "connected",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
@@ -380981,8 +380947,8 @@
             "probe_type": "websocket-101",
             "rtt_ms": 2814.687076,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "error",
+            "stage": "S2",
+            "status": "connected",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -383311,7 +383277,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:19:58.805Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 272,
+            "rtt_ms": 243,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -384053,20 +384019,6 @@
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-            "error_class": null,
-            "observed_at": "2026-11-08T19:40:15.110587Z",
-            "probe_type": "websocket-101",
-            "rtt_ms": 738.0,
-            "source": "handshake-probe",
-            "stage": "S2",
-            "status": "connected",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
             }
           },
           {
@@ -388960,8 +388912,8 @@
                 "probe_type": "tcp",
                 "rtt_ms": 2338.521941,
                 "source": "webtunnel_front_probe",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "error",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
@@ -388973,7 +388925,7 @@
             "rtt_ms": 145,
             "source": "probe-relay",
             "stage": "S1",
-            "status": "connected",
+            "status": "inconclusive",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -389001,8 +388953,8 @@
             "probe_type": "tcp",
             "rtt_ms": 2236.2824840000003,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "error",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -389013,8 +388965,8 @@
         "probe_type": "tcp",
         "rtt_ms": 2236.2824840000003,
         "source": "webtunnel_front_probe",
-        "stage": "S1",
-        "status": "connected",
+        "stage": "S0",
+        "status": "error",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -394922,7 +394874,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain learnstack.xyz:443. Generic HTTP response received; no transport handshake was verified.",
       "host": "2001:db8:9971:e9c7:2b64:916b:17f8:7775",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 13.248.169.48:443 2F104EE04E1224CAFF6B8DFC62F83550CA2958DC url=https://learnstack.xyz/tohG1pieHieJ0eit43k ver=0.0.1",
+      "line": "webtunnel 76.223.54.146:443 2F104EE04E1224CAFF6B8DFC62F83550CA2958DC url=https://learnstack.xyz/tohG1pieHieJ0eit43k ver=0.0.1",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
@@ -400139,7 +400091,7 @@
         "error_class": null,
         "observations": [
           {
-            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain aaronstory2026.xyz:2053. Generic HTTP response received; no transport handshake was verified.",
+            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain aaronstory2026.xyz:2053. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
             "error_class": null,
             "observations": [
               {
@@ -400172,13 +400124,13 @@
                 }
               },
               {
-                "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain aaronstory2026.xyz:2053. Generic HTTP response received; no transport handshake was verified.",
+                "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain aaronstory2026.xyz:2053. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
                 "error_class": null,
                 "observed_at": "2026-11-08T20:24:52.643158351+00:00",
                 "probe_type": "websocket-101",
                 "rtt_ms": 248.746392,
                 "source": "webtunnel_front_probe",
-                "stage": "S1",
+                "stage": "S2",
                 "status": "connected",
                 "vantage": {
                   "region": null,
@@ -400190,7 +400142,7 @@
             "probe_type": "websocket-101",
             "rtt_ms": 248.746392,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
+            "stage": "S2",
             "status": "connected",
             "vantage": {
               "region": null,
@@ -400880,20 +400832,6 @@
             }
           },
           {
-            "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-            "error_class": null,
-            "observed_at": "2026-11-08T19:40:18.990950Z",
-            "probe_type": "websocket-101",
-            "rtt_ms": 331.0,
-            "source": "handshake-probe",
-            "stage": "S2",
-            "status": "connected",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
             "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain speedtest.qs.ee:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
             "error_class": null,
             "observed_at": "2026-11-08T20:40:08.804144104+00:00",
@@ -401432,15 +401370,15 @@
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
-      "probe_status": "websocket_101_canonical",
+      "probe_status": "http_response",
       "tcp_reachable": true,
       "test_result": "tcp_reachable_s1",
       "test_tier": "tier_1_tcp",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "webtunnel",
-      "transport_capable": true,
+      "transport_capable": false,
       "verification": {
-        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain dsl.one.pl:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
+        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain dsl.one.pl:443. Generic HTTP response received; no transport handshake was verified.",
         "error_class": null,
         "observations": [
           {
@@ -401518,13 +401456,13 @@
             }
           },
           {
-            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain dsl.one.pl:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
+            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain dsl.one.pl:443. Generic HTTP response received; no transport handshake was verified.",
             "error_class": null,
             "observed_at": "2026-11-08T20:40:09.895631075+00:00",
             "probe_type": "websocket-front-check",
             "rtt_ms": 1022.0479010000001,
             "source": "webtunnel_front_probe",
-            "stage": "S2",
+            "stage": "S1",
             "status": "connected",
             "vantage": {
               "region": null,
@@ -401536,7 +401474,7 @@
         "probe_type": "websocket-front-check",
         "rtt_ms": 1022.0479010000001,
         "source": "webtunnel_front_probe",
-        "stage": "S2",
+        "stage": "S1",
         "status": "connected",
         "vantage": {
           "region": null,
@@ -404061,7 +403999,7 @@
       "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain lowkeykick.site:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
       "host": "2001:db8:c9b:bc88:3d6e:1c94:c0e9:b3f9",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 104.21.73.84:443 908AAD3122B6D46E6CD7CE4BE03A6F9491EF4204 url=https://lowkeykick.site/199ea8c3e6efa36c7e56a280838830757b806540 ver=0.0.3",
+      "line": "webtunnel 172.67.142.7:443 908AAD3122B6D46E6CD7CE4BE03A6F9491EF4204 url=https://lowkeykick.site/199ea8c3e6efa36c7e56a280838830757b806540 ver=0.0.3",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
@@ -404155,7 +404093,7 @@
             "error_class": null,
             "observed_at": "2026-11-08T20:39:26.652295Z",
             "probe_type": "websocket-101",
-            "rtt_ms": 351.0,
+            "rtt_ms": 642.0,
             "source": "handshake-probe",
             "stage": "S2",
             "status": "connected",
@@ -408483,8 +408421,8 @@
         "error_class": null,
         "observations": [
           {
-            "detail": "flush: Resource temporarily unavailable (os error 11)",
-            "error_class": "error",
+            "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain cominonstrong.com:443. Generic HTTP response received; no transport handshake was verified.",
+            "error_class": null,
             "observations": [
               {
                 "detail": "TCP connection failed",
@@ -413347,20 +413285,6 @@
             }
           },
           {
-            "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-            "error_class": null,
-            "observed_at": "2026-11-08T19:40:14.809648Z",
-            "probe_type": "websocket-101",
-            "rtt_ms": 523.0,
-            "source": "handshake-probe",
-            "stage": "S2",
-            "status": "connected",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
             "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain oldradio.info:443. HTTP 101 with the canonical `Upgrade: websocket` / `Connection: upgrade` echo was validated (reference webtunnel contract; no Sec-WebSocket-Accept is expected).",
             "error_class": null,
             "observed_at": "2026-11-08T20:40:14.897369628+00:00",
@@ -414374,8 +414298,8 @@
         "stage": "S2",
         "status": "connected",
         "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
+          "region": null,
+          "type": "github_actions_runner"
         }
       },
       "websocket_signature_verified": false
@@ -414411,8 +414335,8 @@
                 "probe_type": "tcp",
                 "rtt_ms": 140.276,
                 "source": "iran_results",
-                "stage": "S0",
-                "status": "refused",
+                "stage": "S1",
+                "status": "connected",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
@@ -414575,25 +414499,10 @@
             "rtt_ms": 7888.553182,
             "source": "webtunnel_front_probe",
             "stage": "S1",
-            "status": "inconclusive",
+            "status": "error",
             "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "connection reached the endpoint but its protocol signature was not verified",
-            "error_class": "protocol_response_unverified",
-            "http_status": null,
-            "observed_at": "2026-11-08T19:17:06.898Z",
-            "probe_type": "tcp",
-            "rtt_ms": 22,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "inconclusive",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
+              "region": null,
+              "type": "github_actions_runner"
             }
           },
           {
@@ -414633,10 +414542,11 @@
         "stage": "S1",
         "status": "connected",
         "vantage": {
-          "colo": "ATL",
-          "type": "cloudflare_worker"
+          "region": null,
+          "type": "github_actions_runner"
         }
-      }
+      },
+      "websocket_signature_verified": false
     },
     {
       "composite_score": 0.9236,
@@ -422326,15 +422236,15 @@
             }
           },
           {
-            "detail": "TCP connection established",
-            "error_class": null,
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observed_at": "2026-11-08T20:17:50.230Z",
             "probe_type": "tcp",
-            "rtt_ms": 85,
+            "rtt_ms": 5000,
             "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -422343,10 +422253,10 @@
         ],
         "observed_at": "2026-11-08T20:17:50.230Z",
         "probe_type": "tcp",
-        "rtt_ms": 85,
+        "rtt_ms": 5000,
         "source": "probe-relay",
-        "stage": "S1",
-        "status": "connected",
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "colo": "DFW",
           "type": "cloudflare_worker"
@@ -423449,9 +423359,9 @@
       "composite_score": 0.2321,
       "host": "82.50.113.187",
       "iran_status": "iran_unknown",
-      "line": "obfs4 82.101.228.182:38111 D63381FC6BD99A67570177322D275AE3FBEF94FE cert=/HJzcPpdibv4teKdsOgbvPyHhM2AWclOfDyuNegbyixNqNb9ugm/xfJ8G0sPoGO5iB7FVA iat-mode=0",
+      "line": "obfs4 82.50.113.187:8080 CB83451C5B2ECBF2ED4B15E5845EF8469210FB1D cert=cry1YmniQhZOu5xTZOUvbwxm35Foy0yWAjhjRA/teIcnrcSumHbijbGrhNmWsmVlR3eREQ iat-mode=0",
       "ooni_checked": false,
-      "port": 38111,
+      "port": 8080,
       "tcp_reachable": false,
       "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
@@ -423631,9 +423541,9 @@
       "composite_score": 0.2288,
       "host": "82.66.251.91",
       "iran_status": "iran_unknown",
-      "line": "obfs4 83.229.82.238:9443 A4F6D3571B148EF2E288894FB684E222AA5C9096 cert=FjSVDd4JFH3iRJDqoZl7AiDZGrs8T8LFiR8dmIkFguQN/U/aLahIOJpANt9E/LO3vOG7Iw iat-mode=0",
+      "line": "obfs4 82.66.251.91:30030 2A388BF677CC4914FBBEC28ED62F4DA7B5AA9B07 cert=kyz+PK0XLWrRbkyn9LmB6NcLXkyG3uzL44bI/cU7zJhos9c4E0WYIjycv+rotiZHYJGWfA iat-mode=0",
       "ooni_checked": false,
-      "port": 9443,
+      "port": 30030,
       "tcp_reachable": false,
       "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
@@ -424191,18 +424101,18 @@
       "ooni_checked": false,
       "port": 35555,
       "tcp_reachable": false,
-      "test_result": "untested (probe error)",
+      "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "obfs4",
       "verification": {
-        "detail": "probe failed before a positive connection stage was recorded",
-        "error_class": "probe_error",
+        "detail": "TCP connection timed out",
+        "error_class": "tcp_connect_timeout",
         "http_status": null,
         "observations": [
           {
-            "detail": "probe failed before a positive connection stage was recorded",
-            "error_class": "probe_error",
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observations": [
               {
@@ -424220,15 +424130,15 @@
                 }
               },
               {
-                "detail": "probe failed before a positive connection stage was recorded",
-                "error_class": "probe_error",
+                "detail": "TCP connection timed out",
+                "error_class": "tcp_connect_timeout",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:18:02.708Z",
                 "probe_type": "tcp",
-                "rtt_ms": 384,
+                "rtt_ms": 5000,
                 "source": "probe-relay",
                 "stage": "S0",
-                "status": "error",
+                "status": "timeout",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
@@ -424237,25 +424147,25 @@
             ],
             "observed_at": "2026-11-08T20:18:02.708Z",
             "probe_type": "tcp",
-            "rtt_ms": 384,
+            "rtt_ms": 5000,
             "source": "probe-relay",
             "stage": "S0",
-            "status": "error",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
             }
           },
           {
-            "detail": "probe failed before a positive connection stage was recorded",
-            "error_class": "probe_error",
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observed_at": "2026-11-08T20:18:02.708Z",
             "probe_type": "tcp",
-            "rtt_ms": 384,
+            "rtt_ms": 5000,
             "source": "probe-relay",
             "stage": "S0",
-            "status": "error",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -424264,10 +424174,10 @@
         ],
         "observed_at": "2026-11-08T20:18:02.708Z",
         "probe_type": "tcp",
-        "rtt_ms": 384,
+        "rtt_ms": 5000,
         "source": "probe-relay",
         "stage": "S0",
-        "status": "error",
+        "status": "timeout",
         "vantage": {
           "colo": "DFW",
           "type": "cloudflare_worker"
@@ -426908,9 +426818,9 @@
       "composite_score": 0.2305,
       "host": "85.16.164.254",
       "iran_status": "iran_unknown",
-      "line": "obfs4 85.117.251.69:44821 D40DA77CA68F39666F77CE8BA6FF332BF8DB3F31 cert=B4yVW8heE83luCJt+oQN1kDB/j4kWkNx6mtOc9O6GhLAV8zJx0lfUI6zWO9UxUoV5PX/Zw iat-mode=0",
+      "line": "obfs4 85.16.164.254:9003 F5B98B279AB573A0B45CB41A44A7E2C494ECB257 cert=vgkhOSxuS07JM0LKqFoaRr+s3ego3c5xyc3z+b5al+fZLuDANdf22AMJfIWdpNLP2T7fDQ iat-mode=0",
       "ooni_checked": false,
-      "port": 44821,
+      "port": 9003,
       "tcp_reachable": false,
       "test_result": "untested (probe error)",
       "test_tier": "untested",
@@ -429689,9 +429599,9 @@
       "composite_score": 0.2267,
       "host": "87.167.234.45",
       "iran_status": "iran_unknown",
-      "line": "obfs4 87.144.64.198:24216 9DFE28949AD100A031F65C7B7B0217CF38847F9D cert=r2Mh1R3yxONw3YYaaru/6fW2/OhupOsPCFbJLRmZ8Cx1TtR+9JThkaBGxI6/tTlIMAogKw iat-mode=0",
+      "line": "obfs4 87.167.234.45:45439 469CC6FA33961F5322C5D00007B42EF3D5B398CC cert=1r/SSKByXjRsy140delLG8r8n7m3GFGjsdGFajSSwAd6MeObBXWIVjRqOAmaUUNENMayLA iat-mode=0",
       "ooni_checked": false,
-      "port": 24216,
+      "port": 45439,
       "tcp_reachable": false,
       "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
@@ -430234,19 +430144,9 @@
     {
       "composite_score": 0.2635,
       "host": "87.197.128.98",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-08T19:11:43.212572211Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 87.197.128.98:9292 AE6BA15179AEEF64A0F543BEB7FA1BE2E91A93CF cert=t36bkZYMFJyJzTN1HYyh5LzAK/R81GAAH2Q7N3P9qLt5Jd0g7qDvWPIKTurxO2t7XzxSQA iat-mode=0",
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 9292,
       "tcp_reachable": false,
       "test_result": "untested (tcp timeout)",
@@ -430609,7 +430509,7 @@
       "composite_score": 0.2936,
       "host": "89.116.48.119",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 92.27.137.134:443 BA122CD1D40BA9F4732BE9A119C3097600D477E9 url=https://mwumba.com ver=0.0.1",
+      "line": "obfs4 89.116.48.119:32278 EB1331E3372F12A1B42D2A8ECAF7064251C56B66 cert=pfjOWyOhh7bEcZUtKekBFbBPKSnhWjS4yyFG+/n0Foq3Bq6m8gsLecMHBf9K01a/wLiNAQ iat-mode=0",
       "ooni_checked": false,
       "port": 32278,
       "tcp_reachable": false,
@@ -430618,63 +430518,51 @@
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "obfs4",
       "verification": {
-        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain mwumba.com:443. Generic HTTP response received; no transport handshake was verified.",
-        "error_class": null,
+        "detail": "TCP connection timed out",
+        "error_class": "tcp_connect_timeout",
+        "http_status": null,
         "observations": [
           {
-            "detail": "WS upgrade write: Resource temporarily unavailable (os error 11)",
-            "error_class": "error",
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
+            "http_status": null,
             "observations": [
               {
                 "detail": "TCP connection timed out after one jittered retry",
                 "error_class": "tcp_connect_timeout",
                 "observed_at": "2026-11-08T20:11:52.720577847Z",
                 "probe_type": "tcp",
-                "rtt_ms": 7243.282,
+                "rtt_ms": null,
                 "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
                 }
               },
               {
-                "detail": "connection reached the endpoint but its protocol signature was not verified",
-                "error_class": "protocol_response_unverified",
+                "detail": "TCP connection timed out",
+                "error_class": "tcp_connect_timeout",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:18:15.234Z",
                 "probe_type": "tcp",
                 "rtt_ms": 5000,
                 "source": "probe-relay",
-                "stage": "S1",
-                "status": "inconclusive",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
-                }
-              },
-              {
-                "detail": "WS upgrade write: Resource temporarily unavailable (os error 11)",
-                "error_class": "error",
-                "observed_at": "2026-11-08T19:26:08.419517118+00:00",
-                "probe_type": "tcp",
-                "rtt_ms": 10619.882358,
-                "source": "webtunnel_front_probe",
-                "stage": "S1",
-                "status": "error",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
                 }
               }
             ],
             "observed_at": "2026-11-08T20:18:15.234Z",
             "probe_type": "tcp",
-            "rtt_ms": 10619.882358,
-            "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "error",
+            "rtt_ms": 5000,
+            "source": "probe-relay",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -430706,8 +430594,7 @@
           "colo": "DFW",
           "type": "cloudflare_worker"
         }
-      },
-      "websocket_signature_verified": false
+      }
     },
     {
       "composite_score": 0.2683,
@@ -431987,312 +431874,9 @@
       "composite_score": 0.2317,
       "host": "90.54.122.235",
       "iran_status": "iran_unknown",
-      "line": "obfs4 152.53.83.232:1992 49A53936AF2895A1612603AAA3C1CF8A01830157 cert=uVXUO414i8rmHt58SMvdiR0KDxVX7NLmQqLEnINtZxc3g/2B6X+VLLfLZl2m+Mvk6McMHQ iat-mode=0",
-      "ooni_checked": true,
-      "port": 1992,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
-      "test_tier": "untested",
-      "tested_at": "2026-11-08T19:26:10.080696591+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established",
-        "error_class": null,
-        "http_status": null,
-        "observations": [
-          {
-            "detail": "TCP connection established",
-            "error_class": null,
-            "http_status": null,
-            "observations": [
-              {
-                "detail": "TCP connection established; no transport handshake was performed",
-                "error_class": "",
-                "observed_at": "2026-11-08T19:12:03.676059555Z",
-                "probe_type": "tcp",
-                "rtt_ms": 15.106,
-                "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              },
-              {
-                "detail": "TCP connection established",
-                "error_class": null,
-                "http_status": null,
-                "observed_at": "2026-11-08T19:17:06.918Z",
-                "probe_type": "tcp",
-                "rtt_ms": 19,
-                "source": "probe-relay",
-                "stage": "S1",
-                "status": "connected",
-                "vantage": {
-                  "colo": "ATL",
-                  "type": "cloudflare_worker"
-                }
-              }
-            ],
-            "observed_at": "2026-11-08T19:17:06.918Z",
-            "probe_type": "tcp",
-            "rtt_ms": 19,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "TCP connection established",
-            "error_class": null,
-            "http_status": null,
-            "observed_at": "2026-11-08T19:17:06.918Z",
-            "probe_type": "tcp",
-            "rtt_ms": 19,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          }
-        ],
-        "observed_at": "2026-11-08T19:17:06.918Z",
-        "probe_type": "tcp",
-        "rtt_ms": 19,
-        "source": "probe-relay",
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "colo": "ATL",
-          "type": "cloudflare_worker"
-        }
-      }
-    },
-    {
-      "composite_score": 0.8203,
-      "host": "152.53.87.65",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-08T19:12:03.811390002Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 152.53.87.65:9443 6456BE1DC2E03AF194C45A9212D30A7E506955B1 cert=OWqgSmmTyZbhkhoQHFmXnhijXXd7NhOfkqzclwNN46AhMjpfqQlrGskE8TBvHJ/tlSsTaA iat-mode=0",
-      "ooni_checked": true,
-      "port": 9443,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
-      "test_tier": "untested",
-      "tested_at": "2026-11-08T19:26:10.080696591+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established",
-        "error_class": null,
-        "http_status": null,
-        "observations": [
-          {
-            "detail": "TCP connection established",
-            "error_class": null,
-            "http_status": null,
-            "observations": [
-              {
-                "detail": "TCP connection established; no transport handshake was performed",
-                "error_class": "",
-                "observed_at": "2026-11-08T19:12:03.811334056Z",
-                "probe_type": "tcp",
-                "rtt_ms": 102.393,
-                "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              },
-              {
-                "detail": "TCP connection established",
-                "error_class": null,
-                "http_status": null,
-                "observed_at": "2026-11-08T19:17:07.004Z",
-                "probe_type": "tcp",
-                "rtt_ms": 105,
-                "source": "probe-relay",
-                "stage": "S1",
-                "status": "connected",
-                "vantage": {
-                  "colo": "ATL",
-                  "type": "cloudflare_worker"
-                }
-              }
-            ],
-            "observed_at": "2026-11-08T19:17:07.004Z",
-            "probe_type": "tcp",
-            "rtt_ms": 105,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "TCP connection established",
-            "error_class": null,
-            "http_status": null,
-            "observed_at": "2026-11-08T19:17:07.004Z",
-            "probe_type": "tcp",
-            "rtt_ms": 105,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          }
-        ],
-        "observed_at": "2026-11-08T19:17:07.004Z",
-        "probe_type": "tcp",
-        "rtt_ms": 105,
-        "source": "probe-relay",
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "colo": "ATL",
-          "type": "cloudflare_worker"
-        }
-      }
-    },
-    {
-      "composite_score": 0.8373,
-      "host": "152.67.150.30",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-08T19:12:03.891820111Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 152.67.150.30:31337 D2348735CBD44B2C41B2371B77C4F105ED7143D0 cert=yN9iofs2H3nvDotLxCACT663BQZBVGciARGgj9uC1TJ3/wBoMSE2ZvH/L/5owsUZVUPtFQ iat-mode=0",
-      "ooni_checked": true,
-      "port": 31337,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
-      "test_tier": "untested",
-      "tested_at": "2026-11-08T19:26:10.080696591+00:00",
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established",
-        "error_class": null,
-        "http_status": null,
-        "observations": [
-          {
-            "detail": "TCP connection established",
-            "error_class": null,
-            "http_status": null,
-            "observations": [
-              {
-                "detail": "TCP connection established; no transport handshake was performed",
-                "error_class": "",
-                "observed_at": "2026-11-08T19:12:03.891744115Z",
-                "probe_type": "tcp",
-                "rtt_ms": 91.088,
-                "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              },
-              {
-                "detail": "TCP connection established",
-                "error_class": null,
-                "http_status": null,
-                "observed_at": "2026-11-08T19:17:07.003Z",
-                "probe_type": "tcp",
-                "rtt_ms": 105,
-                "source": "probe-relay",
-                "stage": "S1",
-                "status": "connected",
-                "vantage": {
-                  "colo": "ATL",
-                  "type": "cloudflare_worker"
-                }
-              }
-            ],
-            "observed_at": "2026-11-08T19:17:07.003Z",
-            "probe_type": "tcp",
-            "rtt_ms": 105,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "TCP connection established",
-            "error_class": null,
-            "http_status": null,
-            "observed_at": "2026-11-08T19:17:07.003Z",
-            "probe_type": "tcp",
-            "rtt_ms": 105,
-            "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          }
-        ],
-        "observed_at": "2026-11-08T19:17:07.003Z",
-        "probe_type": "tcp",
-        "rtt_ms": 105,
-        "source": "probe-relay",
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "colo": "ATL",
-          "type": "cloudflare_worker"
-        }
-      }
-    },
-    {
-      "composite_score": 0.4185,
-      "host": "107.189.7.185",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-08T19:12:04.144347182Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "obfs4 107.189.7.185:443 503EB70C30120C72988B47087C720B582B6AB135 cert=C9aZnJRqK1pkHH6VRi78lTNvaBX/nhUvOFh30oPE7RGpvkgSnrACmrF82gU+RdT2D/S5Og iat-mode=0",
-      "ooni_checked": true,
-      "port": 443,
+      "line": "obfs4 90.54.122.235:9002 6B91053A612A1CCEB9EDC6B129E9E610595A6E5E cert=Zm7PyukYf3hctGv+HrFS/ewsYJQbXfSThl5TPJvVY/UxXswYkuhFnidUju4hhMkO70PzQw iat-mode=0",
+      "ooni_checked": false,
+      "port": 9002,
       "tcp_reachable": false,
       "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
@@ -432381,9 +431965,9 @@
       "composite_score": 0.2266,
       "host": "91.116.161.79",
       "iran_status": "iran_unknown",
-      "line": "obfs4 90.54.122.235:9002 6B91053A612A1CCEB9EDC6B129E9E610595A6E5E cert=Zm7PyukYf3hctGv+HrFS/ewsYJQbXfSThl5TPJvVY/UxXswYkuhFnidUju4hhMkO70PzQw iat-mode=0",
+      "line": "obfs4 91.116.161.79:8080 273CF59DF788E98F21D4A2449AFFC9A8A65327F9 cert=JIq3mrt5UR2N/5B2hLslJpcujxa3ThmdOUHVDjBSFbaW31hWRv5fn/gXBAKS81gqJT0iOg iat-mode=0",
       "ooni_checked": false,
-      "port": 9002,
+      "port": 8080,
       "tcp_reachable": false,
       "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
@@ -432481,13 +432065,13 @@
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "obfs4",
       "verification": {
-        "detail": "TCP connection established",
-        "error_class": null,
+        "detail": "TCP connection timed out",
+        "error_class": "tcp_connect_timeout",
         "http_status": null,
         "observations": [
           {
-            "detail": "TCP connection established",
-            "error_class": null,
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observations": [
               {
@@ -432495,25 +432079,25 @@
                 "error_class": "tcp_connect_timeout",
                 "observed_at": "2026-11-08T20:11:53.355985335Z",
                 "probe_type": "tcp",
-                "rtt_ms": 106.902,
+                "rtt_ms": null,
                 "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
                 }
               },
               {
-                "detail": "TCP connection established",
-                "error_class": null,
+                "detail": "TCP connection timed out",
+                "error_class": "tcp_connect_timeout",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:18:21.506Z",
                 "probe_type": "tcp",
-                "rtt_ms": 108,
+                "rtt_ms": 5000,
                 "source": "probe-relay",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
@@ -432522,25 +432106,25 @@
             ],
             "observed_at": "2026-11-08T20:18:21.506Z",
             "probe_type": "tcp",
-            "rtt_ms": 108,
+            "rtt_ms": 5000,
             "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
             }
           },
           {
-            "detail": "TCP connection established",
-            "error_class": null,
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observed_at": "2026-11-08T20:18:21.506Z",
             "probe_type": "tcp",
-            "rtt_ms": 108,
+            "rtt_ms": 5000,
             "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -432549,10 +432133,10 @@
         ],
         "observed_at": "2026-11-08T20:18:21.506Z",
         "probe_type": "tcp",
-        "rtt_ms": 108,
+        "rtt_ms": 5000,
         "source": "probe-relay",
-        "stage": "S1",
-        "status": "connected",
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "colo": "DFW",
           "type": "cloudflare_worker"
@@ -432562,19 +432146,9 @@
     {
       "composite_score": 0.2621,
       "host": "91.199.84.46",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-08T19:11:43.327192592Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
       "iran_status": "iran_unknown",
       "line": "obfs4 91.199.84.46:65535 06110A085F7CD3821836DA2CA94C23F667AF8FDE cert=hnQjXaf+oJn8kytronlOyc1SIbgq+S27gogJVYoi0OvRP3v9J6qzCsBb9ACi6GqH8tSzKw iat-mode=0",
-      "ooni_checked": true,
+      "ooni_checked": false,
       "port": 65535,
       "tcp_reachable": false,
       "test_result": "untested (probe error)",
@@ -433392,22 +432966,22 @@
       "composite_score": 0.2827,
       "host": "93.218.15.134",
       "iran_status": "iran_unknown",
-      "line": "obfs4 152.67.77.128:443 A1EE6F6DFE58BBC556719B2BD6E4E4706D0E5F3F cert=3OIsshPn1Wkm/SAZt633Vz5P6DqUE7iTiFJG+KWhxn4gVIkU4xPGM2dAD0TS+Ejo2tmzaQ iat-mode=0",
-      "ooni_checked": true,
-      "port": 443,
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
+      "line": "obfs4 93.218.15.134:27015 87D694EB41A19275D726D188A5411E85BA9D3BA2 cert=RXxFEnSgq4/f4glsVtmXaerRaMJaHrh2bvEzjQPQVX+onFY/XGb6dPzVZOV/QwxP7pQwfw iat-mode=0",
+      "ooni_checked": false,
+      "port": 27015,
+      "tcp_reachable": false,
+      "test_result": "untested (tcp timeout)",
       "test_tier": "untested",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "obfs4",
       "verification": {
-        "detail": "TCP connection established",
-        "error_class": null,
+        "detail": "TCP connection timed out",
+        "error_class": "tcp_connect_timeout",
         "http_status": null,
         "observations": [
           {
-            "detail": "TCP connection established",
-            "error_class": null,
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observations": [
               {
@@ -433415,25 +432989,25 @@
                 "error_class": "tcp_connect_timeout",
                 "observed_at": "2026-11-08T20:11:53.589019644Z",
                 "probe_type": "tcp",
-                "rtt_ms": 106.798,
+                "rtt_ms": null,
                 "source": "iran_results",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "region": null,
                   "type": "github_actions_runner"
                 }
               },
               {
-                "detail": "TCP connection established",
-                "error_class": null,
+                "detail": "TCP connection timed out",
+                "error_class": "tcp_connect_timeout",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:18:27.815Z",
                 "probe_type": "tcp",
-                "rtt_ms": 109,
+                "rtt_ms": 5000,
                 "source": "probe-relay",
-                "stage": "S1",
-                "status": "connected",
+                "stage": "S0",
+                "status": "timeout",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
@@ -433442,25 +433016,25 @@
             ],
             "observed_at": "2026-11-08T20:18:27.815Z",
             "probe_type": "tcp",
-            "rtt_ms": 109,
+            "rtt_ms": 5000,
             "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
             }
           },
           {
-            "detail": "TCP connection established",
-            "error_class": null,
+            "detail": "TCP connection timed out",
+            "error_class": "tcp_connect_timeout",
             "http_status": null,
             "observed_at": "2026-11-08T20:18:27.815Z",
             "probe_type": "tcp",
-            "rtt_ms": 109,
+            "rtt_ms": 5000,
             "source": "probe-relay",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "colo": "DFW",
               "type": "cloudflare_worker"
@@ -433469,10 +433043,10 @@
         ],
         "observed_at": "2026-11-08T20:18:27.815Z",
         "probe_type": "tcp",
-        "rtt_ms": 109,
+        "rtt_ms": 5000,
         "source": "probe-relay",
-        "stage": "S1",
-        "status": "connected",
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "colo": "DFW",
           "type": "cloudflare_worker"
@@ -436314,8 +435888,8 @@
         "stage": "S0",
         "status": "error",
         "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
+          "region": null,
+          "type": "github_actions_runner"
         }
       }
     },
@@ -436323,22 +435897,21 @@
       "composite_score": 0.9391,
       "host": "192.0.2.39",
       "iran_status": "iran_unknown",
-      "line": "obfs4 109.110.170.208:29323 B93BAE4F17CEACD9E491920C5D283C0D4C3D6D3D cert=p+n8+6mTYmEMpFy+rDuQSyNy4X5pxarA9MzDknqk+WAukqpVa+uE0JJymTK8b8wSyK5pJw iat-mode=0",
-      "ooni_checked": true,
-      "port": 29323,
+      "line": "snowflake 192.0.2.39:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+      "ooni_checked": false,
+      "port": 80,
       "tcp_reachable": false,
       "test_result": "untested (rate-limited)",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "snowflake",
       "verification": {
-        "detail": "TCP connection timed out",
-        "error_class": "tcp_connect_timeout",
-        "http_status": null,
+        "detail": "protocol error (snowflake): connection closed before HTTP headers completed",
+        "error_class": "snowflake:protocol_error",
         "observations": [
           {
-            "detail": "TCP connection timed out",
-            "error_class": "tcp_connect_timeout",
+            "detail": "connection reached the endpoint but no complete HTTP response head was received",
+            "error_class": "http_response_missing",
             "http_status": null,
             "observations": [
               {
@@ -436356,15 +435929,15 @@
                 }
               },
               {
-                "detail": "TCP connection timed out",
-                "error_class": "tcp_connect_timeout",
+                "detail": "connection reached the endpoint but its protocol signature was not verified",
+                "error_class": "protocol_response_unverified",
                 "http_status": null,
                 "observed_at": "2026-11-08T20:18:56.401Z",
                 "probe_type": "tls",
                 "rtt_ms": 29,
                 "source": "probe-relay",
-                "stage": "S0",
-                "status": "timeout",
+                "stage": "S1",
+                "status": "inconclusive",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
@@ -436969,7 +436542,7 @@
         "rtt_ms": 0.0,
         "source": "handshake-probe",
         "stage": "S0",
-        "status": "inconclusive",
+        "status": "error",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -436984,13 +436557,13 @@
       "ooni_checked": false,
       "port": 80,
       "tcp_reachable": false,
-      "test_result": "untested (rate-limited)",
+      "test_result": "untested (probe error)",
       "test_tier": "tier_0_attempt",
       "tested_at": "2026-11-08T20:25:15.017561491+00:00",
       "transport": "snowflake",
       "verification": {
-        "detail": "protocol error (snowflake): connection closed before HTTP headers completed",
-        "error_class": "snowflake:protocol_error",
+        "detail": "HTTP 400 from snowflake",
+        "error_class": "snowflake:http_error",
         "observations": [
           {
             "detail": "TLS connection returned an HTTP response",
@@ -437020,7 +436593,7 @@
                 "rtt_ms": 12,
                 "source": "probe-relay",
                 "stage": "S1",
-                "status": "inconclusive",
+                "status": "connected",
                 "vantage": {
                   "colo": "DFW",
                   "type": "cloudflare_worker"
@@ -437121,7 +436694,7 @@
             "rtt_ms": 0.0,
             "source": "handshake-probe",
             "stage": "S0",
-            "status": "inconclusive",
+            "status": "error",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -437133,7 +436706,7 @@
         "rtt_ms": 0.0,
         "source": "handshake-probe",
         "stage": "S0",
-        "status": "inconclusive",
+        "status": "error",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -437159,7 +436732,7 @@
           {
             "detail": "TLS connection returned an HTTP response",
             "error_class": null,
-            "http_status": 200,
+            "http_status": 404,
             "observations": [
               {
                 "detail": "TCP connection timed out after one jittered retry",
@@ -437822,7 +437395,7 @@
                 "http_status": 200,
                 "observed_at": "2026-11-08T20:18:58.508Z",
                 "probe_type": "tls",
-                "rtt_ms": 14,
+                "rtt_ms": 22,
                 "source": "probe-relay",
                 "stage": "S1",
                 "status": "connected",
@@ -437986,7 +437559,7 @@
                 "http_status": null,
                 "observed_at": "2026-11-08T20:18:58.527Z",
                 "probe_type": "tls",
-                "rtt_ms": 12,
+                "rtt_ms": 39,
                 "source": "probe-relay",
                 "stage": "S1",
                 "status": "inconclusive",
@@ -438028,7 +437601,7 @@
             "http_status": null,
             "observed_at": "2026-11-08T20:18:58.527Z",
             "probe_type": "tls",
-            "rtt_ms": 12,
+            "rtt_ms": 39,
             "source": "probe-relay",
             "stage": "S1",
             "status": "inconclusive",
@@ -438947,7 +438520,7 @@
           {
             "detail": "TLS connection returned an HTTP response",
             "error_class": null,
-            "http_status": 200,
+            "http_status": 404,
             "observations": [
               {
                 "detail": "TCP connection timed out after one jittered retry",
@@ -440102,7 +439675,7 @@
                 "http_status": 404,
                 "observed_at": "2026-11-08T20:19:01.068Z",
                 "probe_type": "tls",
-                "rtt_ms": 116,
+                "rtt_ms": 122,
                 "source": "probe-relay",
                 "stage": "S1",
                 "status": "connected",
@@ -440159,7 +439732,7 @@
             "http_status": 404,
             "observed_at": "2026-11-08T20:19:01.068Z",
             "probe_type": "tls",
-            "rtt_ms": 116,
+            "rtt_ms": 122,
             "source": "probe-relay",
             "stage": "S1",
             "status": "connected",
@@ -442762,7 +442335,7 @@
       "composite_score": 0.9241,
       "host": "192.0.2.6",
       "iran_status": "iran_unknown",
-      "line": "snowflake 192.0.2.5:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+      "line": "snowflake 192.0.2.6:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
       "ooni_checked": false,
       "port": 80,
       "tcp_reachable": false,
@@ -444454,7 +444027,7 @@
       "evidence_scope": "WebSocket probe to webtunnel front qbxa1hay.xoomlia.com:443 failed: TCP connect failed: connection timed out",
       "host": "37.120.169.67",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 65.87.7.161:443 93F50F39F559F2BC2D0C8F936239017AC85AA9BE url=https://rabbithole2.net/4kHLbQkqWJV0Jxfk28H5MySc ver=0.0.1",
+      "line": "webtunnel 37.120.169.67:443 D85733AB26E770DC4AB2ED44A0559504550D0925 url=https://qbxa1hay.xoomlia.com/k0tf6syz/ ver=0.0.3",
       "ooni_checked": false,
       "port": 443,
       "probe_method": "websocket-upgrade",
@@ -444468,256 +444041,6 @@
       "verification": {
         "detail": "TCP connect failed: connection timed out",
         "error_class": "timeout",
-        "observations": [
-          {
-            "detail": "TCP connect failed: connection timed out",
-            "error_class": "timeout",
-            "observations": [
-              {
-                "detail": "TCP connection timed out after one jittered retry",
-                "error_class": "tcp_connect_timeout",
-                "observed_at": "2026-11-08T19:13:01.321155834Z",
-                "probe_type": "tcp",
-                "rtt_ms": null,
-                "source": "iran_results",
-                "stage": "S0",
-                "status": "timeout",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              },
-              {
-                "detail": "TLS connection timed out",
-                "error_class": "tls_connect_timeout",
-                "http_status": null,
-                "observed_at": "2026-11-08T19:21:31.746Z",
-                "probe_type": "websocket-101",
-                "rtt_ms": 15000,
-                "source": "probe-relay",
-                "stage": "S0",
-                "status": "timeout",
-                "vantage": {
-                  "colo": "ATL",
-                  "type": "cloudflare_worker"
-                }
-              },
-              {
-                "detail": "TCP connect failed: connection timed out",
-                "error_class": "timeout",
-                "observed_at": "2026-11-08T19:26:08.733019448+00:00",
-                "probe_type": "tcp",
-                "rtt_ms": 10508.922892,
-                "source": "webtunnel_front_probe",
-                "stage": "S0",
-                "status": "timeout",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              }
-            ],
-            "observed_at": "2026-11-08T19:26:08.733019448+00:00",
-            "probe_type": "tcp",
-            "rtt_ms": 10508.922892,
-            "source": "webtunnel_front_probe",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
-            "detail": "TLS connection timed out",
-            "error_class": "tls_connect_timeout",
-            "http_status": null,
-            "observed_at": "2026-11-08T19:21:31.746Z",
-            "probe_type": "websocket-101",
-            "rtt_ms": 15000,
-            "source": "probe-relay",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "TCP connect failed: connection timed out",
-            "error_class": "timeout",
-            "observed_at": "2026-11-08T19:41:13.281971020+00:00",
-            "probe_type": "tcp",
-            "rtt_ms": 10508.265373,
-            "source": "webtunnel_front_probe",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          }
-        ],
-        "observed_at": "2026-11-08T19:41:13.281971020+00:00",
-        "probe_type": "tcp",
-        "rtt_ms": 10508.265373,
-        "source": "webtunnel_front_probe",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      },
-      "websocket_signature_verified": false
-    },
-    {
-      "composite_score": 0.9593,
-      "evidence_scope": "WebSocket probe to webtunnel front capera.tel:443 failed: TCP connect failed: connection timed out",
-      "host": "74.208.11.176",
-      "iran_status": "iran_unknown",
-      "line": "webtunnel 74.208.11.176:443 8705A462A7F3AB0EB4548B4A2AD8EEEB1A202C2C url=https://capera.tel/H9AExWAVK0rWaHRuXZ8LZCb6 ver=0.0.7",
-      "ooni_checked": false,
-      "port": 443,
-      "probe_method": "websocket-upgrade",
-      "probe_status": "websocket_failed",
-      "tcp_reachable": false,
-      "test_result": "untested (tcp timeout)",
-      "test_tier": "tier_0_attempt",
-      "tested_at": "2026-11-08T19:26:10.080696591+00:00",
-      "transport": "webtunnel",
-      "transport_capable": false,
-      "verification": {
-        "detail": "TCP connect failed: connection timed out",
-        "error_class": "timeout",
-        "observations": [
-          {
-            "detail": "TCP connect failed: connection timed out",
-            "error_class": "timeout",
-            "observations": [
-              {
-                "detail": "TCP connection timed out after one jittered retry",
-                "error_class": "tcp_connect_timeout",
-                "observed_at": "2026-11-08T19:13:01.355457289Z",
-                "probe_type": "tcp",
-                "rtt_ms": null,
-                "source": "iran_results",
-                "stage": "S0",
-                "status": "timeout",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              },
-              {
-                "detail": "TLS connection timed out",
-                "error_class": "tls_connect_timeout",
-                "http_status": null,
-                "observed_at": "2026-11-08T19:21:31.790Z",
-                "probe_type": "websocket-101",
-                "rtt_ms": 15000,
-                "source": "probe-relay",
-                "stage": "S0",
-                "status": "timeout",
-                "vantage": {
-                  "colo": "ATL",
-                  "type": "cloudflare_worker"
-                }
-              },
-              {
-                "detail": "TCP connect failed: connection timed out",
-                "error_class": "timeout",
-                "observed_at": "2026-11-08T19:26:08.733109610+00:00",
-                "probe_type": "tcp",
-                "rtt_ms": 10508.747251,
-                "source": "webtunnel_front_probe",
-                "stage": "S0",
-                "status": "timeout",
-                "vantage": {
-                  "region": null,
-                  "type": "github_actions_runner"
-                }
-              }
-            ],
-            "observed_at": "2026-11-08T19:26:08.733109610+00:00",
-            "probe_type": "tcp",
-            "rtt_ms": 10508.747251,
-            "source": "webtunnel_front_probe",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          },
-          {
-            "detail": "TLS connection timed out",
-            "error_class": "tls_connect_timeout",
-            "http_status": null,
-            "observed_at": "2026-11-08T19:21:31.790Z",
-            "probe_type": "websocket-101",
-            "rtt_ms": 15000,
-            "source": "probe-relay",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "colo": "ATL",
-              "type": "cloudflare_worker"
-            }
-          },
-          {
-            "detail": "TCP connect failed: connection timed out",
-            "error_class": "timeout",
-            "observed_at": "2026-11-08T19:41:13.505069337+00:00",
-            "probe_type": "tcp",
-            "rtt_ms": 10508.706074,
-            "source": "webtunnel_front_probe",
-            "stage": "S0",
-            "status": "timeout",
-            "vantage": {
-              "region": null,
-              "type": "github_actions_runner"
-            }
-          }
-        ],
-        "observed_at": "2026-11-08T19:41:13.505069337+00:00",
-        "probe_type": "tcp",
-        "rtt_ms": 10508.706074,
-        "source": "webtunnel_front_probe",
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      },
-      "websocket_signature_verified": false
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "PL",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.9473,
-      "evidence_scope": "TLS+WebSocket Upgrade probe to webtunnel front domain nextcloud.privacy-vbox.de:443. Generic HTTP response received; no transport handshake was verified.",
-      "flags": [
-        "domain_front_degraded"
-      ],
-      "host": "51.77.53.21",
-      "iran_status": "iran_unknown",
-      "line": "webtunnel 51.77.53.21:443 07C77888D2367C25CA875E2174D9B225140940E9 url=https://nextcloud.privacy-vbox.de/iJmug5bRcsKeVv45h7a0fvkL ver=0.0.3",
-      "ooni_checked": false,
-      "port": 443,
-      "probe_method": "websocket-upgrade",
-      "probe_status": "http_response",
-      "tcp_reachable": true,
-      "test_result": "tcp_reachable_s1",
-      "test_tier": "tier_1_tcp",
-      "tested_at": "2026-11-08T19:26:10.080696591+00:00",
-      "transport": "webtunnel",
-      "transport_capable": false,
-      "verification": {
-        "detail": "TLS+WebSocket Upgrade probe to webtunnel front domain nextcloud.privacy-vbox.de:443. Generic HTTP response received; no transport handshake was verified.",
-        "error_class": null,
         "observations": [
           {
             "detail": "connection reached the endpoint but its protocol signature was not verified",
@@ -444801,8 +444124,8 @@
             "probe_type": "tcp",
             "rtt_ms": 10505.216494,
             "source": "webtunnel_front_probe",
-            "stage": "S1",
-            "status": "connected",
+            "stage": "S0",
+            "status": "timeout",
             "vantage": {
               "region": null,
               "type": "github_actions_runner"
@@ -444813,8 +444136,8 @@
         "probe_type": "tcp",
         "rtt_ms": 10505.216494,
         "source": "webtunnel_front_probe",
-        "stage": "S1",
-        "status": "connected",
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
