@@ -3338,6 +3338,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel 185.67.127.96:443 1562A2A7516175A2ED83808A9730AC08D11CB41E url=https://www6.shallotfarm.org/s0a6tVJDP77gXKVlyqkLyaor ver=0.0.5",
+      "host": "www6.shallotfarm.org",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel 188.245.226.101:443 B21C146831B809CE3207F177CE39E6CA5460627E url=https://bubatz.legal/maTXktEDbbS5FInhNhO2TPtF ver=0.0.3",
       "host": "bubatz.legal",
       "nin_flags": [
@@ -8354,6 +8366,18 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:7a9a:6d36:2baa:88e9:a578:6878]:443 74FBA8D8119465AED18CD12761832532DFDDDA86 url=https://www7.shallotfarm.org/JAbJbQRfu9Q5RqykIUn7rrqQ ver=0.0.5",
+      "host": "www7.shallotfarm.org",
+      "nin_flags": [
+        "webtunnel_cdn_fronted",
+        "nin_port_open"
+      ],
+      "nin_score": 0.65,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:7b06:c0f0:bce7:af73:23b9:66d7]:443 D694118BFBF5D649C952152B350C39AB441E7BE3 url=https://cute.wf/IFqHOCuB5cRlda5QniEUpi36 ver=0.0.5",
       "host": "cute.wf",
       "nin_flags": [
@@ -10802,6 +10826,18 @@
       "transport": "snowflake"
     },
     {
+      "bridge_line": "snowflake 141.212.118.18:80 8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/",
+      "host": "snowflake-broker.torproject.net",
+      "nin_flags": [
+        "snowflake_webrtc",
+        "nin_port_open"
+      ],
+      "nin_score": 0.6,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "snowflake"
+    },
+    {
       "bridge_line": "snowflake 192.0.2.31:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=app.datapacket.com,www.datapacket.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
       "host": "1098762253.rsc.cdn77.org",
       "nin_flags": [
@@ -12372,18 +12408,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 184.105.48.40:443 322E49A24F7DF9B15DD73205FCB84C8E5ACF02AB",
-      "host": "184.105.48.40",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 443,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 185.100.86.122:443 CEDF6F8F5E3F09D4E06D5A68F58D8B7E3ABE4C07",
       "host": "185.100.86.122",
       "nin_flags": [
@@ -12878,18 +12902,6 @@
     {
       "bridge_line": "Bridge 195.251.211.90:443 05ED5B51EF9E03D531AE7B9A26B3DE7D5952EF08",
       "host": "195.251.211.90",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 443,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 198.55.103.190:443 02295AC1D6E18A7B3C238ADE02BB3CBED33A6B80",
-      "host": "198.55.103.190",
       "nin_flags": [
         "nin_port_open",
         "tcp_alive"
@@ -13488,30 +13500,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 5.231.123.237:80 0251D83BD2C2B796782927EA6F2788300A6A7632",
-      "host": "5.231.123.237",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 80,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 5.255.101.10:443 31EF78B9019D61CF259B223DB9F80940994EDA34",
-      "host": "5.255.101.10",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 443,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 5.255.102.43:80 132A082CE32F3CDD1BDB80B240299A615346F34B",
       "host": "5.255.102.43",
       "nin_flags": [
@@ -14048,18 +14036,6 @@
       ],
       "nin_score": 0.3,
       "port": 8443,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 76.191.176.53:443 0990E0F4F2C127BDDA9B6726400FAC077F6C83B0",
-      "host": "76.191.176.53",
-      "nin_flags": [
-        "nin_port_open",
-        "tcp_alive"
-      ],
-      "nin_score": 0.3,
-      "port": 443,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -14804,6 +14780,18 @@
       ],
       "nin_score": 0.25,
       "port": 80,
+      "tcp_reachable": false,
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 141.144.202.188:443 C41201CB11D4420B438FF1BC5A953C7A4E382571 cert=SaQ3lLeYG3SUA38oxbG2MJU3LHCPqdyc31Z8qUoOhDcGbNYBkrDyUNjzBxClPavGkOQtVA iat-mode=0",
+      "host": "141.144.202.188",
+      "nin_flags": [
+        "obfs4_tcp_only",
+        "nin_port_open"
+      ],
+      "nin_score": 0.25,
+      "port": 443,
       "tcp_reachable": false,
       "transport": "obfs4"
     },
@@ -20191,6 +20179,17 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 184.105.48.40:443 322E49A24F7DF9B15DD73205FCB84C8E5ACF02AB",
+      "host": "184.105.48.40",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 186.223.114.50:8080 78FC3BD3B0240095E421912F688F5D28EA8BCA49",
       "host": "186.223.114.50",
       "nin_flags": [
@@ -20220,6 +20219,17 @@
       ],
       "nin_score": 0.2,
       "port": 8080,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 198.55.103.190:443 02295AC1D6E18A7B3C238ADE02BB3CBED33A6B80",
+      "host": "198.55.103.190",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 443,
       "tcp_reachable": false,
       "transport": "vanilla"
     },
@@ -20345,6 +20355,28 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 5.231.123.237:80 0251D83BD2C2B796782927EA6F2788300A6A7632",
+      "host": "5.231.123.237",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 80,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 5.255.101.10:443 31EF78B9019D61CF259B223DB9F80940994EDA34",
+      "host": "5.255.101.10",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 70.109.178.27:443 5E07802E4E16519993534E00CE31B8E6657179EB",
       "host": "70.109.178.27",
       "nin_flags": [
@@ -20380,6 +20412,17 @@
     {
       "bridge_line": "Bridge 74.208.183.104:443 3A067B60FE339BAABD94040286FA393F4926E146",
       "host": "74.208.183.104",
+      "nin_flags": [
+        "nin_port_open"
+      ],
+      "nin_score": 0.2,
+      "port": 443,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 76.191.176.53:443 0990E0F4F2C127BDDA9B6726400FAC077F6C83B0",
+      "host": "76.191.176.53",
       "nin_flags": [
         "nin_port_open"
       ],
@@ -21346,17 +21389,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 104.223.27.144:9001 0190DC04153F3326EF9FCA9A3C3D66931DBEA8D6",
-      "host": "104.223.27.144",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 104.244.75.238:22684 3DF77E92AF70F850699DEE8BC84899D1F3ECC34E",
       "host": "104.244.75.238",
       "nin_flags": [
@@ -21654,17 +21686,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 129.153.78.39:9959 3B9C9D44AD2FB54D9F6DA20FF5FED8AA02EBB7DF",
-      "host": "129.153.78.39",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9959,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 129.80.81.202:9001 019F671CE5BD4B1483F3140091AF0026FFD5BE43",
       "host": "129.80.81.202",
       "nin_flags": [
@@ -21797,8 +21818,8 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 135.181.99.59:9001 056A5A961BBAECC9264FDF35D691668F46C04187",
-      "host": "135.181.99.59",
+      "bridge_line": "Bridge 135.125.202.252:9001 720ABE4554C55EE6F6099491CA55D1F5550512C5",
+      "host": "135.125.202.252",
       "nin_flags": [
         "tcp_alive"
       ],
@@ -21808,8 +21829,8 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 136.243.113.199:9001 0420A9681DE8454B0B99C632A8D96989812045AC",
-      "host": "136.243.113.199",
+      "bridge_line": "Bridge 135.181.99.59:9001 056A5A961BBAECC9264FDF35D691668F46C04187",
+      "host": "135.181.99.59",
       "nin_flags": [
         "tcp_alive"
       ],
@@ -22556,17 +22577,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 185.117.73.71:20721 E315A7F8A5E2C1B4819D09D79C5A627D65C182AB",
-      "host": "185.117.73.71",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 20721,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 185.129.62.63:9001 07ACFB0801E4F74F5610F870B5FCBB5539DBCBD1",
       "host": "185.129.62.63",
       "nin_flags": [
@@ -22849,17 +22859,6 @@
       ],
       "nin_score": 0.15,
       "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 185.220.101.33:10033 E49F3696DC13946A68DF2AAA6EDA460BC15D8F03",
-      "host": "185.220.101.33",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 10033,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -23590,17 +23589,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 217.199.199.255:9001 0532A9B0A81626D11157C641857981D8720F9B76",
-      "host": "217.199.199.255",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 217.217.249.205:9001 57CE78F6F2C5377429AD653639443DB1653F0D16",
       "host": "217.217.249.205",
       "nin_flags": [
@@ -23777,28 +23765,6 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 45.166.215.0:44444 BB6DF1EF3BCE2ECB89B280004CDF1EDEC513DC22",
-      "host": "45.166.215.0",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 44444,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 45.166.215.0:44444 FD7E74634759ECFA0721CD5125321E5C54A144E8",
-      "host": "45.166.215.0",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 44444,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
       "bridge_line": "Bridge 45.41.204.203:9001 0645A80A17909D33FAFB5548E8A10F80AB38E65E",
       "host": "45.41.204.203",
       "nin_flags": [
@@ -23889,17 +23855,6 @@
     {
       "bridge_line": "Bridge 45.9.156.182:9001 03C1CB5110723C7456619C674B750CDD0075C29A",
       "host": "45.9.156.182",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 46.226.111.65:9001 235A96D6C1489B504E4DCB35C21C9DCCA01E4758",
-      "host": "46.226.111.65",
       "nin_flags": [
         "tcp_alive"
       ],
@@ -24466,28 +24421,6 @@
       ],
       "nin_score": 0.15,
       "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 75.236.50.46:9001 0438B5679D52CD10756924D425FDE03B40840304",
-      "host": "75.236.50.46",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9001,
-      "tcp_reachable": true,
-      "transport": "vanilla"
-    },
-    {
-      "bridge_line": "Bridge 76.228.104.143:9333 AF2CA04E5F0DB92EC5322564A4FBAE3E6BB71C99",
-      "host": "76.228.104.143",
-      "nin_flags": [
-        "tcp_alive"
-      ],
-      "nin_score": 0.15,
-      "port": 9333,
       "tcp_reachable": true,
       "transport": "vanilla"
     },
@@ -42738,6 +42671,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 104.223.27.144:9001 0190DC04153F3326EF9FCA9A3C3D66931DBEA8D6",
+      "host": "104.223.27.144",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9001,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 107.174.241.145:1338 6BE8E628413FBBE3B26BBFB9261D4D0267FABA9F",
       "host": "107.174.241.145",
       "nin_flags": [],
@@ -42819,6 +42761,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 129.153.78.39:9959 3B9C9D44AD2FB54D9F6DA20FF5FED8AA02EBB7DF",
+      "host": "129.153.78.39",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9959,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 129.159.11.234:9001 024F99847114AAD953BD557815A6825ACA46887B",
       "host": "129.159.11.234",
       "nin_flags": [],
@@ -42846,8 +42797,8 @@
       "transport": "vanilla"
     },
     {
-      "bridge_line": "Bridge 135.125.202.252:9001 720ABE4554C55EE6F6099491CA55D1F5550512C5",
-      "host": "135.125.202.252",
+      "bridge_line": "Bridge 136.243.113.199:9001 0420A9681DE8454B0B99C632A8D96989812045AC",
+      "host": "136.243.113.199",
       "nin_flags": [],
       "nin_score": 0.05,
       "port": 9001,
@@ -43278,6 +43229,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 185.117.73.71:20721 E315A7F8A5E2C1B4819D09D79C5A627D65C182AB",
+      "host": "185.117.73.71",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 20721,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 185.132.53.3:9001 47559C9D31B6F8C8E7722827EE432CF8DA935B4D",
       "host": "185.132.53.3",
       "nin_flags": [],
@@ -43463,6 +43423,15 @@
       "nin_flags": [],
       "nin_score": 0.05,
       "port": 40093,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 185.220.101.33:10033 E49F3696DC13946A68DF2AAA6EDA460BC15D8F03",
+      "host": "185.220.101.33",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 10033,
       "tcp_reachable": false,
       "transport": "vanilla"
     },
@@ -43908,6 +43877,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 217.199.199.255:9001 0532A9B0A81626D11157C641857981D8720F9B76",
+      "host": "217.199.199.255",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9001,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 23.188.56.97:41387 5C4499F49EF591BB28F86DC63E48846F8E610764",
       "host": "23.188.56.97",
       "nin_flags": [],
@@ -44097,6 +44075,24 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 45.166.215.0:44444 BB6DF1EF3BCE2ECB89B280004CDF1EDEC513DC22",
+      "host": "45.166.215.0",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 44444,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 45.166.215.0:44444 FD7E74634759ECFA0721CD5125321E5C54A144E8",
+      "host": "45.166.215.0",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 44444,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 45.38.42.101:9001 3DD1EC05989D25793694FE73439768F87DC0EB64",
       "host": "45.38.42.101",
       "nin_flags": [],
@@ -44225,6 +44221,15 @@
     {
       "bridge_line": "Bridge 46.225.60.12:9001 AF9609296856474AD3650D13EC8E966FEF1D0C7F",
       "host": "46.225.60.12",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9001,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 46.226.111.65:9001 235A96D6C1489B504E4DCB35C21C9DCCA01E4758",
+      "host": "46.226.111.65",
       "nin_flags": [],
       "nin_score": 0.05,
       "port": 9001,
@@ -44610,6 +44615,15 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 75.236.50.46:9001 0438B5679D52CD10756924D425FDE03B40840304",
+      "host": "75.236.50.46",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9001,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 76.139.132.75:9375 873734BBA08CFA2C0E9DBBA67E85D221B4E38350",
       "host": "76.139.132.75",
       "nin_flags": [],
@@ -44633,6 +44647,15 @@
       "nin_flags": [],
       "nin_score": 0.05,
       "port": 9002,
+      "tcp_reachable": false,
+      "transport": "vanilla"
+    },
+    {
+      "bridge_line": "Bridge 76.228.104.143:9333 AF2CA04E5F0DB92EC5322564A4FBAE3E6BB71C99",
+      "host": "76.228.104.143",
+      "nin_flags": [],
+      "nin_score": 0.05,
+      "port": 9333,
       "tcp_reachable": false,
       "transport": "vanilla"
     },
@@ -47995,11 +48018,11 @@
     }
   ],
   "nin_probe_metadata": {
-    "candidates_input": 4317,
-    "candidates_probed": 733,
-    "candidates_scored": 4317,
+    "candidates_input": 4321,
+    "candidates_probed": 724,
+    "candidates_scored": 4321,
     "probe_budget_exhausted": true,
     "probe_budget_secs": 600,
-    "probe_elapsed_secs": 632.325
+    "probe_elapsed_secs": 631.063
   }
 }
