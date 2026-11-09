@@ -17,11 +17,11 @@
    "primary": "obfs4",
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 390,
-    "primary_share": 0.7641,
+    "pool_lines_total": 393,
+    "primary_share": 0.7583,
     "primary_share_wilson_95": [
-     0.7195,
-     0.8035
+     0.7136,
+     0.798
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -38,11 +38,11 @@
    "primary": "snowflake",
    "evidence_confidence": {
     "primary_pool_lines": 88,
-    "pool_lines_total": 390,
-    "primary_share": 0.2256,
+    "pool_lines_total": 393,
+    "primary_share": 0.2239,
     "primary_share_wilson_95": [
-     0.1869,
-     0.2697
+     0.1855,
+     0.2677
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -53,6 +53,7 @@
     "obfs4",
     "snowflake",
     "meek_lite",
+    "webtunnel",
     "unknown"
    ],
    "rationale": "evidence order from this run: strict NIN-eligible + probe-survivable counts.",
@@ -71,11 +72,11 @@
    ],
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 390,
-    "primary_share": 0.7641,
+    "pool_lines_total": 393,
+    "primary_share": 0.7583,
     "primary_share_wilson_95": [
-     0.7195,
-     0.8035
+     0.7136,
+     0.798
     ],
     "order_basis": "evidence order derived from this run's probe-survivable + strict-NIN-eligible counts",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -89,9 +90,10 @@
   },
   "strict_nin_eligible": {
    "snowflake": 88,
-   "meek_lite": 3
+   "meek_lite": 3,
+   "webtunnel": 3
   },
   "probe_survivable_total": 299,
-  "strict_nin_eligible_total": 91
+  "strict_nin_eligible_total": 94
  }
 }

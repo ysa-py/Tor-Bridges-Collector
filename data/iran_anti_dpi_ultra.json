@@ -167,16 +167,6 @@
           "ai_score": 0.7258,
           "latency_ms": 39.803,
           "line": "snowflake 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn"
-        },
-        {
-          "ai_score": 0.7243,
-          "latency_ms": 48.392,
-          "line": "snowflake 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.l.google.com:19302,stun:stun.antisip.com:3478,stun:stun.bluesip.net:3478,stun:stun.dus.net:3478,stun:stun.epygi.com:3478 utls-imitate=hellorandomizedalpn"
-        },
-        {
-          "ai_score": 0.8049,
-          "latency_ms": 48.419,
-          "line": "snowflake [2001:db8::2e]:443 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic"
         }
       ],
       "vanilla": [
@@ -311,27 +301,6 @@
           10,
           40
         ],
-        "utc_hour_offset": 1,
-        "utls": "HelloSafari_Auto"
-      },
-      {
-        "fragment_bytes": 5,
-        "padding_jitter_ms": [
-          10,
-          120
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 2,
-        "utls": "HelloChrome_Auto"
-      },
-      {
-        "fragment_bytes": 40,
-        "padding_jitter_ms": [
-          5,
-          120
-        ],
         "record_split": [
           3
         ],
@@ -359,10 +328,6 @@
         "record_split": [
           100,
           20
-        ],
-        "record_split": [
-          1,
-          5
         ],
         "utc_hour_offset": 6,
         "utls": "HelloEdge_Auto"
@@ -407,12 +372,11 @@
       {
         "fragment_bytes": 1,
         "padding_jitter_ms": [
-          2,
+          10,
           40
         ],
         "record_split": [
-          1,
-          5
+          40
         ],
         "utc_hour_offset": 10,
         "utls": "HelloRandomizedNoALPN"
@@ -565,132 +529,6 @@
         "record_split": [
           1,
           5
-        ],
-        "utc_hour_offset": 12,
-        "utls": "HelloFirefox_Auto"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          2,
-          40
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 13,
-        "utls": "HelloEdge_Auto"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          10,
-          120
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 14,
-        "utls": "HelloRandomizedNoALPN"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          5,
-          60
-        ],
-        "record_split": [
-          100,
-          20
-        ],
-        "utc_hour_offset": 15,
-        "utls": "HelloRandomizedALPN"
-      },
-      {
-        "fragment_bytes": 2,
-        "padding_jitter_ms": [
-          5,
-          60
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 16,
-        "utls": "HelloAndroid_11_OkHttp"
-      },
-      {
-        "fragment_bytes": 40,
-        "padding_jitter_ms": [
-          10,
-          60
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 17,
-        "utls": "HelloSafari_Auto"
-      },
-      {
-        "fragment_bytes": 2,
-        "padding_jitter_ms": [
-          2,
-          120
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 18,
-        "utls": "HelloRandomizedNoALPN"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          10,
-          120
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 19,
-        "utls": "HelloRandomizedALPN"
-      },
-      {
-        "fragment_bytes": 1,
-        "padding_jitter_ms": [
-          5,
-          60
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 20,
-        "utls": "HelloAndroid_11_OkHttp"
-      },
-      {
-        "fragment_bytes": 1,
-        "padding_jitter_ms": [
-          5,
-          40
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 21,
-        "utls": "HelloFirefox_Auto"
-      },
-      {
-        "fragment_bytes": 2,
-        "padding_jitter_ms": [
-          2,
-          40
-        ],
-        "record_split": [
-          40
         ],
         "utc_hour_offset": 22,
         "utls": "HelloFirefox_Auto"
