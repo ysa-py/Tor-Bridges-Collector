@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-11-09T13:33:13Z` · **Archive payload SHA-256:** `d409206cff2f4ba97a439ac669c3f2171984e74fa0820fb8d3819db772700a9a`
+> **Last publication:** `2026-11-09T13:33:13Z` · **Archive payload SHA-256:** `a7ef381d8f3e71b6386ab262b893da30bc84d4ea67d54dc58cb2db448de9da78`
 
 ## Quick use for Iran
 
