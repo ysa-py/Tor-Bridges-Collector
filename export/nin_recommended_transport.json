@@ -1,6 +1,6 @@
 {
  "engine": "torshield-rust-nin-recommended-transport-v1",
- "generated_at": "2026-11-09T01:05:18.225171+00:00",
+ "generated_at": "2026-11-09T03:36:14.588154+00:00",
  "input_files": [
   "export/nin_cut_survivable.txt",
   "data/nin_eligible.json"
@@ -17,11 +17,11 @@
    "primary": "obfs4",
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 393,
-    "primary_share": 0.7583,
+    "pool_lines_total": 395,
+    "primary_share": 0.7544,
     "primary_share_wilson_95": [
-     0.7136,
-     0.798
+     0.7097,
+     0.7943
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -37,12 +37,12 @@
    "rationale": "CDN-fronted transports first when international routes are partially filtered.",
    "primary": "snowflake",
    "evidence_confidence": {
-    "primary_pool_lines": 88,
-    "pool_lines_total": 393,
-    "primary_share": 0.2239,
+    "primary_pool_lines": 90,
+    "pool_lines_total": 395,
+    "primary_share": 0.2278,
     "primary_share_wilson_95": [
-     0.1855,
-     0.2677
+     0.1892,
+     0.2717
     ],
     "order_basis": "static heuristic order (see rationale); confidence reflects this run's pool evidence for the primary transport only",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -72,11 +72,11 @@
    ],
    "evidence_confidence": {
     "primary_pool_lines": 298,
-    "pool_lines_total": 393,
-    "primary_share": 0.7583,
+    "pool_lines_total": 395,
+    "primary_share": 0.7544,
     "primary_share_wilson_95": [
-     0.7136,
-     0.798
+     0.7097,
+     0.7943
     ],
     "order_basis": "evidence order derived from this run's probe-survivable + strict-NIN-eligible counts",
     "recency_caveat": "counts reflect a single pipeline run; a bridge tested successfully once here should not be read as long-term stable — no multi-run history is included in this manifest"
@@ -89,11 +89,11 @@
    "unknown": 1
   },
   "strict_nin_eligible": {
-   "snowflake": 88,
+   "snowflake": 90,
    "meek_lite": 3,
    "webtunnel": 3
   },
   "probe_survivable_total": 299,
-  "strict_nin_eligible_total": 94
+  "strict_nin_eligible_total": 96
  }
 }
