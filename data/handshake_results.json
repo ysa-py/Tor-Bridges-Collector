@@ -180,66 +180,6 @@
     }
   },
   {
-    "detail": "HTTP 400 from snowflake",
-    "error_class": "snowflake:http_error",
-    "line": "snowflake [2001:db8::21]:443 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "observed_at": "2026-11-09T12:32:39.209107Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 100.11.30.96:10002 19A74939D0D3400295A8E66D57BC9894CF388CFA cert=JjMIPTQ4gJnop+XASRS9tdY6jJbH4BVyiOPFlNAULeH2bf9UJn59SzbZRTB17Usv++apAw iat-mode=0",
-    "observed_at": "2026-11-09T12:32:39.302791Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 140.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 107.174.63.120:9130 920AF4E8BADEBDC1A5028F358E6BB2AB3D6041CE cert=gZLc7n2wlqPERLq3Z3i8cOplNfk84GO5blFVgLAQiC3TwLcaRzXgvvh0aU+Zb6La9BIWfQ iat-mode=0",
-    "observed_at": "2026-11-09T12:32:39.305271Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 141.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 100.8.170.63:50164 FBA329BA4F5FE648456C3A28BBAA3C7EBD118E08 cert=DKA6xS0N6c4I1CFVmWc/qgAEhPBgR/dPQyXhbkjt082Ka2xmq1pwSUpCPt626uuKW2Z1TA iat-mode=0",
-    "observed_at": "2026-11-09T12:32:39.308167Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 145.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "HTTP 400 from meek",
     "error_class": "meek:http_error",
     "line": "meek_lite [2001:db8::1b]:443 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloFirefox_Auto",
@@ -1222,8 +1162,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -1312,8 +1252,8 @@
     "probe_type": "obfs4-framing",
     "rtt_ms": 182.0,
     "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
+    "stage": "S3",
+    "status": "connected",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -1749,81 +1689,6 @@
     "source": "handshake-probe",
     "stage": "S3",
     "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "protocol error (snowflake): connection closed before HTTP headers completed",
-    "error_class": "snowflake:protocol_error",
-    "line": "snowflake 192.0.2.39:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "observed_at": "2026-11-09T12:32:46.398404Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "inconclusive",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "meek_lite 192.0.2.27:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloFirefox_Auto",
-    "observed_at": "2026-11-09T12:32:46.402585Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "meek_lite 192.0.2.28:80 url=https://1603026938.rsc.cdn77.org front=cdn.zk.mk utls=HelloRandomizedNoALPN",
-    "observed_at": "2026-11-09T12:32:46.406427Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "obfs4: server M_S/MAC_S verified",
-    "error_class": null,
-    "line": "obfs4 130.61.76.202:8080 80CEC57A963BA3FCAB20D8AA88533F71293BD1F2 cert=5Ju/cyhekPeDSXBVr1OqvAGUsLzguwrUNuj8lHa578ZWz0HnOHPTNFrtJF4p5kwu1FvVGQ iat-mode=0",
-    "observed_at": "2026-11-09T12:32:46.431264Z",
-    "probe_type": "obfs4-framing",
-    "rtt_ms": 310.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 502 from webtunnel",
-    "error_class": "webtunnel:http_error",
-    "line": "webtunnel 192.3.169.171:2053 F799A0A458365388600F54BD44A99B5887D54911 url=https://aaronstory2026.xyz:2053/vicmackey ver=0.0.4",
-    "observed_at": "2026-11-09T12:32:46.433479Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
