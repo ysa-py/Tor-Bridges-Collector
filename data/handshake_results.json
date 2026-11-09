@@ -2880,36 +2880,6 @@
     }
   },
   {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 172.245.97.177:443 7CC64C882F0098BCE3AC6D1C14ED5BA017B15AD8 url=https://ie01-dub.beijing.st/sorryiamlateijustdontgiveafoook ver=0.0.4",
-    "observed_at": "2026-11-09T03:31:32.470519Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 246.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 104.21.80.200:443 FFBAE1B459A6CB5C6751F9BE72284EAB9E36CD0F url=https://steuern-sind-raub.ch/rohzaaSae8meith4oo ver=0.0.3",
-    "observed_at": "2026-11-09T03:31:32.486573Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 554.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "HTTP 400 from meek",
     "error_class": "meek:http_error",
     "line": "meek_lite [2001:db8::2a]:443 url=https://1603026938.rsc.cdn77.org front=cdn.sstatic.net utls=HelloChrome_Auto",
@@ -3022,8 +2992,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -3038,7 +3008,7 @@
     "rtt_ms": 0.0,
     "source": "handshake-probe",
     "stage": "S0",
-    "status": "refused",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -3187,8 +3157,8 @@
     "probe_type": "websocket-101",
     "rtt_ms": 402.0,
     "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
+    "stage": "S2",
+    "status": "connected",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5745,74 +5715,14 @@
     }
   },
   {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
+    "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 135.125.199.49:8443 5A25BBD7EE199A431FCA5A75D0C0F05A84E54DF7 cert=6A7Vr36EwqzJqfaSrK63m19nuvV3GfXoP/bp6Sl6NWzGhPqNSPQ2iTEuf6rnX9o8RUosQA iat-mode=0",
     "observed_at": "2026-11-09T04:31:45.454340Z",
     "probe_type": "obfs4-framing",
     "rtt_ms": 263.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "connection reset during read",
-    "error_class": "obfs4:connection_reset",
-    "line": "obfs4 130.255.77.28:443 A9793957041DC511141244C6DD134F8D3E764BB7 cert=NneAS3g6jHMispOfZ32vyYF95KXry88Hb0/P9e/auZKmMR4KZL5cA0ls3qziP8ZLzDz1gQ iat-mode=0",
-    "observed_at": "2026-11-09T03:31:33.591100Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "HTTP 400 from snowflake",
-    "error_class": "snowflake:http_error",
-    "line": "snowflake 192.0.2.4:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ front=app.datapacket.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478,stun:stun.fitauto.ru:3478,stun:stun.m-online.net:3478 utls-imitate=hellorandomizedalpn",
-    "observed_at": "2026-11-09T03:31:33.595209Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "protocol error (snowflake): connection closed before HTTP headers completed",
-    "error_class": "snowflake:protocol_error",
-    "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ front=cdn.sstatic.net",
-    "observed_at": "2026-11-09T03:31:33.611822Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "inconclusive",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 103.17.154.24:443 A09B3B0794B87D61F055A35C42FD9C3AE61C8168 url=https://cdn-24.triplebit.dev/ltEw6VdiVdI4PiBeq4fjz4yn ver=0.0.2",
-    "observed_at": "2026-11-09T03:31:33.639010Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 4195.0,
-    "source": "handshake-probe",
-    "stage": "S2",
+    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
