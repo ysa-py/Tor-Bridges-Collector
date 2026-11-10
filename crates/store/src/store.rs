@@ -1,18 +1,22 @@
 //! SQLite-backed persistence for bridges, observations, and scores.
 //!
-//! Queries are runtime-checked against the SQLite schema and every query path
-//! is exercised by the integration test suite (`tests/store_integration.rs`),
-//! which applies every migration and verifies round-trips, deduplication,
-//! ordering, and error handling against a real database. Column reads and
-//! writes are typed via [`sqlx::FromRow`], so schema/type drift surfaces as a
-//! test failure rather than a silent null or truncation.
+//! The store wraps a single `rusqlite` connection (bundled SQLite >= 3.54, the
+//! RUSTSEC-2026-0459 fix) behind a mutex. Every statement is short and local,
+//! so the async methods keep the original `async fn` signatures while running
+//! the query inline under the lock. Queries are runtime-checked against the
+//! schema and every query path is exercised by the integration test suite
+//! (`tests/store_integration.rs`), which applies every migration and verifies
+//! round-trips, deduplication, ordering, and error handling against a real
+//! database, so schema/type drift surfaces as a test failure rather than a
+//! silent null or truncation.
 
 use std::collections::BTreeSet;
-use std::str::FromStr;
+use std::path::PathBuf;
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::time::Duration;
 
 use chrono::{DateTime, Utc};
-use sqlx::sqlite::{SqliteConnectOptions, SqlitePool, SqlitePoolOptions};
-use sqlx::FromRow;
+use rusqlite::{params, Connection, OptionalExtension, Row};
 
 use tbc_core::{
     BridgeLine, BridgeScore, EvasionProfile, Observation, ProbeKind, TransportKind, Vantage,
@@ -22,8 +26,9 @@ use tbc_core::{
 use crate::error::StoreError;
 use crate::snapshot::{ScoredBridge, Snapshot};
 
-/// Embedded, versioned schema migrations (see `migrations/`).
-static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+/// Embedded, versioned schema migrations (see `migrations/`), applied in order
+/// and tracked with SQLite's `PRAGMA user_version`.
+const MIGRATIONS: &[(i64, &str)] = &[(1, include_str!("../migrations/0001_init.sql"))];
 
 /// The shared column list for observation reads (kept in one place so the
 /// select lists cannot drift between query methods).
@@ -34,7 +39,7 @@ const OBSERVATION_COLUMNS: &str = "bridge_key, vantage_kind, country, asn, as_na
 /// A row of the `bridges` table (only the columns read back into Rust; the
 /// denormalized `transport`/`host`/`port`/`fingerprint`/epoch columns remain
 /// in the schema for SQL-side filtering and indexing).
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 struct BridgeRow {
     canonical_key: String,
     data: String,
@@ -42,8 +47,19 @@ struct BridgeRow {
     last_seen: String,
 }
 
+impl BridgeRow {
+    fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            canonical_key: row.get(0)?,
+            data: row.get(1)?,
+            first_seen: row.get(2)?,
+            last_seen: row.get(3)?,
+        })
+    }
+}
+
 /// A row of the `observations` table.
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 struct ObservationRow {
     bridge_key: String,
     vantage_kind: String,
@@ -62,6 +78,29 @@ struct ObservationRow {
     measurement_ref: Option<String>,
 }
 
+impl ObservationRow {
+    /// Column order must match [`OBSERVATION_COLUMNS`].
+    fn from_row(row: &Row<'_>) -> rusqlite::Result<Self> {
+        Ok(Self {
+            bridge_key: row.get(0)?,
+            vantage_kind: row.get(1)?,
+            country: row.get(2)?,
+            asn: row.get(3)?,
+            as_name: row.get(4)?,
+            is_mobile: row.get(5)?,
+            probe_kind: row.get(6)?,
+            evasion_profile: row.get(7)?,
+            verdict: row.get(8)?,
+            rtt_ms: row.get(9)?,
+            bootstrap_pct: row.get(10)?,
+            error_class: row.get(11)?,
+            raw_evidence: row.get(12)?,
+            measured_at: row.get(13)?,
+            measurement_ref: row.get(14)?,
+        })
+    }
+}
+
 /// A bridge as persisted: its canonical key plus the fully reconstructed line.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BridgeRecord {
@@ -71,42 +110,111 @@ pub struct BridgeRecord {
     pub bridge: BridgeLine,
 }
 
-/// A persistent SQLite store. Cheap to clone (it wraps a connection pool).
+/// A persistent SQLite store. Cheap to clone (it shares one connection).
 #[derive(Debug, Clone)]
 pub struct Store {
-    pool: SqlitePool,
+    conn: Arc<Mutex<Connection>>,
+}
+
+/// Resolve a `sqlite:` / `sqlite://` URL (query string ignored) to a file
+/// path, or `None` for an in-memory database.
+fn path_from_url(url: &str) -> Option<PathBuf> {
+    let rest = url
+        .strip_prefix("sqlite://")
+        .or_else(|| url.strip_prefix("sqlite:"))
+        .unwrap_or(url);
+    let rest = rest.split('?').next().unwrap_or(rest);
+    if rest.is_empty() || rest == ":memory:" {
+        None
+    } else {
+        Some(PathBuf::from(rest))
+    }
+}
+
+/// Apply connection pragmas and any pending migrations.
+fn initialize(conn: &mut Connection, file_backed: bool) -> Result<(), StoreError> {
+    conn.busy_timeout(Duration::from_secs(5))?;
+    conn.pragma_update(None, "foreign_keys", true)?;
+    if file_backed {
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.pragma_update(None, "synchronous", "NORMAL")?;
+    }
+    migrate(conn)
+}
+
+/// Bring the schema to the latest version.
+///
+/// Databases created by the previous sqlx-based store carry their applied
+/// versions in `_sqlx_migrations`; those are adopted into `user_version`
+/// instead of re-running DDL, so existing data keeps working.
+fn migrate(conn: &mut Connection) -> Result<(), StoreError> {
+    let mut current: i64 = conn.query_row("PRAGMA user_version", [], |row| row.get(0))?;
+    if current == 0 {
+        let legacy_table: bool = conn.query_row(
+            "SELECT EXISTS (SELECT 1 FROM sqlite_master
+                            WHERE type = 'table' AND name = '_sqlx_migrations')",
+            [],
+            |row| row.get(0),
+        )?;
+        if legacy_table {
+            current = conn.query_row(
+                "SELECT COALESCE(MAX(version), 0) FROM _sqlx_migrations WHERE success = 1",
+                [],
+                |row| row.get(0),
+            )?;
+            conn.pragma_update(None, "user_version", current)?;
+        }
+    }
+
+    for (version, sql) in MIGRATIONS {
+        if *version <= current {
+            continue;
+        }
+        let tx = conn.transaction()?;
+        tx.execute_batch(sql)
+            .map_err(|error| StoreError::Migration(format!("version {version}: {error}")))?;
+        tx.pragma_update(None, "user_version", *version)?;
+        tx.commit()?;
+    }
+    Ok(())
 }
 
 impl Store {
-    /// Connect to (creating if necessary) the SQLite database at `url` and
-    /// apply any pending migrations.
+    /// Connect to (creating if necessary) the SQLite database at `url`
+    /// (`sqlite:path`, `sqlite://path`, or `sqlite::memory:`) and apply any
+    /// pending migrations.
     pub async fn connect(url: &str) -> Result<Self, StoreError> {
-        let options = SqliteConnectOptions::from_str(url)?
-            .create_if_missing(true)
-            .foreign_keys(true);
-        let pool = SqlitePoolOptions::new()
-            .max_connections(5)
-            .connect_with(options)
-            .await?;
-        MIGRATOR.run(&pool).await?;
-        Ok(Self { pool })
+        match path_from_url(url) {
+            Some(path) => {
+                let mut conn = Connection::open(path)?;
+                initialize(&mut conn, true)?;
+                Ok(Self::from_connection(conn))
+            }
+            None => Self::open_in_memory().await,
+        }
     }
 
     /// Open a private in-memory database for tests and short-lived runs.
     ///
-    /// The pool is constrained to a single connection so every query observes
-    /// the same in-memory database (SQLite's `:memory:` is per-connection).
+    /// The store owns a single connection, so every query observes the same
+    /// in-memory database (SQLite's `:memory:` is per-connection).
     pub async fn open_in_memory() -> Result<Self, StoreError> {
-        let options = SqliteConnectOptions::new()
-            .filename(":memory:")
-            .create_if_missing(true)
-            .foreign_keys(true);
-        let pool = SqlitePoolOptions::new()
-            .max_connections(1)
-            .connect_with(options)
-            .await?;
-        MIGRATOR.run(&pool).await?;
-        Ok(Self { pool })
+        let mut conn = Connection::open_in_memory()?;
+        initialize(&mut conn, false)?;
+        Ok(Self::from_connection(conn))
+    }
+
+    fn from_connection(conn: Connection) -> Self {
+        Self {
+            conn: Arc::new(Mutex::new(conn)),
+        }
+    }
+
+    /// Lock the connection. A poisoned lock only means another thread
+    /// panicked mid-statement; SQLite rolled that statement back, so the
+    /// connection is still safe to use.
+    fn conn(&self) -> MutexGuard<'_, Connection> {
+        self.conn.lock().unwrap_or_else(PoisonError::into_inner)
     }
 
     // ── Bridges ────────────────────────────────────────────────────────────
@@ -118,13 +226,13 @@ impl Store {
         let key = bridge.canonical_key();
         let payload = serialize_bridge_payload(bridge)?;
         let transport = bridge.transport.to_string();
-        let fingerprint = bridge.fingerprint.clone();
         let first_seen = bridge.first_seen.to_rfc3339();
         let last_seen = bridge.last_seen.to_rfc3339();
 
-        let mut transaction = self.pool.begin().await?;
+        let mut conn = self.conn();
+        let tx = conn.transaction()?;
 
-        sqlx::query(
+        tx.execute(
             "INSERT INTO bridges
                  (canonical_key, transport, host, port, fingerprint, data,
                   first_seen, last_seen, first_seen_epoch, last_seen_epoch)
@@ -143,64 +251,57 @@ impl Store {
                          THEN bridges.last_seen ELSE excluded.last_seen END,
                  first_seen_epoch = MIN(bridges.first_seen_epoch, excluded.first_seen_epoch),
                  last_seen_epoch = MAX(bridges.last_seen_epoch, excluded.last_seen_epoch)",
-        )
-        .bind(&key)
-        .bind(&transport)
-        .bind(&bridge.host)
-        .bind(i64::from(bridge.port))
-        .bind(&fingerprint)
-        .bind(&payload)
-        .bind(&first_seen)
-        .bind(&last_seen)
-        .bind(bridge.first_seen.timestamp())
-        .bind(bridge.last_seen.timestamp())
-        .execute(&mut *transaction)
-        .await?;
+            params![
+                key,
+                transport,
+                bridge.host,
+                i64::from(bridge.port),
+                bridge.fingerprint,
+                payload,
+                first_seen,
+                last_seen,
+                bridge.first_seen.timestamp(),
+                bridge.last_seen.timestamp(),
+            ],
+        )?;
 
         for source in &bridge.sources {
-            sqlx::query(
+            tx.execute(
                 "INSERT OR IGNORE INTO bridge_sources (canonical_key, source) VALUES (?1, ?2)",
-            )
-            .bind(&key)
-            .bind(source)
-            .execute(&mut *transaction)
-            .await?;
+                params![key, source],
+            )?;
         }
 
-        transaction.commit().await?;
+        tx.commit()?;
         Ok(())
     }
 
     /// Fetch one bridge by canonical key.
     pub async fn get_bridge(&self, key: &str) -> Result<BridgeRecord, StoreError> {
-        let row = sqlx::query_as::<_, BridgeRow>(
-            "SELECT canonical_key, data, first_seen, last_seen
-             FROM bridges WHERE canonical_key = ?1",
-        )
-        .bind(key)
-        .fetch_optional(&self.pool)
-        .await?;
+        let conn = self.conn();
+        let row = conn
+            .query_row(
+                "SELECT canonical_key, data, first_seen, last_seen
+                 FROM bridges WHERE canonical_key = ?1",
+                params![key],
+                BridgeRow::from_row,
+            )
+            .optional()?;
 
         let row = row.ok_or_else(|| StoreError::NotFound(key.to_owned()))?;
-        let sources = self.load_sources(&row.canonical_key).await?;
+        let sources = load_sources(&conn, &row.canonical_key)?;
         bridge_record(row, sources)
     }
 
     /// List every bridge, ordered by canonical key for stable diffs.
     pub async fn list_bridges(&self) -> Result<Vec<BridgeRecord>, StoreError> {
-        let rows = sqlx::query_as::<_, BridgeRow>(
+        let conn = self.conn();
+        query_bridge_records(
+            &conn,
             "SELECT canonical_key, data, first_seen, last_seen
              FROM bridges ORDER BY canonical_key",
+            params![],
         )
-        .fetch_all(&self.pool)
-        .await?;
-
-        let mut records = Vec::with_capacity(rows.len());
-        for row in rows {
-            let sources = self.load_sources(&row.canonical_key).await?;
-            records.push(bridge_record(row, sources)?);
-        }
-        Ok(records)
     }
 
     /// List bridges of a single transport family.
@@ -209,28 +310,18 @@ impl Store {
         transport: &TransportKind,
     ) -> Result<Vec<BridgeRecord>, StoreError> {
         let token = transport.to_string();
-        let rows = sqlx::query_as::<_, BridgeRow>(
+        let conn = self.conn();
+        query_bridge_records(
+            &conn,
             "SELECT canonical_key, data, first_seen, last_seen
              FROM bridges WHERE transport = ?1 ORDER BY canonical_key",
+            params![token],
         )
-        .bind(&token)
-        .fetch_all(&self.pool)
-        .await?;
-
-        let mut records = Vec::with_capacity(rows.len());
-        for row in rows {
-            let sources = self.load_sources(&row.canonical_key).await?;
-            records.push(bridge_record(row, sources)?);
-        }
-        Ok(records)
     }
 
     /// Number of distinct bridges currently stored.
     pub async fn count_bridges(&self) -> Result<i64, StoreError> {
-        let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM bridges")
-            .fetch_one(&self.pool)
-            .await?;
-        Ok(count)
+        count_rows(&self.conn(), "SELECT COUNT(*) FROM bridges")
     }
 
     // ── Observations ───────────────────────────────────────────────────────
@@ -244,33 +335,33 @@ impl Store {
         let evasion_profile = serde_json::to_string(&observation.evasion_profile)?;
         let verdict = serde_json::to_string(&observation.verdict)?;
 
-        let result = sqlx::query(
+        let changed = self.conn().execute(
             "INSERT OR IGNORE INTO observations
                  (bridge_key, vantage_kind, country, asn, as_name, is_mobile,
                   probe_kind, evasion_profile, verdict, rtt_ms, bootstrap_pct,
                   error_class, raw_evidence, measured_at, measured_at_epoch, measurement_ref)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)",
-        )
-        .bind(&observation.bridge_key)
-        .bind(observation.vantage.kind.to_string())
-        .bind(&observation.vantage.country)
-        .bind(observation.vantage.asn.map(i64::from))
-        .bind(&observation.vantage.as_name)
-        .bind(i64::from(observation.vantage.is_mobile))
-        .bind(&probe_kind)
-        .bind(&evasion_profile)
-        .bind(&verdict)
-        .bind(observation.rtt_ms.map(|value| value as i64))
-        .bind(observation.bootstrap_pct.map(i64::from))
-        .bind(&observation.error_class)
-        .bind(&observation.raw_evidence)
-        .bind(observation.measured_at.to_rfc3339())
-        .bind(observation.measured_at.timestamp())
-        .bind(&observation.measurement_ref)
-        .execute(&self.pool)
-        .await?;
+            params![
+                observation.bridge_key,
+                observation.vantage.kind.to_string(),
+                observation.vantage.country,
+                observation.vantage.asn.map(i64::from),
+                observation.vantage.as_name,
+                i64::from(observation.vantage.is_mobile),
+                probe_kind,
+                evasion_profile,
+                verdict,
+                observation.rtt_ms.map(|value| value as i64),
+                observation.bootstrap_pct.map(i64::from),
+                observation.error_class,
+                observation.raw_evidence,
+                observation.measured_at.to_rfc3339(),
+                observation.measured_at.timestamp(),
+                observation.measurement_ref,
+            ],
+        )?;
 
-        Ok(result.rows_affected() == 1)
+        Ok(changed == 1)
     }
 
     /// List every observation, ordered for stable, deterministic exports.
@@ -279,10 +370,7 @@ impl Store {
             "SELECT {OBSERVATION_COLUMNS} FROM observations
              ORDER BY bridge_key, measured_at_epoch, measurement_ref, id"
         );
-        let rows = sqlx::query_as::<_, ObservationRow>(&sql)
-            .fetch_all(&self.pool)
-            .await?;
-        observations_from_rows(rows)
+        query_observations(&self.conn(), &sql, params![])
     }
 
     /// List observations for one bridge, oldest first.
@@ -294,11 +382,7 @@ impl Store {
             "SELECT {OBSERVATION_COLUMNS} FROM observations WHERE bridge_key = ?1
              ORDER BY measured_at_epoch, measurement_ref, id"
         );
-        let rows = sqlx::query_as::<_, ObservationRow>(&sql)
-            .bind(bridge_key)
-            .fetch_all(&self.pool)
-            .await?;
-        observations_from_rows(rows)
+        query_observations(&self.conn(), &sql, params![bridge_key])
     }
 
     /// List observations measured at or after `epoch` (unix seconds).
@@ -310,19 +394,12 @@ impl Store {
             "SELECT {OBSERVATION_COLUMNS} FROM observations WHERE measured_at_epoch >= ?1
              ORDER BY bridge_key, measured_at_epoch, measurement_ref, id"
         );
-        let rows = sqlx::query_as::<_, ObservationRow>(&sql)
-            .bind(epoch)
-            .fetch_all(&self.pool)
-            .await?;
-        observations_from_rows(rows)
+        query_observations(&self.conn(), &sql, params![epoch])
     }
 
     /// Number of observations currently stored.
     pub async fn count_observations(&self) -> Result<i64, StoreError> {
-        let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM observations")
-            .fetch_one(&self.pool)
-            .await?;
-        Ok(count)
+        count_rows(&self.conn(), "SELECT COUNT(*) FROM observations")
     }
 
     // ── Scores ─────────────────────────────────────────────────────────────
@@ -334,7 +411,7 @@ impl Store {
         let tier = serde_json::to_string(&score.tier)?;
         let payload = serde_json::to_string(score)?;
 
-        sqlx::query(
+        self.conn().execute(
             "INSERT INTO scores
                  (bridge_key, global_score, per_asn, tier, k, n,
                   first_confirmed_working_at, first_blocked_at, burn_seconds,
@@ -352,42 +429,49 @@ impl Store {
                  median_lifetime_seconds = excluded.median_lifetime_seconds,
                  freshness_age_seconds = excluded.freshness_age_seconds,
                  data = excluded.data",
-        )
-        .bind(key)
-        .bind(score.global)
-        .bind(&per_asn)
-        .bind(&tier)
-        .bind(i64::from(score.confidence.k))
-        .bind(i64::from(score.confidence.n))
-        .bind(score.first_confirmed_working_at.map(|t| t.to_rfc3339()))
-        .bind(score.first_blocked_at.map(|t| t.to_rfc3339()))
-        .bind(score.burn_seconds.map(|value| value as i64))
-        .bind(score.median_lifetime_seconds.map(|value| value as i64))
-        .bind(score.freshness_age_seconds as i64)
-        .bind(&payload)
-        .execute(&self.pool)
-        .await?;
+            params![
+                key,
+                score.global,
+                per_asn,
+                tier,
+                i64::from(score.confidence.k),
+                i64::from(score.confidence.n),
+                score.first_confirmed_working_at.map(|t| t.to_rfc3339()),
+                score.first_blocked_at.map(|t| t.to_rfc3339()),
+                score.burn_seconds.map(|value| value as i64),
+                score.median_lifetime_seconds.map(|value| value as i64),
+                score.freshness_age_seconds as i64,
+                payload,
+            ],
+        )?;
         Ok(())
     }
 
     /// Fetch the stored score for `key`.
     pub async fn get_score(&self, key: &str) -> Result<BridgeScore, StoreError> {
-        let payload =
-            sqlx::query_scalar::<_, String>("SELECT data FROM scores WHERE bridge_key = ?1")
-                .bind(key)
-                .fetch_optional(&self.pool)
-                .await?
-                .ok_or_else(|| StoreError::NotFound(key.to_owned()))?;
+        let payload: String = self
+            .conn()
+            .query_row(
+                "SELECT data FROM scores WHERE bridge_key = ?1",
+                params![key],
+                |row| row.get(0),
+            )
+            .optional()?
+            .ok_or_else(|| StoreError::NotFound(key.to_owned()))?;
         Ok(serde_json::from_str(&payload)?)
     }
 
     /// List every score as `(bridge_key, score)`, ordered by bridge key.
     pub async fn list_scores(&self) -> Result<Vec<(String, BridgeScore)>, StoreError> {
-        let rows = sqlx::query_as::<_, (String, String)>(
-            "SELECT bridge_key, data FROM scores ORDER BY bridge_key",
-        )
-        .fetch_all(&self.pool)
-        .await?;
+        let rows: Vec<(String, String)> = {
+            let conn = self.conn();
+            let mut statement =
+                conn.prepare("SELECT bridge_key, data FROM scores ORDER BY bridge_key")?;
+            let mapped = statement.query_map([], |row| {
+                Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+            })?;
+            mapped.collect::<Result<Vec<_>, _>>()?
+        };
 
         let mut scores = Vec::with_capacity(rows.len());
         for (key, payload) in rows {
@@ -398,10 +482,7 @@ impl Store {
 
     /// Number of scores currently stored.
     pub async fn count_scores(&self) -> Result<i64, StoreError> {
-        let count = sqlx::query_scalar::<_, i64>("SELECT COUNT(*) FROM scores")
-            .fetch_one(&self.pool)
-            .await?;
-        Ok(count)
+        count_rows(&self.conn(), "SELECT COUNT(*) FROM scores")
     }
 
     // ── Snapshots ──────────────────────────────────────────────────────────
@@ -444,17 +525,53 @@ impl Store {
         let bytes = self.export_snapshot(generated_at).await?;
         crate::snapshot::write_atomic(path, &bytes)
     }
+}
 
-    /// Load the accumulated source set for one bridge, sorted.
-    async fn load_sources(&self, key: &str) -> Result<BTreeSet<String>, StoreError> {
-        let sources = sqlx::query_scalar::<_, String>(
-            "SELECT source FROM bridge_sources WHERE canonical_key = ?1 ORDER BY source",
-        )
-        .bind(key)
-        .fetch_all(&self.pool)
-        .await?;
-        Ok(sources.into_iter().collect())
+/// Run a `SELECT COUNT(*)`-style query.
+fn count_rows(conn: &Connection, sql: &str) -> Result<i64, StoreError> {
+    Ok(conn.query_row(sql, [], |row| row.get::<_, i64>(0))?)
+}
+
+/// Load the accumulated source set for one bridge, sorted.
+fn load_sources(conn: &Connection, key: &str) -> Result<BTreeSet<String>, StoreError> {
+    let mut statement =
+        conn.prepare("SELECT source FROM bridge_sources WHERE canonical_key = ?1 ORDER BY source")?;
+    let sources = statement
+        .query_map(params![key], |row| row.get::<_, String>(0))?
+        .collect::<Result<BTreeSet<_>, _>>()?;
+    Ok(sources)
+}
+
+/// Run a bridge SELECT and rebuild each row with its source set.
+fn query_bridge_records(
+    conn: &Connection,
+    sql: &str,
+    query_params: impl rusqlite::Params,
+) -> Result<Vec<BridgeRecord>, StoreError> {
+    let mut statement = conn.prepare(sql)?;
+    let rows = statement
+        .query_map(query_params, BridgeRow::from_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut records = Vec::with_capacity(rows.len());
+    for row in rows {
+        let sources = load_sources(conn, &row.canonical_key)?;
+        records.push(bridge_record(row, sources)?);
     }
+    Ok(records)
+}
+
+/// Run an observation SELECT (using [`OBSERVATION_COLUMNS`]) and decode rows.
+fn query_observations(
+    conn: &Connection,
+    sql: &str,
+    query_params: impl rusqlite::Params,
+) -> Result<Vec<Observation>, StoreError> {
+    let mut statement = conn.prepare(sql)?;
+    let rows = statement
+        .query_map(query_params, ObservationRow::from_row)?
+        .collect::<Result<Vec<_>, _>>()?;
+    observations_from_rows(rows)
 }
 
 /// Serialize a bridge for the `data` column, excluding the source set (which

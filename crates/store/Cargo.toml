@@ -2,7 +2,7 @@
 name = "tbc-store"
 version = "0.1.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.89"
 publish = false
 description = "SQLite persistence and deterministic JSON snapshot export for the Tor Bridges Collector."
 
@@ -18,17 +18,23 @@ chrono = { workspace = true }
 [dev-dependencies]
 tempfile = "=3.10.1"
 
-# SQLite only: bundled libsqlite3 (no system dependency), tokio runtime,
-# embedded migrations, and the derive/query macros. `macros` is pulled in for
-# `#[derive(FromRow)]`; queries themselves are runtime-checked and covered by
-# the integration test suite (see `src/store.rs` for the rationale).
+# SQLite only: bundled libsqlite3 (no system dependency) via rusqlite.
+#
+# RUSTSEC-2026-0459 (SQLite < 3.54.0 can return uninitialised page-cache memory
+# for a database opened with a mismatched `-wal` file) is fixed in
+# libsqlite3-sys >= 0.39.0, which first ships with rusqlite 0.41. sqlx 0.8.x
+# pins libsqlite3-sys ^0.30 and sqlx 0.9.x caps it below 0.38, so no sqlx
+# release can ever resolve the advisory; the store therefore uses rusqlite
+# directly. rusqlite 0.41 declares Rust 1.89 (libsqlite3-sys 0.39: 1.88), which
+# is why every workspace crate now declares rust-version 1.89. Migrations are
+# embedded SQL tracked with `PRAGMA user_version` (see `src/store.rs`).
 #
 # Mirror the root crate's arm-musl pattern: the hosted ARMv7-musl CI job is a
-# Rust type-check with no C cross-compiler. `sqlx`'s `sqlite` feature pulls
+# Rust type-check with no C cross-compiler. `rusqlite`'s `bundled` feature pulls
 # `libsqlite3-sys`, which compiles bundled sqlite3.c through `cc-rs` and needs
 # `arm-linux-musleabihf-gcc` (absent from ubuntu-latest and not installable
 # from Ubuntu repos). The SQLite-backed `Store` is therefore excluded from the
 # arm-musl type-check graph (`src/store.rs` is cfg-gated); the snapshot and
 # error surface still type-checks on that target.
 [target.'cfg(not(all(target_arch = "arm", target_env = "musl")))'.dependencies]
-sqlx = { version = "=0.8.6", default-features = false, features = ["sqlite", "runtime-tokio", "migrate", "macros"] }
+rusqlite = { version = "=0.41.1", features = ["bundled"] }

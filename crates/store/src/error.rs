@@ -9,20 +9,20 @@ use thiserror::Error;
 /// Errors produced by the SQLite store and snapshot export.
 #[derive(Debug, Error)]
 pub enum StoreError {
-    /// A query, connection, or transaction failure reported by SQLx.
+    /// A query, connection, or transaction failure reported by SQLite.
     ///
-    /// Excluded from the ARMv7-musl type-check graph: `sqlx::Error` only
-    /// exists there if the `sqlite` feature is compiled, and that feature
-    /// pulls `libsqlite3-sys`'s bundled C build (no arm-musl cross compiler
-    /// on the hosted runner). See `Cargo.toml` for the target-gated `sqlx`.
+    /// Excluded from the ARMv7-musl type-check graph: `rusqlite::Error` only
+    /// exists there if `rusqlite` is compiled, and its `bundled` feature
+    /// pulls `libsqlite3-sys`'s C build (no arm-musl cross compiler on the
+    /// hosted runner). See `Cargo.toml` for the target-gated `rusqlite`.
     #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
     #[error("database error: {0}")]
-    Database(#[from] sqlx::Error),
+    Database(#[from] rusqlite::Error),
 
     /// A schema migration failure (e.g. a versioned migration did not apply).
     #[cfg(not(all(target_arch = "arm", target_env = "musl")))]
     #[error("schema migration error: {0}")]
-    Migration(#[from] sqlx::migrate::MigrateError),
+    Migration(String),
 
     /// A JSON serialization/deserialization failure.
     #[error("json serialization error: {0}")]

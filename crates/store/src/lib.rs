@@ -10,7 +10,7 @@
 //! exercised by the integration test suite (`tests/store_integration.rs`),
 //! which applies all migrations and verifies round-trips, deduplication,
 //! ordering, and atomic writes against a real SQLite database. Column reads
-//! and writes are typed via `#[derive(sqlx::FromRow)]`, so a schema/type drift
+//! and writes go through explicit typed row mappers, so a schema/type drift
 //! surfaces as a test failure rather than a silent null or truncation.
 //!
 //! Production code in this crate contains no `unwrap()`, `expect()`, `panic!`,
@@ -29,7 +29,7 @@
 
 pub mod error;
 pub mod snapshot;
-// The SQLite-backed `Store` depends on `sqlx`'s `sqlite` feature, which pulls
+// The SQLite-backed `Store` depends on `rusqlite`'s `bundled` feature, which pulls
 // `libsqlite3-sys`'s bundled C build. The hosted ARMv7-musl CI job is a Rust
 // type-check with no C cross-compiler, so that module is excluded from the
 // arm-musl graph (mirroring how the root crate keeps `ring` out of it). The
