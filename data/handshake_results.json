@@ -2452,7 +2452,7 @@
     "probe_type": "websocket-101",
     "rtt_ms": 2832.0,
     "source": "handshake-probe",
-    "stage": "S3",
+    "stage": "S2",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -2467,22 +2467,7 @@
     "probe_type": "websocket-101",
     "rtt_ms": 2762.0,
     "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 185.195.71.244:443 0111BA9B604669E636FFD5B503F382A4B7AD6E80",
-    "observed_at": "2026-11-10T13:51:21.926725Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 630.0,
-    "source": "handshake-probe",
-    "stage": "S3",
+    "stage": "S2",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -5295,14 +5280,14 @@
     }
   },
   {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
+    "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 132.145.173.137:6969 7862BD907068424E4A0BE50C7EF6915F3E2B8173 cert=xnTpweegYLEnmk+0AKXYGEEn2T7OypIdpdda0CFJd3fX0TpalzUr4CUKCJsf8b33JsBPBw iat-mode=0",
     "observed_at": "2026-11-10T14:49:48.604662Z",
     "probe_type": "obfs4-framing",
     "rtt_ms": 76.0,
     "source": "handshake-probe",
-    "stage": "S2",
+    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -5850,7 +5835,7 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
+    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 185.225.19.34:443 B002C8CAE75B2313B1F9BCA36235024BC9493BDD url=https://www5.ruhnama.net/Hejg6FFwwwhPM4D1czDWvlw8 ver=0.0.5",
     "observed_at": "2026-11-10T14:49:49.835751Z",
@@ -5902,8 +5887,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
+    "stage": "S0",
+    "status": "timeout",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
