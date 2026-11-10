@@ -301,3 +301,46 @@ async fn file_backed_store_persists_across_reopen() {
     let records = store.list_bridges().await.unwrap();
     assert_eq!(records[0].bridge.canonical_key(), bridge.canonical_key());
 }
+
+/// Databases created by the previous sqlx-based store track their schema in
+/// `_sqlx_migrations` (and have `user_version = 0`). They must be adopted, not
+/// re-migrated (which would fail with "table bridges already exists"), and
+/// their data must stay readable.
+#[tokio::test]
+async fn legacy_sqlx_database_is_adopted_without_remigrating() {
+    let dir = tempdir().unwrap();
+    let db_path = dir.path().join("legacy.sqlite");
+    let url = format!("sqlite:{}", db_path.display());
+
+    let bridge =
+        BridgeLine::parse(&obfs4_line("5.6.7.8"), rfc3339("2026-08-13T00:00:00+00:00")).unwrap();
+    {
+        let store = Store::connect(&url).await.unwrap();
+        store.upsert_bridge(&bridge).await.unwrap();
+    }
+
+    // Simulate the legacy layout: sqlx bookkeeping table, no user_version.
+    {
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        conn.execute_batch(
+            "PRAGMA user_version = 0;
+             CREATE TABLE _sqlx_migrations (
+                 version BIGINT PRIMARY KEY, description TEXT NOT NULL,
+                 installed_on TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                 success BOOLEAN NOT NULL, checksum BLOB NOT NULL,
+                 execution_time BIGINT NOT NULL);
+             INSERT INTO _sqlx_migrations (version, description, success, checksum, execution_time)
+                 VALUES (1, 'init', 1, x'00', 0);",
+        )
+        .unwrap();
+    }
+
+    let store = Store::connect(&url).await.unwrap();
+    assert_eq!(store.count_bridges().await.unwrap(), 1);
+}
+
+#[tokio::test]
+async fn sqlite_memory_url_opens_in_memory_database() {
+    let store = Store::connect("sqlite::memory:").await.unwrap();
+    assert_eq!(store.count_bridges().await.unwrap(), 0);
+}

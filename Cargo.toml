@@ -2,7 +2,7 @@
 name = "torshield-ir-ultra"
 version = "1.0.0"
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.89"
 publish = false
 # Differential integration targets depended on source files that were retired
 # after migration. Keep their historical sources under tests/parity as an
@@ -16,15 +16,16 @@ members = [".", "bridge-probe", "crates/core", "crates/store", "crates/sources",
 
 [workspace.package]
 edition = "2021"
-rust-version = "1.85"
+rust-version = "1.89"
 
 [workspace.dependencies]
 # Security/MSRV correction (2026-10-12):
 # Current RustSec advisories require quinn-proto >= 0.11.18. This lockfile
 # uses quinn-proto 0.11.19, whose published manifest sets Rust 1.85 as its
 # MSRV because it depends on rand_core 0.10.x (Edition 2024). The root
-# package and all workspace crates now declare rust-version 1.85; CI uses
-# Rust 1.90. Retaining 1.75 here would overstate compiler compatibility.
+# package and all workspace crates now declare rust-version 1.89 (raised
+# from 1.85 for rusqlite 0.41 / libsqlite3-sys 0.39, the RUSTSEC-2026-0459
+# fix); CI uses Rust 1.90. Retaining 1.75 here would overstate compiler compatibility.
 #
 # The idna_adapter and hyper-rustls pins below are retained in this scoped
 # security fix to avoid unrelated dependency/behavior changes. In particular,

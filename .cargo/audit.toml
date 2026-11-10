@@ -6,10 +6,9 @@
 # path in this workspace.
 [advisories]
 ignore = [
-    # RUSTSEC-2023-0071 — rsa 0.9.10 "Marvin Attack" (timing side channel).
-    # Transitive via sqlx-sqlite 0.8.6; the collector performs no RSA signing,
-    # RSA key handling, or RSA-based TLS.
-    "RUSTSEC-2023-0071",
+    # (RUSTSEC-2023-0071 / rsa 0.9.10 no longer needs an exemption: it was only
+    # pulled in transitively by sqlx, which tbc-store replaced with rusqlite
+    # when fixing RUSTSEC-2026-0459.)
 
     # RUSTSEC-2025-0057 — fxhash 0.2.1 unmaintained. Transitive via selectors ->
     # scraper for HTML parsing caches only.
