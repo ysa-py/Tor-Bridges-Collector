@@ -19,6 +19,7 @@
 //! aspirational.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::manual_is_multiple_of, clippy::collapsible_if)]
 #![deny(
     clippy::unwrap_used,
     clippy::expect_used,

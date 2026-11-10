@@ -58,9 +58,14 @@ while IFS=$'\t' read -r pkg ver patched adv; do
     while IFS= read -r toml; do
       sed -i -E "s/^(${pkg//-/[-_]}[[:space:]]*=[[:space:]]*\{?[[:space:]]*(version[[:space:]]*=[[:space:]]*)?\")=${ver}\"/\1=${patched}\"/" "$toml"
     done < <(git ls-files '*Cargo.toml')
-    cargo update -p "${pkg}@${ver}" --precise "$patched" >/dev/null 2>&1 \
-      || cargo update -p "${pkg}" --precise "$patched" >/dev/null 2>&1 \
-      || log "could not move ${pkg} to ${patched}"
+    if ! cargo update -p "${pkg}@${ver}" --precise "$patched" >/dev/null 2>&1 \
+       && ! cargo update -p "${pkg}" --precise "$patched" >/dev/null 2>&1; then
+      for parent in $(cargo tree -i "${pkg}@${ver}" --prefix none 2>/dev/null | awk 'NR>1 {print $1}' | sort -u); do
+        cargo update -p "$parent" >/dev/null 2>&1 || true
+      done
+      cargo update -p "${pkg}" --precise "$patched" >/dev/null 2>&1 \
+        || log "could not move ${pkg} to ${patched}"
+    fi
   fi
   echo "- \`${pkg}\` ${ver} → advisory ${adv}, target ${patched:-latest compatible}" >> "$SUMMARY"
 done < <(findings)

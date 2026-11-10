@@ -162,9 +162,8 @@ def normalize(line: str) -> Optional[Tuple[str, str, str, bool]]:
             return None
         ver = next((t[4:] for t in toks[3:] if t.startswith("ver=")), "")
         fp = toks[2].upper()
-        out = f"webtunnel {hp[0]} {fp} url={url}"
-        if VER_RE.match(ver):
-            out += f" ver={ver}"
+        ver = ver if VER_RE.match(ver) else "0.0.1"
+        out = f"webtunnel {hp[0]} {fp} url={url} ver={ver}"
         return out, tr, f"webtunnel|{hp[0]}|{fp}", hp[1]
     if tr == "vanilla":
         hp = parse_hostport(toks[0], True)

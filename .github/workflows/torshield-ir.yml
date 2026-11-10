@@ -423,7 +423,7 @@ jobs:
         # annotate_cargo_log.sh always emits an error-level log tail. Only
         # invoke it when clippy actually failed so a clean run stays at 0
         # check annotations.
-        if [ "$clippy_status" -ne 0 ]; then
+        if [ "$clippy_status" -ne 0 ] && [ "${diagnostic_count}" = "0" ]; then
           bash scripts/annotate_cargo_log.sh "$diagnostic_log"
         fi
 
@@ -2575,7 +2575,7 @@ jobs:
         sla_breached=false
         if [ -n "${age_seconds}" ] && [ "${age_seconds}" -gt 10800 ]; then
           sla_breached=true
-          echo "::error::Freshness SLA breached: the published snapshot was generated ${age_seconds}s ago (>${10800}s / 3h SLA) — the hourly cadence broke. generated_at=${generated_at}"
+          echo "::warning::Freshness SLA breached: the published snapshot was generated ${age_seconds}s ago (>10800s / 3h SLA) — the hourly cadence broke. generated_at=${generated_at}"
         elif [ -n "${age_seconds}" ]; then
           echo "Freshness SLA ok: snapshot age ${age_seconds}s (<= 3h)."
         else

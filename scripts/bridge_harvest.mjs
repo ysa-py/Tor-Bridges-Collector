@@ -267,6 +267,10 @@ function parseBridge(raw, stats) {
       stats.reserved += 1;
       return null;
     }
+    if (!params.ver) {
+      params.ver = "0.0.1";
+      keep.push("ver=0.0.1");
+    }
   } else if (isIpv4 ? reservedV4(host) : reservedV6(host)) {
     stats.reserved += 1;
     return null;

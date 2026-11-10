@@ -222,7 +222,7 @@ def parse_one(m_kind, m):
             return None
         if not (is_public(host) or is_placeholder(host)):
             return None
-        raw = f"webtunnel {g[0]}:{g[1]} {g[2].upper()} url={g[3]}" + (f" ver={g[4]}" if g[4] else "")
+        raw = f"webtunnel {g[0]}:{g[1]} {g[2].upper()} url={g[3]} ver={g[4] or '0.0.1'}"
         return {"transport": "webtunnel", "raw": raw, "host": host, "port": port, "ipv6": ipv6,
                 "fp": g[2].upper(), "iat": 0, "url": g[3]}
     return None

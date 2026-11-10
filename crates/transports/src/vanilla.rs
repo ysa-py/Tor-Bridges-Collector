@@ -303,7 +303,7 @@ pub fn versions_variable_cell(versions: &[u16]) -> Result<Vec<u8>, TransportErro
 /// [`TransportError::Cell`] when the value length is odd or the value is
 /// truncated.
 pub fn versions_from_variable_payload(value: &[u8]) -> Result<Vec<u16>, TransportError> {
-    if value.len() % 2 != 0 {
+    if !value.len().is_multiple_of(2) {
         return Err(TransportError::Cell(
             "VERSIONS value length must be a whole number of two-byte versions",
         ));

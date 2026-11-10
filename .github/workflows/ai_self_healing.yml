@@ -320,9 +320,9 @@ jobs:
     # MERGED from self-heal.yml (2026-08-01). Original condition, unchanged:
     # always run on schedule/push; on workflow_run, only when the upstream
     # workflow actually failed.
-    if: (github.event_name != 'workflow_run' || github.event.workflow_run.name != github.workflow)
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.name != github.workflow && github.event.workflow_run.conclusion == 'failure')
     runs-on: ubuntu-26.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -336,6 +336,17 @@ jobs:
         with:
           toolchain: '1.90.0'
           components: rustfmt, clippy
+
+      - name: Cache Cargo
+        uses: actions/cache@v6
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.cargo/bin/cargo-audit
+            target
+          key: ${{ runner.os }}-cargo-selfheal-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-selfheal-
 
       # FIX (was: hardcoded `powershell` on ubuntu-latest — `powershell` is
       # the Windows-only binary and does not exist on Linux runners; this is

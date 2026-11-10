@@ -59,6 +59,16 @@ jobs:
             --body "Automated by scripts/auto_dependency_heal.sh. cargo audit is clean and the workspace compiles.")"
           gh pr merge "$PR_URL" --auto --squash || echo "auto-merge not enabled; PR left open"
 
+      - name: Close resolved dependency-heal issues
+        if: steps.heal.outcome == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for num in $(gh issue list --label dependency-heal --state open --json number --jq '.[].number' 2>/dev/null || true); do
+            gh issue close "$num" --comment "Resolved: cargo audit is clean and the workspace compiles (verified in run ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})." || true
+          done
+
       - name: Report unhealable advisories
         if: steps.heal.outcome == 'failure'
         env:

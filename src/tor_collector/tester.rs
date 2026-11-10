@@ -844,7 +844,7 @@ impl ServerCertVerifier for ReachabilityVerifier {
 fn tls_config(force_http1: bool) -> Result<Arc<ClientConfig>> {
     let mut provider = rustls::crypto::ring::default_provider();
     let profile = thread_rng().gen_range(0_u8..3_u8);
-    if profile % 2 == 1 {
+    if !profile.is_multiple_of(2) {
         provider.cipher_suites.reverse();
     }
     if profile == 2 {

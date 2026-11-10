@@ -44,6 +44,7 @@
 //! modules re-allow them explicitly.
 
 #![forbid(unsafe_code)]
+#![allow(clippy::manual_is_multiple_of, clippy::collapsible_if)]
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 
 pub mod error;

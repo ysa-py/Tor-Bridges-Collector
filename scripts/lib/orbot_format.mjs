@@ -235,6 +235,9 @@ export function repairForOrbot(raw) {
     if (FP40.test(token)) token = token.toUpperCase();
     rest.push(token);
   }
+  if (transport === "webtunnel" && !seen.has("ver")) {
+    rest.push("ver=0.0.1");
+  }
   const line = [transport === "vanilla" ? null : transport, head, ...rest].filter(Boolean).join(" ");
 
   if (!ORBOT_REGEX.test(line)) {
