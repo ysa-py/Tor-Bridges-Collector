@@ -2,7 +2,7 @@
 
 > Automated collection, runner-side reachability probing, Iran-aware ranking, and dual publication for `bridge/` and Telegram.
 >
-> **Last publication:** `2026-11-11T17:12:31Z` · **Archive payload SHA-256:** `65f181ac58b7c872f8e1e82fe0b54534d4d2c03b2a2fd74ae3c684d5db0fea81`
+> **Last publication:** `2026-11-11T18:22:07Z` · **Archive payload SHA-256:** `e51af7f1a9e54210e528b383eb953a0bdd43e0a955cbee4a49c2fd12c2882e8a`
 
 ## Quick use for Iran
 
@@ -15,11 +15,11 @@
 
 | Output | Entries | Purpose |
 | --- | ---: | --- |
-| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `2418` | Evidence-backed advisory set across transports |
+| [iran_likely_working_all.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_all.txt) | `2419` | Evidence-backed advisory set across transports |
 | [iran_likely_working_obfs4.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_obfs4.txt) | `997` | obfs4-oriented fallback for conventional DPI |
-| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `300` | WebTunnel candidates |
+| [iran_likely_working_webtunnel.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_webtunnel.txt) | `301` | WebTunnel candidates |
 | [iran_likely_working_snowflake.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_snowflake.txt) | `62` | Snowflake capability candidates |
-| [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `422` | NIN/cut-mode priority candidates |
+| [iran_likely_working_nin.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_likely_working_nin.txt) | `423` | NIN/cut-mode priority candidates |
 | [iran_blocked.txt](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/iran_blocked.txt) | `1476` | Observations classified as blocked |
 | [tor_bridges.zip](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/tor_bridges.zip) | `72` files | Same verified payload used for Telegram delivery |
 | [telegram_manifest.json](https://raw.githubusercontent.com/ysa-py/Tor-Bridges-Collector/refs/heads/main/bridge/telegram_manifest.json) | — | SHA-256 inventory, evidence scope, and archive contract |
