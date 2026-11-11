@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-11T09:32:42.747882901+00:00",
+  "generated_at": "2026-11-11T16:54:04.910705393+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1856,
-            "tested_failing": 65,
-            "tested_working": 569,
-            "untested (probe error)": 1015,
-            "untested (rate-limited)": 200,
-            "untested (tcp timeout)": 687
+            "tcp_reachable_s1": 1873,
+            "tested_failing": 18,
+            "tested_working": 560,
+            "untested (probe error)": 1078,
+            "untested (rate-limited)": 198,
+            "untested (tcp timeout)": 666
           },
-          "stamped": 4392,
+          "stamped": 4393,
           "tiers": {
-            "tier_0_attempt": 1731,
-            "tier_1_tcp": 2092,
-            "tier_2_pt_handshake": 569
+            "tier_0_attempt": 1713,
+            "tier_1_tcp": 2120,
+            "tier_2_pt_handshake": 560
           }
         },
         "files": {
@@ -31,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 0,
-          "tested_global_webtunnel.txt": 233
+          "tested_global_webtunnel.txt": 230
         },
         "relay_evidence": {
-          "bridges_matched": 4392,
-          "relay_observations": 4586,
+          "bridges_matched": 4393,
+          "relay_observations": 4587,
           "s2plus_connected": 115,
-          "verification_upgrades": 3794
+          "verification_upgrades": 4216
         },
         "webtunnel_probe": {
           "probed": 788,
-          "ws_101": 455,
-          "ws_fail": 333
+          "ws_101": 446,
+          "ws_fail": 342
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-11T09:31:51.603857184+00:00",
+      "started_at": "2026-11-11T16:53:14.077808234+00:00",
       "status": "ok"
     }
   ],
