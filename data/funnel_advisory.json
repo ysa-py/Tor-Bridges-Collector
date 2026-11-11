@@ -13,7 +13,7 @@
       "stage": "candidates_in_history"
     },
     {
-      "count": 4053,
+      "count": 4051,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -23,7 +23,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 1909,
+      "count": 1898,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -33,7 +33,7 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 2293,
+      "count": 2292,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
@@ -43,7 +43,7 @@
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-11T01:45:21.480479198+00:00",
+  "generated_at": "2026-11-11T02:47:19.117123481+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -81,33 +81,33 @@
   },
   "published_counts": {
     "iran_likely_working_all.txt": 1895,
-    "iran_likely_working_obfs4.txt": 943,
+    "iran_likely_working_obfs4.txt": 933,
     "iran_likely_working_snowflake.txt": 4,
-    "iran_likely_working_vanilla.txt": 610,
-    "iran_likely_working_webtunnel.txt": 338,
+    "iran_likely_working_vanilla.txt": 612,
+    "iran_likely_working_webtunnel.txt": 346,
     "obfs4.txt": 1496,
-    "obfs4_tested.txt": 943,
-    "tested_global_obfs4.txt": 943,
-    "tested_global_vanilla.txt": 610,
-    "tested_global_webtunnel.txt": 338,
+    "obfs4_tested.txt": 933,
+    "tested_global_obfs4.txt": 933,
+    "tested_global_vanilla.txt": 612,
+    "tested_global_webtunnel.txt": 346,
     "vanilla.txt": 992,
-    "vanilla_tested.txt": 610,
+    "vanilla_tested.txt": 612,
     "webtunnel.txt": 375,
-    "webtunnel_ipv6.txt": 108
+    "webtunnel_ipv6.txt": 106
   },
   "relay_coverage": {
-    "candidates": 4053,
+    "candidates": 4051,
     "relay_observations": 4976,
-    "relay_success": 1909,
+    "relay_success": 1898,
     "unobserved_by_transport": {
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 79,
       "webtunnel": 114
     },
-    "unobserved_candidates": 281,
-    "unobserved_non_routable": 275,
-    "unobserved_other": 6
+    "unobserved_candidates": 278,
+    "unobserved_non_routable": 273,
+    "unobserved_other": 5
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -1394,7 +1394,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "mwumba.com",
         "observations": 2,
         "successes": 0
@@ -2268,9 +2268,9 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 108,
+    "fronts_with_placeholder_endpoints": 106,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 483,
+    "lines_examined": 481,
     "summary": {
       "degraded": 0,
       "healthy": 1,
