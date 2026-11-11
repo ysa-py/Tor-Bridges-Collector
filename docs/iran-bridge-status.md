@@ -1,6 +1,6 @@
 # 🚨 TorShield-IR — Iran Bridge Status Report
 
-**Generated:** `2026-11-11 08:24 UTC`<br>
+**Generated:** `2026-11-11 09:31 UTC`<br>
 **Pipeline:** Python scraper → Go iran_tester → Rust bridge-probe → OONI correlator
 
 ---
