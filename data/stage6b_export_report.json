@@ -1,25 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-12T21:30:45.213502805+00:00",
+  "generated_at": "2026-11-12T22:31:49.505098752+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1857,
-            "tested_failing": 91,
-            "tested_working": 465,
-            "untested (probe error)": 981,
-            "untested (rate-limited)": 314,
-            "untested (tcp timeout)": 708
+            "tcp_reachable_s1": 1847,
+            "tested_failing": 68,
+            "tested_working": 574,
+            "untested (probe error)": 1021,
+            "untested (rate-limited)": 201,
+            "untested (tcp timeout)": 705
           },
           "stamped": 4416,
           "tiers": {
-            "tier_0_attempt": 1739,
-            "tier_1_tcp": 2098,
-            "tier_2_pt_handshake": 465,
-            "untested": 114
+            "tier_0_attempt": 1752,
+            "tier_1_tcp": 2090,
+            "tier_2_pt_handshake": 574
           }
         },
         "files": {
@@ -32,23 +31,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 0,
-          "tested_global_webtunnel.txt": 240
+          "tested_global_webtunnel.txt": 238
         },
         "relay_evidence": {
           "bridges_matched": 4416,
           "relay_observations": 4610,
           "s2plus_connected": 115,
-          "verification_upgrades": 3430
+          "verification_upgrades": 3756
         },
         "webtunnel_probe": {
           "probed": 791,
-          "ws_101": 465,
-          "ws_fail": 326
+          "ws_101": 460,
+          "ws_fail": 331
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-12T21:29:48.684998844+00:00",
+      "started_at": "2026-11-12T22:31:01.247429936+00:00",
       "status": "ok"
     }
   ],
