@@ -176,7 +176,7 @@
           "line": "104.168.147.91:40404 BD5086A67FDD5BE93734B3D8255AA4759DA40F0A"
         },
         {
-          "ai_score": 0.8392,
+          "ai_score": 0.8374,
           "latency_ms": 9.037421,
           "line": "23.186.168.33:443 008EA22C040A4B5C262551195B5C34B54F353D83"
         },
@@ -287,11 +287,12 @@
       {
         "fragment_bytes": 1,
         "padding_jitter_ms": [
-          5,
-          60
+          10,
+          120
         ],
         "record_split": [
-          40
+          1,
+          5
         ],
         "utc_hour_offset": 3,
         "utls": "HelloRandomizedALPN"
@@ -310,7 +311,7 @@
         "utls": "HelloEdge_Auto"
       },
       {
-        "fragment_bytes": 2,
+        "fragment_bytes": 1,
         "padding_jitter_ms": [
           5,
           40
@@ -325,18 +326,6 @@
       {
         "fragment_bytes": 1,
         "padding_jitter_ms": [
-          5,
-          60
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 8,
-        "utls": "HelloChrome_Auto"
-      },
-      {
-        "fragment_bytes": 5,
-        "padding_jitter_ms": [
           2,
           40
         ],
@@ -348,10 +337,10 @@
         "utls": "HelloIOS_Auto"
       },
       {
-        "fragment_bytes": 2,
+        "fragment_bytes": 100,
         "padding_jitter_ms": [
-          5,
-          120
+          10,
+          40
         ],
         "record_split": [
           40
@@ -467,18 +456,6 @@
           120
         ],
         "record_split": [
-          3
-        ],
-        "utc_hour_offset": 16,
-        "utls": "HelloEdge_Auto"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          5,
-          120
-        ],
-        "record_split": [
           100,
           20
         ],
@@ -501,7 +478,7 @@
       {
         "fragment_bytes": 1,
         "padding_jitter_ms": [
-          5,
+          10,
           120
         ],
         "record_split": [
@@ -567,10 +544,11 @@
         "fragment_bytes": 2,
         "padding_jitter_ms": [
           10,
-          120
+          60
         ],
         "record_split": [
-          40
+          100,
+          20
         ],
         "utc_hour_offset": 23,
         "utls": "HelloRandomizedNoALPN"
