@@ -203,12 +203,12 @@
           "line": "webtunnel 104.26.1.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6971,
+          "ai_score": 0.6984,
           "latency_ms": 12.983,
           "line": "webtunnel 104.26.0.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6972,
+          "ai_score": 0.6985,
           "latency_ms": 13.508,
           "line": "webtunnel 172.67.69.9:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
@@ -247,43 +247,7 @@
     "ech": "prefer when the front supports it (Cloudflare / Fastly)",
     "rotation_24h": [
       {
-        "fragment_bytes": 5,
-        "padding_jitter_ms": [
-          10,
-          60
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 0,
-        "utls": "HelloIOS_Auto"
-      },
-      {
-        "fragment_bytes": 40,
-        "padding_jitter_ms": [
-          2,
-          60
-        ],
-        "record_split": [
-          3
-        ],
-        "utc_hour_offset": 1,
-        "utls": "HelloSafari_Auto"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          2,
-          120
-        ],
-        "record_split": [
-          40
-        ],
-        "utc_hour_offset": 2,
-        "utls": "HelloRandomizedNoALPN"
-      },
-      {
-        "fragment_bytes": 40,
+        "fragment_bytes": 1,
         "padding_jitter_ms": [
           10,
           40
@@ -307,7 +271,7 @@
         "utls": "HelloChrome_Auto"
       },
       {
-        "fragment_bytes": 100,
+        "fragment_bytes": 1,
         "padding_jitter_ms": [
           10,
           40
@@ -351,8 +315,8 @@
           120
         ],
         "record_split": [
-          1,
-          5
+          100,
+          20
         ],
         "utc_hour_offset": 5,
         "utls": "HelloFirefox_Auto"
@@ -364,7 +328,7 @@
           40
         ],
         "record_split": [
-          40
+          3
         ],
         "utc_hour_offset": 6,
         "utls": "HelloChrome_Auto"
@@ -497,11 +461,12 @@
       {
         "fragment_bytes": 40,
         "padding_jitter_ms": [
-          5,
-          60
+          2,
+          40
         ],
         "record_split": [
-          3
+          100,
+          20
         ],
         "utc_hour_offset": 17,
         "utls": "HelloSafari_Auto"
@@ -520,7 +485,7 @@
         "utls": "HelloIOS_Auto"
       },
       {
-        "fragment_bytes": 5,
+        "fragment_bytes": 1,
         "padding_jitter_ms": [
           10,
           60
@@ -551,14 +516,14 @@
           60
         ],
         "record_split": [
-          100,
-          20
+          1,
+          5
         ],
         "utc_hour_offset": 21,
         "utls": "HelloAndroid_11_OkHttp"
       },
       {
-        "fragment_bytes": 5,
+        "fragment_bytes": 1,
         "padding_jitter_ms": [
           2,
           60

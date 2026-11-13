@@ -889,7 +889,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -907,7 +907,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -943,7 +943,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -961,7 +961,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 1,
+        "latency_ms": 3,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -2401,7 +2401,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 1,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -2419,7 +2419,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 1,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -2437,7 +2437,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 1,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -2455,7 +2455,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 1,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -2473,7 +2473,7 @@
       "iran_dpi_evasion_score": 0.4,
       "relay_probe": {
         "error": "connection reached the endpoint but its protocol signature was not verified",
-        "latency_ms": 2,
+        "latency_ms": 1,
         "observed": true,
         "probe_type": "websocket-101",
         "success": false
@@ -14222,14 +14222,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
         "latency_ms": 56,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -23636,14 +23636,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 101,
+        "error": "TCP connection timed out",
+        "latency_ms": 5000,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -24954,7 +24954,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 88,
+        "latency_ms": 98,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -28964,14 +28964,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_reachable",
+      "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": "probe failed before a positive connection stage was recorded",
         "latency_ms": 191,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "obfs4"
     },
@@ -31236,7 +31236,7 @@
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
-        "latency_ms": 4,
+        "latency_ms": 19,
         "observed": true,
         "probe_type": "tcp",
         "success": true
@@ -38558,14 +38558,14 @@
         "obfs4_obfuscated",
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.25,
       "relay_probe": {
         "error": null,
         "latency_ms": 3269,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "obfs4"
     },
@@ -51939,14 +51939,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
         "latency_ms": 74,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -54404,14 +54404,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
         "latency_ms": 187,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -54625,14 +54625,14 @@
       "flags": [
         "non_standard_port"
       ],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
         "error": null,
         "latency_ms": 152,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -61224,11 +61224,11 @@
       "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.1,
       "relay_probe": {
-        "error": null,
-        "latency_ms": 107,
+        "error": "TCP connection timed out",
+        "latency_ms": 5000,
         "observed": true,
         "probe_type": "tcp",
-        "success": true
+        "success": false
       },
       "transport": "vanilla"
     },
@@ -66796,14 +66796,14 @@
       "bridge_line": "Bridge 185.154.110.37:9001 0828025B1959DB0129B4A3BA6C7AC49C1E523AE8",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
         "latency_ms": 200,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -69766,14 +69766,14 @@
       "bridge_line": "Bridge 89.58.34.53:9001 01B8F18C11CE2877E8190FA2C81808CD087515C0",
       "ech_verification": "static_inference_no_live_handshake",
       "flags": [],
-      "front_reachability": "relay_verified_unreachable",
+      "front_reachability": "relay_verified_reachable",
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
         "error": null,
         "latency_ms": 184,
         "observed": true,
         "probe_type": "tcp",
-        "success": false
+        "success": true
       },
       "transport": "vanilla"
     },
@@ -70039,8 +70039,8 @@
       "front_reachability": "relay_verified_unreachable",
       "iran_dpi_evasion_score": 0.0,
       "relay_probe": {
-        "error": "probe failed before a positive connection stage was recorded",
-        "latency_ms": 1652,
+        "error": "TCP connection timed out",
+        "latency_ms": 5000,
         "observed": true,
         "probe_type": "tcp",
         "success": false
