@@ -1275,29 +1275,14 @@
     }
   },
   {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
+    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 104.26.12.124:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.5",
     "observed_at": "2026-11-13T11:35:42.150427Z",
     "probe_type": "websocket-101",
     "rtt_ms": 483.0,
     "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 144.168.44.26:443 39B521C5F16C984400EECC4E2F83BF26E73F1D1D",
-    "observed_at": "2026-11-13T10:33:24.556356Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 88.0,
-    "source": "handshake-probe",
-    "stage": "S3",
+    "stage": "S2",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -4162,8 +4147,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
+    "stage": "S0",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -4395,14 +4380,14 @@
     }
   },
   {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
+    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
     "error_class": null,
     "line": "Bridge 145.40.181.255:9001 DC6F85EC1BF41FD9CCBB3429C0FDF10D4985FA37",
     "observed_at": "2026-11-13T11:35:45.304521Z",
     "probe_type": "tor-handshake",
     "rtt_ms": 453.0,
     "source": "handshake-probe",
-    "stage": "S2",
+    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -5423,7 +5408,7 @@
     "rtt_ms": 0.0,
     "source": "handshake-probe",
     "stage": "S0",
-    "status": "inconclusive",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
