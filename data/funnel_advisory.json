@@ -8,42 +8,42 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 4453,
+      "count": 4452,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 4118,
+      "count": 4119,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 5043,
+      "count": 5042,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 1920,
+      "count": 1912,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 4449,
+      "count": 4448,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 2280,
+      "count": 2318,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 1929,
+      "count": 1925,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-13T18:42:50.172775672+00:00",
+  "generated_at": "2026-11-13T19:44:22.561313960+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -80,34 +80,34 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 1929,
-    "iran_likely_working_obfs4.txt": 954,
+    "iran_likely_working_all.txt": 1925,
+    "iran_likely_working_obfs4.txt": 948,
     "iran_likely_working_snowflake.txt": 4,
-    "iran_likely_working_vanilla.txt": 617,
-    "iran_likely_working_webtunnel.txt": 354,
-    "obfs4.txt": 1514,
-    "obfs4_tested.txt": 954,
-    "tested_global_obfs4.txt": 954,
-    "tested_global_vanilla.txt": 617,
-    "tested_global_webtunnel.txt": 354,
+    "iran_likely_working_vanilla.txt": 615,
+    "iran_likely_working_webtunnel.txt": 358,
+    "obfs4.txt": 1513,
+    "obfs4_tested.txt": 948,
+    "tested_global_obfs4.txt": 948,
+    "tested_global_vanilla.txt": 615,
+    "tested_global_webtunnel.txt": 358,
     "vanilla.txt": 1019,
-    "vanilla_tested.txt": 617,
-    "webtunnel.txt": 387,
-    "webtunnel_ipv6.txt": 103
+    "vanilla_tested.txt": 615,
+    "webtunnel.txt": 388,
+    "webtunnel_ipv6.txt": 104
   },
   "relay_coverage": {
-    "candidates": 4118,
-    "relay_observations": 5043,
-    "relay_success": 1920,
+    "candidates": 4119,
+    "relay_observations": 5042,
+    "relay_success": 1912,
     "unobserved_by_transport": {
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 79,
-      "webtunnel": 119
+      "webtunnel": 121
     },
-    "unobserved_candidates": 286,
-    "unobserved_non_routable": 270,
-    "unobserved_other": 16
+    "unobserved_candidates": 288,
+    "unobserved_non_routable": 271,
+    "unobserved_other": 17
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 286
+    "unobserved_candidates": 288
   },
   "sources": {
     "sources": [
@@ -2311,7 +2311,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "x7t2qctb.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -2324,9 +2324,9 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 103,
+    "fronts_with_placeholder_endpoints": 104,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 490,
+    "lines_examined": 492,
     "summary": {
       "degraded": 0,
       "healthy": 1,
