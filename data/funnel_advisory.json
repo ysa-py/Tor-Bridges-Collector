@@ -13,7 +13,7 @@
       "stage": "candidates_in_history"
     },
     {
-      "count": 4119,
+      "count": 4123,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
@@ -23,7 +23,7 @@
       "stage": "relay_attempted"
     },
     {
-      "count": 1912,
+      "count": 1910,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
@@ -33,17 +33,17 @@
       "stage": "tcp_tested"
     },
     {
-      "count": 2318,
+      "count": 2307,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 1925,
+      "count": 1905,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-13T19:44:22.561313960+00:00",
+  "generated_at": "2026-11-14T00:28:10.377432481+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -80,34 +80,34 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 1925,
-    "iran_likely_working_obfs4.txt": 948,
-    "iran_likely_working_snowflake.txt": 4,
-    "iran_likely_working_vanilla.txt": 615,
-    "iran_likely_working_webtunnel.txt": 358,
+    "iran_likely_working_all.txt": 1905,
+    "iran_likely_working_obfs4.txt": 952,
+    "iran_likely_working_snowflake.txt": 3,
+    "iran_likely_working_vanilla.txt": 605,
+    "iran_likely_working_webtunnel.txt": 345,
     "obfs4.txt": 1513,
-    "obfs4_tested.txt": 948,
-    "tested_global_obfs4.txt": 948,
-    "tested_global_vanilla.txt": 615,
-    "tested_global_webtunnel.txt": 358,
+    "obfs4_tested.txt": 952,
+    "tested_global_obfs4.txt": 952,
+    "tested_global_vanilla.txt": 605,
+    "tested_global_webtunnel.txt": 345,
     "vanilla.txt": 1019,
-    "vanilla_tested.txt": 615,
-    "webtunnel.txt": 388,
-    "webtunnel_ipv6.txt": 104
+    "vanilla_tested.txt": 605,
+    "webtunnel.txt": 387,
+    "webtunnel_ipv6.txt": 109
   },
   "relay_coverage": {
-    "candidates": 4119,
+    "candidates": 4123,
     "relay_observations": 5042,
-    "relay_success": 1912,
+    "relay_success": 1910,
     "unobserved_by_transport": {
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 79,
-      "webtunnel": 121
+      "webtunnel": 125
     },
-    "unobserved_candidates": 288,
-    "unobserved_non_routable": 271,
-    "unobserved_other": 17
+    "unobserved_candidates": 292,
+    "unobserved_non_routable": 276,
+    "unobserved_other": 16
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 288
+    "unobserved_candidates": 292
   },
   "sources": {
     "sources": [
@@ -981,7 +981,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "fdmf.ch",
         "observations": 1,
         "successes": 0
@@ -1492,7 +1492,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "notalot.org",
         "observations": 3,
         "successes": 0
@@ -1688,7 +1688,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "rayneau.fr",
         "observations": 1,
         "successes": 0
@@ -1779,7 +1779,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "sexgrueselbox.ch",
         "observations": 2,
         "successes": 0
@@ -1870,7 +1870,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "steuern-sind-raub.ch",
         "observations": 1,
         "successes": 0
@@ -2311,7 +2311,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "x7t2qctb.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -2324,9 +2324,9 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 104,
+    "fronts_with_placeholder_endpoints": 109,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 492,
+    "lines_examined": 496,
     "summary": {
       "degraded": 0,
       "healthy": 1,
