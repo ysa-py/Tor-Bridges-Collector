@@ -8,47 +8,47 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 4457,
+      "count": 4460,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 4122,
+      "count": 4126,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 5047,
+      "count": 5050,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 1907,
+      "count": 1910,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 4453,
+      "count": 4456,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 2276,
+      "count": 2318,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 1926,
+      "count": 1922,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-14T08:29:03.102364898+00:00",
+  "generated_at": "2026-11-14T15:08:56.635647428+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
     "by_reason": {
-      "DOCUMENTATION_RFC3849_2001_DB8": 477,
+      "DOCUMENTATION_RFC3849_2001_DB8": 478,
       "PRIVATE_RFC1918_10": 4,
       "TEST_NET_1_RFC5737": 143
     },
@@ -56,7 +56,7 @@
       "meek-azure": 28,
       "meek_lite": 88,
       "snowflake": 79,
-      "webtunnel": 429
+      "webtunnel": 430
     },
     "policy": "ip_guard::check_endpoint (the same reserved-range table every scraper source applies at ingest)",
     "samples": [
@@ -69,7 +69,7 @@
       "Bridge meek_lite 192.0.2.106:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloChrome_Auto",
       "Bridge meek_lite 192.0.2.107:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloFirefox_Auto"
     ],
-    "total_non_routable": 624
+    "total_non_routable": 625
   },
   "publications_gate": {
     "ewma_consumers": [
@@ -80,34 +80,34 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 1926,
-    "iran_likely_working_obfs4.txt": 949,
+    "iran_likely_working_all.txt": 1922,
+    "iran_likely_working_obfs4.txt": 952,
     "iran_likely_working_snowflake.txt": 4,
-    "iran_likely_working_vanilla.txt": 615,
-    "iran_likely_working_webtunnel.txt": 358,
-    "obfs4.txt": 1514,
-    "obfs4_tested.txt": 949,
-    "tested_global_obfs4.txt": 949,
-    "tested_global_vanilla.txt": 615,
-    "tested_global_webtunnel.txt": 358,
-    "vanilla.txt": 1020,
-    "vanilla_tested.txt": 615,
-    "webtunnel.txt": 387,
+    "iran_likely_working_vanilla.txt": 612,
+    "iran_likely_working_webtunnel.txt": 354,
+    "obfs4.txt": 1515,
+    "obfs4_tested.txt": 952,
+    "tested_global_obfs4.txt": 952,
+    "tested_global_vanilla.txt": 612,
+    "tested_global_webtunnel.txt": 354,
+    "vanilla.txt": 1021,
+    "vanilla_tested.txt": 612,
+    "webtunnel.txt": 389,
     "webtunnel_ipv6.txt": 104
   },
   "relay_coverage": {
-    "candidates": 4122,
-    "relay_observations": 5047,
-    "relay_success": 1907,
+    "candidates": 4126,
+    "relay_observations": 5050,
+    "relay_success": 1910,
     "unobserved_by_transport": {
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 79,
-      "webtunnel": 120
+      "webtunnel": 122
     },
-    "unobserved_candidates": 287,
+    "unobserved_candidates": 289,
     "unobserved_non_routable": 271,
-    "unobserved_other": 16
+    "unobserved_other": 18
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 287
+    "unobserved_candidates": 289
   },
   "sources": {
     "sources": [
@@ -1101,6 +1101,13 @@
       {
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
+        "front": "git.www.4fh.eu",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": false,
         "front": "google.com.gus.computer",
         "observations": 1,
         "successes": 0
@@ -1415,7 +1422,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "mwumba.com",
         "observations": 2,
         "successes": 0
@@ -2318,7 +2325,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "x7t2qctb.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -2333,13 +2340,13 @@
     ],
     "fronts_with_placeholder_endpoints": 104,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 491,
+    "lines_examined": 493,
     "summary": {
       "degraded": 0,
       "healthy": 1,
       "no_evidence": 1,
-      "unreachable_from_relay": 302
+      "unreachable_from_relay": 303
     },
-    "unique_fronts": 304
+    "unique_fronts": 305
   }
 }
