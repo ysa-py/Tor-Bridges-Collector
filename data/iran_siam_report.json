@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-14T15:59:16.413646+00:00",
+  "generated_at": "2026-11-14T19:53:55.516271+00:00",
   "results": [
     {
       "bridge_line": "Bridge meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -33329,6 +33329,30 @@
       },
       "layers_bypassed": 2,
       "port": 8443,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 89.166.187.249:80 02F00A33017A24E99112E5CA498AECD204F913F3 cert=8dPCfyN6aLL7UznO8flqjwqAkC0hvoY9W9zbXH96cOGo44wG/XkTojsjyoX5BDGehTjmTQ iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6395,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 80,
       "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
       "transport": "obfs4"
     },
@@ -68572,6 +68596,30 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 103.17.154.28:443 14276AC7EC2F61D60CCA88FCD6F9200FB38E5F9F cert=ousRdmpynYWH4cfCbV302M+ElH1jEA+cB5WWIKa4yFUu4pqeFDqKlwTK1d41Nd1j6mU5Kw iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6235,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.45,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 443,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 103.196.181.200:443 A588FDD17CD20AC2B36ECAE50002EE1990BE5AB7 cert=3yjs4IYwoNe3YPskH8IC0AMnZyXJjD0kENtNREMW9Vzb8RAsJlzLN+WbPRztPQv2GmxEOg iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
@@ -73853,6 +73901,30 @@
     },
     {
       "bridge_line": "obfs4 89.58.37.201:443 408EDC710389E4DEF90D597C7614B5CF292D0D3B cert=BhCj4JUIBDu/ArIjYp6i6Pe+3CwZhRbf3UwuwHXwxkLdsQUsLpljGCt++Zx6jQP3F1AAMw iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6235,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.45,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 443,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 89.58.41.128:443 CDEC44A10F12F828EC3265180B5C4301F7519ACE cert=REONxtHVPNkJAaA+SGv1mPSueLgdIowmfnGmpXEHsanr3jChXh5Tz8FBiDwVQwot5sZtfw iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -100589,14 +100661,14 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 2057,
+    "COVERT": 2060,
     "DETECTED": 1236,
     "PHANTOM": 115,
     "STEALTH": 1048
   },
-  "total_scored": 4456,
+  "total_scored": 4459,
   "transport_summary": {
-    "obfs4": 2211,
+    "obfs4": 2214,
     "snowflake": 93,
     "vanilla": 1236,
     "webtunnel": 916
