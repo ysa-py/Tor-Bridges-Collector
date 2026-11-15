@@ -1,12 +1,12 @@
 {
   "schema": "iran-vantage-summary/1",
-  "generated_at": "2026-11-15T22:55:05Z",
+  "generated_at": "2026-11-15T17:45:44Z",
   "window_hours": 24,
   "claim_ceiling": "tcp-or-https-from-iran-datacenters-only; not a Tor/PT handshake; GitHub runners are not in Iran",
   "counts": {
-    "reachable_from_iran_datacenter": 35,
-    "suspected_blocked_from_iran_datacenters": 1,
-    "inconclusive": 3
+    "reachable_from_iran_datacenter": 37,
+    "suspected_blocked_from_iran_datacenters": 0,
+    "inconclusive": 1
   },
   "targets": [
     {
@@ -15,12 +15,27 @@
       "target": "103.17.153.40:443",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
+        "ir2.node.check-host.net",
         "ir4.node.check-host.net",
         "ir5.node.check-host.net",
-        "ir6.node.check-host.net"
+        "ir6.node.check-host.net",
+        "ir7.node.check-host.net"
       ],
       "iran_nodes_failed": [],
       "latest_tested_at": "2026-11-15T11:02:17Z"
+    },
+    {
+      "transport": "webtunnel",
+      "method": "tcp",
+      "target": "103.17.153.46:443",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir2.node.check-host.net",
+        "ir3.node.check-host.net",
+        "ir7.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:13:49Z"
     },
     {
       "transport": "webtunnel",
@@ -49,17 +64,30 @@
       "latest_tested_at": "2026-11-15T11:02:24Z"
     },
     {
-      "transport": "obfs4",
+      "transport": "webtunnel",
       "method": "tcp",
-      "target": "116.203.78.123:443",
+      "target": "108.61.99.200:443",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
         "ir2.node.check-host.net",
-        "ir6.node.check-host.net",
-        "ir7.node.check-host.net"
+        "ir3.node.check-host.net",
+        "ir8.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:08Z"
+      "latest_tested_at": "2026-11-14T19:13:35Z"
+    },
+    {
+      "transport": "vanilla",
+      "method": "tcp",
+      "target": "141.201.28.48:443",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir2.node.check-host.net",
+        "ir5.node.check-host.net",
+        "ir6.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:12:39Z"
     },
     {
       "transport": "vanilla",
@@ -75,56 +103,29 @@
       "latest_tested_at": "2026-11-15T11:00:47Z"
     },
     {
-      "transport": "vanilla",
+      "transport": "obfs4",
       "method": "tcp",
-      "target": "141.98.153.205:443",
+      "target": "143.244.137.242:80",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
         "ir2.node.check-host.net",
-        "ir5.node.check-host.net",
-        "ir6.node.check-host.net"
-      ],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:52:57Z"
-    },
-    {
-      "transport": "webtunnel",
-      "method": "tcp",
-      "target": "154.7.228.28:443",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir2.node.check-host.net",
-        "ir3.node.check-host.net",
+        "ir6.node.check-host.net",
         "ir7.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:17Z"
+      "latest_tested_at": "2026-11-14T19:13:02Z"
     },
     {
-      "transport": "vanilla",
+      "transport": "obfs4",
       "method": "tcp",
-      "target": "179.237.103.103:443",
+      "target": "162.55.177.28:443",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
-        "ir2.node.check-host.net",
-        "ir3.node.check-host.net",
-        "ir8.node.check-host.net"
-      ],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:00Z"
-    },
-    {
-      "transport": "webtunnel",
-      "method": "tcp",
-      "target": "192.67.197.242:443",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir2.node.check-host.net",
         "ir5.node.check-host.net",
         "ir6.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:23Z"
+      "latest_tested_at": "2026-11-14T19:12:54Z"
     },
     {
       "transport": "vanilla",
@@ -153,9 +154,22 @@
       "latest_tested_at": "2026-11-15T11:02:13Z"
     },
     {
-      "transport": "webtunnel",
+      "transport": "vanilla",
       "method": "tcp",
-      "target": "209.97.139.217:443",
+      "target": "199.193.115.2:443",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir2.node.check-host.net",
+        "ir6.node.check-host.net",
+        "ir7.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:12:33Z"
+    },
+    {
+      "transport": "obfs4",
+      "method": "tcp",
+      "target": "199.195.253.26:443",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
         "ir3.node.check-host.net",
@@ -163,7 +177,7 @@
         "ir6.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:29Z"
+      "latest_tested_at": "2026-11-14T19:12:59Z"
     },
     {
       "transport": "vanilla",
@@ -181,28 +195,28 @@
     {
       "transport": "vanilla",
       "method": "tcp",
-      "target": "45.129.182.225:443",
+      "target": "5.255.102.43:80",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
         "ir2.node.check-host.net",
         "ir3.node.check-host.net",
-        "ir7.node.check-host.net"
+        "ir8.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:52:51Z"
+      "latest_tested_at": "2026-11-14T19:12:42Z"
     },
     {
-      "transport": "obfs4",
+      "transport": "vanilla",
       "method": "tcp",
-      "target": "46.38.250.114:443",
+      "target": "64.65.1.92:443",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
-        "ir4.node.check-host.net",
-        "ir5.node.check-host.net",
-        "ir6.node.check-host.net"
+        "ir2.node.check-host.net",
+        "ir3.node.check-host.net",
+        "ir5.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:14Z"
+      "latest_tested_at": "2026-11-14T19:12:36Z"
     },
     {
       "transport": "vanilla",
@@ -223,12 +237,25 @@
       "target": "64.83.2.102:8443",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
-        "ir1.node.check-host.net",
         "ir2.node.check-host.net",
-        "ir3.node.check-host.net"
+        "ir3.node.check-host.net",
+        "ir5.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:53Z"
+      "latest_tested_at": "2026-11-14T19:13:05Z"
+    },
+    {
+      "transport": "obfs4",
+      "method": "tcp",
+      "target": "65.108.145.245:443",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir2.node.check-host.net",
+        "ir3.node.check-host.net",
+        "ir7.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:12:56Z"
     },
     {
       "transport": "obfs4",
@@ -242,32 +269,6 @@
       ],
       "iran_nodes_failed": [],
       "latest_tested_at": "2026-11-15T11:02:02Z"
-    },
-    {
-      "transport": "obfs4",
-      "method": "tcp",
-      "target": "83.217.9.65:443",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir3.node.check-host.net",
-        "ir5.node.check-host.net",
-        "ir6.node.check-host.net"
-      ],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:06Z"
-    },
-    {
-      "transport": "obfs4",
-      "method": "tcp",
-      "target": "85.214.32.183:443",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir1.node.check-host.net",
-        "ir2.node.check-host.net",
-        "ir3.node.check-host.net"
-      ],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:11Z"
     },
     {
       "transport": "obfs4",
@@ -296,19 +297,6 @@
       "latest_tested_at": "2026-11-15T11:02:36Z"
     },
     {
-      "transport": "vanilla",
-      "method": "tcp",
-      "target": "96.9.98.103:443",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir2.node.check-host.net",
-        "ir3.node.check-host.net",
-        "ir5.node.check-host.net"
-      ],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:52:54Z"
-    },
-    {
       "transport": "obfs4",
       "method": "tcp",
       "target": "99.189.175.70:443",
@@ -327,26 +315,37 @@
       "target": "https://ajax.aspnetcdn.com/",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
+        "ir2.node.check-host.net",
         "ir3.node.check-host.net",
-        "ir7.node.check-host.net"
+        "ir8.node.check-host.net"
       ],
-      "iran_nodes_failed": [
-        "ir2.node.check-host.net"
-      ],
-      "latest_tested_at": "2026-11-15T22:54:38Z"
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:14:09Z"
     },
     {
       "transport": "meek-azure",
       "method": "https",
       "target": "https://ajax.aspnetcdn.com/",
-      "verdict": "suspected_blocked_from_iran_datacenters",
-      "iran_nodes_open": [],
-      "iran_nodes_failed": [
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir5.node.check-host.net",
+        "ir6.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:14:20Z"
+    },
+    {
+      "transport": "meek_lite",
+      "method": "https",
+      "target": "https://app.datapacket.com/",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
         "ir2.node.check-host.net",
         "ir5.node.check-host.net",
         "ir6.node.check-host.net"
       ],
-      "latest_tested_at": "2026-11-15T22:55:02Z"
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:14:04Z"
     },
     {
       "transport": "webtunnel",
@@ -354,13 +353,13 @@
       "target": "https://bridge.64-83-2-102.sslip.io:8443/",
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
-        "ir4.node.check-host.net",
+        "ir2.node.check-host.net",
         "ir5.node.check-host.net"
       ],
       "iran_nodes_failed": [
         "ir6.node.check-host.net"
       ],
-      "latest_tested_at": "2026-11-15T22:54:17Z"
+      "latest_tested_at": "2026-11-14T19:13:32Z"
     },
     {
       "transport": "webtunnel",
@@ -370,10 +369,48 @@
       "iran_nodes_open": [
         "ir2.node.check-host.net",
         "ir3.node.check-host.net",
+        "ir5.node.check-host.net",
         "ir7.node.check-host.net"
       ],
       "iran_nodes_failed": [],
       "latest_tested_at": "2026-11-15T11:02:22Z"
+    },
+    {
+      "transport": "webtunnel",
+      "method": "https",
+      "target": "https://cdn-46.triplebit.dev/",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir3.node.check-host.net",
+        "ir5.node.check-host.net",
+        "ir6.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:13:54Z"
+    },
+    {
+      "transport": "meek-azure",
+      "method": "https",
+      "target": "https://cdn.sstatic.net/",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir2.node.check-host.net",
+        "ir3.node.check-host.net",
+        "ir7.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:14:25Z"
+    },
+    {
+      "transport": "webtunnel",
+      "method": "https",
+      "target": "https://cdn.yuvalbloch.com/",
+      "verdict": "reachable_from_iran_datacenter",
+      "iran_nodes_open": [
+        "ir5.node.check-host.net"
+      ],
+      "iran_nodes_failed": [],
+      "latest_tested_at": "2026-11-14T19:13:46Z"
     },
     {
       "transport": "meek-azure",
@@ -383,24 +420,6 @@
       "iran_nodes_open": [],
       "iran_nodes_failed": [],
       "latest_tested_at": "2026-11-15T11:03:01Z"
-    },
-    {
-      "transport": "meek_lite",
-      "method": "https",
-      "target": "https://cdn.zk.mk/",
-      "verdict": "inconclusive",
-      "iran_nodes_open": [],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:54:40Z"
-    },
-    {
-      "transport": "webtunnel",
-      "method": "https",
-      "target": "https://docs.prevails.org/",
-      "verdict": "inconclusive",
-      "iran_nodes_open": [],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:20Z"
     },
     {
       "transport": "webtunnel",
@@ -441,33 +460,6 @@
       "latest_tested_at": "2026-11-15T11:02:33Z"
     },
     {
-      "transport": "webtunnel",
-      "method": "https",
-      "target": "https://pod03.oneclickhost.eu/",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir2.node.check-host.net",
-        "ir3.node.check-host.net",
-        "ir8.node.check-host.net"
-      ],
-      "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:53:26Z"
-    },
-    {
-      "transport": "webtunnel",
-      "method": "https",
-      "target": "https://talnett.com/",
-      "verdict": "reachable_from_iran_datacenter",
-      "iran_nodes_open": [
-        "ir2.node.check-host.net",
-        "ir7.node.check-host.net"
-      ],
-      "iran_nodes_failed": [
-        "ir6.node.check-host.net"
-      ],
-      "latest_tested_at": "2026-11-15T22:53:51Z"
-    },
-    {
       "transport": "meek_lite",
       "method": "https",
       "target": "https://www.cdn77.com/",
@@ -500,13 +492,11 @@
       "verdict": "reachable_from_iran_datacenter",
       "iran_nodes_open": [
         "ir2.node.check-host.net",
-        "ir3.node.check-host.net",
         "ir6.node.check-host.net",
-        "ir7.node.check-host.net",
-        "ir8.node.check-host.net"
+        "ir7.node.check-host.net"
       ],
       "iran_nodes_failed": [],
-      "latest_tested_at": "2026-11-15T22:55:05Z"
+      "latest_tested_at": "2026-11-15T11:02:56Z"
     }
   ]
 }
