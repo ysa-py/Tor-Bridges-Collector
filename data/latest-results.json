@@ -6326,9 +6326,9 @@
       }
     },
     {
-      "asn": "AS211507",
-      "asn_country": "NL",
-      "asn_org": "AS211507 Julian Achter",
+      "asn": "AS197540",
+      "asn_country": "DE",
+      "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
       "host": "159.195.29.170",
@@ -8227,96 +8227,6 @@
       }
     },
     {
-      "asn": "AS51765",
-      "asn_country": "FI",
-      "asn_org": "AS51765 Oy Creanova Hosting Solutions Ltd.",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "194.34.134.115",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:24.883205742Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 194.34.134.115:34037 98455BF447EE853891921A5179B23C748F5DFCC7",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 34037,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": false,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection timed out after one jittered retry",
-        "error_class": "tcp_connect_timeout",
-        "observed_at": "2026-11-15T11:26:31.592146589Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "stage": "S0",
-        "status": "timeout",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS16276",
-      "asn_country": "FR",
-      "asn_org": "AS16276 OVH SAS",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "213.32.21.14",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.332917746Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 213.32.21.14:9001 46266978BB7C02E6A3DD17544289C2CA085F12D7",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 9001,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": false,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection was refused",
-        "error_class": "connection_refused",
-        "observed_at": "2026-11-15T11:26:31.600959567Z",
-        "probe_type": "tcp",
-        "rtt_ms": null,
-        "stage": "S0",
-        "status": "refused",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
       "asn": "AS8447",
       "asn_country": "AT",
       "asn_org": "AS8447 A1 Telekom Austria AG",
@@ -8733,12 +8643,12 @@
       "ooni_checked": true,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
-      "port": 9001,
+      "port": 443,
       "predicted_block_prob": 0.5,
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": false,
+      "tcp_reachable": true,
       "transport": "vanilla",
       "verification": {
         "detail": "TCP connection established; no transport handshake was performed",
@@ -14798,19 +14708,19 @@
       }
     },
     {
-      "asn": "AS58791",
-      "asn_country": "JP",
-      "asn_org": "AS58791 GMO Internet, Inc.",
+      "asn": "AS197540",
+      "asn_country": "DE",
+      "asn_org": "AS197540 netcup GmbH",
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
       "flags": [
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "160.251.172.208",
+      "host": "5.45.101.108",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-15T11:25:57.041841379Z",
+        "queried_at": "2026-11-15T04:05:09.491191238Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -14819,7 +14729,7 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 160.251.172.208:9001 0765FB434B6FAF1B1C9CC5CA0DDA7F5EA0469C43",
+      "line": "Bridge 5.45.101.108:9001 9FE55594638133A49FF86D5D2C9D7E67708FA04E",
       "ooni_checked": true,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
@@ -15309,317 +15219,16 @@
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": true,
+      "tcp_reachable": false,
       "transport": "vanilla",
       "verification": {
         "detail": "TCP connection was refused",
         "error_class": "connection_refused",
         "observed_at": "2026-11-15T12:30:09.359145175Z",
         "probe_type": "tcp",
-        "rtt_ms": 121.835,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS197540",
-      "asn_country": "DE",
-      "asn_org": "AS197540 netcup GmbH",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "5.45.102.93",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.489228982Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 5.45.102.93:9000 656BA6C00B21DB086611171C946288A29E2DF5BC",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 9000,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:40.851226862Z",
-        "probe_type": "tcp",
-        "rtt_ms": 133.424,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS197540",
-      "asn_country": "DE",
-      "asn_org": "AS197540 netcup GmbH",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "5.45.98.162",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.489372102Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 5.45.98.162:9000 3EE11C45FDE23CC46E3C7BC8AFCACB8395B37411",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 9000,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:40.875219783Z",
-        "probe_type": "tcp",
-        "rtt_ms": 120.616,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS212508",
-      "asn_country": "DE",
-      "asn_org": "AS212508 Lowhosting services of Davide Gennari",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "178.218.144.18",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T11:25:57.041844829Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 178.218.144.18:443 0011254CC8444369B20EF11156B8990438221A54",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 443,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:25:56.715946859Z",
-        "probe_type": "tcp",
-        "rtt_ms": 163.286,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS24940",
-      "asn_country": "DE",
-      "asn_org": "AS24940 Hetzner Online GmbH",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "5.75.235.204",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.503408117Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 5.75.235.204:49123 8BB7D36A40CDF35D6CAE2F0C902D08EFD096F230",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 49123,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:40.93219063Z",
-        "probe_type": "tcp",
-        "rtt_ms": 132.667,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS209874",
-      "asn_country": "DE",
-      "asn_org": "AS209874 Tech Tide Portugal Unipessoal LDA",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "5.83.150.60",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.503368753Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 5.83.150.60:50985 260778ECC4A68344F1C652240B9C876AD88F037B",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 50985,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:40.999008006Z",
-        "probe_type": "tcp",
-        "rtt_ms": 128.383,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS12876",
-      "asn_country": "FR",
-      "asn_org": "AS12876 Scaleway SAS",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "51.15.178.93",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.501282369Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 51.15.178.93:9228 3B327BA5FE56310FDAB8FF950BD6DE37D3D0F97C",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 9228,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:41.006292028Z",
-        "probe_type": "tcp",
-        "rtt_ms": 120.884,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS12876",
-      "asn_country": "NL",
-      "asn_org": "AS12876 Scaleway SAS",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "51.15.89.218",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:09.495390155Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 51.15.89.218:443 F0F5074A6DADD3DC22E1FAA18FD6D89CBC52771A",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 443,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:41.023985156Z",
-        "probe_type": "tcp",
-        "rtt_ms": 114.58,
-        "stage": "S1",
-        "status": "connected",
+        "rtt_ms": null,
+        "stage": "S0",
+        "status": "refused",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -15785,7 +15394,7 @@
       "ooni_checked": true,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
-      "port": 42683,
+      "port": 9001,
       "predicted_block_prob": 0.5,
       "quarantined": false,
       "ripe_reachable": null,
@@ -16164,7 +15773,7 @@
     },
     {
       "asn": "AS16276",
-      "asn_country": "FR",
+      "asn_country": "PL",
       "asn_org": "AS16276 OVH SAS",
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
@@ -19513,7 +19122,7 @@
       "ooni_checked": true,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
-      "port": 9889,
+      "port": 9001,
       "predicted_block_prob": 0.5,
       "quarantined": false,
       "ripe_reachable": null,
@@ -20667,12 +20276,12 @@
       "ooni_checked": true,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
-      "port": 9001,
+      "port": 443,
       "predicted_block_prob": 0.5,
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": false,
+      "tcp_reachable": true,
       "transport": "vanilla",
       "verification": {
         "detail": "TCP connection established; no transport handshake was performed",
@@ -23231,13 +22840,13 @@
     {
       "asn": "AS12322",
       "asn_country": "FR",
-      "asn_org": "AS20766 Association \"Gitoyen\"",
+      "asn_org": "AS12322 Free SAS",
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
-      "host": "80.67.172.3",
+      "host": "82.65.58.41",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-15T04:05:24.807828688Z",
+        "queried_at": "2026-11-15T04:05:24.870211594Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -25395,16 +25004,16 @@
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": true,
+      "tcp_reachable": false,
       "transport": "vanilla",
       "verification": {
         "detail": "TCP connection timed out after one jittered retry",
         "error_class": "tcp_connect_timeout",
         "observed_at": "2026-11-15T12:30:19.737248915Z",
         "probe_type": "tcp",
-        "rtt_ms": 135.02,
-        "stage": "S1",
-        "status": "connected",
+        "rtt_ms": null,
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -27310,10 +26919,10 @@
         "iran_dpi_high_risk",
         "iran_port_high_risk"
       ],
-      "host": "89.102.24.34",
+      "host": "89.167.36.167",
       "iran_assessment": {
         "checked": true,
-        "queried_at": "2026-11-15T04:05:38.630784683Z",
+        "queried_at": "2026-11-15T04:05:39.433765199Z",
         "source": "ooni_measurements_api",
         "status": "iran_unknown",
         "vantage": {
@@ -27322,54 +26931,7 @@
         }
       },
       "iran_status": "iran_unknown",
-      "line": "Bridge 89.102.24.34:9001 C028045E6FDEE2E70A4B51069E4E3D8561761F5D",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 9001,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "vanilla",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:26:53.013473166Z",
-        "probe_type": "tcp",
-        "rtt_ms": 147.626,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS8881",
-      "asn_country": "DE",
-      "asn_org": "AS8881 1&1 Versatel GmbH",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "flags": [
-        "iran_dpi_high_risk",
-        "iran_port_high_risk"
-      ],
-      "host": "46.142.134.144",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T04:05:25.409494957Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 46.142.134.144:9001 964400BD72F85E4EF3541DD8578E9131EA628DD8",
+      "line": "Bridge 89.167.36.167:9001 01EBF72A704897B907B5223BA48BE23D053DA7FD",
       "ooni_checked": true,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
@@ -28135,7 +27697,7 @@
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": false,
+      "tcp_reachable": true,
       "transport": "vanilla",
       "verification": {
         "detail": "TCP connection established; no transport handshake was performed",
@@ -80413,9 +79975,6 @@
       }
     },
     {
-      "asn": "AS6315",
-      "asn_country": "US",
-      "asn_org": "AS6315 XMission, L.C.",
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
       "host": "104.163.180.39",
@@ -81154,81 +80713,8 @@
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:27:20.480876102Z",
-        "probe_type": "tcp",
-        "rtt_ms": 133.363,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "79.140.195.13",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 79.140.195.13:12772 B7CD57606B196BD9AAF39831AAA68C2E677886F9 cert=Z9UzUh5q56X6mXSyKdeDqPLrl7uwhpVDPJKONtaTT1if62pFc22x0ei9O0p1VHutTNR3dg iat-mode=0",
-      "ooni_checked": false,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 12772,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:27:20.493611219Z",
-        "probe_type": "tcp",
-        "rtt_ms": 114.284,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "asn": "AS24940",
-      "asn_country": "DE",
-      "asn_org": "AS24940 Hetzner Online GmbH",
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "188.245.88.107",
-      "iran_assessment": {
-        "checked": true,
-        "queried_at": "2026-11-15T11:26:24.220637493Z",
-        "source": "ooni_measurements_api",
-        "status": "iran_unknown",
-        "vantage": {
-          "country": "IR",
-          "type": "ooni_probe"
-        }
-      },
-      "iran_status": "iran_unknown",
-      "line": "Bridge 188.245.88.107:32927 67688FAA23CABB100DB6D259416A47F08B09C0CF",
-      "ooni_checked": true,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 32927,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
       "tcp_reachable": false,
-      "transport": "vanilla",
+      "transport": "obfs4",
       "verification": {
         "detail": "TCP connection timed out after one jittered retry",
         "error_class": "tcp_connect_timeout",
@@ -81967,9 +81453,9 @@
         "error_class": "tcp_connect_timeout",
         "observed_at": "2026-11-15T12:30:50.116738815Z",
         "probe_type": "tcp",
-        "rtt_ms": 134.088,
-        "stage": "S1",
-        "status": "connected",
+        "rtt_ms": null,
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -82050,16 +81536,16 @@
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": true,
+      "tcp_reachable": false,
       "transport": "obfs4",
       "verification": {
         "detail": "TCP connection timed out after one jittered retry",
         "error_class": "tcp_connect_timeout",
         "observed_at": "2026-11-15T12:30:50.188248573Z",
         "probe_type": "tcp",
-        "rtt_ms": 124.88,
-        "stage": "S1",
-        "status": "connected",
+        "rtt_ms": null,
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -82153,46 +81639,16 @@
       "quarantined": false,
       "ripe_reachable": null,
       "ripe_tested": false,
-      "tcp_reachable": true,
+      "tcp_reachable": false,
       "transport": "obfs4",
       "verification": {
         "detail": "TCP connection timed out after one jittered retry",
         "error_class": "tcp_connect_timeout",
         "observed_at": "2026-11-15T12:30:50.220542879Z",
         "probe_type": "tcp",
-        "rtt_ms": 161.13,
-        "stage": "S1",
-        "status": "connected",
-        "vantage": {
-          "region": null,
-          "type": "github_actions_runner"
-        }
-      }
-    },
-    {
-      "composite_score": 0.4375,
-      "composite_score_orig": 0.5,
-      "host": "81.169.240.26",
-      "iran_status": "iran_unknown",
-      "line": "obfs4 81.169.240.26:13754 C081FB23DBBAA3297D7BB0C002C3A8CE72C55C40 cert=xHig9468oFU3QxskRkMLJxyuHvrmLbMwGr9KE37DdZg2kE7fshT40wY2JQMNbRFTrzruJA iat-mode=0",
-      "ooni_checked": false,
-      "ooni_factor": 0.5,
-      "ooni_measurements_ir": 0,
-      "port": 13754,
-      "predicted_block_prob": 0.5,
-      "quarantined": false,
-      "ripe_reachable": null,
-      "ripe_tested": false,
-      "tcp_reachable": true,
-      "transport": "obfs4",
-      "verification": {
-        "detail": "TCP connection established; no transport handshake was performed",
-        "error_class": "",
-        "observed_at": "2026-11-15T11:27:21.824800943Z",
-        "probe_type": "tcp",
-        "rtt_ms": 141.104,
-        "stage": "S1",
-        "status": "connected",
+        "rtt_ms": null,
+        "stage": "S0",
+        "status": "timeout",
         "vantage": {
           "region": null,
           "type": "github_actions_runner"
@@ -148463,7 +147919,7 @@
       "composite_score_orig": 0.5,
       "host": "192.0.2.3",
       "iran_status": "iran_unknown",
-      "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/ fronts=cdn.sstatic.net ice=stun:stun.voip.blackberry.com:3478,stun:stun.miwifi.com:3478,stun:stun.voipbuster.com:3478,stun:stun.sip.us:3478,stun:stun.freeswitch.org:3478",
+      "line": "snowflake 192.0.2.3:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.azureedge.net/ front=ajax.aspnetcdn.com",
       "ooni_checked": false,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
@@ -148821,9 +148277,9 @@
     {
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
-      "host": "192.0.2.43",
+      "host": "192.0.2.46",
       "iran_status": "iran_unknown",
-      "line": "snowflake 192.0.2.43:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.cdn77.com,www.phpmyadmin.net ice=stun:stun.nextcloud.com:443,stun:stun.sipgate.net:10000,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
+      "line": "snowflake 192.0.2.46:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://1098762253.rsc.cdn77.org/ fronts=www.phpmyadmin.net,cdn.zk.mk ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
       "ooni_checked": false,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
@@ -149691,13 +149147,13 @@
     {
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
-      "host": "192.0.2.6",
+      "host": "193.187.88.42",
       "iran_status": "iran_unknown",
-      "line": "snowflake 192.0.2.6:80 8838024498816A039FCBBAB14E6F40A0843051FA fingerprint=8838024498816A039FCBBAB14E6F40A0843051FA url=https://snowflake-broker.torproject.net/ ampcache=https://cdn.ampproject.org/ front=www.google.com ice=stun:stun.antisip.com:3478,stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.nextcloud.com:3478,stun:stun.bethesda.net:3478,stun:stun.nextcloud.com:443 utls-imitate=hellorandomizedalpn",
+      "line": "snowflake 193.187.88.42:132 B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net/",
       "ooni_checked": false,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
-      "port": 80,
+      "port": 132,
       "predicted_block_prob": 0.5,
       "quarantined": false,
       "ripe_reachable": null,
@@ -149991,9 +149447,9 @@
     {
       "composite_score": 0.4375,
       "composite_score_orig": 0.5,
-      "host": "195.128.102.85",
+      "host": "37.120.169.67",
       "iran_status": "iran_unknown",
-      "line": "webtunnel 195.128.102.85:443 933C998EC827D1C17CC93D1292BBC41735867CF8 url=https://x7t2qctb.xoomlia.com/qzxrtfmu/ ver=0.0.1",
+      "line": "webtunnel 37.120.169.67:443 D85733AB26E770DC4AB2ED44A0559504550D0925 url=https://qbxa1hay.xoomlia.com/k0tf6syz/ ver=0.0.3",
       "ooni_checked": false,
       "ooni_factor": 0.5,
       "ooni_measurements_ir": 0,
