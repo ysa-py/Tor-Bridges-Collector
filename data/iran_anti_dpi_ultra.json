@@ -198,17 +198,17 @@
       ],
       "webtunnel": [
         {
-          "ai_score": 0.699,
+          "ai_score": 0.6975,
           "latency_ms": 9.919,
           "line": "webtunnel 104.26.1.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6981,
+          "ai_score": 0.6965,
           "latency_ms": 12.983,
           "line": "webtunnel 104.26.0.150:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
         {
-          "ai_score": 0.6982,
+          "ai_score": 0.6966,
           "latency_ms": 13.508,
           "line": "webtunnel 172.67.69.9:443 257CC5D70372447738F54E0C68D73639AF8ABA36 url=https://dallinbryce.com/AiBiyFEgV1Kh6jzNkBBUs3KP ver=0.0.3"
         },
@@ -247,27 +247,13 @@
     "ech": "prefer when the front supports it (Cloudflare / Fastly)",
     "rotation_24h": [
       {
-        "fragment_bytes": 2,
-        "padding_jitter_ms": [
-          2,
-          40
-        ],
-        "record_split": [
-          100,
-          20
-        ],
-        "utc_hour_offset": 0,
-        "utls": "HelloRandomizedNoALPN"
-      },
-      {
-        "fragment_bytes": 100,
+        "fragment_bytes": 40,
         "padding_jitter_ms": [
           5,
           60
         ],
         "record_split": [
-          1,
-          5
+          3
         ],
         "utc_hour_offset": 0,
         "utls": "HelloSafari_Auto"
@@ -330,20 +316,7 @@
         "record_split": [
           3
         ],
-        "utc_hour_offset": 6,
-        "utls": "HelloSafari_Auto"
-      },
-      {
-        "fragment_bytes": 5,
-        "padding_jitter_ms": [
-          10,
-          120
-        ],
-        "record_split": [
-          1,
-          5
-        ],
-        "utc_hour_offset": 7,
+        "utc_hour_offset": 5,
         "utls": "HelloIOS_Auto"
       },
       {
@@ -403,19 +376,6 @@
         ],
         "record_split": [
           40
-        ],
-        "utc_hour_offset": 9,
-        "utls": "HelloRandomizedALPN"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          2,
-          40
-        ],
-        "record_split": [
-          1,
-          5
         ],
         "utc_hour_offset": 10,
         "utls": "HelloAndroid_11_OkHttp"
