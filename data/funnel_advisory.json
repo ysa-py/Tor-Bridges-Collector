@@ -103,7 +103,7 @@
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 79,
-      "webtunnel": 131
+      "webtunnel": 135
     },
     "unobserved_candidates": 302,
     "unobserved_non_routable": 279,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 298
+    "unobserved_candidates": 302
   },
   "sources": {
     "sources": [
@@ -2208,6 +2208,13 @@
         "classification": "unreachable_from_relay",
         "endpoint_is_placeholder": false,
         "front": "wt.skynetcloud.site",
+        "observations": 1,
+        "successes": 0
+      },
+      {
+        "classification": "unreachable_from_relay",
+        "endpoint_is_placeholder": true,
+        "front": "wt.xoomlia.com",
         "observations": 1,
         "successes": 0
       },
