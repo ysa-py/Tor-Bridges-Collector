@@ -122,7 +122,7 @@
           "line": "obfs4 70.21.34.127:8080 3541CEE44778AFBF7CC0464BEF5C6E954E63562C cert=IOWFfEOdW8e/yhdlXYdFdKk+3CYchcNj/jVZbGhfgLSNqxeksOZr+vossjQ6KbbHVSvCGQ iat-mode=0"
         },
         {
-          "ai_score": 0.7926,
+          "ai_score": 0.7853,
           "latency_ms": 7.6,
           "line": "obfs4 147.90.235.92:8443 3BEB330982AFC350926F492B136217EEF152AAAC cert=CwegZVuJVYHX4fvz+OokL7gMDQd/OMWPi8liD061I6KddknB1mL3lmm4KRJqUYiv09wTHQ iat-mode=0"
         },
@@ -275,8 +275,8 @@
       {
         "fragment_bytes": 1,
         "padding_jitter_ms": [
-          10,
-          60
+          5,
+          120
         ],
         "record_split": [
           40
@@ -430,7 +430,8 @@
           40
         ],
         "record_split": [
-          40
+          100,
+          20
         ],
         "utc_hour_offset": 14,
         "utls": "HelloChrome_Auto"
@@ -442,7 +443,8 @@
           60
         ],
         "record_split": [
-          3
+          1,
+          5
         ],
         "utc_hour_offset": 15,
         "utls": "HelloRandomizedALPN"
@@ -462,19 +464,7 @@
       {
         "fragment_bytes": 2,
         "padding_jitter_ms": [
-          2,
-          60
-        ],
-        "record_split": [
-          40
-        ],
-        "utc_hour_offset": 14,
-        "utls": "HelloFirefox_Auto"
-      },
-      {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          2,
+          5,
           120
         ],
         "record_split": [
@@ -548,7 +538,7 @@
         "utls": "HelloChrome_Auto"
       },
       {
-        "fragment_bytes": 40,
+        "fragment_bytes": 2,
         "padding_jitter_ms": [
           5,
           40
