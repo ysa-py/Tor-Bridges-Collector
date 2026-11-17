@@ -1,26 +1,26 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-17T15:25:05.181379621+00:00",
+  "generated_at": "2026-11-17T16:25:11.131597272+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1685,
-            "tested_failing": 72,
-            "tested_working": 578,
-            "untested (probe error)": 1222,
-            "untested (rate-limited)": 225,
-            "untested (tcp timeout)": 746
+            "tcp_reachable_s1": 1677,
+            "tested_failing": 100,
+            "tested_working": 581,
+            "untested (probe error)": 1239,
+            "untested (rate-limited)": 180,
+            "untested (tcp timeout)": 751
           },
-          "stamped": 2244,
+          "stamped": 2500,
           "tiers": {
-            "tier_0_attempt": 2018,
-            "tier_1_tcp": 1870,
-            "tier_2_pt_handshake": 452,
-            "tier_3_transport": 126,
-            "untested": 62
+            "tier_0_attempt": 2068,
+            "tier_1_tcp": 1861,
+            "tier_2_pt_handshake": 450,
+            "tier_3_transport": 131,
+            "untested": 18
           }
         },
         "files": {
@@ -31,25 +31,25 @@
           "iran_likely_working_snowflake.txt": 0,
           "iran_likely_working_vanilla.txt": 0,
           "iran_likely_working_webtunnel.txt": 0,
-          "tested_global_obfs4.txt": 55,
-          "tested_global_vanilla.txt": 71,
-          "tested_global_webtunnel.txt": 241
+          "tested_global_obfs4.txt": 56,
+          "tested_global_vanilla.txt": 75,
+          "tested_global_webtunnel.txt": 242
         },
         "relay_evidence": {
-          "bridges_matched": 4461,
+          "bridges_matched": 4462,
           "relay_observations": 5124,
-          "s2plus_connected": 262,
-          "verification_upgrades": 487
+          "s2plus_connected": 283,
+          "verification_upgrades": 491
         },
         "webtunnel_probe": {
           "probed": 806,
-          "ws_101": 452,
-          "ws_fail": 354
+          "ws_101": 449,
+          "ws_fail": 357
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-17T15:24:15.432332152+00:00",
+      "started_at": "2026-11-17T16:24:13.312921762+00:00",
       "status": "ok"
     }
   ],
