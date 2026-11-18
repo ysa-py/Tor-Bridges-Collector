@@ -9,8 +9,7 @@
   "perTransport": {
     "obfs4": 30,
     "webtunnel": 27,
-    "snowflake": 2,
-    "meek_lite": 1
+    "snowflake": 3
   },
   "top": [
     {
@@ -19,7 +18,7 @@
       "bucket": 4,
       "why": [
         "obfs4+15",
-        "tls-like-port+8",
+        "port443+12",
         "ipv4+6",
         "pinned-fingerprint+6"
       ]
@@ -40,10 +39,10 @@
       "score": 130.3,
       "bucket": 4,
       "why": [
-        "webtunnel(HTTPS mimics real traffic)+24",
+        "obfs4+15",
         "port443+12",
         "ipv4+6",
-        "cdn-shielded+10"
+        "pinned-fingerprint+6"
       ]
     },
     {
