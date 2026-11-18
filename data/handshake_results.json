@@ -540,21 +540,6 @@
     }
   },
   {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "Bridge meek_lite 192.0.2.81:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
-    "observed_at": "2026-11-18T22:29:00.438893Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
     "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 103.17.154.131:443 D0A1F802127A925F47A7C9713F17A9E1D1292E54 url=https://cdn-131.airstrip1.net/4c5d6e7f8g9h0i1j2k3l4m5n ver=0.0.2",
@@ -4927,38 +4912,8 @@
     "probe_type": "none",
     "rtt_ms": 0.0,
     "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 192.210.138.55:443 7FE9DC4C091655F7D9802564EA8A03B2823CEE22 url=https://nodes.tox.st/tox_chat_is_a_open-source_p2p_privacy_chat_platform ver=0.0.6",
-    "observed_at": "2026-11-18T22:29:03.475142Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 620.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 136.243.113.199:9001 0420A9681DE8454B0B99C632A8D96989812045AC",
-    "observed_at": "2026-11-18T22:29:03.482678Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 631.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
+    "stage": "S0",
+    "status": "error",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5550,7 +5505,7 @@
     }
   },
   {
-    "detail": "obfs4: server M_S/MAC_S verified",
+    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
     "error_class": null,
     "line": "Bridge 109.122.218.150:9001 062128A2F62398D7A13D47CEF0541379BAE7590B",
     "observed_at": "2026-11-18T23:30:24.341530Z",
