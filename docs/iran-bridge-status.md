@@ -1,6 +1,6 @@
 # 🚨 TorShield-IR — Iran Bridge Status Report
 
-**Generated:** `2026-11-18 00:33 UTC`<br>
+**Generated:** `2026-11-18 05:06 UTC`<br>
 **Pipeline:** Python scraper → Go iran_tester → Rust bridge-probe → OONI correlator
 
 ---
@@ -9,11 +9,11 @@
 
 | Metric | Value |
 | :--- | :--- |
-| Total bridges analysed | `4533` |
+| Total bridges analysed | `4537` |
 | Composite score > 0.5 | `0` (0%) |
 | OONI clean (Iran) | `0` |
 | OONI anomaly/blocked | `0` |
-| OONI no data | `4533` |
+| OONI no data | `4537` |
 | Quality gate (≥ 30 %) | `FAIL 🚨` |
 
 ---
