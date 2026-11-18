@@ -247,14 +247,13 @@
     "ech": "prefer when the front supports it (Cloudflare / Fastly)",
     "rotation_24h": [
       {
-        "fragment_bytes": 100,
+        "fragment_bytes": 40,
         "padding_jitter_ms": [
           2,
           120
         ],
         "record_split": [
-          100,
-          20
+          3
         ],
         "utc_hour_offset": 0,
         "utls": "HelloRandomizedNoALPN"
@@ -262,7 +261,7 @@
       {
         "fragment_bytes": 40,
         "padding_jitter_ms": [
-          5,
+          10,
           120
         ],
         "record_split": [
@@ -449,18 +448,6 @@
         "utls": "HelloRandomizedNoALPN"
       },
       {
-        "fragment_bytes": 100,
-        "padding_jitter_ms": [
-          10,
-          120
-        ],
-        "record_split": [
-          40
-        ],
-        "utc_hour_offset": 16,
-        "utls": "HelloRandomizedALPN"
-      },
-      {
         "fragment_bytes": 40,
         "padding_jitter_ms": [
           5,
@@ -498,16 +485,16 @@
         "utls": "HelloEdge_Auto"
       },
       {
-        "fragment_bytes": 1,
+        "fragment_bytes": 40,
         "padding_jitter_ms": [
           2,
-          60
+          40
         ],
         "record_split": [
           40
         ],
         "utc_hour_offset": 19,
-        "utls": "HelloRandomizedALPN"
+        "utls": "HelloRandomizedNoALPN"
       },
       {
         "fragment_bytes": 40,
@@ -519,10 +506,10 @@
           3
         ],
         "utc_hour_offset": 20,
-        "utls": "HelloEdge_Auto"
+        "utls": "HelloAndroid_11_OkHttp"
       },
       {
-        "fragment_bytes": 100,
+        "fragment_bytes": 2,
         "padding_jitter_ms": [
           2,
           60
@@ -537,7 +524,7 @@
       {
         "fragment_bytes": 100,
         "padding_jitter_ms": [
-          10,
+          5,
           40
         ],
         "record_split": [
