@@ -1,26 +1,26 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-19T13:07:49.307920986+00:00",
+  "generated_at": "2026-11-19T14:13:49.797469002+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1699,
-            "tested_failing": 67,
-            "tested_working": 578,
-            "untested (probe error)": 1223,
-            "untested (rate-limited)": 228,
-            "untested (tcp timeout)": 762
+            "tcp_reachable_s1": 1697,
+            "tested_failing": 106,
+            "tested_working": 573,
+            "untested (probe error)": 1235,
+            "untested (rate-limited)": 182,
+            "untested (tcp timeout)": 765
           },
-          "stamped": 2225,
+          "stamped": 2481,
           "tiers": {
-            "tier_0_attempt": 2035,
-            "tier_1_tcp": 1880,
-            "tier_2_pt_handshake": 451,
-            "tier_3_transport": 127,
-            "untested": 64
+            "tier_0_attempt": 2086,
+            "tier_1_tcp": 1881,
+            "tier_2_pt_handshake": 449,
+            "tier_3_transport": 124,
+            "untested": 18
           }
         },
         "files": {
@@ -31,25 +31,25 @@
           "iran_likely_working_snowflake.txt": 0,
           "iran_likely_working_vanilla.txt": 0,
           "iran_likely_working_webtunnel.txt": 0,
-          "tested_global_obfs4.txt": 55,
-          "tested_global_vanilla.txt": 72,
+          "tested_global_obfs4.txt": 50,
+          "tested_global_vanilla.txt": 74,
           "tested_global_webtunnel.txt": 239
         },
         "relay_evidence": {
-          "bridges_matched": 4490,
-          "relay_observations": 5153,
-          "s2plus_connected": 283,
-          "verification_upgrades": 495
+          "bridges_matched": 4492,
+          "relay_observations": 5154,
+          "s2plus_connected": 284,
+          "verification_upgrades": 499
         },
         "webtunnel_probe": {
           "probed": 812,
-          "ws_101": 450,
-          "ws_fail": 362
+          "ws_101": 447,
+          "ws_fail": 365
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-19T13:07:00.686861112+00:00",
+      "started_at": "2026-11-19T14:12:54.547040244+00:00",
       "status": "ok"
     }
   ],

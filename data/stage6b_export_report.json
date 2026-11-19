@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-19T12:49:40.084567872+00:00",
+  "generated_at": "2026-11-19T13:57:32.913950941+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1918,
-            "tested_failing": 102,
-            "tested_working": 448,
-            "untested (probe error)": 991,
+            "tcp_reachable_s1": 1917,
+            "tested_failing": 90,
+            "tested_working": 447,
+            "untested (probe error)": 998,
             "untested (rate-limited)": 351,
-            "untested (tcp timeout)": 747
+            "untested (tcp timeout)": 755
           },
-          "stamped": 4557,
+          "stamped": 4558,
           "tiers": {
-            "tier_0_attempt": 1804,
+            "tier_0_attempt": 1806,
             "tier_1_tcp": 2191,
-            "tier_2_pt_handshake": 448,
+            "tier_2_pt_handshake": 447,
             "untested": 114
           }
         },
@@ -32,23 +32,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 0,
-          "tested_global_webtunnel.txt": 239
+          "tested_global_webtunnel.txt": 236
         },
         "relay_evidence": {
-          "bridges_matched": 4557,
-          "relay_observations": 4753,
-          "s2plus_connected": 1,
-          "verification_upgrades": 3327
+          "bridges_matched": 4558,
+          "relay_observations": 4754,
+          "s2plus_connected": 115,
+          "verification_upgrades": 3580
         },
         "webtunnel_probe": {
           "probed": 812,
-          "ws_101": 448,
-          "ws_fail": 364
+          "ws_101": 447,
+          "ws_fail": 365
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-19T12:48:50.453017446+00:00",
+      "started_at": "2026-11-19T13:56:43.885161214+00:00",
       "status": "ok"
     }
   ],
