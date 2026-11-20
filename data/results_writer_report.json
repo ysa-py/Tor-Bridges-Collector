@@ -1,26 +1,26 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-20T03:31:29.452424509+00:00",
+  "generated_at": "2026-11-20T04:32:00.376456762+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1689,
-            "tested_failing": 98,
-            "tested_working": 586,
-            "untested (probe error)": 1264,
-            "untested (rate-limited)": 181,
-            "untested (tcp timeout)": 750
+            "tcp_reachable_s1": 1684,
+            "tested_failing": 73,
+            "tested_working": 589,
+            "untested (probe error)": 1226,
+            "untested (rate-limited)": 227,
+            "untested (tcp timeout)": 768
           },
-          "stamped": 2612,
+          "stamped": 2325,
           "tiers": {
-            "tier_0_attempt": 2094,
-            "tier_1_tcp": 1870,
-            "tier_2_pt_handshake": 456,
+            "tier_0_attempt": 2048,
+            "tier_1_tcp": 1869,
+            "tier_2_pt_handshake": 459,
             "tier_3_transport": 130,
-            "untested": 18
+            "untested": 61
           }
         },
         "files": {
@@ -33,13 +33,13 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 55,
           "tested_global_vanilla.txt": 75,
-          "tested_global_webtunnel.txt": 243
+          "tested_global_webtunnel.txt": 249
         },
         "relay_evidence": {
-          "bridges_matched": 4500,
-          "relay_observations": 5164,
-          "s2plus_connected": 278,
-          "verification_upgrades": 487
+          "bridges_matched": 4496,
+          "relay_observations": 5163,
+          "s2plus_connected": 289,
+          "verification_upgrades": 500
         },
         "webtunnel_probe": {
           "probed": 813,
@@ -49,7 +49,7 @@
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-20T03:30:39.262637399+00:00",
+      "started_at": "2026-11-20T04:31:07.733578618+00:00",
       "status": "ok"
     }
   ],
