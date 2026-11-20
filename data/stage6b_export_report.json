@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-20T19:27:37.938594866+00:00",
+  "generated_at": "2026-11-20T21:50:08.428684014+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1907,
-            "tested_failing": 76,
-            "tested_working": 453,
-            "untested (probe error)": 1029,
+            "tcp_reachable_s1": 1910,
+            "tested_failing": 110,
+            "tested_working": 456,
+            "untested (probe error)": 975,
             "untested (rate-limited)": 346,
-            "untested (tcp timeout)": 765
+            "untested (tcp timeout)": 783
           },
-          "stamped": 4576,
+          "stamped": 4580,
           "tiers": {
-            "tier_0_attempt": 1837,
-            "tier_1_tcp": 2172,
-            "tier_2_pt_handshake": 453,
+            "tier_0_attempt": 1836,
+            "tier_1_tcp": 2174,
+            "tier_2_pt_handshake": 456,
             "untested": 114
           }
         },
@@ -32,23 +32,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 0,
-          "tested_global_webtunnel.txt": 241
+          "tested_global_webtunnel.txt": 243
         },
         "relay_evidence": {
-          "bridges_matched": 4576,
-          "relay_observations": 4772,
-          "s2plus_connected": 115,
-          "verification_upgrades": 3818
+          "bridges_matched": 4580,
+          "relay_observations": 4776,
+          "s2plus_connected": 1,
+          "verification_upgrades": 3162
         },
         "webtunnel_probe": {
           "probed": 816,
-          "ws_101": 453,
-          "ws_fail": 363
+          "ws_101": 456,
+          "ws_fail": 360
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-20T19:26:47.146812776+00:00",
+      "started_at": "2026-11-20T21:49:17.158291701+00:00",
       "status": "ok"
     }
   ],
