@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-21T03:05:44.818221+00:00",
+  "generated_at": "2026-11-21T09:30:04.919058+00:00",
   "results": [
     {
       "bridge_line": "Bridge meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -15362,6 +15362,29 @@
       "transport": "webtunnel"
     },
     {
+      "bridge_line": "webtunnel [2001:db8:35e8:8072:8884:57c1:d6e5:9b69]:443 F7ADBB186B7162DBDBF5FD2C9D84B1222B8BB533 url=https://jefferson.guzmer.org/NKrVpv3SBltc3q15mUzyRK33 ver=0.0.5",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "webtunnel_non_cdn_sni",
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.8718,
+      "layer_scores": {
+        "L1_packet_length": 1.0,
+        "L2_iat_timing": 0.95,
+        "L3_flow_features": 0.96,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.9,
+        "L6_alpn_anomaly": 0.96,
+        "L7_temporal": 0.95,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 7,
+      "port": 443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "webtunnel"
+    },
+    {
       "bridge_line": "webtunnel [2001:db8:35ed:b91c:d25f:5603:5c77:ebeb]:443 57C218E285D2AA1E7077859761421E9C62B9123E url=https://wtb007.unshakled.net:8443/4oeMXyIPcCVtKH7jFkEBvueX ver=0.0.3",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
@@ -24958,6 +24981,29 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 193.51.104.49:4443 3A551F841DE2084C8DE02392E4EAB010798B5494 cert=ku3TNrEMwaJDzOR/EL8F15b9PbypO5PlG7rxCUp4lxXikYWkYYa0QIju6OwTEd4NDXU+Bg iat-mode=2",
+      "bypass_tier": "STEALTH",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_2_max_evasion"
+      ],
+      "iran_siam_score": 0.7498,
+      "layer_scores": {
+        "L1_packet_length": 0.85,
+        "L2_iat_timing": 0.92,
+        "L3_flow_features": 0.8,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.88,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 5,
+      "port": 4443,
+      "recommendation": "✅ خوب — از اکثر لایه‌های SIAM عبور می‌کند | Good: bypasses most SIAM layers",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 198.23.171.152:8531 A34968093FBDE004333BC42EEEED7807C452429B cert=lzPjW5wICU68OEOrgx5cGr1zk7nT2SuxEIAvOAZ4qRDjYrrFyur4qjWx52v/bN49fYWJcw iat-mode=2",
       "bypass_tier": "STEALTH",
       "evasion_flags": [
@@ -29419,6 +29465,30 @@
       },
       "layers_bypassed": 2,
       "port": 80,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 176.107.159.133:8443 AC78E3220953F9892DAD1CDA54CAE4EEBA212660 cert=D1MrMMlbFm5tlu/tMKM4S5n5QQ4gKGuFyFeJzTcX4meRKQQLBLQwS/5mAQwRoRjd9DBhNQ iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6395,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 8443,
       "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
       "transport": "obfs4"
     },
@@ -103510,16 +103580,16 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 2125,
+    "COVERT": 2126,
     "DETECTED": 1272,
     "PHANTOM": 117,
-    "STEALTH": 1070
+    "STEALTH": 1072
   },
-  "total_scored": 4584,
+  "total_scored": 4587,
   "transport_summary": {
-    "obfs4": 2281,
+    "obfs4": 2283,
     "snowflake": 95,
     "vanilla": 1272,
-    "webtunnel": 936
+    "webtunnel": 937
   }
 }
