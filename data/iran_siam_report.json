@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-21T01:38:04.536144+00:00",
+  "generated_at": "2026-11-21T03:05:44.818221+00:00",
   "results": [
     {
       "bridge_line": "Bridge meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -44201,6 +44201,29 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 24.69.110.186:60002 754B365404A3AFD95B140CD28AA15B10694F8C26 cert=7ngfeV6n+OsQKkg9baAPgNh40+knldVXc9Wb6LyoljpVm8tLGe2c+HWaPUmFaZzZXxLZHA iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 60002,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 25.8.89.151:9443 2096E8E90BCDE473150448766F71B3F7E36E49BE cert=wUXdLMrAuk8BwQ8I1N7JFf5BkI1/HVw0onBfcBLfRWUbE+n3shOMFWhU/hzz660x3+EOKw iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
@@ -61267,6 +61290,29 @@
       "transport": "obfs4"
     },
     {
+      "bridge_line": "obfs4 [2602:61:737e:9706:be24:11ff:fed1:4a06]:3786 F5D28C8C3A00D29A1A8818E83634437CF8218F69 cert=1hCcsSORiGRDt/0+9t2kPjBbuNpT5/LU0kngNY7AhTb/2bXC41zhfQffzoNxDtLye4SmDA iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": null,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
       "bridge_line": "obfs4 [2602:f81c:81:5::50]:3389 E1FE1E1EBF704DB6D9F450895E449D86255DD8DE cert=vLKHN7ZkKJzsrzgzy2FGQvbERgeeFII97aE2LI6+JW0sfXivtjJipKyCP3fpuHZL7jKzZg iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
@@ -70432,6 +70478,30 @@
     },
     {
       "bridge_line": "obfs4 107.189.7.185:443 503EB70C30120C72988B47087C720B582B6AB135 cert=C9aZnJRqK1pkHH6VRi78lTNvaBX/nhUvOFh30oPE7RGpvkgSnrACmrF82gU+RdT2D/S5Og iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "siam_safe_port",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6235,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.65,
+        "L6_alpn_anomaly": 0.45,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 443,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 107.191.36.170:443 C20A7DA3203B8DB2317245B2D2804CE681BA4053 cert=6GcrIYefamRk1IWrRcbuY3NGvPK0P0IgRWBq9Xjw9A2ZIel+wPMrue32hQ0dueexE/FpVA iat-mode=0",
       "bypass_tier": "COVERT",
       "evasion_flags": [
         "obfs4_no_sni",
@@ -103440,14 +103510,14 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 2122,
+    "COVERT": 2125,
     "DETECTED": 1272,
     "PHANTOM": 117,
     "STEALTH": 1070
   },
-  "total_scored": 4581,
+  "total_scored": 4584,
   "transport_summary": {
-    "obfs4": 2278,
+    "obfs4": 2281,
     "snowflake": 95,
     "vanilla": 1272,
     "webtunnel": 936
