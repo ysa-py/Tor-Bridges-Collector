@@ -1,12 +1,12 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-21T23:03:14.323078411+00:00",
+  "generated_at": "2026-11-22T00:04:05.381529451+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
-        "generated_at": "2026-11-21T23:03:13.910996362+00:00",
-        "nin_eligible": 98,
+        "generated_at": "2026-11-22T00:04:04.845503849+00:00",
+        "nin_eligible": 101,
         "note": "هنگام قطع اینترنت بین‌المللی (شبکه ملی)، فقط بریج‌های این فایل کار می‌کنند. During international internet cut, only bridges in this pack are reachable. Use: Snowflake first, then WebTunnel (CDN-fronted), then meek-lite.",
         "pack_path": "export/iran_cut_pack.txt",
         "recommended_order": [
@@ -14,15 +14,16 @@
           "webtunnel",
           "meek_lite"
         ],
-        "total_tested": 4652,
+        "total_tested": 4653,
         "transport_counts": {
           "meek_lite": 3,
-          "snowflake": 95
+          "snowflake": 95,
+          "webtunnel": 3
         }
       },
       "required": false,
       "stage": "nin-pack",
-      "started_at": "2026-11-21T23:03:13.910987928+00:00",
+      "started_at": "2026-11-22T00:04:04.845497269+00:00",
       "status": "ok"
     }
   ],
