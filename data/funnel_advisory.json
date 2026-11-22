@@ -8,42 +8,42 @@
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 4615,
+      "count": 4618,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 4299,
+      "count": 4301,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 5207,
+      "count": 5210,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 1945,
+      "count": 1944,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 4611,
+      "count": 4614,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 2358,
+      "count": 2343,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 1979,
+      "count": 1966,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-22T18:56:18.857077172+00:00",
+  "generated_at": "2026-11-22T22:43:33.757580103+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -80,33 +80,33 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 1979,
-    "iran_likely_working_obfs4.txt": 977,
+    "iran_likely_working_all.txt": 1966,
+    "iran_likely_working_obfs4.txt": 966,
     "iran_likely_working_snowflake.txt": 5,
-    "iran_likely_working_vanilla.txt": 629,
-    "iran_likely_working_webtunnel.txt": 368,
-    "obfs4.txt": 1598,
-    "obfs4_tested.txt": 977,
-    "tested_global_obfs4.txt": 977,
-    "tested_global_vanilla.txt": 629,
-    "tested_global_webtunnel.txt": 368,
-    "vanilla.txt": 1055,
-    "vanilla_tested.txt": 629,
+    "iran_likely_working_vanilla.txt": 626,
+    "iran_likely_working_webtunnel.txt": 369,
+    "obfs4.txt": 1599,
+    "obfs4_tested.txt": 966,
+    "tested_global_obfs4.txt": 966,
+    "tested_global_vanilla.txt": 626,
+    "tested_global_webtunnel.txt": 369,
+    "vanilla.txt": 1057,
+    "vanilla_tested.txt": 626,
     "webtunnel.txt": 418,
-    "webtunnel_ipv6.txt": 118
+    "webtunnel_ipv6.txt": 117
   },
   "relay_coverage": {
-    "candidates": 4299,
-    "relay_observations": 5207,
-    "relay_success": 1945,
+    "candidates": 4301,
+    "relay_observations": 5210,
+    "relay_success": 1944,
     "unobserved_by_transport": {
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 81,
-      "webtunnel": 163
+      "webtunnel": 162
     },
-    "unobserved_candidates": 332,
-    "unobserved_non_routable": 287,
+    "unobserved_candidates": 331,
+    "unobserved_non_routable": 286,
     "unobserved_other": 45
   },
   "relay_retry_plan": {
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 332
+    "unobserved_candidates": 331
   },
   "sources": {
     "sources": [
@@ -204,7 +204,7 @@
     "fronts": [
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "0016100.xyz",
         "observations": 2,
         "successes": 0
@@ -1751,7 +1751,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": false,
+        "endpoint_is_placeholder": true,
         "front": "qutb.ir",
         "observations": 1,
         "successes": 0
@@ -2472,7 +2472,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "x7t2qctb.xoomlia.com",
         "observations": 1,
         "successes": 0
@@ -2499,9 +2499,9 @@
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 118,
+    "fronts_with_placeholder_endpoints": 117,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 536,
+    "lines_examined": 535,
     "summary": {
       "degraded": 0,
       "healthy": 1,
