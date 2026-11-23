@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-23T08:57:18.079748+00:00",
+  "generated_at": "2026-11-23T13:41:35.026693+00:00",
   "results": [
     {
       "bridge_line": "Bridge meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -35187,6 +35187,29 @@
       },
       "layers_bypassed": 2,
       "port": 9101,
+      "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
+      "transport": "obfs4"
+    },
+    {
+      "bridge_line": "obfs4 104.105.8.39:9443 20E0DC115CE201BDC7FEA3673315C38FFA2C9809 cert=XkbDF4nF2VU1PW0utz7b/8xf1n7ZD9nQ2nAsEFqYGfLWfe9527RYSIVehkrp1UxnZIy6Xg iat-mode=0",
+      "bypass_tier": "COVERT",
+      "evasion_flags": [
+        "obfs4_no_sni",
+        "obfs4_iat_mode_0_detectable"
+      ],
+      "iran_siam_score": 0.6305,
+      "layer_scores": {
+        "L1_packet_length": 0.75,
+        "L2_iat_timing": 0.55,
+        "L3_flow_features": 0.68,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.6,
+        "L6_alpn_anomaly": 0.65,
+        "L7_temporal": 0.5,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 2,
+      "port": 9443,
       "recommendation": "⚠️ obfs4 IAT-0 — پیکربندی iat-mode=2 برای عملکرد بهتر | Add iat-mode=2 for better evasion",
       "transport": "obfs4"
     },
@@ -81144,6 +81167,28 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 31.220.5.79:443 5F2064CAD903B53C3FF279F954A5ED53FAED08B2",
+      "bypass_tier": "DETECTED",
+      "evasion_flags": [
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.2261,
+      "layer_scores": {
+        "L1_packet_length": 0.02,
+        "L2_iat_timing": 0.05,
+        "L3_flow_features": 0.04,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.1,
+        "L6_alpn_anomaly": 0.03,
+        "L7_temporal": 0.02,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 1,
+      "port": 443,
+      "recommendation": "🚫 بلاک می‌شود — سیستم SIAM کاملاً تشخیص می‌دهد | Will be blocked by SIAM system",
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 37.120.171.188:443 037BCD0EBDF7DB9F3D562DA27D463F0F78F1494B",
       "bypass_tier": "DETECTED",
       "evasion_flags": [
@@ -104473,16 +104518,16 @@
     }
   ],
   "tier_summary": {
-    "COVERT": 2148,
-    "DETECTED": 1281,
+    "COVERT": 2149,
+    "DETECTED": 1282,
     "PHANTOM": 117,
     "STEALTH": 1080
   },
-  "total_scored": 4626,
+  "total_scored": 4628,
   "transport_summary": {
-    "obfs4": 2305,
+    "obfs4": 2306,
     "snowflake": 95,
-    "vanilla": 1281,
+    "vanilla": 1282,
     "webtunnel": 945
   }
 }
