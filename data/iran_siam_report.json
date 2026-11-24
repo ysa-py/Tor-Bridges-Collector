@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-24T17:09:53.703597+00:00",
+  "generated_at": "2026-11-24T22:00:57.997902+00:00",
   "results": [
     {
       "bridge_line": "Bridge meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -100205,6 +100205,28 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 191.101.236.38:9001 05E7EDEC5D798DE7643ADD69C6513491A30EDB88",
+      "bypass_tier": "DETECTED",
+      "evasion_flags": [
+        "ngfw_blocked_port"
+      ],
+      "iran_siam_score": 0.2057,
+      "layer_scores": {
+        "L1_packet_length": 0.02,
+        "L2_iat_timing": 0.05,
+        "L3_flow_features": 0.04,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.0,
+        "L6_alpn_anomaly": 0.0,
+        "L7_temporal": 0.02,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 1,
+      "port": 9001,
+      "recommendation": "🚫 بلاک می‌شود — سیستم SIAM کاملاً تشخیص می‌دهد | Will be blocked by SIAM system",
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 192.34.87.86:9001 CBC8D277C35BCE9512BA45479CF8141FC6A2CD73",
       "bypass_tier": "DETECTED",
       "evasion_flags": [
@@ -105113,15 +105135,15 @@
   ],
   "tier_summary": {
     "COVERT": 2158,
-    "DETECTED": 1288,
+    "DETECTED": 1289,
     "PHANTOM": 123,
     "STEALTH": 1085
   },
-  "total_scored": 4654,
+  "total_scored": 4655,
   "transport_summary": {
     "obfs4": 2315,
     "snowflake": 101,
-    "vanilla": 1288,
+    "vanilla": 1289,
     "webtunnel": 950
   }
 }
