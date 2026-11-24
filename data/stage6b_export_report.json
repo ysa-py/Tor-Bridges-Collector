@@ -1,24 +1,24 @@
 {
   "engine": "torshield-rust-pipeline-v1",
-  "generated_at": "2026-11-24T11:41:02.922777083+00:00",
+  "generated_at": "2026-11-24T17:05:29.994620912+00:00",
   "input": "bridge/iran_results.json",
   "stages": [
     {
       "detail": {
         "evidence": {
           "results": {
-            "tcp_reachable_s1": 1925,
-            "tested_failing": 108,
-            "tested_working": 451,
-            "untested (probe error)": 1000,
-            "untested (rate-limited)": 359,
-            "untested (tcp timeout)": 807
+            "tcp_reachable_s1": 1926,
+            "tested_failing": 85,
+            "tested_working": 448,
+            "untested (probe error)": 1033,
+            "untested (rate-limited)": 358,
+            "untested (tcp timeout)": 804
           },
-          "stamped": 4650,
+          "stamped": 4654,
           "tiers": {
             "tier_0_attempt": 1875,
-            "tier_1_tcp": 2210,
-            "tier_2_pt_handshake": 451,
+            "tier_1_tcp": 2217,
+            "tier_2_pt_handshake": 448,
             "untested": 114
           }
         },
@@ -32,23 +32,23 @@
           "iran_likely_working_webtunnel.txt": 0,
           "tested_global_obfs4.txt": 0,
           "tested_global_vanilla.txt": 0,
-          "tested_global_webtunnel.txt": 249
+          "tested_global_webtunnel.txt": 247
         },
         "relay_evidence": {
-          "bridges_matched": 4650,
-          "relay_observations": 4858,
-          "s2plus_connected": 1,
-          "verification_upgrades": 3231
+          "bridges_matched": 4654,
+          "relay_observations": 4862,
+          "s2plus_connected": 115,
+          "verification_upgrades": 3577
         },
         "webtunnel_probe": {
           "probed": 830,
-          "ws_101": 451,
-          "ws_fail": 379
+          "ws_101": 448,
+          "ws_fail": 382
         }
       },
       "required": true,
       "stage": "results",
-      "started_at": "2026-11-24T11:39:15.228272254+00:00",
+      "started_at": "2026-11-24T17:04:21.423095160+00:00",
       "status": "ok"
     }
   ],
