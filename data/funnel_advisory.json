@@ -3,47 +3,47 @@
   "collection_mode": "live",
   "funnel": [
     {
-      "count": 38,
+      "count": 62,
       "note": "raw lines fetched by the extended-source draws this run (see sources table)",
       "stage": "sources_fetched_lines"
     },
     {
-      "count": 4697,
+      "count": 4698,
       "note": "deduplicated bridge_history.json records (the whole candidate pool)",
       "stage": "candidates_in_history"
     },
     {
-      "count": 4387,
+      "count": 4384,
       "note": "bridge_list_for_testing.json entries handed to the probe stages",
       "stage": "testing_candidates"
     },
     {
-      "count": 5306,
+      "count": 5307,
       "note": "probe-relay observations returned by the Cloudflare Worker",
       "stage": "relay_attempted"
     },
     {
-      "count": 1986,
+      "count": 1975,
       "note": "relay observations with success=true",
       "stage": "relay_success"
     },
     {
-      "count": 4693,
+      "count": 4694,
       "note": "iran_tester bridges array (runner-side TCP/ASN/OONI analysis)",
       "stage": "tcp_tested"
     },
     {
-      "count": 2368,
+      "count": 2370,
       "note": "iran_tester tcp_reachable=true (the publication evidence tier)",
       "stage": "tcp_reachable"
     },
     {
-      "count": 1993,
+      "count": 1997,
       "note": "bridge/iran_likely_working_all.txt lines (advisory working set)",
       "stage": "published_advisory_working"
     }
   ],
-  "generated_at": "2026-11-26T14:07:03.427122552+00:00",
+  "generated_at": "2026-11-26T20:34:08.262581097+00:00",
   "live_collection": true,
   "module": "pipeline_funnel_advisory",
   "non_routable_census": {
@@ -80,34 +80,34 @@
     "live_gate": "bridge_publication.rs candidates_from_history: probe.tcp_reachable || probe.transport_capable, else history tcp_reachable || probe_successes > 0 || test_pass"
   },
   "published_counts": {
-    "iran_likely_working_all.txt": 1993,
-    "iran_likely_working_obfs4.txt": 989,
+    "iran_likely_working_all.txt": 1997,
+    "iran_likely_working_obfs4.txt": 976,
     "iran_likely_working_snowflake.txt": 13,
-    "iran_likely_working_vanilla.txt": 618,
-    "iran_likely_working_webtunnel.txt": 373,
-    "obfs4.txt": 1633,
-    "obfs4_tested.txt": 989,
-    "tested_global_obfs4.txt": 989,
-    "tested_global_vanilla.txt": 618,
-    "tested_global_webtunnel.txt": 373,
+    "iran_likely_working_vanilla.txt": 626,
+    "iran_likely_working_webtunnel.txt": 382,
+    "obfs4.txt": 1634,
+    "obfs4_tested.txt": 976,
+    "tested_global_obfs4.txt": 976,
+    "tested_global_vanilla.txt": 626,
+    "tested_global_webtunnel.txt": 382,
     "vanilla.txt": 1068,
-    "vanilla_tested.txt": 618,
-    "webtunnel.txt": 433,
-    "webtunnel_ipv6.txt": 128
+    "vanilla_tested.txt": 626,
+    "webtunnel.txt": 434,
+    "webtunnel_ipv6.txt": 123
   },
   "relay_coverage": {
-    "candidates": 4387,
-    "relay_observations": 5306,
-    "relay_success": 1986,
+    "candidates": 4384,
+    "relay_observations": 5307,
+    "relay_success": 1975,
     "unobserved_by_transport": {
       "meek_lite": 88,
       "no_literal_endpoint": 3,
       "snowflake": 90,
-      "webtunnel": 186
+      "webtunnel": 184
     },
-    "unobserved_candidates": 364,
-    "unobserved_non_routable": 306,
-    "unobserved_other": 58
+    "unobserved_candidates": 362,
+    "unobserved_non_routable": 301,
+    "unobserved_other": 61
   },
   "relay_retry_plan": {
     "advisory_only": true,
@@ -127,7 +127,7 @@
     ],
     "recommendation": "re-run Stage 4 for the unobserved set (non-routable endpoints can be excluded to save budget)",
     "stage": "probe-relay",
-    "unobserved_candidates": 364
+    "unobserved_candidates": 362
   },
   "sources": {
     "sources": [
@@ -147,7 +147,7 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 10,
+        "fetched_lines": 18,
         "requests": 6,
         "responses_ok": 6,
         "source": "moat_builtin_single_transport"
@@ -161,14 +161,14 @@
       },
       {
         "added_records": 0,
-        "fetched_lines": 10,
+        "fetched_lines": 18,
         "requests": 6,
         "responses_ok": 6,
         "source": "moat_builtin_geolocated_single_transport"
       },
       {
         "added_records": 0,
-        "fetched_lines": 10,
+        "fetched_lines": 18,
         "requests": 6,
         "responses_ok": 6,
         "source": "moat_builtin_unblocked_ir_single_transport"
@@ -2115,7 +2115,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "tomorefreedomitis.com",
         "observations": 2,
         "successes": 0
@@ -2164,7 +2164,7 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "tor1.woodie.dev",
         "observations": 2,
         "successes": 0
@@ -2605,15 +2605,15 @@
       },
       {
         "classification": "unreachable_from_relay",
-        "endpoint_is_placeholder": true,
+        "endpoint_is_placeholder": false,
         "front": "zebratalks.com",
         "observations": 1,
         "successes": 0
       }
     ],
-    "fronts_with_placeholder_endpoints": 128,
+    "fronts_with_placeholder_endpoints": 123,
     "generated_by": "webtunnel_v2::front_health_advisory",
-    "lines_examined": 561,
+    "lines_examined": 557,
     "summary": {
       "degraded": 0,
       "healthy": 1,
