@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-11-27T15:05:59.607762+00:00",
+  "generated_at": "2026-11-27T22:43:51.240791+00:00",
   "results": [
     {
       "bridge_line": "Bridge meek_lite 192.0.2.105:80 url=https://1603026938.rsc.cdn77.org front=ajax.aspnetcdn.com utls=HelloRandomizedALPN",
@@ -82356,6 +82356,28 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 213.239.213.190:443 4E98AA295B7171996D18DD1F6A19F64AB4036B4A",
+      "bypass_tier": "DETECTED",
+      "evasion_flags": [
+        "siam_safe_port"
+      ],
+      "iran_siam_score": 0.2261,
+      "layer_scores": {
+        "L1_packet_length": 0.02,
+        "L2_iat_timing": 0.05,
+        "L3_flow_features": 0.04,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.1,
+        "L6_alpn_anomaly": 0.03,
+        "L7_temporal": 0.02,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 1,
+      "port": 443,
+      "recommendation": "🚫 بلاک می‌شود — سیستم SIAM کاملاً تشخیص می‌دهد | Will be blocked by SIAM system",
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 213.33.114.214:443 0693E0271830CD4FC40094E517D3B13C919FF75D",
       "bypass_tier": "DETECTED",
       "evasion_flags": [
@@ -104462,6 +104484,28 @@
       "transport": "vanilla"
     },
     {
+      "bridge_line": "Bridge 75.236.161.202:9001 0438B5679D52CD10756924D425FDE03B40840304",
+      "bypass_tier": "DETECTED",
+      "evasion_flags": [
+        "ngfw_blocked_port"
+      ],
+      "iran_siam_score": 0.2057,
+      "layer_scores": {
+        "L1_packet_length": 0.02,
+        "L2_iat_timing": 0.05,
+        "L3_flow_features": 0.04,
+        "L4_ja3_tls": 0.75,
+        "L5_cert_sni": 0.0,
+        "L6_alpn_anomaly": 0.0,
+        "L7_temporal": 0.02,
+        "L8_as_graph": 0.55
+      },
+      "layers_bypassed": 1,
+      "port": 9001,
+      "recommendation": "🚫 بلاک می‌شود — سیستم SIAM کاملاً تشخیص می‌دهد | Will be blocked by SIAM system",
+      "transport": "vanilla"
+    },
+    {
       "bridge_line": "Bridge 75.236.31.86:9001 0438B5679D52CD10756924D425FDE03B40840304",
       "bypass_tier": "DETECTED",
       "evasion_flags": [
@@ -106532,15 +106576,15 @@
   ],
   "tier_summary": {
     "COVERT": 2193,
-    "DETECTED": 1299,
+    "DETECTED": 1301,
     "PHANTOM": 126,
     "STEALTH": 1098
   },
-  "total_scored": 4716,
+  "total_scored": 4718,
   "transport_summary": {
     "obfs4": 2350,
     "snowflake": 104,
-    "vanilla": 1299,
+    "vanilla": 1301,
     "webtunnel": 963
   }
 }
