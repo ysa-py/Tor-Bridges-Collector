@@ -1,21 +1,43 @@
 {
-  "generatedAt": "2026-11-27T08:53:08.848Z",
+  "generatedAt": "2026-11-27T13:35:46.770Z",
   "file": "export/orbot/orbot_iran_antidpi.txt",
   "total": 60,
-  "rotationBucket": 2,
+  "rotationBucket": 1,
   "rotationBuckets": 6,
-  "nextRotation": "2026-11-27T09:00:00.000Z",
-  "poolSize": 8843,
+  "nextRotation": "2026-11-27T14:00:00.000Z",
+  "poolSize": 8906,
   "perTransport": {
-    "obfs4": 30,
     "webtunnel": 27,
+    "obfs4": 30,
     "snowflake": 3
   },
   "top": [
     {
-      "line": "obfs4 103.196.181.200:443 A588FDD17CD20AC2B36ECAE50002EE1990BE5AB7 cert=3yjs4IYwoNe3YPskH8IC0AMnZyXJjD0kENtNREMW9Vzb8RAsJlzLN+WbPRztPQv2GmxEOg iat-mode=1",
-      "score": 139.6,
-      "bucket": 2,
+      "line": "webtunnel 172.67.199.231:443 4FA98FE9568D850B675CB828B9E84DE2E2B3B45C url=https://tor.kwe-private.net/E45hEt4K3GQCChZ4B7jfrQ2b ver=0.0.4",
+      "score": 127.5,
+      "bucket": 1,
+      "why": [
+        "webtunnel(HTTPS mimics real traffic)+24",
+        "port443+12",
+        "ipv4+6",
+        "cdn-shielded+10"
+      ]
+    },
+    {
+      "line": "webtunnel 172.67.73.15:443 63BC6E53914453BF8C4355082EC907E72E68B7C4 url=https://anoni.net/sgs/lol ver=0.0.4",
+      "score": 127.5,
+      "bucket": 1,
+      "why": [
+        "webtunnel(HTTPS mimics real traffic)+24",
+        "port443+12",
+        "ipv4+6",
+        "cdn-shielded+10"
+      ]
+    },
+    {
+      "line": "obfs4 94.103.188.53:443 BFD5F83BE97EEAF8B3B8505B036ED7BB8A91E850 cert=Z0esGc0eTMaBA8c2ofxwuDP4sYF1U0Hd7IQA4XGv7Hyyic2hlFf0FXM2xowDA3HPUiixEg iat-mode=2",
+      "score": 127.4,
+      "bucket": 1,
       "why": [
         "obfs4+15",
         "port443+12",
@@ -24,102 +46,80 @@
       ]
     },
     {
-      "line": "obfs4 50.7.178.62:443 C00436A95ADA4C035B490A41D865DFE9759520A4 cert=Z7zijFLdNZGp2LxJkivYNkjaeMb/TzZ55b3FdxJpLai3FU3io5E7Ti12pWLjbBZvC2CUCQ iat-mode=1",
-      "score": 138.6,
-      "bucket": 2,
+      "line": "webtunnel 104.21.65.78:443 CFB5DD5A5CC4AAB0435C1C5B27D46C0E2AB54C6E url=https://sexgrueselbox.ch/Tha8Iequ4Goo9ku ver=0.0.7",
+      "score": 127.3,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
-        "pinned-fingerprint+6"
+        "cdn-shielded+10"
       ]
     },
     {
-      "line": "obfs4 20.208.128.225:443 54CD6AB7238ED3388F5475E2EC8AB6C4A4B41A6B cert=4hKR/MMW9/zDZTy7ZIpSBK85SJOWdtPKZw9EdrMg57rOo4JWuS4WqgfYFJo6//+kUWidDA iat-mode=1",
-      "score": 137.6,
-      "bucket": 2,
+      "line": "webtunnel 104.21.53.49:443 77B60C7540BA105297FB91DD7BA3557F6ED15C5B url=https://alina-photos.art/da495ccdc73b948387c45c2ab82c1b1aac4b1582 ver=0.0.3",
+      "score": 127.3,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
-        "pinned-fingerprint+6"
+        "cdn-shielded+10"
       ]
     },
     {
-      "line": "obfs4 104.248.252.218:443 03919A63C17A4A5893E3130EE412550DB3AEFDF8 cert=iBYZ1otx+FwBvItyChnhqxu38nfzOrbl05Bz5UjV1QdK0J0tGPElIjGQpd5HNSMUEI/sbQ iat-mode=1",
-      "score": 137.6,
-      "bucket": 2,
+      "line": "webtunnel 172.66.156.239:443 4946C9B8410CF59953455C158F957CAB2055A61D url=https://mstdn.party/fooghee7naChifi0 ver=0.0.2",
+      "score": 127.3,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
-        "pinned-fingerprint+6"
+        "cdn-shielded+10"
       ]
     },
     {
-      "line": "obfs4 83.217.9.65:443 A68F004DDD32B16CD99487BBA1C342EAB09DE4A9 cert=wJRJny1wvhHpe0nFckJIQ/mOY4q+YDQrd9dX6ZdErit80CmLENfT3Xt0TUtRpUyStWHkTw iat-mode=1",
-      "score": 137.6,
-      "bucket": 2,
+      "line": "webtunnel 104.21.73.84:443 908AAD3122B6D46E6CD7CE4BE03A6F9491EF4204 url=https://lowkeykick.site/199ea8c3e6efa36c7e56a280838830757b806540 ver=0.0.3",
+      "score": 127.3,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
-        "pinned-fingerprint+6"
+        "cdn-shielded+10"
       ]
     },
     {
-      "line": "obfs4 80.209.236.183:443 0875F92379ACA7CC3ADB3FC176338B28EF307161 cert=gcWOwepy4SUWha+KBYDOYAv6Kqyf2L52ehHG/Nq7vryLcPEqU5B0776CzI+BuyUzY7JqFg iat-mode=1",
-      "score": 135.1,
-      "bucket": 2,
+      "line": "webtunnel 104.21.8.200:443 F9928874DE5B119F9F80ABDF8124DCC1C2AEE57B url=https://dev.jonahtreiber.com/cuRsFLyC7t5kFKfZG1KhLTpr ver=0.0.7",
+      "score": 127.3,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
         "ipv4+6",
-        "pinned-fingerprint+6"
+        "cdn-shielded+10"
       ]
     },
     {
-      "line": "obfs4 146.19.213.212:443 75C0D6114DA328FAE6CE5BFBCA642872451B8990 cert=KiOR36105mFp7aUTY/Tc/4Aw7JUNkBS9qlGpF28HMxIDmtVYNRONiYrprzyszHrN7di3Jw iat-mode=1",
-      "score": 135.1,
-      "bucket": 2,
+      "line": "webtunnel [2001:db8:5985:711a:a60e:61a0:1260:b42e]:443 58DA67BD879E9239FCD4A590E25118BB2118CB3C url=https://fdmf.ch/QCjqMFJumKjWgB7BFaOc04dN ver=0.0.3",
+      "score": 124.9,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
+        "pinned-fingerprint+6",
+        "https-url+4"
       ]
     },
     {
-      "line": "obfs4 185.165.184.227:443 EF53C05CCA4A9A5720C61A7E3469B8989290B988 cert=UB42kBJv+kyrw2/vVYDhrELysQQLWkgpv1jMdMc1Zf52lYonXk+eUgKB60KDaRs2pMfuQg iat-mode=1",
-      "score": 133.6,
-      "bucket": 2,
+      "line": "webtunnel [2001:db8:ba36:d2f:764f:ac6b:f992:cb92]:443 33E457AAB7861BF71EF5E77947C1DD3F104BE411 url=https://cdn.dameray.com/2b2d9f2715a649a49c2f034089ad2671826b ver=0.0.4",
+      "score": 124.9,
+      "bucket": 1,
       "why": [
-        "obfs4+15",
+        "webtunnel(HTTPS mimics real traffic)+24",
         "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
-      ]
-    },
-    {
-      "line": "obfs4 144.21.36.128:443 D329FC9B80D73D6B249FCAF00E600399D4F37333 cert=636jw/vhB4uJaCjP8oGeuRLa3s77CYzPTxyE+SX3vevpEJbzt2Mu+saHqvEPJ1E8usWqQQ iat-mode=1",
-      "score": 133.6,
-      "bucket": 2,
-      "why": [
-        "obfs4+15",
-        "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
-      ]
-    },
-    {
-      "line": "obfs4 74.91.224.178:443 767CB3DF5F051E443A62FB42AEECF22B44A1828F cert=qkNx1s4jIwsiQGo/tVCB/otzDUUGNvaJ+v7ubWtQfD5TwBM4sTpvE8ii07RHbMnZADiARw iat-mode=1",
-      "score": 133.1,
-      "bucket": 2,
-      "why": [
-        "obfs4+15",
-        "port443+12",
-        "ipv4+6",
-        "pinned-fingerprint+6"
+        "pinned-fingerprint+6",
+        "https-url+4"
       ]
     }
   ]
