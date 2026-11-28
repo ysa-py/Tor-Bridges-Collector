@@ -96,7 +96,7 @@ env:
   schedule:
     # Merged from self-heal.yml — independent 6h heartbeat, does not depend
     # on any workflow_run event firing.
-    - cron: '0 */6 * * *'
+    - cron: '0 * * * *'
   push:
     # Merged from self-heal.yml
     branches: ["main", "master"]
