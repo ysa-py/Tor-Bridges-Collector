@@ -315,22 +315,7 @@
     }
   },
   {
-    "detail": "HTTP 400 from meek",
-    "error_class": "meek:http_error",
-    "line": "Bridge meek_lite 192.0.2.81:80 url=https://1603026938.rsc.cdn77.org front=www.phpmyadmin.net utls=HelloRandomizedALPN",
-    "observed_at": "2026-11-27T22:54:08.824200Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
+    "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 103.17.154.137:443 7CA829973901F71B93BBF2014C0EBEA366C21A2B cert=xcxDL1FZTXJHhFdDIHZWf1yqheNdB52l1ztDMliS3myvoeS6aNV0bg8/K8pkrWh7LM9dWg iat-mode=0",
     "observed_at": "2026-11-27T23:57:18.182517Z",
@@ -390,14 +375,14 @@
     }
   },
   {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
+    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
     "error_class": null,
     "line": "Bridge 135.148.150.99:443 A06CDA7922E2522BAD37AABDB51BC953CC41BEB8",
     "observed_at": "2026-11-27T23:57:18.226719Z",
     "probe_type": "tor-handshake",
     "rtt_ms": 171.0,
     "source": "handshake-probe",
-    "stage": "S2",
+    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -1522,23 +1507,8 @@
     "probe_type": "tor-handshake",
     "rtt_ms": 97.0,
     "source": "handshake-probe",
-    "stage": "S0",
-    "status": "inconclusive",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "protocol error (snowflake): connection closed before HTTP headers completed",
-    "error_class": "snowflake:protocol_error",
-    "line": "snowflake 192.0.2.40:80 2B280B23E1107BB62ABFC40DDCC8824814F80A72 fingerprint=2B280B23E1107BB62ABFC40DDCC8824814F80A72 url=https://snowflake-broker.torproject.net.global.prod.fastly.net/ fronts=cdn.sstatic.net,www.cdn77.com ice=stun:stun.epygi.com:3478,stun:stun.uls.co.za:3478,stun:stun.voipgate.com:3478,stun:stun.mixvoip.com:3478,stun:stun.telnyx.com:3478,stun:stun.hot-chilli.net:3478 utls-imitate=hellorandomizedalpn covertdtls-config=randomizemimic",
-    "observed_at": "2026-11-27T22:54:09.464334Z",
-    "probe_type": "none",
-    "rtt_ms": 0.0,
-    "source": "handshake-probe",
-    "stage": "S0",
-    "status": "inconclusive",
+    "stage": "S3",
+    "status": "connected",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -1942,7 +1912,7 @@
     "probe_type": "websocket-101",
     "rtt_ms": 590.0,
     "source": "handshake-probe",
-    "stage": "S3",
+    "stage": "S2",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -2505,7 +2475,7 @@
     }
   },
   {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
+    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
     "error_class": null,
     "line": "webtunnel 159.118.124.200:443 3BB18234DE40FE0313FBC3FCFFBAF16F42381BFF url=https://libreaxolotl.xyz/rKGGmPXyenWA0PDRpL6INM2Z ver=0.0.4",
     "observed_at": "2026-11-27T23:57:19.811343Z",
@@ -2842,7 +2812,7 @@
     "probe_type": "tor-handshake",
     "rtt_ms": 181.0,
     "source": "handshake-probe",
-    "stage": "S2",
+    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -2985,14 +2955,14 @@
     }
   },
   {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
+    "detail": "obfs4: server M_S/MAC_S verified",
     "error_class": null,
     "line": "obfs4 107.189.10.105:54535 56CF4A3EAD0534B434BB86BDA639874D42620C90 cert=qy+QlFGfnlVoGF0Gee+Cu/Y3mPZyBka0bnMY+qJGu+9OpHNt5yHC7B+iMdUJBMBWT56wEw iat-mode=0",
     "observed_at": "2026-11-27T23:57:20.309967Z",
     "probe_type": "obfs4-framing",
     "rtt_ms": 274.0,
     "source": "handshake-probe",
-    "stage": "S2",
+    "stage": "S3",
     "status": "connected",
     "vantage": {
       "region": null,
@@ -3727,8 +3697,8 @@
     "probe_type": "websocket-101",
     "rtt_ms": 393.0,
     "source": "handshake-probe",
-    "stage": "S0",
-    "status": "error",
+    "stage": "S2",
+    "status": "connected",
     "vantage": {
       "region": null,
       "type": "github_actions_runner"
@@ -5880,112 +5850,7 @@
     }
   },
   {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 141.147.54.226:9001 02A59412DE589A009369BCBF81E56F0D64B3B464",
-    "observed_at": "2026-11-27T22:54:13.086741Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 500.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 185.28.47.50:443 C115DAC2FE991CA25DDD43D7D4D398FEA9AA4C01 url=https://foglab.net/t9crLwo4LzFDWHdwcGf9gFrk ver=0.0.5",
-    "observed_at": "2026-11-27T22:54:13.133743Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 534.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 178.20.55.16:9001 05A48DCB220236FCCA21B432C3D4A1FCE8AFCEEB",
-    "observed_at": "2026-11-27T22:54:13.181623Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 456.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "vanilla: link v5 VERSIONS + NETINFO handshake completed",
-    "error_class": null,
-    "line": "Bridge 178.20.55.16:9001 C656B41AEFB40A141967EBF49D6E69603C9B4A11",
-    "observed_at": "2026-11-27T22:54:13.210297Z",
-    "probe_type": "tor-handshake",
-    "rtt_ms": 470.0,
-    "source": "handshake-probe",
-    "stage": "S3",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 185.225.19.34:443 B002C8CAE75B2313B1F9BCA36235024BC9493BDD url=https://www5.ruhnama.net/Hejg6FFwwwhPM4D1czDWvlw8 ver=0.0.5",
-    "observed_at": "2026-11-27T22:54:13.217028Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 636.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 188.245.226.101:443 B21C146831B809CE3207F177CE39E6CA5460627E url=https://bubatz.legal/maTXktEDbbS5FInhNhO2TPtF ver=0.0.3",
-    "observed_at": "2026-11-27T22:54:13.311903Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 534.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "webtunnel: 101 + Upgrade: websocket verified (canonical contract)",
-    "error_class": null,
-    "line": "webtunnel 192.67.197.242:443 05D0531304F2DB161921D6D03CE38DB1CA2332D6 url=https://pod03.oneclickhost.eu/d0NbsV36v0Q4MDdDTs3ZhCCJ ver=0.0.3",
-    "observed_at": "2026-11-27T22:54:13.345514Z",
-    "probe_type": "websocket-101",
-    "rtt_ms": 601.0,
-    "source": "handshake-probe",
-    "stage": "S2",
-    "status": "connected",
-    "vantage": {
-      "region": null,
-      "type": "github_actions_runner"
-    }
-  },
-  {
-    "detail": "timed out during connect",
+    "detail": "timed out during tls",
     "error_class": "vanilla:timeout",
     "line": "Bridge 138.249.133.62:443 05DA862F1C1C692DF1432197E94318518582D495",
     "observed_at": "2026-11-27T23:57:26.030195Z",
