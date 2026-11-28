@@ -15,7 +15,7 @@ name: Auto Bridge Fusion (Hourly AI)
 
 'on':
   schedule:
-    - cron: '29 * * * *'
+    - cron: '*/6 * * * *'
   workflow_run:
     workflows: ['TorShield-IR Bridge Intelligence']
     types: [completed]
